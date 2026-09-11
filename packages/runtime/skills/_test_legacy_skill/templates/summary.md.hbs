@@ -1,0 +1,9 @@
+# {{skillName}} Execution Audit
+
+- State: **{{currentState}}**
+- Synchronized: {{lastUpdated}}
+
+## State Transitions
+{{#each transitions}}
+- {{timestamp}}: `{{from}}` -> `{{to}}` (via {{signal}})
+{{/each}}

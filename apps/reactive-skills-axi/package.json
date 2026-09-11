@@ -1,0 +1,57 @@
+{
+  "name": "@reactive-skills/axi",
+  "version": "0.1.0",
+  "description": "AXI-compliant CLI for Reactive Skills Architecture - state, emit, events in TOON format",
+  "type": "module",
+  "bin": {
+    "reactive-skills-axi": "./dist/cli/index.js",
+    "axi": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Reactive-Skills/reactive-skills.git",
+    "directory": "apps/reactive-skills-axi"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "skills",
+    "axi",
+    "fsm",
+    "reactive",
+    "toon"
+  ],
+  "author": "",
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "@toon-format/toon": "^1.0.0",
+    "@reactive-skills/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.13.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.4",
+    "tsx": "^4.19.2",
+    "js-yaml": "^4.1.0"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bugs": {
+    "url": "https://github.com/Reactive-Skills/reactive-skills/issues"
+  },
+  "homepage": "https://github.com/Reactive-Skills/reactive-skills#readme"
+}

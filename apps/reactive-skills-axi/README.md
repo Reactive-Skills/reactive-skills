@@ -1,0 +1,104 @@
+# @reactive-skills/axi
+
+AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
+
+## Installation
+
+Run directly without installing (zero install, recommended for agents):
+
+```bash
+npx -y @reactive-skills/axi <command>
+```
+
+Or install globally for instant local commands (`reactive-skills-axi` or `axi`):
+
+```bash
+npm install -g @reactive-skills/axi
+```
+
+## Usage
+
+```bash
+# Zero-install via npx:
+npx -y @reactive-skills/axi                          # dashboard
+npx -y @reactive-skills/axi state <skill>            # active state & prompt
+npx -y @reactive-skills/axi emit <skill> <signal>    # advance state machine
+npx -y @reactive-skills/axi init <name>              # scaffold new reactive skill
+npx -y @reactive-skills/axi upgrade <path>           # upgrade legacy SKILL.md
+npx -y @reactive-skills/axi inspect <path>           # inspect statechart
+npx -y @reactive-skills/axi events [limit]           # tail event ledger
+
+# Or if installed globally:
+reactive-skills-axi state <skill>
+axi emit <skill> <signal>
+```
+
+## Commands
+
+### init
+
+Scaffold a new reactive skill in `skills/<name>/`.
+
+```bash
+npx -y @reactive-skills/axi init my-skill
+```
+
+Creates:
+- `skills/my-skill/skill.yaml` — skill manifest
+- `skills/my-skill/SKILL.md` — skill documentation
+- `skills/my-skill/states/start.md` — initial state prompt
+- `skills/my-skill/states/done.md` — terminal state prompt
+
+### upgrade
+
+Convert a legacy `SKILL.md` to reactive modular format.
+
+```bash
+npx -y @reactive-skills/axi upgrade skills/my-legacy-skill
+```
+
+Uses the runtime's `LegacySkillAdapter` to generate:
+- `skill.yaml` with state machine manifest
+- `states/` directory with modular state files
+- `templates/` directory with summary projection template
+
+### inspect
+
+Print the statechart, transitions, and guards for a reactive skill.
+
+```bash
+npx -y @reactive-skills/axi inspect skills/my-skill
+```
+
+Output (TOON format):
+- Skill metadata (name, version, description, state count, transition count)
+- States list with descriptions
+- Transitions with signals, targets, and guard expressions
+
+### events
+
+Tail the event store ledger for a skill.
+
+```bash
+npx -y @reactive-skills/axi events              # last 20 events
+npx -y @reactive-skills/axi events 50           # last 50 events
+npx -y @reactive-skills/axi events 100 my-skill # last 100 events for my-skill
+```
+
+Output (TOON format):
+- Count of events shown
+- Event entries with seq, timestamp, type, state
+
+## Design Principles
+
+This CLI follows the [AXI (Agent eXperience Interface)](https://axi.md) principles:
+
+- **Content-first**: Running with no arguments shows live data, not help text
+- **TOON output**: Token-efficient format for agent consumption (~40% fewer tokens than JSON)
+- **Structured errors**: Clean exit codes (0=success, 1=error, 2=unknown flag)
+- **Contextual suggestions**: Next-step hints after every output
+- **Minimal schemas**: 3-4 fields per list item by default
+
+## License
+
+MIT

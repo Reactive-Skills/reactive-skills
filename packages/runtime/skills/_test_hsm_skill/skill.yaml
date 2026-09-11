@@ -1,0 +1,54 @@
+schema_version: "2.0.2"
+name: "test-hsm"
+description: "Test HSM bubbling and lifecycle hooks"
+initial_state: "EXPLORE"
+
+context:
+  hook_count: 0
+  active_subtask: null
+
+states:
+  EXPLORE:
+    prompt_template: "states/explore.md"
+    on_enter:
+      - set_context: { hook_count: 1 }
+        emit_signal: "ENTERED_EXPLORE"
+    on_exit:
+      - emit_signal: "EXITING_EXPLORE"
+    transitions:
+      START_WORK:
+        target: "ACTIVE_WORK"
+
+  ACTIVE_WORK:
+    description: "Composite Parent State"
+    initial_substate: "TASK_A"
+    on_enter:
+      - set_context: { active_subtask: "PARENT_ACTIVE" }
+    transitions:
+      GLOBAL_CANCEL:
+        target: "CANCELLED"
+      FORCE_RESET:
+        target: "EXPLORE"
+    substates:
+      TASK_A:
+        prompt_template: "states/task_a.md"
+        on_enter:
+          - set_context: { active_subtask: "TASK_A" }
+            emit_signal: "TASK_A_STARTED"
+        transitions:
+          TASK_A_DONE:
+            target: "ACTIVE_WORK.TASK_B"
+
+      TASK_B:
+        prompt_template: "states/task_b.md"
+        on_enter:
+          - set_context: { active_subtask: "TASK_B" }
+        transitions:
+          TASK_B_DONE:
+            target: "COMPLETED"
+
+  CANCELLED:
+    prompt_template: "states/cancelled.md"
+
+  COMPLETED:
+    prompt_template: "states/completed.md"

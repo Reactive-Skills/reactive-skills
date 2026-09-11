@@ -1,0 +1,168 @@
+# ⚡ Reactive Skills Architecture (RSA)
+
+> **Event-Driven Hierarchical State Machine Engine and Immutable Event Store for Agentic Skills**
+
+[![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
+
+---
+
+## 🌟 What is Reactive Skills?
+
+Conventional agent skills are static markdown instruction files (`SKILL.md`). An LLM reads all instructions upfront, enters an unstructured execution loop, and guesses its next steps without state verification or deterministic progress guarantees.
+
+**Reactive Skills** upgrade passive agent skills into **Hierarchical State Machines (HSM)** driven by a reactive **Event/Signal Bus**:
+
+1. **Just-In-Time Prompt Slices:** Only the prompt, constraints, and tool whitelists for the *active state* are loaded into the LLM turn (~70% token reduction).
+2. **Signal-Driven Ingress:** Transitions are triggered by typed runtime signals (`REQUIREMENTS_GATHERED`, `TESTS_PASSED`, `USER_APPROVED`).
+3. **Deterministic Guard Gates:** Progress requires deterministic programmatic invariants to evaluate `true` (preventing hallucinated completion).
+4. **Event Sourcing & Live Deliverables:** Every transition is recorded to an append-only ledger (`events.jsonl` + SQLite `events.db`). Documentation, PR bodies, and review matrices are live read-model projections rendered from the event stream.
+
+---
+
+## 📦 Packages
+
+This repository is a monorepo containing:
+
+- **`@reactive-skills/runtime`**: The core TypeScript statechart engine, SQLite event store driver, guard evaluator, and stdio MCP server.
+- **`@reactive-skills/axi`**: The Agent Experience Interface (AXI) CLI (`reactive-skills-axi`) providing human- and agent-ergonomic state inspection and signal dispatch in TOON format.
+
+---
+
+## 🚀 Quickstart
+
+### 1. Execution Options
+
+You can execute commands on-demand via **`npx`** (zero installation required) or install the CLI globally:
+
+```bash
+# Zero install — works immediately for any agent or shell:
+npx -y @reactive-skills/axi state <skill-name>
+npx -y @reactive-skills/axi emit <skill-name> <signal-name>
+
+# Optional: Install globally for instant local commands (`reactive-skills-axi` or `axi`):
+npm install -g @reactive-skills/axi
+```
+
+### 2. Inspect a Skill's Current State
+
+```bash
+npx -y @reactive-skills/axi state <skill-name>
+```
+
+Outputs the current state, active prompt instructions, allowed tools, and available transitions in structured format:
+
+```yaml
+state:
+  skill_id: my-skill
+  current_state: STEP_ONE
+prompt:
+  raw_prompt: "# State: Processing Step One ..."
+  allowed_tools: "view_file,grep_search,find_by_name,ask_question"
+help[2]:
+  Read the state prompt above and execute the instructed tasks
+  Run `npx -y @reactive-skills/axi emit <skill> <signal>` to advance
+```
+
+### 3. Emit a Signal to Advance
+
+```bash
+npx -y @reactive-skills/axi emit <skill-name> <signal-name> [--payload '{"exit_code":0}']
+```
+
+The state machine evaluates transition guards, appends to the immutable event ledger, updates deliverables, and outputs the next state instructions.
+
+---
+
+## 🔌 Integration Modes
+
+Reactive skills can be driven through two primary integration paths:
+
+1. **AXI CLI (Universal Shell Mode):** Any agent capable of running terminal commands can drive the skill using `npx -y @reactive-skills/axi state <skill>` (or `reactive-skills-axi state <skill>`) and `npx -y @reactive-skills/axi emit <skill> <signal>`.
+2. **MCP Server (Model Context Protocol):** Exposes `reactive_state` and `reactive_emit_signal` tools over stdio for Claude Desktop, Antigravity, Cursor, and any MCP-compatible harness:
+   ```bash
+   npx -y @reactive-skills/axi mcp
+   ```
+
+---
+
+## 🛠️ CLI Reference
+
+> **Note:** Commands below are shown using the zero-install `npx -y @reactive-skills/axi` prefix. If installed globally (`npm install -g @reactive-skills/axi`), you can substitute `reactive-skills-axi` or `axi`.
+
+| Command | Usage | Description |
+| :--- | :--- | :--- |
+| `state` | `npx -y @reactive-skills/axi state <skill>` | Display current active state, unabridged prompt slice, and allowed tools |
+| `emit` | `npx -y @reactive-skills/axi emit <skill> <signal>` | Emit a signal to evaluate guards and advance to the next state |
+| `invoke` | `npx -y @reactive-skills/axi invoke <skill> [--payload JSON]` | Initialize and start a skill run |
+| `events` | `npx -y @reactive-skills/axi events <skill> [limit]` | Tail recent events from the append-only event store |
+| `inspect` | `npx -y @reactive-skills/axi inspect <skill>` | Print statechart topology, substates, and guard rules |
+| `init` | `npx -y @reactive-skills/axi init <name>` | Scaffold a new modular reactive skill package |
+| `reset` | `npx -y @reactive-skills/axi reset <skill>` | Clear execution run state while preserving deliverables |
+
+---
+
+## 🛠️ Authoring Reactive Skills
+
+Avoid manually hand-authoring reactive skill packages from scratch. A reactive skill binds together statechart topology (`skill.yaml`), individual state prompt templates (`states/*.md`), deterministic guards (`guards/`), projection deliverables (`templates/*.hbs`), and strict execution bootloaders. Hand-authoring these files easily introduces syntax drift, broken transitions, or missing guards.
+
+### Recommended: Use the `skill-manager` Skill
+
+The canonical method to scaffold, modify, and migrate reactive skills is the **`skill-manager`** agent skill.
+
+Instead of writing YAML manifests manually, ask your AI agent:
+
+```text
+"Use skill-manager to create a reactive skill named my-feature-workflow"
+```
+
+The `skill-manager` skill validates schemas, coordinates state prompts with strict execution invariants, and handles lifecycle operations (CREATE, UPDATE, MIGRATE_LEGACY, MIGRATE_REACTIVE).
+
+### Visual Statecharts with `STATECHART.md`
+
+`skill-manager` supports and generates a `STATECHART.md` alongside `skill.yaml`. This document contains a Mermaid `stateDiagram-v2` visualization of the entire state machine:
+
+```mermaid
+stateDiagram-v2
+    [*] --> INIT
+    INIT --> START : RUNTIME_READY
+    INIT --> SETUP_MCP : SETUP_REQUIRED
+    SETUP_MCP --> START : SETUP_COMPLETE [exit_code == 0]
+    SETUP_MCP --> ERROR : SETUP_FAILED [exit_code != 0]
+    START --> DONE : DONE
+    DONE --> [*]
+```
+
+- **Visual-first design:** You can sketch a proposed state machine using a Mermaid `stateDiagram-v2` block in `STATECHART.md`, and `skill-manager` will parse it into the corresponding `skill.yaml` and state templates.
+- **Continuous synchronization:** When modifying a skill's states or transitions, `skill-manager` updates both `skill.yaml` and `STATECHART.md` to keep documentation and runtime contracts identical.
+
+### Terminal Scaffolding (`init`)
+
+For quick command-line scaffolding, you can also use the AXI CLI:
+
+```bash
+npx -y @reactive-skills/axi init <skill-name>
+```
+
+This scaffolds the modular file layout in `skills/<skill-name>/`:
+
+```text
+skills/<skill-name>/
+├── skill.yaml            # Statechart manifest (states, transitions, guards)
+├── STATECHART.md         # Visual Mermaid statechart diagram
+├── SKILL.md              # Skill entry point with reactive bootloader
+├── states/               # State-specific markdown prompt templates
+│   ├── init.md
+│   ├── setup_mcp.md
+│   ├── start.md
+│   ├── done.md
+│   └── bypass_detected.md
+└── skill-release.json    # Release and schema metadata
+```
+
+---
+
+## 📜 License
+
+Licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. See [LICENSE](LICENSE) for details.

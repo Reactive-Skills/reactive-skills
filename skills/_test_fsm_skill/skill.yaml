@@ -1,0 +1,127 @@
+schema_version: "2.0.2"
+name: test-fsm
+version: "1.0.0"
+description: "Generic FSM and HSM test fixture with bubbling and projections"
+initial_state: INIT
+strict_execution: true
+context_keys:
+  - target_file
+  - test_file
+  - refactor_cycles
+  - clean_passes
+default_context:
+  target_file: src/calc.ts
+  test_file: tests/calc.test.ts
+  refactor_cycles: 0
+  clean_passes: 0
+states:
+  INIT:
+    description: 'Bootloader: Verify reactive runtime environment'
+    prompt_template: states/init.md
+    transitions:
+      RUNTIME_READY:
+        target: RED_SPEC
+      SETUP_REQUIRED:
+        target: SETUP_RUNTIME
+  SETUP_RUNTIME:
+    description: Auto-configure harness MCP server
+    prompt_template: states/setup_runtime.md
+    tools:
+      - run_command
+    transitions:
+      SETUP_COMPLETE:
+        target: RED_SPEC
+        guard: payload.exit_code == 0
+      SETUP_FAILED:
+        target: ERROR
+        guard: payload.exit_code != 0
+  RED_SPEC:
+    description: Initial failing test phase
+    prompt_template: states/red_spec.md
+    tools:
+      - view_file
+      - write_to_file
+      - replace_file_content
+      - run_command
+    on_enter:
+      - emit_signal: ENTERED_RED_PHASE
+    transitions:
+      TEST_RAN:
+        target: GREEN_CODE
+        guard: event.payload.exit_code != 0
+  GREEN_CODE:
+    description: Implementation phase
+    prompt_template: states/green_code.md
+    tools:
+      - view_file
+      - write_to_file
+      - replace_file_content
+      - run_command
+    on_enter:
+      - emit_signal: ENTERED_GREEN_PHASE
+    transitions:
+      TEST_RAN:
+        target: REFACTOR
+        guard: event.payload.exit_code === 0
+  REFACTOR:
+    description: 'Composite state: Refactor and audit'
+    initial_substate: CLEAN_CODE
+    on_enter:
+      - set_context:
+          refactor_cycles: 1
+      - emit_signal: REFACTOR_CYCLE_STARTED
+    on_exit:
+      - emit_signal: REFACTOR_CYCLE_CONCLUDED
+    transitions:
+      GLOBAL_ABORT:
+        target: RED_SPEC
+      TEST_RAN:
+        target: GREEN_CODE
+        guard: event.payload.exit_code != 0
+    substates:
+      CLEAN_CODE:
+        description: Clean code substate
+        prompt_template: states/clean_code.md
+        tools:
+          - view_file
+          - write_to_file
+          - replace_file_content
+          - run_command
+        transitions:
+          CLEANING_DONE:
+            target: REFACTOR.PERF_AUDIT
+      PERF_AUDIT:
+        description: Perf audit substate
+        prompt_template: states/perf_audit.md
+        tools:
+          - view_file
+          - write_to_file
+          - replace_file_content
+          - run_command
+        transitions:
+          AUDIT_PASSED:
+            target: AUDIT_VERIFY
+  AUDIT_VERIFY:
+    description: Final verification phase
+    prompt_template: states/audit_verify.md
+    tools:
+      - run_command
+      - view_file
+    transitions:
+      ALL_CHECKS_PASSED:
+        target: COMPLETED
+        guard: event.payload.exit_code === 0
+      REGRESSION_DETECTED:
+        target: GREEN_CODE
+  COMPLETED:
+    description: Finish cycle
+    prompt_template: states/completed.md
+    on_enter:
+      - emit_signal: DELIVERABLE_READY
+  ERROR:
+    description: Runtime setup failed
+  BYPASS_DETECTED:
+    description: "Terminal State: Bypass detected"
+deliverable_projections:
+  - template: templates/summary.md.hbs
+    output: .docs/test-fsm-summary.md

@@ -1,0 +1,36 @@
+schema_version: "reactive/v1"
+name: "test-hitl"
+description: "Test HITL state gates and user approval signals"
+initial_state: "PLAN_DRAFT"
+
+context:
+  user_feedback: null
+  user_choice: null
+
+states:
+  PLAN_DRAFT:
+    prompt_template: "states/01_draft.md"
+    transitions:
+      DRAFT_READY:
+        target: "PLAN_APPROVAL"
+
+  PLAN_APPROVAL:
+    description: "Human Gate: Review plan"
+    prompt_template: "states/02_approval.md"
+    human_gate:
+      type: "choice"
+      tool: "ask_question"
+      options: ["Approve Plan", "Request Changes", "Abort"]
+    transitions:
+      USER_APPROVED:
+        target: "EXECUTION"
+      USER_REVISION_REQUESTED:
+        target: "PLAN_DRAFT"
+      USER_REJECTED:
+        target: "CANCELLED"
+
+  EXECUTION:
+    prompt_template: "states/03_execution.md"
+
+  CANCELLED:
+    prompt_template: "states/04_cancelled.md"

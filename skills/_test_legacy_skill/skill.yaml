@@ -1,0 +1,38 @@
+schema_version: reactive/v1
+name: clean-code-sample
+description: Applies clean code rules for naming and modular functions
+initial_state: EXECUTION
+states:
+  DISCOVERY:
+    description: Analyze requirements and verify workspace prerequisites
+    prompt_template: states/01_discovery.md
+    tools:
+      - view_file
+      - grep_search
+      - find_by_name
+    transitions:
+      READY_TO_EXECUTE:
+        target: EXECUTION
+  EXECUTION:
+    description: Execute instructions according to clean-code-sample skill
+    prompt_template: states/02_execution.md
+    transitions:
+      TASK_COMPLETED:
+        target: VERIFICATION
+      TEST_RAN:
+        target: VERIFICATION
+        guard: event.payload.exit_code === 0
+  VERIFICATION:
+    description: Validate quality gates, linting, or tests
+    prompt_template: states/03_verification.md
+    transitions:
+      VERIFIED:
+        target: COMPLETED
+      REGRESSION_FOUND:
+        target: EXECUTION
+  COMPLETED:
+    description: Skill workflow finalized
+    prompt_template: states/04_completed.md
+deliverable_projections:
+  - template: templates/summary.md.hbs
+    output: .docs/clean-code-sample-execution-summary.md

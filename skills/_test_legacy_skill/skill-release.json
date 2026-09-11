@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "skillId": "_test_legacy_skill",
+  "channel": "stable",
+  "version": "2.1.0",
+  "type": "reactive",
+  "reactiveSchemaVersion": "2.1.0"
+}

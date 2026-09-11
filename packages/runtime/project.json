@@ -1,0 +1,31 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "runtime",
+  "projectType": "library",
+  "sourceRoot": "packages/runtime/src",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm build",
+        "cwd": "{projectRoot}"
+      },
+      "outputs": ["{projectRoot}/dist"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm test",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "check:docs": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm run check:docs",
+        "cwd": "{projectRoot}"
+      }
+    }
+  },
+  "tags": ["type:runtime", "scope:reactive-skills"]
+}

@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.reactive/
+.env*.*
+*.tgz
+.DS_Store
+Thumbs.db
+.nx/
+.next/
+out/
+.scratch/
+tmp/
+payload.json
+*.log
+
+.docs/

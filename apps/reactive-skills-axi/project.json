@@ -1,0 +1,25 @@
+{
+  "name": "reactive-skills-axi",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/reactive-skills-axi/src",
+  "projectType": "application",
+  "tags": ["ai", "agent", "cli", "axi"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm build",
+        "cwd": "{projectRoot}"
+      },
+      "outputs": ["{projectRoot}/dist"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm test",
+        "cwd": "{projectRoot}"
+      }
+    }
+  }
+}
+

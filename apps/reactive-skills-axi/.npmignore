@@ -1,0 +1,8 @@
+﻿src/
+tests/
+vitest.config.ts
+tsconfig.json
+project.json
+*.md
+!.README.md
+
