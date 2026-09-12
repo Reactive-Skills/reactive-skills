@@ -199,6 +199,10 @@ export class FSMEngine {
     this.context = { ...this.context, ...updates };
   }
 
+  public getSkillDir(): string {
+    return this.skillDir;
+  }
+
   public getEventStore(): EventStore {
     return this.eventStore;
   }

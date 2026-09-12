@@ -39,15 +39,21 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
   function getEngine(skillName: string = defaultSkill): FSMEngine {
     if (engines.has(skillName)) {
-      return engines.get(skillName)!;
+      const cached = engines.get(skillName)!;
+      if (fs.existsSync(cached.getSkillDir())) {
+        return cached;
+      }
+      engines.delete(skillName);
     }
 
     const candidatePaths = [
       path.resolve(workspaceDir, 'skills', skillName),
       path.resolve(workspaceDir, 'skills', `_${skillName}_skill`),
       path.resolve(workspaceDir, skillName),
+      path.resolve(workspaceDir, '..', 'skills', skillName),
       path.join(os.homedir(), '.agents', 'skills', skillName),
       path.join(os.homedir(), '.gemini', 'config', 'skills', skillName),
+      path.join(os.homedir(), '.kilocode', 'skills', skillName),
     ];
 
     let skillDir = candidatePaths.find(p => fs.existsSync(p));
