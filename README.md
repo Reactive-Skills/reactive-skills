@@ -165,4 +165,7 @@ skills/<skill-name>/
 
 ## 📜 License
 
-Licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. See [LICENSE](LICENSE) for details.
+The core Reactive Skills framework (`@reactive-skills/runtime` and `@reactive-skills/axi`) is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. See [LICENSE](LICENSE) for details.
+
+Reactive skills created using the Reactive Skills Architecture (e.g. in community skill repositories or third-party agents) may be licensed independently under permissive licenses such as MIT.
+

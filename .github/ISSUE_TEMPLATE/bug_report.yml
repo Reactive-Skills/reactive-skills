@@ -1,0 +1,74 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior in the runtime, CLI, or MCP server
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting an issue! Please search existing issues to make sure this hasn't already been reported.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Component
+      options:
+        - "@reactive-skills/runtime (Core FSM, Guards, EventStore, Projections)"
+        - "@reactive-skills/axi (CLI, TOON output)"
+        - "MCP Server (stdio, tools)"
+        - "Runtime Hooks (In-harness adapter)"
+        - "Other / Unknown"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Reactive Skills Version
+      placeholder: "e.g. 0.1.1 or git commit hash"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment Info
+      placeholder: "e.g. Node 22.13.0, pnpm 11.24.0, Windows 11 / macOS Sequoia / Ubuntu 24.04"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal Reproduction
+      description: |
+        Provide a link to a minimal reproduction repository or paste a self-contained `skill.yaml` / test case.
+      placeholder: |
+        Steps to reproduce:
+        1. Run `...`
+        2. Emit signal `...`
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior & Error Output
+      description: Full error logs, stack traces, or relevant lines from `.reactive/skills/<skill>/events.jsonl`.
+      render: shell
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have verified this bug against the latest version.
+          required: true
+        - label: I have checked that no existing issue covers this bug.
+          required: true
+        - label: I have provided a minimal reproduction (not just a description).
+          required: true

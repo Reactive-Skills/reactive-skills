@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Ask a Question / Discussions
+    url: https://github.com/Reactive-Skills/reactive-skills/discussions
+    about: Please ask questions and discuss architecture or usage before opening an issue.
+  - name: 📖 Documentation
+    url: https://github.com/Reactive-Skills/reactive-skills#readme
+    about: Read our guides, statechart specifications, and runtime architecture.
