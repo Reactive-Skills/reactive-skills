@@ -24,10 +24,12 @@ export const quickstart = {
     },
     {
       id: 'scaffold',
-      heading: '2. Scaffold a reactive skill',
+      heading: '2. Scaffold and customize a reactive skill',
       blocks: [
-        { type: 'text', text: 'Generate a modular reactive skill directory. Scaffolds the skill manifest (skill.yaml), statechart definition (STATECHART.md), and scoped state prompt templates (states/*.md).' },
-        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi init my-feature-flow', explanation: 'Initializes a new reactive skill in skills/my-feature-flow/.', expectedOutput: 'created skills/my-feature-flow\n  manifest: skills/my-feature-flow/skill.yaml\n  statechart: skills/my-feature-flow/STATECHART.md\n  initial state: INTAKE' } },
+        { type: 'text', text: 'Generate a modular reactive skill directory. The init command scaffolds a verified baseline containing runtime bootloader states (INIT, SETUP_MCP), a starter domain state, strict execution safeguards (BYPASS_DETECTED), and initial prompt templates.' },
+        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi init my-feature-flow', explanation: 'Initializes a new reactive skill in skills/my-feature-flow/.', expectedOutput: 'created skills/my-feature-flow\n  manifest: skills/my-feature-flow/skill.yaml\n  statechart: skills/my-feature-flow/STATECHART.md\n  initial state: INIT' } },
+        { type: 'text', text: 'Scaffolding gives you the execution harness; customization shapes your domain workflow. You replace the placeholder states in skill.yaml with your chronological phases (e.g. RED_SPEC → GREEN_CODE → REFACTOR), author isolated prompt slices in states/*.md, and attach deterministic guard expressions to gate progress.' },
+        { type: 'callout', variant: 'info', title: 'Two customization approaches', text: 'You can edit skill.yaml and states/*.md directly in your editor, or use an agent equipped with skill-manager to conduct an interactive Socratic discovery interview and auto-generate verified states.' },
       ],
     },
     {
@@ -65,6 +67,7 @@ export const quickstart = {
     },
   ],
   relatedPages: [
+    { title: 'Authoring & customizing skills', href: '/docs/authoring' },
     { title: 'AXI CLI reference (Preferred)', href: '/docs/axi' },
     { title: 'Connect a client with MCP', href: '/docs/mcp' },
     { title: 'Understand the concepts', href: '/docs/concepts' },

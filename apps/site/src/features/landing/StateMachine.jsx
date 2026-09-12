@@ -522,11 +522,11 @@ export function StateMachine({ machine }) {
                   <span className={cn('font-display text-xs font-semibold', active === 0 ? 'text-phino-signal-text' : 'text-phino-text')}>
                     RED_SPEC
                   </span>
-                  <span className="ml-auto font-mono text-[10px] text-phino-text-subtle">exit_code != 0</span>
+                  <span className="ml-auto font-mono text-xs text-phino-text-subtle">exit_code != 0</span>
                 </button>
                 <div className="ml-5 flex items-center gap-1.5 py-1 text-phino-text-subtle">
                   <ArrowDown className="h-3 w-3" />
-                  <span className="font-mono text-[9.5px]">TEST_RAN (fail)</span>
+                  <span className="font-mono text-xs">TEST_RAN (fail)</span>
                 </div>
               </div>
 
@@ -553,11 +553,11 @@ export function StateMachine({ machine }) {
                   <span className={cn('font-display text-xs font-semibold', active === 1 ? 'text-phino-signal-text' : active > 1 ? 'text-phino-text' : 'text-phino-text-subtle')}>
                     GREEN_CODE
                   </span>
-                  <span className="ml-auto font-mono text-[10px] text-phino-text-subtle">exit_code == 0</span>
+                  <span className="ml-auto font-mono text-xs text-phino-text-subtle">exit_code == 0</span>
                 </button>
                 <div className="ml-5 flex items-center gap-1.5 py-1 text-phino-text-subtle">
                   <ArrowDown className="h-3 w-3 text-phino-signal" />
-                  <span className="font-mono text-[9.5px] text-phino-signal-text">enters composite REFACTOR (initial: CLEAN_CODE)</span>
+                  <span className="font-mono text-xs text-phino-signal-text">enters composite REFACTOR (initial: CLEAN_CODE)</span>
                 </div>
               </div>
 
@@ -574,14 +574,14 @@ export function StateMachine({ machine }) {
                   <div className="flex items-center gap-1.5">
                     <Layers className={cn('h-3.5 w-3.5', isCompositeActive ? 'text-phino-signal-text' : 'text-phino-text-subtle')} />
                     <span className="font-display text-xs font-bold text-phino-text">REFACTOR</span>
-                    <span className="rounded bg-phino-guard-soft px-1 py-0.2 font-mono text-[9px] uppercase font-semibold text-phino-guard-text">
+                    <span className="rounded bg-phino-guard-soft px-1.5 py-0.5 font-mono text-[11px] uppercase font-semibold text-phino-guard-text">
                       composite ancestor
                     </span>
                   </div>
-                  <span className="font-mono text-[9.5px] text-phino-text-subtle">initial: CLEAN_CODE</span>
+                  <span className="font-mono text-[11px] text-phino-text-subtle">initial: CLEAN_CODE</span>
                 </div>
 
-                <p className="mt-1.5 font-mono text-[9.5px] text-phino-text-subtle">
+                <p className="mt-1.5 font-mono text-[11px] text-phino-text-subtle">
                   ⚡ on_enter: emit REFACTOR_CYCLE_STARTED
                 </p>
 
@@ -600,10 +600,10 @@ export function StateMachine({ machine }) {
                     <span className={cn('font-mono text-xs', active === 2 ? 'text-phino-signal-text font-bold' : active > 2 ? 'text-phino-text' : 'text-phino-text-subtle')}>
                       CLEAN_CODE
                     </span>
-                    <span className="ml-auto font-mono text-[9px] text-phino-text-subtle">substate (depth 2)</span>
+                    <span className="ml-auto font-mono text-[11px] text-phino-text-subtle">substate (depth 2)</span>
                   </button>
 
-                  <div className="ml-4 flex items-center gap-1 text-phino-text-subtle text-[9px] font-mono py-0.5">
+                  <div className="ml-4 flex items-center gap-1 text-phino-text-subtle text-[11px] font-mono py-0.5">
                     <ArrowDown className="h-2.5 w-2.5" />
                     <span>CLEANING_DONE</span>
                   </div>
@@ -621,14 +621,14 @@ export function StateMachine({ machine }) {
                     <span className={cn('font-mono text-xs', active === 3 ? 'text-phino-signal-text font-bold' : active > 3 ? 'text-phino-text' : 'text-phino-text-subtle')}>
                       PERF_AUDIT
                     </span>
-                    <span className="ml-auto rounded bg-phino-danger-soft px-1 text-[8.5px] font-mono text-phino-danger-text">
+                    <span className="ml-auto rounded bg-phino-danger-soft px-1.5 py-0.5 text-[11px] font-mono font-medium text-phino-danger-text">
                       bubbles on error
                     </span>
                   </button>
                 </div>
 
                 {/* Ancestor Catchers Footer */}
-                <div className="mt-3 border-t border-phino-border/60 pt-2 font-mono text-[9px] text-phino-text-subtle space-y-0.5">
+                <div className="mt-3 border-t border-phino-border/60 pt-2 font-mono text-[11px] text-phino-text-subtle space-y-1">
                   <div className="flex items-center justify-between text-phino-guard-text">
                     <span>↑ TEST_RAN (fail)</span>
                     <span>bubbles to GREEN_CODE</span>
@@ -645,7 +645,7 @@ export function StateMachine({ machine }) {
 
               <div className="ml-5 flex items-center gap-1.5 py-1 text-phino-text-subtle">
                 <ArrowDown className="h-3 w-3" />
-                <span className="font-mono text-[9.5px]">AUDIT_PASSED (exits composite)</span>
+                <span className="font-mono text-xs">AUDIT_PASSED (exits composite)</span>
               </div>
 
               {/* Step 4: AUDIT_VERIFY */}
@@ -671,11 +671,11 @@ export function StateMachine({ machine }) {
                   <span className={cn('font-display text-xs font-semibold', active === 4 ? 'text-phino-signal-text' : active > 4 ? 'text-phino-text' : 'text-phino-text-subtle')}>
                     AUDIT_VERIFY
                   </span>
-                  <span className="ml-auto font-mono text-[10px] text-phino-text-subtle">all_checks === 0</span>
+                  <span className="ml-auto font-mono text-xs text-phino-text-subtle">all_checks === 0</span>
                 </button>
                 <div className="ml-5 flex items-center gap-1.5 py-1 text-phino-text-subtle">
                   <ArrowDown className="h-3 w-3" />
-                  <span className="font-mono text-[9.5px]">ALL_CHECKS_PASSED</span>
+                  <span className="font-mono text-xs">ALL_CHECKS_PASSED</span>
                 </div>
               </div>
 
@@ -701,7 +701,7 @@ export function StateMachine({ machine }) {
                   <span className={cn('font-display text-xs font-semibold', active === 5 ? 'text-phino-signal-text' : 'text-phino-text-subtle')}>
                     COMPLETED
                   </span>
-                  <span className="ml-auto font-mono text-[10px] text-phino-text-subtle">terminal sink</span>
+                  <span className="ml-auto font-mono text-xs text-phino-text-subtle">terminal sink</span>
                 </button>
               </div>
             </div>
@@ -734,13 +734,13 @@ export function StateMachine({ machine }) {
                         {node.name}
                       </span>
                       {node.guard ? (
-                        <span className="ml-auto font-mono text-[10px] text-phino-text-subtle">{node.guard}</span>
+                        <span className="ml-auto font-mono text-xs text-phino-text-subtle">{node.guard}</span>
                       ) : null}
                     </button>
                     {i < linearNodes.length - 1 ? (
                       <div className="ml-5 flex items-center gap-1.5 py-1 text-phino-text-subtle">
                         <ArrowDown className="h-3 w-3" />
-                        <span className="font-mono text-[9.5px]">{node.emits || 'SIGNAL'}</span>
+                        <span className="font-mono text-xs">{node.emits || 'SIGNAL'}</span>
                       </div>
                     ) : null}
                   </li>
@@ -754,8 +754,8 @@ export function StateMachine({ machine }) {
         <div className="flex flex-col justify-between p-5 lg:col-span-7">
           <div>
             {/* Header / Breadcrumb */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 font-mono text-[11px] text-phino-text-subtle">
+            <div className="flex flex-wrap items-center justify-between gap-2" aria-live="polite" aria-atomic="true">
+              <div className="flex items-center gap-1.5 font-mono text-xs text-phino-text-subtle">
                 <span>active path:</span>
                 {mode === 'hsm' ? (
                   <span className="font-semibold text-phino-signal-text">
@@ -765,7 +765,7 @@ export function StateMachine({ machine }) {
                   <span className="font-semibold text-phino-signal-text">root / {current.name}</span>
                 )}
               </div>
-              <span className="rounded border border-phino-border bg-phino-surface px-2 py-0.5 font-mono text-[10px] text-phino-text-muted">
+              <span className="rounded border border-phino-border bg-phino-surface px-2 py-0.5 font-mono text-[11px] text-phino-text-muted">
                 {mode === 'hsm'
                   ? current.depth === 2
                     ? 'depth: 2 (nested substate)'
@@ -779,7 +779,7 @@ export function StateMachine({ machine }) {
               <h3 className="font-display text-xl font-bold tracking-tight text-phino-text flex items-center gap-2">
                 {current.name}
                 {mode === 'hsm' && current.parent ? (
-                  <span className="rounded bg-phino-guard-soft px-1.5 py-0.5 font-mono text-[10px] font-medium text-phino-guard-text">
+                  <span className="rounded bg-phino-guard-soft px-1.5 py-0.5 font-mono text-[11px] font-medium text-phino-guard-text">
                     child of {current.parent}
                   </span>
                 ) : null}
@@ -821,7 +821,7 @@ export function StateMachine({ machine }) {
               {mode === 'hsm' && current.canBubble ? (
                 <div className="flex items-center justify-between gap-2 rounded bg-phino-guard-soft/40 px-2 py-1">
                   <dt className="font-medium text-phino-guard-text">unhandled exception handling</dt>
-                  <dd className="font-mono text-[10.5px] text-phino-signal-text font-semibold">
+                  <dd className="font-mono text-[11px] text-phino-signal-text font-semibold">
                     bubbles ↑ to REFACTOR ancestor
                   </dd>
                 </div>
@@ -835,7 +835,7 @@ export function StateMachine({ machine }) {
               <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-phino-text">
                 interactive signal dispatch
               </span>
-              <span className="font-mono text-[10px] text-phino-text-subtle">
+              <span className="font-mono text-[11px] text-phino-text-subtle">
                 {mode === 'hsm' ? 'test transitions & bubbling' : 'deterministic stepping'}
               </span>
             </div>
@@ -926,17 +926,22 @@ export function StateMachine({ machine }) {
               live append-only event ledger (.reactive/events.jsonl)
             </p>
           </div>
-          <span className="font-mono text-[10px] text-phino-text-subtle">{history.length} events recorded</span>
+          <span className="font-mono text-[11px] text-phino-text-subtle">{history.length} events recorded</span>
         </div>
 
-        <div className="max-h-36 overflow-y-auto rounded-lg border border-phino-border bg-phino-code-bg p-3 font-mono text-xs">
-          <ol className="space-y-1.5">
+        <div
+          className="max-h-36 overflow-y-auto rounded-lg border border-phino-border bg-phino-code-bg p-3 font-mono text-xs"
+          aria-live="polite"
+          aria-relevant="additions"
+          aria-atomic="false"
+        >
+          <ol className="space-y-1.5" role="log" aria-label="Event ledger log">
             {history.slice(-7).map((item) => (
               <li key={item.seq} className="flex flex-wrap items-baseline gap-2 text-phino-code-text">
-                <span className="text-white/30">#{item.seq}</span>
+                <span className="text-white/60">#{item.seq}</span>
                 <span
                   className={cn(
-                    'rounded px-1 text-[9.5px] font-bold uppercase',
+                    'rounded px-1.5 py-0.5 text-[11px] font-bold uppercase',
                     item.type === 'EVENT_BUBBLED'
                       ? 'bg-amber-500/20 text-amber-400'
                       : item.type === 'STATE_ENTRY_HOOK' || item.type === 'STATE_EXIT_HOOK'
@@ -949,10 +954,10 @@ export function StateMachine({ machine }) {
                   {item.type || 'SIGNAL'}
                 </span>
                 <span className="text-phino-text font-semibold">{item.signal}</span>
-                <span className="text-white/40">[{item.from} → {item.to}]</span>
+                <span className="text-white/70">[{item.from} → {item.to}]</span>
                 <span
                   className={cn(
-                    'rounded px-1 text-[9.5px] font-bold uppercase',
+                    'rounded px-1.5 py-0.5 text-[11px] font-bold uppercase',
                     item.guard === 'pass'
                       ? 'bg-phino-event/20 text-phino-event'
                       : item.guard === 'bubbled'
@@ -962,7 +967,7 @@ export function StateMachine({ machine }) {
                 >
                   {item.guard}
                 </span>
-                <span className="text-white/50 text-[11px]">— {item.note}</span>
+                <span className="text-white/70 text-xs">— {item.note}</span>
               </li>
             ))}
           </ol>

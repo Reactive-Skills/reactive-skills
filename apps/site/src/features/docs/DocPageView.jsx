@@ -1,5 +1,6 @@
 import { CodeBlock } from '@/components/common/CodeBlock';
 import { Callout } from '@/components/common/Callout';
+import { TableOfContents } from './TableOfContents';
 
 function TextBlock({ text }) {
   return <p className="my-4 text-[15px] leading-7 text-phino-text-muted">{text}</p>;
@@ -105,12 +106,21 @@ export function DocSections({ sections }) {
 
 export function DocPageView({ page }) {
   return (
-    <article className="max-w-2xl">
-      <p className="font-mono text-xs uppercase tracking-[0.2em] text-phino-signal-text">{page.category}</p>
-      <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-phino-text sm:text-4xl">{page.title}</h1>
-      <p className="mt-3 text-lg leading-relaxed text-phino-text-muted">{page.summary}</p>
-      <hr className="my-8 border-phino-border" />
-      <DocSections sections={page.sections} />
-    </article>
+    <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_220px] xl:gap-12">
+      <article className="min-w-0 max-w-2xl">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-phino-signal-text">{page.category}</p>
+        <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-phino-text sm:text-4xl">{page.title}</h1>
+        <p className="mt-3 text-lg leading-relaxed text-phino-text-muted">{page.summary}</p>
+        <hr className="my-8 border-phino-border" />
+        <DocSections sections={page.sections} />
+      </article>
+      {page.sections && page.sections.length > 1 && (
+        <aside className="hidden xl:block">
+          <div className="sticky top-24 pt-2">
+            <TableOfContents sections={page.sections} />
+          </div>
+        </aside>
+      )}
+    </div>
   );
 }

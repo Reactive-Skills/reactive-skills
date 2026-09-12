@@ -73,6 +73,7 @@ export const conceptsDoc = {
     },
   ],
   relatedPages: [
+    { title: 'Authoring & customizing skills', href: '/docs/authoring' },
     { title: 'AXI CLI reference (Preferred)', href: '/docs/axi' },
     { title: 'Quickstart', href: '/docs/quickstart' },
     { title: 'Model Context Protocol (MCP)', href: '/docs/mcp' },

@@ -7,7 +7,10 @@ export const navigation = {
     },
     {
       title: 'Get started',
-      links: [{ title: 'Quickstart', href: '/docs/quickstart' }],
+      links: [
+        { title: 'Quickstart', href: '/docs/quickstart' },
+        { title: 'Authoring skills', href: '/docs/authoring' },
+      ],
     },
     {
       title: 'Understand',
