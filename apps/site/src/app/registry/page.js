@@ -30,26 +30,21 @@ export default function RegistryPage() {
     <div className="container py-12 sm:py-16">
       {/* Page Header */}
       <div className="mx-auto max-w-3xl text-center">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-phino-border bg-phino-surface px-3 py-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-phino-signal animate-pulse-soft" aria-hidden="true" />
-          <span className="font-mono text-xs text-phino-text-muted">reactive-skills / skills</span>
-        </div>
-
         <h1 className="font-display text-4xl font-bold tracking-tight text-phino-text sm:text-5xl">
           Public Skill Registry
         </h1>
 
-        <p className="mt-4 text-base leading-relaxed text-phino-text-muted sm:text-lg">
+        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-phino-text-muted sm:text-lg">
           The official community catalog of verified, production-grade Reactive Skills hosted at{' '}
           <a
             href="https://github.com/Reactive-Skills/skills"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold text-phino-text underline decoration-phino-signal underline-offset-4 hover:text-phino-signal-text"
+            className="font-semibold text-phino-text underline decoration-phino-signal underline-offset-4 hover:text-phino-signal-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus rounded-sm"
           >
             Reactive-Skills/skills
           </a>
-          . Install directly into your agent environment using <code className="text-phino-text">skills.sh</code>, or execute on-demand via the token-efficient AXI CLI.
+          . Install directly into your agent environment using <code className="font-mono text-phino-text">skills.sh</code>, or execute on-demand via the token-efficient AXI CLI.
         </p>
 
         {/* Action Buttons: GitHub Repo + Contribute */}
@@ -58,18 +53,18 @@ export default function RegistryPage() {
             href="https://github.com/Reactive-Skills/skills"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-md border border-phino-border-strong bg-phino-surface-raised px-4 py-2 text-sm font-medium text-phino-text transition-colors hover:border-phino-signal"
+            className="inline-flex items-center gap-2 rounded-md border border-phino-border-strong bg-phino-surface-raised px-4 py-2 text-sm font-medium text-phino-text transition-colors hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
           >
             <GithubIcon className="h-4 w-4" aria-hidden="true" />
             <span>Reactive-Skills/skills</span>
-            <ExternalLink className="h-3.5 w-3.5 text-phino-text-subtle" aria-hidden="true" />
+            <ExternalLink className="h-3.5 w-3.5 text-phino-text-muted" aria-hidden="true" />
           </a>
 
           <a
             href="https://github.com/Reactive-Skills/skills/blob/main/CONTRIBUTING.md"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-md border border-phino-border bg-phino-canvas px-4 py-2 text-sm font-medium text-phino-text-muted transition-colors hover:border-phino-border-strong hover:text-phino-text"
+            className="inline-flex items-center gap-2 rounded-md border border-phino-border bg-phino-canvas px-4 py-2 text-sm font-medium text-phino-text-muted transition-colors hover:border-phino-border-strong hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
           >
             <GitPullRequest className="h-4 w-4 text-phino-signal" aria-hidden="true" />
             <span>Contribute a Skill</span>
@@ -85,34 +80,34 @@ export default function RegistryPage() {
         </div>
 
         {/* Stats Strip */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-6 border-y border-phino-border py-4 font-mono text-xs text-phino-text-muted">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-6 border-y border-phino-border py-4 text-xs text-phino-text-muted">
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4 text-phino-signal" aria-hidden="true" />
-            <span><strong className="text-phino-text">{skills.length}</strong> Official Skills</span>
+            <span><strong className="font-mono tabular-nums font-semibold text-phino-text">{skills.length}</strong> Official Skills</span>
           </div>
           <span className="text-phino-border-strong select-none" aria-hidden="true">|</span>
           <div className="flex items-center gap-2">
             <Workflow className="h-4 w-4 text-phino-signal" aria-hidden="true" />
-            <span><strong className="text-phino-text">{totalStates}</strong> Total State Slices</span>
+            <span><strong className="font-mono tabular-nums font-semibold text-phino-text">{totalStates}</strong> Total State Slices</span>
           </div>
           <span className="text-phino-border-strong select-none" aria-hidden="true">|</span>
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-phino-signal" aria-hidden="true" />
-            <span><strong className="text-phino-text">100%</strong> Guard Deterministic</span>
+            <span><strong className="font-mono tabular-nums font-semibold text-phino-text">100%</strong> Guard Deterministic</span>
           </div>
         </div>
       </div>
 
       {/* Priority Skill Spotlight: Skill Manager */}
-      <div className="mt-12 rounded-2xl border border-phino-signal/40 bg-gradient-to-r from-phino-surface via-phino-surface-raised to-phino-surface p-6 sm:p-8 relative overflow-hidden shadow-md">
+      <div className="mt-12 rounded-2xl border border-phino-signal/40 bg-gradient-to-r from-phino-surface via-phino-surface-raised to-phino-surface p-6 sm:p-8 relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="max-w-2xl">
             <div className="flex items-center gap-2 mb-2.5">
-              <span className="inline-flex items-center gap-1 rounded-md bg-phino-signal/20 px-2 py-0.5 font-mono text-[11px] font-bold text-phino-signal-text border border-phino-signal/35">
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-phino-signal/15 px-2 py-0.5 text-xs font-semibold text-phino-signal-text border border-phino-signal/30">
                 <Star className="h-3 w-3 fill-phino-signal text-phino-signal" aria-hidden="true" />
                 Priority Authoring Standard
               </span>
-              <span className="text-xs font-mono text-phino-text-subtle">Core Lifecycle Utility</span>
+              <span className="text-xs text-phino-text-muted">Core Lifecycle Utility</span>
             </div>
             <h2 className="font-display text-xl sm:text-2xl font-bold text-phino-text">
               Building or Migrating Skills? Start with Skill Manager
@@ -134,7 +129,7 @@ export default function RegistryPage() {
             </div>
             <Link
               href="/registry/skill-manager"
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-phino-text px-4 py-2.5 text-xs font-semibold text-phino-canvas hover:opacity-90 transition-opacity"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-phino-text px-4 py-2.5 text-xs font-semibold text-phino-canvas transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
             >
               Inspect Skill Manager <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </Link>

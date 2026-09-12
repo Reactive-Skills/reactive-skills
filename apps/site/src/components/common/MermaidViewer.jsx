@@ -34,27 +34,29 @@ export function MermaidViewer({ chart, title = 'Statechart Topology', className 
           themeVariables: isDark
             ? {
                 darkMode: true,
-                background: '#0e1015',
-                primaryColor: '#1a1d24',
-                primaryTextColor: '#f3f4f6',
-                primaryBorderColor: '#2e333d',
-                lineColor: '#6ee7b7',
-                secondaryColor: '#161922',
-                tertiaryColor: '#1f242e',
-                noteBkgColor: '#1c1917',
-                noteTextColor: '#e7e5e4',
+                background: '#0c0e13',
+                primaryColor: '#13161c',
+                primaryTextColor: '#e9edf3',
+                primaryBorderColor: '#333a47',
+                lineColor: '#2dd4bf',
+                secondaryColor: '#06070a',
+                tertiaryColor: '#212530',
+                noteBkgColor: '#13161c',
+                noteTextColor: '#e9edf3',
                 fontSize: '13px',
                 fontFamily: 'ui-monospace, monospace',
               }
             : {
                 darkMode: false,
                 background: '#ffffff',
-                primaryColor: '#f3f4f6',
-                primaryTextColor: '#111827',
-                primaryBorderColor: '#d1d5db',
-                lineColor: '#10b981',
-                secondaryColor: '#f9fafb',
-                tertiaryColor: '#e5e7eb',
+                primaryColor: '#f4f5f7',
+                primaryTextColor: '#0d1117',
+                primaryBorderColor: '#cfd4dc',
+                lineColor: '#0d9488',
+                secondaryColor: '#ffffff',
+                tertiaryColor: '#e4e7ec',
+                noteBkgColor: '#f4f5f7',
+                noteTextColor: '#0d1117',
                 fontSize: '13px',
                 fontFamily: 'ui-monospace, monospace',
               },
@@ -101,7 +103,7 @@ export function MermaidViewer({ chart, title = 'Statechart Topology', className 
               type="button"
               onClick={() => setView('diagram')}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus',
                 view === 'diagram'
                   ? 'bg-phino-surface-raised text-phino-text shadow-sm'
                   : 'text-phino-text-muted hover:text-phino-text',
@@ -114,7 +116,7 @@ export function MermaidViewer({ chart, title = 'Statechart Topology', className 
               type="button"
               onClick={() => setView('code')}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus',
                 view === 'code'
                   ? 'bg-phino-surface-raised text-phino-text shadow-sm'
                   : 'text-phino-text-muted hover:text-phino-text',
@@ -131,7 +133,7 @@ export function MermaidViewer({ chart, title = 'Statechart Topology', className 
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.min(z + 0.2, 2.0))}
-                className="rounded p-1 text-phino-text-muted hover:bg-phino-canvas hover:text-phino-text"
+                className="rounded p-1 text-phino-text-muted hover:bg-phino-canvas hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
                 title="Zoom in"
                 aria-label="Zoom in"
               >
@@ -140,7 +142,7 @@ export function MermaidViewer({ chart, title = 'Statechart Topology', className 
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.max(z - 0.2, 0.6))}
-                className="rounded p-1 text-phino-text-muted hover:bg-phino-canvas hover:text-phino-text"
+                className="rounded p-1 text-phino-text-muted hover:bg-phino-canvas hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
                 title="Zoom out"
                 aria-label="Zoom out"
               >
@@ -150,7 +152,7 @@ export function MermaidViewer({ chart, title = 'Statechart Topology', className 
                 <button
                   type="button"
                   onClick={() => setZoom(1)}
-                  className="rounded p-1 text-phino-text-muted hover:bg-phino-canvas hover:text-phino-text"
+                  className="rounded p-1 text-phino-text-muted hover:bg-phino-canvas hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
                   title="Reset zoom"
                   aria-label="Reset zoom"
                 >

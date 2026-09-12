@@ -44,7 +44,7 @@ export function SkillCatalog({ initialSkills, categories }) {
         {/* Search input */}
         <div className="relative flex-1 max-w-md">
           <Search
-            className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-phino-text-subtle"
+            className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-phino-text-muted"
             aria-hidden="true"
           />
           <input
@@ -52,13 +52,13 @@ export function SkillCatalog({ initialSkills, categories }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search skills by name, tag, or description..."
-            className="w-full rounded-lg border border-phino-border bg-phino-surface py-2 pl-10 pr-9 text-sm text-phino-text placeholder:text-phino-text-subtle focus:border-phino-signal focus:outline-none focus:ring-1 focus:ring-phino-focus"
+            className="w-full rounded-lg border border-phino-border bg-phino-surface py-2 pl-10 pr-9 text-sm text-phino-text placeholder:text-phino-text-muted focus:border-phino-signal focus:outline-none focus:ring-2 focus:ring-phino-focus/25"
           />
           {search && (
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-phino-text-subtle hover:text-phino-text"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-phino-text-muted hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus rounded"
               aria-label="Clear search"
             >
               <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -67,11 +67,11 @@ export function SkillCatalog({ initialSkills, categories }) {
         </div>
 
         {/* Results Counter */}
-        <div className="text-xs font-mono text-phino-text-muted flex items-center gap-1.5 self-start sm:self-auto">
+        <div className="text-xs text-phino-text-muted flex items-center gap-1.5 self-start sm:self-auto">
           <Sparkles className="h-3.5 w-3.5 text-phino-signal" aria-hidden="true" />
           <span>
-            Showing <strong className="text-phino-text">{filteredSkills.length}</strong> of{' '}
-            {initialSkills.length} skills
+            Showing <strong className="font-mono tabular-nums font-semibold text-phino-text">{filteredSkills.length}</strong> of{' '}
+            <strong className="font-mono tabular-nums font-semibold text-phino-text">{initialSkills.length}</strong> skills
           </span>
         </div>
       </div>
@@ -88,7 +88,7 @@ export function SkillCatalog({ initialSkills, categories }) {
               : 'border border-phino-border bg-phino-surface text-phino-text-muted hover:border-phino-border-strong hover:text-phino-text',
           )}
         >
-          All ({initialSkills.length})
+          All (<span className="font-mono tabular-nums">{initialSkills.length}</span>)
         </button>
         {categories.map((cat) => (
           <button
@@ -102,7 +102,7 @@ export function SkillCatalog({ initialSkills, categories }) {
                 : 'border border-phino-border bg-phino-surface text-phino-text-muted hover:border-phino-border-strong hover:text-phino-text',
             )}
           >
-            {cat.name} ({cat.count})
+            {cat.name} (<span className="font-mono tabular-nums">{cat.count}</span>)
           </button>
         ))}
       </div>
@@ -117,7 +117,7 @@ export function SkillCatalog({ initialSkills, categories }) {
       ) : (
         /* Empty State */
         <div className="rounded-xl border border-dashed border-phino-border bg-phino-surface/50 p-12 text-center">
-          <SlidersHorizontal className="mx-auto h-8 w-8 text-phino-text-subtle" aria-hidden="true" />
+          <SlidersHorizontal className="mx-auto h-8 w-8 text-phino-text-muted" aria-hidden="true" />
           <h3 className="mt-4 font-display text-base font-semibold text-phino-text">
             No reactive skills matched your filter
           </h3>
@@ -127,7 +127,7 @@ export function SkillCatalog({ initialSkills, categories }) {
           <button
             type="button"
             onClick={resetFilters}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-phino-border-strong bg-phino-surface-raised px-4 py-2 text-xs font-semibold text-phino-text hover:border-phino-signal"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-phino-border-strong bg-phino-surface-raised px-4 py-2 text-xs font-semibold text-phino-text hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
           >
             Reset all filters
           </button>
