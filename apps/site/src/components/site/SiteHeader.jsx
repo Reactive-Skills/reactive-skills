@@ -10,6 +10,7 @@ import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 
 const NAV = [
+  { title: 'Registry', href: '/registry' },
   { title: 'Quickstart', href: '/docs/quickstart' },
   { title: 'Concepts', href: '/docs/concepts' },
   { title: 'AXI', href: '/docs/axi' },

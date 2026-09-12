@@ -33,8 +33,14 @@ export function Hero() {
               Open the quickstart <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Link
-              href="/docs/concepts"
+              href="/registry"
               className="inline-flex items-center gap-1.5 rounded-md border border-phino-border-strong bg-phino-surface-raised px-5 py-2.5 text-sm font-medium text-phino-text transition-colors hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
+            >
+              Explore Registry
+            </Link>
+            <Link
+              href="/docs/concepts"
+              className="inline-flex items-center gap-1.5 rounded-md border border-phino-border-strong bg-phino-surface-raised px-5 py-2.5 text-sm font-medium text-phino-text-muted transition-colors hover:border-phino-signal hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
             >
               How it works
             </Link>

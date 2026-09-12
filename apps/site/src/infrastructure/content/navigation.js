@@ -30,5 +30,9 @@ export const navigation = {
         { title: 'Changelog', href: '/docs/changelog' },
       ],
     },
+    {
+      title: 'Ecosystem',
+      links: [{ title: 'Skill Registry', href: '/registry' }],
+    },
   ],
 };

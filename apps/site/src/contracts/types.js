@@ -90,6 +90,69 @@
  * @property {NavGroup[]} groups
  */
 
+/**
+ * @typedef {Object} SkillTransition
+ * @property {string} signal
+ * @property {string} target
+ * @property {string} [guard]
+ */
+
+/**
+ * @typedef {Object} SkillState
+ * @property {string} name
+ * @property {string} description
+ * @property {string[]} [tools]
+ * @property {SkillTransition[]} [transitions]
+ * @property {string[]} [substates]
+ */
+
+/**
+ * @typedef {Object} RegistrySkillSummary
+ * @property {string} slug
+ * @property {string} name
+ * @property {string} version
+ * @property {string} category
+ * @property {string} description
+ * @property {string[]} tags
+ * @property {number} stateCount
+ * @property {boolean} strictExecution
+ * @property {string[]} tools
+ * @property {string} installCmd
+ * @property {string} [skillsShInstallCmd]
+ * @property {boolean} [featured]
+ * @property {string} [priorityBadge]
+ * @property {string} [featuredReason]
+ * @property {string} [author]
+ */
+
+/**
+ * @typedef {Object} RegistrySkillDetail
+ * @property {string} slug
+ * @property {string} name
+ * @property {string} version
+ * @property {string} [schemaVersion]
+ * @property {string} category
+ * @property {string} description
+ * @property {string[]} tags
+ * @property {number} stateCount
+ * @property {boolean} strictExecution
+ * @property {string[]} tools
+ * @property {string} installCmd
+ * @property {string} [skillsShInstallCmd]
+ * @property {boolean} [featured]
+ * @property {string} [priorityBadge]
+ * @property {string} [featuredReason]
+ * @property {string} initialState
+ * @property {string[]} contextKeys
+ * @property {Record<string, any>} [defaultContext]
+ * @property {SkillState[]} states
+ * @property {string} [mermaidChart]
+ * @property {string[]} [deliverables]
+ * @property {string} [readme]
+ * @property {string} [author]
+ */
+
 export const STATE_NAMES = ['EXPLORE', 'PLAN', 'EXECUTE', 'VERIFY', 'DONE'];
 
 export {};
+
