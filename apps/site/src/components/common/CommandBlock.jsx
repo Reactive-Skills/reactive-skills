@@ -19,8 +19,8 @@ export function CommandBlock({ command, caption = 'zero-install', className }) {
         </div>
         <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/40">{caption}</span>
       </div>
-      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <code className="overflow-x-auto font-mono text-sm text-phino-code-text sm:text-base">
+      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between min-w-0">
+        <code className="min-w-0 overflow-x-auto whitespace-nowrap font-mono text-sm text-phino-code-text sm:text-base">
           <span className="mr-2 select-none text-phino-signal" aria-hidden="true">$</span>
           {command}
         </code>

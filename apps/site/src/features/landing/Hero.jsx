@@ -20,7 +20,7 @@ export function Hero() {
             <span className="text-phino-signal-text"> observable, stateful, and recoverable</span>.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-phino-text-muted">
-            Replace brittle prompt documents with deterministic state machines. Bounded prompt slices, typed signals, verifiable guards, and an immutable event ledger — driven natively via the token-efficient AXI CLI.
+            Turn passive markdown prompts into deterministic state machines. Feed agents only the context they need for the active state, enforce transitions with verifiable code guards, and audit every run on an immutable event ledger.
           </p>
           <div className="mx-auto mt-8 max-w-xl">
             <CommandBlock command="npx -y @reactive-skills/axi" caption="zero-install axi cli (preferred)" />

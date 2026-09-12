@@ -11,7 +11,7 @@ export function QuickstartCta() {
         <p className="mx-auto mt-3 max-w-xl text-base text-phino-text-muted">
           Scaffold, inspect, and advance a skill in seconds via the AXI CLI. No background daemon required — or attach an MCP server with a single flag.
         </p>
-        <div className="mx-auto mt-6 max-w-lg text-left">
+        <div className="mx-auto mt-6 max-w-xl text-left">
           <CommandBlock command="npx -y @reactive-skills/axi init my-feature-flow" caption="zero-install axi cli (preferred)" />
         </div>
         <Link
