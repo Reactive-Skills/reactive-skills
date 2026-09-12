@@ -10,11 +10,11 @@ import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 
 const NAV = [
-  { title: 'Registry', href: '/registry' },
   { title: 'Quickstart', href: '/docs/quickstart' },
   { title: 'Concepts', href: '/docs/concepts' },
   { title: 'AXI', href: '/docs/axi' },
   { title: 'MCP', href: '/docs/mcp' },
+  { title: 'Registry', href: '/registry' },
 ];
 
 export function SiteHeader() {
