@@ -6,69 +6,75 @@ const eventRows = runtimeEvents.map((e) => [e.eventType, e.state, e.source, e.tr
 export const conceptsDoc = {
   slug: 'concepts',
   title: 'Concepts',
-  summary: 'Reactive skills, states, signals, bubbling, guards, event sourcing, and projections — in plain language first, then the technical detail.',
+  summary: 'Hierarchical State Machines, scoped prompt slices, typed signals, ancestor bubbling, deterministic guards, append-only event sourcing, and AXI integration.',
   category: 'Understand',
   href: '/docs/concepts',
   sections: [
     {
       id: 'reactive-vs-passive',
-      heading: 'From a passive document to a reactive skill',
+      heading: 'From passive prompts to reactive state machines',
       blocks: [
-        { type: 'text', text: 'A passive skill is a SKILL.md file: prose the model reads and tries to follow. It has no memory of the current step, no record of what it did, and no reliable way to recover.' },
-        { type: 'text', text: 'A reactive skill keeps the same intent but runs it as a small machine. It knows which state it is in, reacts to typed signals, and records every change. You get the readability of a document with the reliability of a program.' },
+        { type: 'text', text: 'Traditional passive skills dump monolithic instructions into context. Agents attempt to remember prior turns and self-police progress without execution boundaries or verifiable checkpoints.' },
+        { type: 'text', text: 'Reactive Skills structures execution as a formal Hierarchical State Machine (HSM). The agent receives an isolated prompt slice for the active state, evaluates deterministic guard expressions before transitions, and records all transitions to an append-only event ledger.' },
       ],
     },
     {
       id: 'states',
-      heading: 'States (the HSM)',
+      heading: 'States & prompt isolation',
       blocks: [
-        { type: 'text', text: 'A skill moves through named states such as EXPLORE, PLAN, EXECUTE, VERIFY, and DONE. States are hierarchical: a parent state can hold behaviour shared by its children, so you write shared handling once.' },
-        { type: 'text', text: 'For each state the agent receives only its focused prompt slice, not the entire skill. That keeps attention on the current job and makes behaviour predictable.' },
+        { type: 'text', text: 'Skills advance through named states such as PLAN, EXECUTE, and composite REFACTOR. Instead of loading the entire skill manual, agents receive only the prompt slice for the active state (states/*.md). This context isolation prevents attention drift and cuts token waste.' },
       ],
     },
     {
       id: 'signals-bubbling',
-      heading: 'Signals and bubbling',
+      heading: 'Signals and ancestor bubbling',
       blocks: [
-        { type: 'text', text: 'A signal is a typed message — from a user, an MCP client, or another skill. A state reacts to the signals it cares about. If it does not handle a signal, the signal bubbles up to the parent state.' },
-        { type: 'callout', variant: 'info', title: 'Why bubbling matters', text: 'Cross-cutting handling — like “cancel” or “timeout” — lives in one parent state instead of being copied into every child.' },
+        { type: 'text', text: 'Signals are typed payloads dispatched from the agent harness, AXI CLI, or MCP. If a leaf substate has no handler for an incoming signal, the event bubbles up the hierarchy to ancestor states. This eliminates boilerplate across substates for global policies like rollbacks, aborts, and timeouts.' },
+        { type: 'callout', variant: 'info', title: 'Why bubbling matters', text: 'Cross-cutting policies — like rollbacks or global aborts — live on composite parent states instead of being duplicated into every child substate.' },
       ],
     },
     {
       id: 'guards',
-      heading: 'Guards are deterministic gates',
+      heading: 'Deterministic guard gates',
       blocks: [
-        { type: 'text', text: 'Before a transition happens, a guard decides whether it is allowed. Guards are deterministic: the same inputs always produce the same decision, so a run is reproducible and a failure is explainable.' },
-        { type: 'code', example: { language: 'text', command: 'PLAN --[ guard: plan.approved ]--> EXECUTE', explanation: 'The skill only enters EXECUTE once the plan.approved guard is satisfied.' } },
+        { type: 'text', text: 'Guards evaluate context facts (e.g. exit_code == 0, schema checks, artifact existence) deterministically. The runtime prevents transitions on subjective model claims, ensuring reproducible execution and verifiable progress.' },
+        { type: 'code', example: { language: 'text', command: 'PLAN --[ guard: plan.approved ]--> EXECUTE', explanation: 'The skill enters EXECUTE only when the deterministic plan.approved guard condition is met.' } },
       ],
     },
     {
       id: 'event-sourcing',
       heading: 'Event sourcing and projections',
       blocks: [
-        { type: 'text', text: 'Every change is stored as an append-only event. The current state is a projection: a view built by folding those events. Because nothing is overwritten, any run can be replayed and audited exactly as it happened.' },
-        { type: 'table', caption: 'A run’s event log (times shown as HH:MM:SS)', columns: ['eventType', 'state', 'source', 'traceId', 'timestamp'], rows: eventRows },
+        { type: 'text', text: 'Every signal dispatch, guard evaluation, and state transition appends to an immutable ledger (.reactive/skills/<skill>/events.jsonl + SQLite). Current state, history, and workspace deliverables are computed read-model projections folded from the event ledger.' },
+        { type: 'table', caption: 'Sample event ledger stream (times shown as HH:MM:SS)', columns: ['eventType', 'state', 'source', 'traceId', 'timestamp'], rows: eventRows },
       ],
     },
     {
       id: 'isolation',
-      heading: 'Each skill has its own storage',
+      heading: 'Isolated skill storage',
       blocks: [
-        { type: 'text', text: 'Every skill keeps independent state and event storage. One skill’s history never leaks into another’s, so runs stay isolated and easy to reason about.' },
-        { type: 'text', text: 'Events are written as JSONL and backed by SQLite. JSONL files rotate as they grow so the log stays manageable, while SQLite keeps queries and replay fast.' },
+        { type: 'text', text: 'Each skill maintains dedicated state and event storage. Skill executions never cross-contaminate. SQLite provides ACID durability and indexed replay, while JSONL logs ensure human-readable auditability.' },
       ],
     },
     {
       id: 'parent-child',
       heading: 'Parent runs summarize child failures',
       blocks: [
-        { type: 'text', text: 'Skills can invoke other skills. When a child skill fails, the parent run folds the child’s events into a short summary and surfaces it inline.' },
-        { type: 'callout', variant: 'signal', title: 'No archaeology required', text: 'You read the failure and its recovery action in the parent run — you do not need to open the child skill and dig through its log separately.' },
+        { type: 'text', text: 'Skills can invoke child skills hierarchically. When a child skill encounters a guard rejection or unhandled signal, the parent run folds the child’s events into a structured summary and surfaces the exact recovery action inline.' },
+      ],
+    },
+    {
+      id: 'interfaces',
+      heading: 'Agent interfaces: AXI (Preferred) & MCP',
+      blocks: [
+        { type: 'text', text: 'Reactive skills expose two host interfaces: the AXI CLI (preferred for token efficiency and direct shell execution) and the MCP stdio server (for GUI client panels like Cursor and Claude Desktop).' },
+        { type: 'callout', variant: 'signal', title: 'Interface selection', text: 'Use AXI whenever the host has terminal/shell access: ~40% fewer tokens, zero daemon process management, and instant recovery diagnostics. Use MCP when connecting to GUI client panels.' },
       ],
     },
   ],
   relatedPages: [
-    { title: 'See the AXI output contract', href: '/docs/axi' },
-    { title: 'Try it in the quickstart', href: '/docs/quickstart' },
+    { title: 'AXI CLI reference (Preferred)', href: '/docs/axi' },
+    { title: 'Quickstart', href: '/docs/quickstart' },
+    { title: 'Model Context Protocol (MCP)', href: '/docs/mcp' },
   ],
 };

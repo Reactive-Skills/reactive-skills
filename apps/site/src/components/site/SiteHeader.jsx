@@ -12,8 +12,8 @@ import { ThemeToggle } from './ThemeToggle';
 const NAV = [
   { title: 'Quickstart', href: '/docs/quickstart' },
   { title: 'Concepts', href: '/docs/concepts' },
-  { title: 'MCP', href: '/docs/mcp' },
   { title: 'AXI', href: '/docs/axi' },
+  { title: 'MCP', href: '/docs/mcp' },
 ];
 
 export function SiteHeader() {

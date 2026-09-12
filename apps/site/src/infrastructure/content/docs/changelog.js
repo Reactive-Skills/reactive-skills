@@ -47,8 +47,8 @@ export const changelog = {
     },
   ],
   relatedPages: [
+    { title: 'AXI CLI reference (Preferred)', href: '/docs/axi' },
     { title: 'Quickstart', href: '/docs/quickstart' },
-    { title: 'AXI CLI reference', href: '/docs/axi' },
     { title: 'Troubleshooting guide', href: '/docs/troubleshooting' },
   ],
 };

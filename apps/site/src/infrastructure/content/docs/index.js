@@ -11,11 +11,11 @@ export const docPages = {
   overview,
   quickstart,
   concepts: conceptsDoc,
-  mcp,
   axi,
+  mcp,
   troubleshooting,
   changelog,
 };
 
 /** @type {import('@/contracts/types').DocPage[]} */
-export const docPageList = [overview, quickstart, conceptsDoc, mcp, axi, troubleshooting, changelog];
+export const docPageList = [overview, quickstart, conceptsDoc, axi, mcp, troubleshooting, changelog];

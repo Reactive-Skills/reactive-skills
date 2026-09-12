@@ -20,10 +20,10 @@ export function Hero() {
             <span className="text-phino-signal-text"> observable, stateful, and recoverable</span>.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-phino-text-muted">
-            Reactive Skills turns a passive skill document into a reactive Hierarchical State Machine — focused prompt slices, typed signals, deterministic guards, and an immutable event log for every run.
+            Replace brittle prompt documents with deterministic state machines. Bounded prompt slices, typed signals, verifiable guards, and an immutable event ledger — driven natively via the token-efficient AXI CLI.
           </p>
           <div className="mx-auto mt-8 max-w-xl">
-            <CommandBlock command="npx -y @reactive-skills/axi mcp" caption="zero-install" />
+            <CommandBlock command="npx -y @reactive-skills/axi" caption="zero-install axi cli (preferred)" />
           </div>
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link

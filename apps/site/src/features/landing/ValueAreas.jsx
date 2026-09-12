@@ -3,18 +3,18 @@ import { Crosshair, ShieldCheck, History } from 'lucide-react';
 const AREAS = [
   {
     icon: Crosshair,
-    title: 'Focused execution',
-    text: 'Each state receives only its prompt slice, so the agent works on one job at a time instead of holding the whole skill in context.',
+    title: 'Context-isolated execution',
+    text: 'Each state receives only its prompt slice. Agents focus on one bounded phase instead of wasting context window on an entire workflow manual.',
   },
   {
     icon: ShieldCheck,
-    title: 'Deterministic progress',
-    text: 'Guards gate every transition. The same inputs always produce the same decision, so a run is reproducible and explainable.',
+    title: 'Deterministic guard gates',
+    text: 'Explicit expressions (exit codes, schema checks, context facts) gate every transition. Zero state advances on subjective completion claims.',
   },
   {
     icon: History,
     title: 'Event-sourced recovery',
-    text: 'Every change is an immutable event. Replay any run exactly, and recover from the last good state instead of starting over.',
+    text: 'Every signal, guard check, and transition appends to an immutable ledger (JSONL + SQLite). Replay runs, inspect failures, and resume without restarts.',
   },
 ];
 

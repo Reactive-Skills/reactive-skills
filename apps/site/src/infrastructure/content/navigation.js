@@ -16,8 +16,8 @@ export const navigation = {
     {
       title: 'Integrate',
       links: [
+        { title: 'AXI (Preferred)', href: '/docs/axi' },
         { title: 'MCP', href: '/docs/mcp' },
-        { title: 'AXI', href: '/docs/axi' },
       ],
     },
     {

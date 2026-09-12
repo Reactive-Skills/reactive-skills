@@ -9,10 +9,10 @@ export function QuickstartCta() {
       <div className="relative mx-auto max-w-2xl text-center">
         <h2 className="font-display text-2xl font-semibold tracking-tight text-phino-text sm:text-3xl">Run your first reactive skill</h2>
         <p className="mx-auto mt-3 max-w-xl text-base text-phino-text-muted">
-          Start the server with zero install, connect a client, then discover, create, and run a skill in about five minutes.
+          Scaffold, inspect, and advance a skill in seconds via the AXI CLI. No background daemon required — or attach an MCP server with a single flag.
         </p>
         <div className="mx-auto mt-6 max-w-lg text-left">
-          <CommandBlock command="npx -y @reactive-skills/axi mcp" caption="zero-install" />
+          <CommandBlock command="npx -y @reactive-skills/axi init my-feature-flow" caption="zero-install axi cli (preferred)" />
         </div>
         <Link
           href="/docs/quickstart"

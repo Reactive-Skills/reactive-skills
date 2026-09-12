@@ -1,9 +1,9 @@
 /** @type {{ id: string, label: string, kind: string, description: string }[]} */
 export const eventFlow = [
-  { id: 'prompt', label: 'Prompt slice', kind: 'input', description: 'A focused instruction — not the whole skill at once.' },
-  { id: 'signal', label: 'Signal', kind: 'signal', description: 'A typed message enters the runtime.' },
-  { id: 'guard', label: 'Guard', kind: 'guard', description: 'A deterministic gate decides if the move is allowed.' },
-  { id: 'state', label: 'State transition', kind: 'state', description: 'The skill advances to its next state.' },
-  { id: 'event', label: 'Event', kind: 'event', description: 'An immutable record is appended to the log.' },
-  { id: 'deliverable', label: 'Deliverable', kind: 'deliverable', description: 'A live artifact is written for the user.' },
+  { id: 'prompt', label: 'Prompt slice', kind: 'input', description: 'Isolated instruction for the active state — prevents context bloat.' },
+  { id: 'signal', label: 'Signal', kind: 'signal', description: 'Typed message dispatched via AXI or MCP to advance the machine.' },
+  { id: 'guard', label: 'Guard', kind: 'guard', description: 'Deterministic condition evaluated against context facts before transition.' },
+  { id: 'state', label: 'State transition', kind: 'state', description: 'Atomic advance to the verified target state or substate.' },
+  { id: 'event', label: 'Event', kind: 'event', description: 'Immutable record appended to the SQLite and JSONL ledger.' },
+  { id: 'deliverable', label: 'Deliverable', kind: 'deliverable', description: 'Read-model projection rendered deterministically from event history.' },
 ];

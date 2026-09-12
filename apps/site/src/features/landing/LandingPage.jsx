@@ -16,7 +16,7 @@ export function LandingPage({ machine, flow }) {
         <SectionHeading
           eyebrow="the shift"
           title="From a document the model reads to a machine you can watch"
-          description="A passive SKILL.md hopes the model behaves. A reactive skill makes behaviour explicit — with the same readability and far more reliability."
+          description="Passive markdown instructions force models to self-police. Reactive skills enforce explicit state machines — verifiable guards, prompt isolation, and immutable event logs."
         />
         <h2 id="passive-heading" className="sr-only">Passive versus reactive skills</h2>
         <div className="mt-8">
@@ -29,7 +29,7 @@ export function LandingPage({ machine, flow }) {
           <SectionHeading
             eyebrow="the event flow"
             title="One chain explains the whole runtime"
-            description="Every reactive skill moves through the same six-stage chain. Read it once and the rest of the model follows."
+            description="Every reactive transition follows a deterministic pipeline: prompt slice, signal, guard evaluation, state transition, event ledger entry, and read projection."
           />
           <h2 id="flow-heading" className="sr-only">The event flow</h2>
           <div className="mt-10">
@@ -42,7 +42,7 @@ export function LandingPage({ machine, flow }) {
         <SectionHeading
           eyebrow="interactive"
           title="Step through a skill’s state machine"
-          description="Play the run or step through it yourself. Each state gates on a guard and emits an event you could replay later."
+          description="Simulate execution or step through transitions manually. Each state gates on deterministic guards and appends an immutable event to the ledger."
         />
         <h2 id="machine-heading" className="sr-only">Interactive state machine</h2>
         <div className="mt-8">
@@ -61,7 +61,11 @@ export function LandingPage({ machine, flow }) {
       </section>
 
       <section className="container py-16 sm:py-20" aria-labelledby="hosts-heading">
-        <SectionHeading eyebrow="built for agent hosts" title="Reach it through MCP and AXI" description="Reactive Skills is designed to be driven by agents and tools, not just people." />
+        <SectionHeading
+          eyebrow="agent interfaces"
+          title="Reach it through AXI and MCP"
+          description="Drive skills directly via the lightweight AXI CLI (preferred for token efficiency and speed), or bridge into IDE panels through MCP."
+        />
         <h2 id="hosts-heading" className="sr-only">Built for agent hosts</h2>
         <div className="mt-8">
           <AgentHosts />

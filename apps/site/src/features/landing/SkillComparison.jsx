@@ -10,10 +10,10 @@ export function SkillComparison() {
         </div>
         <h3 className="mt-3 font-display text-lg font-semibold text-phino-text">A passive skill</h3>
         <ul className="mt-3 space-y-2 text-sm text-phino-text-muted">
-          <li>Prose the model reads and hopefully follows.</li>
-          <li>No memory of the current step.</li>
-          <li>No record of what happened.</li>
-          <li>No clean way to recover.</li>
+          <li>Entire instruction manual dumped into context at once.</li>
+          <li>Unrecorded internal state; model guesses next actions.</li>
+          <li>Subjective completion claims without verifiable gates.</li>
+          <li>Failures restart from scratch or cascade into hallucinations.</li>
         </ul>
       </div>
 
@@ -30,10 +30,10 @@ export function SkillComparison() {
         </div>
         <h3 className="mt-3 font-display text-lg font-semibold text-phino-text">A reactive skill</h3>
         <ul className="mt-3 space-y-2 text-sm text-phino-text-muted">
-          <li>Runs as a Hierarchical State Machine.</li>
-          <li>Knows exactly which state it is in.</li>
-          <li>Appends an immutable event per change.</li>
-          <li>Recovers from the last good state.</li>
+          <li>Scoped prompt slice for only the active state.</li>
+          <li>Explicit state path verified through deterministic guards.</li>
+          <li>Immutable event store (JSONL + SQLite) for replay and audit.</li>
+          <li>Deterministic recovery to the last verified checkpoint.</li>
         </ul>
       </div>
     </div>

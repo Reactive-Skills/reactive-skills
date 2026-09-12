@@ -1,40 +1,41 @@
 /** @type {import('@/contracts/types').DocPage} */
 export const mcp = {
   slug: 'mcp',
-  title: 'MCP',
-  summary: 'Connect Reactive Skills to any MCP-compatible client — Cursor, Claude Desktop, VS Code, and others — with a single zero-install command.',
+  title: 'Model Context Protocol (MCP)',
+  summary: 'Connect Reactive Skills as a stdio tool server for GUI agent environments (Cursor, Claude Desktop, VS Code) when direct shell execution is unavailable.',
   category: 'Integrate',
   href: '/docs/mcp',
   sections: [
     {
       id: 'what',
-      heading: 'What MCP gives you',
+      heading: 'When to use MCP vs AXI',
       blocks: [
-        { type: 'text', text: 'The Model Context Protocol (MCP) lets an agent host communicate with external tool servers over a standard interface. Reactive Skills provides an MCP server so your agent client can inspect state, emit signals, evaluate guards, and read event projections without custom harness code.' },
-        { type: 'text', text: 'The server exposes tools (state inspection, signal emission, child invocation), resources (event ledgers and projections), and structured error recovery actions.' },
+        { type: 'text', text: 'The Model Context Protocol (MCP) enables GUI agent hosts to interact with external tools over JSON-RPC. Use MCP when embedding Reactive Skills into desktop editors and GUI clients that require an stdio tool bridge.' },
+        { type: 'callout', variant: 'signal', title: 'Prefer AXI for CLI agents', text: 'If your agent runs with shell execution privileges, prefer the AXI CLI (/docs/axi). AXI eliminates background daemon processes and reduces token consumption by up to 80% via TOON output.' },
+        { type: 'text', text: 'When attached, the Reactive Skills MCP server exposes 8 tools for state inspection, signal emission, query execution, and migration, alongside append-only event resources.' },
       ],
     },
     {
       id: 'start',
-      heading: 'Start the server',
+      heading: 'Start the stdio server',
       blocks: [
-        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi mcp', explanation: 'Launches the Reactive Skills MCP server over stdio using the canonical package entrypoint.', expectedOutput: 'reactive-skills-axi mcp · listening on stdio\nregistered 9 tools · 3 resources\nready' } },
+        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi mcp', explanation: 'Launches the Reactive Skills MCP server over stdio using the unified package entrypoint.', expectedOutput: 'reactive-skills-axi mcp · listening on stdio\nregistered 9 tools · 3 resources\nready' } },
       ],
     },
     {
       id: 'cursor',
       heading: 'Configure Cursor or VS Code',
       blocks: [
-        { type: 'text', text: 'Add a server entry to your client’s MCP configuration file.' },
-        { type: 'code', example: { language: 'json', command: '{\n  "mcpServers": {\n    "reactive-skills": {\n      "command": "npx",\n      "args": ["-y", "@reactive-skills/axi", "mcp"]\n    }\n  }\n}', explanation: 'Save this to your client’s MCP settings and reload. The reactive-skills MCP server tools will be registered.' } },
+        { type: 'text', text: 'Add the server definition to your client’s MCP settings configuration file.' },
+        { type: 'code', example: { language: 'json', command: '{\n  "mcpServers": {\n    "reactive-skills": {\n      "command": "npx",\n      "args": ["-y", "@reactive-skills/axi", "mcp"]\n    }\n  }\n}', explanation: 'Add to client MCP settings and reload. The reactive runtime tools will be registered automatically.' } },
       ],
     },
     {
       id: 'claude',
       heading: 'Configure Claude Desktop',
       blocks: [
-        { type: 'text', text: 'Claude Desktop uses the same stdio server definition inside its configuration file.' },
-        { type: 'code', example: { language: 'json', command: '{\n  "mcpServers": {\n    "reactive-skills": {\n      "command": "npx",\n      "args": ["-y", "@reactive-skills/axi", "mcp"]\n    }\n  }\n}', explanation: 'Save the configuration and restart Claude Desktop to enable reactive state and signal tools.' } },
+        { type: 'text', text: 'Claude Desktop consumes the same stdio server definition inside its config file.' },
+        { type: 'code', example: { language: 'json', command: '{\n  "mcpServers": {\n    "reactive-skills": {\n      "command": "npx",\n      "args": ["-y", "@reactive-skills/axi", "mcp"]\n    }\n  }\n}', explanation: 'Save configuration and restart Claude Desktop to enable reactive state and signal tools.' } },
       ],
     },
     {
@@ -43,7 +44,7 @@ export const mcp = {
       blocks: [
         { type: 'list', items: [
           'reactive_state — read the active state, active path, and context snapshot.',
-          'reactive_emit_signal — send a typed signal into the bus to advance the FSM.',
+          'reactive_emit_signal — dispatch a typed signal into the bus to advance the FSM.',
           'reactive_query — run structured queries against the skill state and event ledger.',
           'reactive_query_events — bounded replay of the append-only event stream.',
           'reactive_inspect — inspect statecharts, transitions, and guard contracts.',
@@ -55,15 +56,15 @@ export const mcp = {
     },
     {
       id: 'recovery',
-      heading: 'Failure recovery & structured diagnostics',
+      heading: 'Structured failure diagnostics',
       blocks: [
-        { type: 'text', text: 'When a guard check or transition fails, the server returns structured error metadata rather than raw stack traces. Each failure specifies what invariant blocked the change and concrete remediation actions.' },
-        { type: 'callout', variant: 'danger', title: 'Example recovery payload', text: 'Guard "exit_code == 0" evaluated to false for signal TEST_RAN — recovery: inspect failure output in events ledger, apply code fix, and re-emit TEST_RAN.' },
+        { type: 'text', text: 'When a guard check or transition fails, the server returns structured error metadata rather than raw stack traces. Each failure specifies what invariant failed and the concrete remediation action.' },
+        { type: 'callout', variant: 'danger', title: 'Example recovery payload', text: 'Guard "exit_code == 0" evaluated to false on signal TEST_RAN — recovery: inspect failure output in events ledger, apply code fix, and re-emit TEST_RAN.' },
       ],
     },
   ],
   relatedPages: [
-    { title: 'AXI CLI reference', href: '/docs/axi' },
+    { title: 'AXI CLI reference (Preferred)', href: '/docs/axi' },
     { title: 'Back to the quickstart', href: '/docs/quickstart' },
     { title: 'Troubleshooting guide', href: '/docs/troubleshooting' },
   ],

@@ -31,8 +31,8 @@ export function SiteFooter() {
         <nav aria-label="Footer" className="grid grid-cols-2 gap-x-10 gap-y-2 text-sm">
           <Link href="/docs/quickstart" className="text-phino-text-muted transition-colors hover:text-phino-text">Quickstart</Link>
           <Link href="/docs/concepts" className="text-phino-text-muted transition-colors hover:text-phino-text">Concepts</Link>
-          <Link href="/docs/mcp" className="text-phino-text-muted transition-colors hover:text-phino-text">MCP</Link>
           <Link href="/docs/axi" className="text-phino-text-muted transition-colors hover:text-phino-text">AXI</Link>
+          <Link href="/docs/mcp" className="text-phino-text-muted transition-colors hover:text-phino-text">MCP</Link>
           <Link href="/docs/troubleshooting" className="text-phino-text-muted transition-colors hover:text-phino-text">Troubleshooting</Link>
           <Link href="/docs/changelog" className="text-phino-text-muted transition-colors hover:text-phino-text">Changelog</Link>
         </nav>
