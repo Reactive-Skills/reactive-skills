@@ -1,0 +1,165 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :where(:root) {
+    /* shadcn tokens kept only for library primitives (sonner, tooltip, etc.) */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+
+    /* ===== Phino semantic tokens — LIGHT ===== */
+    --phino-canvas: #f4f5f7;
+    --phino-surface: #ffffff;
+    --phino-surface-raised: #ffffff;
+    --phino-overlay: #ffffff;
+    --phino-border: #e4e7ec;
+    --phino-border-strong: #cfd4dc;
+    --phino-text: #0d1117;
+    --phino-text-muted: #4a5563;
+    --phino-text-subtle: #6b7684;
+    --phino-signal: #0d9488;
+    --phino-signal-text: #0f766e;
+    --phino-signal-soft: #e6faf5;
+    --phino-guard: #b45309;
+    --phino-guard-text: #9a4a09;
+    --phino-guard-soft: #fdf1e3;
+    --phino-state: #2563eb;
+    --phino-state-text: #1d4ed8;
+    --phino-state-soft: #eaf0ff;
+    --phino-event: #15803d;
+    --phino-event-text: #15803d;
+    --phino-event-soft: #e8f6ec;
+    --phino-danger: #dc2626;
+    --phino-danger-text: #b42318;
+    --phino-danger-soft: #fdeceb;
+    --phino-success: #15803d;
+    --phino-focus: #0d9488;
+    --phino-code-bg: #0b0e12;
+    --phino-code-text: #e6edf3;
+    --phino-grid-line: rgba(13, 17, 23, 0.05);
+  }
+
+  :where(.dark) {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+
+    /* ===== Phino semantic tokens — DARK (recomputed for contrast) ===== */
+    --phino-canvas: #06070a;
+    --phino-surface: #0c0e13;
+    --phino-surface-raised: #13161c;
+    --phino-overlay: #1a1e25;
+    --phino-border: #212530;
+    --phino-border-strong: #333a47;
+    --phino-text: #e9edf3;
+    --phino-text-muted: #9aa4b2;
+    --phino-text-subtle: #6c7684;
+    --phino-signal: #2dd4bf;
+    --phino-signal-text: #5eead4;
+    --phino-signal-soft: #0b211e;
+    --phino-guard: #f59e0b;
+    --phino-guard-text: #fbbf24;
+    --phino-guard-soft: #211906;
+    --phino-state: #60a5fa;
+    --phino-state-text: #93c5fd;
+    --phino-state-soft: #0c1a2e;
+    --phino-event: #4ade80;
+    --phino-event-text: #86efac;
+    --phino-event-soft: #0b1f14;
+    --phino-danger: #f87171;
+    --phino-danger-text: #fca5a5;
+    --phino-danger-soft: #2a1214;
+    --phino-success: #4ade80;
+    --phino-focus: #2dd4bf;
+    --phino-code-bg: #080a0d;
+    --phino-code-text: #e6edf3;
+    --phino-grid-line: rgba(255, 255, 255, 0.045);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-phino-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-phino-canvas text-phino-text antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: var(--phino-signal);
+    color: var(--phino-canvas);
+  }
+}
+
+@layer utilities {
+  .phino-grid {
+    background-image:
+      linear-gradient(var(--phino-grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--phino-grid-line) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+  .phino-radial {
+    background:
+      radial-gradient(60rem 40rem at 50% -10%, var(--phino-signal-soft), transparent 70%);
+  }
+  .phino-signal-line {
+    background-image: linear-gradient(90deg, transparent, var(--phino-signal), transparent);
+    background-size: 220% 100%;
+  }
+  .phino-signal-line-v {
+    background-image: linear-gradient(180deg, transparent, var(--phino-signal), transparent);
+    background-size: 100% 220%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

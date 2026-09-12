@@ -11,6 +11,8 @@
     "check:docs": "pnpm --filter @reactive-skills/runtime run check:docs",
     "check:prose": "pnpm --filter @reactive-skills/runtime run check:prose",
     "demo": "pnpm --filter @reactive-skills/runtime demo",
+    "build:site": "pnpm --filter @reactive-skills/site build",
+    "dev:site": "pnpm --filter @reactive-skills/site dev",
     "bump:patch": "pnpm --filter @reactive-skills/runtime run bump:patch",
     "bump:minor": "pnpm --filter @reactive-skills/runtime run bump:minor",
     "bump:major": "pnpm --filter @reactive-skills/runtime run bump:major"

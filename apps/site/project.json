@@ -1,0 +1,32 @@
+{
+  "name": "site",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/site/src",
+  "projectType": "application",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project site --web",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm build",
+        "cwd": "{projectRoot}"
+      },
+      "outputs": ["{projectRoot}/.next"]
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm dev",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "generate-reference-docs": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec tsx scripts/generate-docs-reference.ts"
+      },
+      "outputs": ["{workspaceRoot}/.docs/generated/reference-docs.json"]
+    }
+  }
+}
