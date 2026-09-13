@@ -7,6 +7,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { FSMEngine } from '../core/fsm-engine.js';
 import { EventStore } from '../core/event-store.js';
+import { JobManager } from '../core/job-manager.js';
 import { SkillManifestSchema } from '../core/types.js';
 
 export interface ReactiveMcpServerOptions {
@@ -23,7 +24,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     version: '1.0.0',
   });
 
-  // Cached active engine instance per skill
+  // Cached active engine instance per skill and job
   const engines = new Map<string, FSMEngine>();
 
   function normalizeDeliverableName(name: string): string | null {
@@ -37,13 +38,17 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     return trimmed;
   }
 
-  function getEngine(skillName: string = defaultSkill): FSMEngine {
-    if (engines.has(skillName)) {
-      const cached = engines.get(skillName)!;
+  function getEngine(skillName: string = defaultSkill, jobId?: string): FSMEngine {
+    const jobManager = new JobManager(workspaceDir);
+    const resolvedJobId = jobId || jobManager.getActiveJobId(skillName);
+    const cacheKey = `${skillName}::${resolvedJobId}`;
+
+    if (engines.has(cacheKey)) {
+      const cached = engines.get(cacheKey)!;
       if (fs.existsSync(cached.getSkillDir())) {
         return cached;
       }
-      engines.delete(skillName);
+      engines.delete(cacheKey);
     }
 
     const candidatePaths = [
@@ -87,10 +92,17 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     const eventStore = new EventStore({
       workspaceDir,
       skillId: skillName,
+      jobId: resolvedJobId,
+      runId: resolvedJobId,
       enableSqlite: true,
     });
-    const engine = new FSMEngine({ skillDir, workspaceDir, eventStore });
-    engines.set(skillName, engine);
+    const engine = new FSMEngine({
+      skillDir,
+      workspaceDir,
+      eventStore,
+      jobId: resolvedJobId,
+    });
+    engines.set(cacheKey, engine);
     return engine;
   }
 
@@ -100,10 +112,11 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     'Get current state, prompt slice, and allowed tools for the active reactive skill',
     {
       skill: z.string().optional().describe('Skill name (defaults to active skill)'),
+      job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
     },
-    async ({ skill }) => {
+    async ({ skill, job_id }) => {
       try {
-        const engine = getEngine(skill || defaultSkill);
+        const engine = getEngine(skill || defaultSkill, job_id);
 
         if (engine.isBypassDetected()) {
           return {
@@ -140,6 +153,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
               text: JSON.stringify(
                 {
                   skill: engine.getManifest().name,
+                  job_id: engine.getJobId(),
                   activeState,
                   isWaitingForHuman: isWaiting,
                   allowedTools: slice.allowedTools,
@@ -178,10 +192,11 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       signal: z.string().describe('Signal name (e.g. CHECK_PASSED, CHARTER_DRAFTED)'),
       payload: z.record(z.any()).optional().describe('Signal payload data (e.g. exit_code, file_path)'),
       skill: z.string().optional().describe('Target skill name'),
+      job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
     },
-    async ({ signal, payload = {}, skill }) => {
+    async ({ signal, payload = {}, skill, job_id }) => {
       try {
-        const engine = getEngine(skill || defaultSkill);
+        const engine = getEngine(skill || defaultSkill, job_id);
         const result = await engine.handleSignal(signal, payload);
 
         return {
@@ -190,6 +205,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
               type: 'text',
               text: JSON.stringify(
                 {
+                  skill: engine.getManifest().name,
+                  job_id: engine.getJobId(),
                   transitioned: result.transitioned,
                   previousState: result.previousState,
                   newState: result.newState,
@@ -218,10 +235,11 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     {
       sql: z.string().describe('SQL query string (e.g. SELECT * FROM events ORDER BY seq DESC LIMIT 10)'),
       skill: z.string().optional().describe('Skill context for event store'),
+      job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
     },
-    async ({ sql, skill }) => {
+    async ({ sql, skill, job_id }) => {
       try {
-        const engine = getEngine(skill || defaultSkill);
+        const engine = getEngine(skill || defaultSkill, job_id);
         const driver = engine.getEventStore().getSqliteDriver();
         if (!driver) {
           throw new Error('SQLite storage driver is not active.');
@@ -255,10 +273,11 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       sinceSeq: z.number().int().nonnegative().optional().describe('Return events after this sequence'),
       limit: z.number().int().positive().max(1000).optional().describe('Maximum number of events'),
       skill: z.string().optional().describe('Skill context for event store'),
+      job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
     },
-    async ({ type, state, sinceSeq, limit, skill }) => {
+    async ({ type, state, sinceSeq, limit, skill, job_id }) => {
       try {
-        const engine = getEngine(skill || defaultSkill);
+        const engine = getEngine(skill || defaultSkill, job_id);
         const rows = engine.getEventStore().query({ type, state, sinceSeq, limit });
         return {
           content: [{ type: 'text', text: JSON.stringify(rows, null, 2) }],
@@ -331,10 +350,11 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     'Inspect the full statechart, transitions, and guard criteria of a reactive skill',
     {
       skill: z.string().optional().describe('Skill name to inspect'),
+      job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
     },
-    async ({ skill }) => {
+    async ({ skill, job_id }) => {
       try {
-        const engine = getEngine(skill || defaultSkill);
+        const engine = getEngine(skill || defaultSkill, job_id);
         const manifest = engine.getManifest();
 
         return {
@@ -395,7 +415,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     }
   );
 
-  // 6. TOOL: reactive_respond_human
+  // 7. TOOL: reactive_respond_human
   server.tool(
     'reactive_respond_human',
     'Submit user approval or feedback to unpause a Human-in-the-Loop (HITL) gate',
@@ -404,10 +424,11 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       approved: z.boolean().optional().describe('Explicit approval boolean flag'),
       feedback: z.string().optional().describe('Optional feedback text'),
       skill: z.string().optional().describe('Target skill name'),
+      job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
     },
-    async ({ choice, approved = true, feedback, skill }) => {
+    async ({ choice, approved = true, feedback, skill, job_id }) => {
       try {
-        const engine = getEngine(skill || defaultSkill);
+        const engine = getEngine(skill || defaultSkill, job_id);
         const signalsEmitted: string[] = [];
         let transitioned = false;
         let deliverablesWritten: string[] = [];
@@ -508,6 +529,45 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
             {
               type: 'text',
               text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      } catch (err: any) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 9. TOOL: reactive_list_jobs
+  server.tool(
+    'reactive_list_jobs',
+    'List all historical and active execution jobs for a skill with status metadata',
+    {
+      skill: z.string().optional().describe('Skill name (defaults to active skill)'),
+    },
+    async ({ skill }) => {
+      try {
+        const targetSkill = skill || defaultSkill;
+        const jobManager = new JobManager(workspaceDir);
+        const activeJobId = jobManager.getActiveJobId(targetSkill);
+        const jobs = jobManager.listJobs(targetSkill);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  skill: targetSkill,
+                  activeJobId,
+                  jobs,
+                },
+                null,
+                2
+              ),
             },
           ],
         };

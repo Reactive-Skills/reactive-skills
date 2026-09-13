@@ -199,3 +199,20 @@ export const SkillManifestSchema = z.object({
     trigger_on: z.array(z.string()).optional(),
   })).optional(),
 });
+
+export const JobStatusSchema = z.enum(['active', 'completed', 'failed', 'archived']);
+export type JobStatus = z.infer<typeof JobStatusSchema>;
+
+export const JobMetadataSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  skillId: z.string(),
+  status: JobStatusSchema,
+  currentState: z.string(),
+  parentRunId: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  completedAt: z.string().optional(),
+});
+
+export type JobMetadata = z.infer<typeof JobMetadataSchema>;

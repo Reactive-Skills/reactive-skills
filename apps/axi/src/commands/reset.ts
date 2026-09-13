@@ -1,9 +1,11 @@
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs';
+import { JobManager } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
+import { extractJobFlag, resolveWorkspaceDir } from '../args.js';
 
 const HOME_DIR = os.homedir();
 
@@ -58,13 +60,16 @@ function deleteRecursive(dirPath: string): { deleted: string[]; errors: string[]
 }
 
 export async function resetCommand(args: string[]): Promise<string> {
-  const skillName = args[0];
+  const isPurge = args.includes('--purge') || args.includes('-p');
+  const cleanArgs = args.filter(a => a !== '--purge' && a !== '-p');
+  const { jobId, filteredArgs } = extractJobFlag(cleanArgs);
+  const skillName = filteredArgs[0];
 
   if (!skillName) {
     const error = new AxiError(
       'Missing skill name',
       'VALIDATION_ERROR',
-      ['Usage: reactive-skills-axi reset <skill-name>', 'Example: reactive-skills-axi reset my-skill']
+      ['Usage: reactive-skills-axi reset <skill-name> [--job <job-id>] [--purge]', 'Example: reactive-skills-axi reset my-skill']
     );
     return renderOutput([
       renderError(error.message, error.code, error.suggestions),
@@ -83,7 +88,7 @@ export async function resetCommand(args: string[]): Promise<string> {
     ]);
   }
 
-  const workspaceDir = path.dirname(skillPath);
+  const workspaceDir = resolveWorkspaceDir(skillPath);
   const reactiveDir = path.join(workspaceDir, '.reactive', 'skills', skillName);
 
   if (!fs.existsSync(reactiveDir)) {
@@ -106,46 +111,64 @@ export async function resetCommand(args: string[]): Promise<string> {
     ]);
   }
 
-  const { deleted, errors } = deleteRecursive(reactiveDir);
+  const jobManager = new JobManager(workspaceDir);
 
-  const adrDir = path.join(workspaceDir, 'adr');
-  const adrExists = fs.existsSync(adrDir);
-  const docsDir = path.join(workspaceDir, '.docs', skillName);
-  const docsExist = fs.existsSync(docsDir);
+  if (isPurge) {
+    const { deleted, errors } = deleteRecursive(reactiveDir);
+    const lines: string[] = [];
+    lines.push(renderDetail('reset', {
+      skill_id: skillName,
+      status: errors.length === 0 ? 'purged' : 'partial',
+      reactive_dir: reactiveDir,
+      files_cleared: deleted.length,
+      errors: errors.length,
+    }, [
+      { type: 'field', key: 'skill_id' },
+      { type: 'field', key: 'status' },
+      { type: 'field', key: 'reactive_dir' },
+      { type: 'field', key: 'files_cleared' },
+      { type: 'field', key: 'errors' },
+    ]));
+    lines.push(renderHelp([
+      `All event stores, snapshots, and jobs at ${reactiveDir} were completely purged.`,
+      `Run \`reactive-skills-axi invoke ${skillName}\` to start a fresh run.`,
+    ]));
+    return renderOutput(lines);
+  }
+
+  // Non-destructive reset: archive current active job and rotate to fresh job
+  const activeJobId = jobId || jobManager.getActiveJobId(skillName);
+  jobManager.updateJob(skillName, activeJobId, {
+    status: 'archived',
+    completedAt: new Date().toISOString(),
+  });
+
+  const freshJob = jobManager.createJob(skillName, {
+    setActive: true,
+  });
 
   const lines: string[] = [];
   lines.push(renderDetail('reset', {
     skill_id: skillName,
-    status: errors.length === 0 ? 'success' : 'partial',
+    status: 'archived_and_rotated',
+    archived_job: activeJobId,
+    fresh_job: freshJob.id,
     reactive_dir: reactiveDir,
-    files_cleared: deleted.length,
-    errors: errors.length,
   }, [
     { type: 'field', key: 'skill_id' },
     { type: 'field', key: 'status' },
+    { type: 'field', key: 'archived_job' },
+    { type: 'field', key: 'fresh_job' },
     { type: 'field', key: 'reactive_dir' },
-    { type: 'field', key: 'files_cleared' },
-    { type: 'field', key: 'errors' },
   ]));
 
-  const helpLines: string[] = [];
-  if (adrExists) {
-    helpLines.push('ADRs in adr/ were preserved.');
-  }
-  if (docsExist) {
-    helpLines.push(`Deliverable docs in .docs/${skillName}/ were preserved and will be regenerated on next invoke.`);
-  }
-  helpLines.push(`Event store and snapshots at ${reactiveDir} have been cleared.`);
-  helpLines.push(`Run \`reactive-skills-axi invoke ${skillName}\` to start a fresh run.`);
+  const helpLines: string[] = [
+    `Job '${activeJobId}' has been archived non-destructively.`,
+    `Active job rotated to fresh job '${freshJob.id}'.`,
+    `Run \`reactive-skills-axi state ${skillName}\` to inspect initial state.`,
+    `Pass \`--purge\` to permanently delete all historical jobs and event data.`,
+  ];
   lines.push(renderHelp(helpLines));
-
-  if (errors.length > 0) {
-    lines.unshift(renderError(
-      `Partial reset: ${errors.length} file(s) could not be deleted`,
-      'RUNTIME_ERROR',
-      errors
-    ));
-  }
 
   return renderOutput(lines);
 }

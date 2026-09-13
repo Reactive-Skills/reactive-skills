@@ -133,6 +133,11 @@ export async function viewCommand(args: string[]): Promise<string> {
 
     if (once) {
       await telemetry.stop();
+      if (engine) {
+        engine.close();
+      } else {
+        eventStore.close();
+      }
       return renderOutput([detail, renderHelp(suggestions)]);
     }
 

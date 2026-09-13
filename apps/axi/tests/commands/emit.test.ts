@@ -25,6 +25,7 @@ vi.mock('@reactive-skills/runtime', () => ({
         { id: '01a06e96-auto-causation-event-id', type: 'SKILL_INITIALIZED' },
       ]),
     })),
+    close: vi.fn(),
   })),
 }));
 

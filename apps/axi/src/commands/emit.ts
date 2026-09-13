@@ -5,6 +5,7 @@ import { FSMEngine } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
+import { extractJobFlag, resolveWorkspaceDir } from '../args.js';
 
 const HOME_DIR = os.homedir();
 
@@ -24,15 +25,16 @@ function resolveSkillPath(skillName: string): string | null {
 }
 
 export async function emitCommand(args: string[]): Promise<string> {
-  const skillName = args[0];
+  const { jobId, filteredArgs } = extractJobFlag(args);
+  const skillName = filteredArgs[0];
 
-  if (!skillName || args.length < 2) {
+  if (!skillName || filteredArgs.length < 2) {
     const error = new AxiError(
       'Missing arguments',
       'VALIDATION_ERROR',
       [
-        'Usage: reactive-skills-axi emit <skill-name> <signal-name> [--payload JSON]',
-        'Or:    reactive-skills-axi emit <skill-name> <event-id> <signal-name> [--payload JSON]',
+        'Usage: reactive-skills-axi emit <skill-name> <signal-name> [--payload JSON] [--job <job-id>]',
+        'Or:    reactive-skills-axi emit <skill-name> <event-id> <signal-name> [--payload JSON] [--job <job-id>]',
         'Example: reactive-skills-axi emit my-skill RUNTIME_READY',
         'Example: reactive-skills-axi emit my-skill TEST_RAN \'{"exit_code":0}\'',
       ]
@@ -46,16 +48,16 @@ export async function emitCommand(args: string[]): Promise<string> {
   let signalName: string;
   let payloadArgStr = '';
 
-  // Check if args[1] is an event UUID / sortable-id (20+ chars) or a signal name
-  const looksLikeEventId = /^[0-9a-zA-Z_-]{20,}$/.test(args[1]);
+  // Check if filteredArgs[1] is an event UUID / sortable-id (20+ chars) or a signal name
+  const looksLikeEventId = /^[0-9a-zA-Z_-]{20,}$/.test(filteredArgs[1]);
 
-  if (looksLikeEventId && args.length >= 3) {
-    eventId = args[1];
-    signalName = args[2];
-    payloadArgStr = args.slice(3).join(' ').trim();
+  if (looksLikeEventId && filteredArgs.length >= 3) {
+    eventId = filteredArgs[1];
+    signalName = filteredArgs[2];
+    payloadArgStr = filteredArgs.slice(3).join(' ').trim();
   } else {
-    signalName = args[1];
-    payloadArgStr = args.slice(2).join(' ').trim();
+    signalName = filteredArgs[1];
+    payloadArgStr = filteredArgs.slice(2).join(' ').trim();
   }
 
   // Handle --payload flag if used
@@ -109,58 +111,64 @@ export async function emitCommand(args: string[]): Promise<string> {
       runId = fs.readFileSync(runIdPath, 'utf8').trim();
     }
 
+    const workspaceDir = resolveWorkspaceDir(skillPath);
     const engine = new FSMEngine({ 
       skillDir: skillPath, 
-      workspaceDir: path.dirname(skillPath),
-      eventContext: { run_id: runId }
+      workspaceDir,
+      jobId,
+      eventContext: { run_id: jobId || runId }
     });
 
-    // Auto-resolve causation eventId from event store if not explicitly supplied
-    if (!eventId) {
-      const events = engine.getEventStore().getAll();
-      if (events.length > 0) {
-        eventId = events[events.length - 1].id;
+    try {
+      // Auto-resolve causation eventId from event store if not explicitly supplied
+      if (!eventId) {
+        const events = engine.getEventStore().getAll();
+        if (events.length > 0) {
+          eventId = events[events.length - 1].id;
+        }
       }
-    }
 
-    const result = await engine.handleSignal(signalName, payload, { source: 'cli', causationId: eventId });
+      const result = await engine.handleSignal(signalName, payload, { source: 'cli', causationId: eventId });
 
-    const lines: string[] = [];
-    lines.push(renderDetail('emit', {
-      skill_id: skillName,
-      signal: signalName,
-      transitioned: result.transitioned,
-      previous_state: result.previousState,
-      current_state: result.newState,
-      event_id: result.event.id,
-      handled_at_depth: result.handledAtDepth,
-      deliverables: result.deliverablesWritten,
-    }, [
-      { type: 'field', key: 'skill_id' },
-      { type: 'field', key: 'signal' },
-      { type: 'field', key: 'transitioned' },
-      { type: 'field', key: 'previous_state' },
-      { type: 'field', key: 'current_state' },
-      { type: 'field', key: 'event_id' },
-    ]));
-
-    if (result.transitioned) {
-      const promptSlice = engine.generatePromptSlice();
-      lines.push(renderDetail('prompt', {
-        raw_prompt: promptSlice.rawPrompt,
-        allowed_tools: promptSlice.allowedTools.join(',') || 'none',
-        exit_conditions: promptSlice.exitConditions.length,
+      const lines: string[] = [];
+      lines.push(renderDetail('emit', {
+        skill_id: skillName,
+        signal: signalName,
+        transitioned: result.transitioned,
+        previous_state: result.previousState,
+        current_state: result.newState,
+        event_id: result.event.id,
+        handled_at_depth: result.handledAtDepth,
+        deliverables: result.deliverablesWritten,
       }, [
-        { type: 'field', key: 'raw_prompt' },
-        { type: 'field', key: 'allowed_tools' },
-        { type: 'field', key: 'exit_conditions' },
+        { type: 'field', key: 'skill_id' },
+        { type: 'field', key: 'signal' },
+        { type: 'field', key: 'transitioned' },
+        { type: 'field', key: 'previous_state' },
+        { type: 'field', key: 'current_state' },
+        { type: 'field', key: 'event_id' },
       ]));
+
+      if (result.transitioned) {
+        const promptSlice = engine.generatePromptSlice();
+        lines.push(renderDetail('prompt', {
+          raw_prompt: promptSlice.rawPrompt,
+          allowed_tools: promptSlice.allowedTools.join(',') || 'none',
+          exit_conditions: promptSlice.exitConditions.length,
+        }, [
+          { type: 'field', key: 'raw_prompt' },
+          { type: 'field', key: 'allowed_tools' },
+          { type: 'field', key: 'exit_conditions' },
+        ]));
+      }
+
+      const suggestions = getSuggestions({ domain: 'emit', action: 'signal', skillName });
+      lines.push(renderHelp(suggestions));
+
+      return renderOutput(lines);
+    } finally {
+      engine.close?.();
     }
-
-    const suggestions = getSuggestions({ domain: 'emit', action: 'signal', skillName });
-    lines.push(renderHelp(suggestions));
-
-    return renderOutput(lines);
   } catch (err) {
     const error = err instanceof AxiError
       ? err

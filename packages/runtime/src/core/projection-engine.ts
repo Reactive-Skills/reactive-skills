@@ -28,13 +28,28 @@ export class ProjectionEngine {
   private projections: DeliverableProjection[];
   private compiledTemplates: Map<string, Handlebars.TemplateDelegate> = new Map();
   private eventCaches = new WeakMap<EventStore, { lastSeq: number; events: SignalEvent[] }>();
+  private jobId?: string;
+  private isActiveJob: boolean;
 
-  constructor(skillDir: string, projections: DeliverableProjection[] = [], workspaceDir = process.cwd()) {
+  constructor(
+    skillDir: string,
+    projections: DeliverableProjection[] = [],
+    workspaceDir = process.cwd(),
+    jobId?: string,
+    isActiveJob = true
+  ) {
     this.skillDir = skillDir;
     this.workspaceDir = path.resolve(workspaceDir);
     this.projections = projections;
+    this.jobId = jobId;
+    this.isActiveJob = isActiveJob;
     this.registerHelpers();
     this.compileTemplates();
+  }
+
+  public setJob(jobId?: string, isActiveJob = true): void {
+    this.jobId = jobId;
+    this.isActiveJob = isActiveJob;
   }
 
   private resolveOutputPath(output: string): string {
@@ -174,15 +189,30 @@ export class ProjectionEngine {
 
         if (templateFn) {
           const outputContent = templateFn(projContext);
-          const outputPath = this.resolveOutputPath(proj.output);
-          const outputDir = path.dirname(outputPath);
+          const canonicalOutputPath = this.resolveOutputPath(proj.output);
+          const canonicalDir = path.dirname(canonicalOutputPath);
+          const fileName = path.basename(canonicalOutputPath);
 
-          if (!fs.existsSync(outputDir)) {
-            fs.mkdirSync(outputDir, { recursive: true });
+          // 1. If jobId is present, write to historical job archive:
+          if (this.jobId) {
+            const archiveDir = path.join(canonicalDir, 'jobs', this.jobId);
+            if (!fs.existsSync(archiveDir)) {
+              fs.mkdirSync(archiveDir, { recursive: true });
+            }
+            const archivePath = path.join(archiveDir, fileName);
+            fs.writeFileSync(archivePath, outputContent, 'utf8');
+            writtenFiles.push(archivePath);
           }
 
-          fs.writeFileSync(outputPath, outputContent, 'utf8');
-          writtenFiles.push(outputPath);
+          // 2. If active job or no jobId (legacy mode), mirror to canonical root:
+          if (this.isActiveJob || !this.jobId) {
+            if (!fs.existsSync(canonicalDir)) {
+              fs.mkdirSync(canonicalDir, { recursive: true });
+            }
+            fs.writeFileSync(canonicalOutputPath, outputContent, 'utf8');
+            writtenFiles.push(canonicalOutputPath);
+          }
+
           eventStore.saveProjectionWatermark(
             proj.template,
             eventStore.getLatestSequence(),

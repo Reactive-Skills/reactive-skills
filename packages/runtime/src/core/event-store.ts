@@ -25,6 +25,7 @@ export interface EventStoreOptions {
   sqlitePath?: string;
   workspaceDir?: string;
   skillId?: string;
+  jobId?: string;
   runId?: string;
   run_id?: string;
   correlationId?: string;
@@ -41,6 +42,7 @@ export interface EventStoreOptions {
   enableSqlite?: boolean;
   maxInMemoryEvents?: number;
   maxJsonlBytes?: number;
+  acquireLock?: boolean;
 }
 
 export interface EventQueryOptions {
@@ -56,6 +58,7 @@ export interface EventQueryOptions {
  */
 export class SQLiteStorageDriver {
   private db: DatabaseSync;
+  private isClosed = false;
 
   constructor(dbPath: string) {
     if (dbPath !== ':memory:') {
@@ -314,7 +317,14 @@ export class SQLiteStorageDriver {
   }
 
   public close(): void {
-    this.db.close();
+    if (this.isClosed) return;
+    try {
+      this.db.close();
+    } catch {
+      // already closed
+    } finally {
+      this.isClosed = true;
+    }
   }
 
   public static getSchemaVersion(dbPath: string): number {
@@ -415,13 +425,16 @@ export class EventStore {
   private projectionWatermarks = new Map<string, { eventSeq: number; projectionVersion: string }>();
   private latestSnapshot: { seq: number; state: string; context: Record<string, any> } | null = null;
   private maxJsonlBytes: number;
+  private lockFd: number | null = null;
+  private lockPath: string | null = null;
 
   constructor(options: EventStoreOptions = {}) {
     this.maxInMemoryEvents = options.maxInMemoryEvents || 1000;
     this.maxJsonlBytes = options.maxJsonlBytes || 10 * 1024 * 1024;
+    const effectiveJobId = options.jobId || options.runId || options.run_id;
     this.eventContext = {
       skill_id: options.skillId,
-      run_id: options.runId || options.run_id || createSortableId(),
+      run_id: effectiveJobId || createSortableId(),
       correlation_id: options.correlationId || createSortableId(),
       request_id: options.requestId,
       trace_parent: options.traceParent,
@@ -434,9 +447,24 @@ export class EventStore {
       const scopeDir = options.skillId
         ? path.join(workspaceDir, '.reactive', 'skills', options.skillId)
         : path.join(workspaceDir, '.reactive');
-      const runScopedDir = options.runId
-        ? path.join(scopeDir, options.runId)
-        : scopeDir;
+
+      let runScopedDir = scopeDir;
+      if (options.skillId && effectiveJobId) {
+        const isLegacyFallback = effectiveJobId === 'default' &&
+          !fs.existsSync(path.join(scopeDir, 'jobs', effectiveJobId)) &&
+          fs.existsSync(path.join(scopeDir, 'events.jsonl'));
+
+        if (!isLegacyFallback) {
+          runScopedDir = path.join(scopeDir, 'jobs', effectiveJobId);
+        }
+      } else if (effectiveJobId) {
+        runScopedDir = path.join(scopeDir, effectiveJobId);
+      }
+
+      if (options.acquireLock && runScopedDir) {
+        this.acquireJobLock(runScopedDir);
+      }
+
       this.storagePath = options.storagePath || path.join(runScopedDir, 'events.jsonl');
       
       if (options.enableSqlite || options.sqlitePath) {
@@ -448,6 +476,65 @@ export class EventStore {
       this.initializeStorage();
     } else if (options.enableSqlite) {
       this.sqliteDriver = new SQLiteStorageDriver(':memory:');
+    }
+  }
+
+  private acquireJobLock(dir: string): void {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    this.lockPath = path.join(dir, '.lock');
+    try {
+      this.lockFd = fs.openSync(this.lockPath, 'wx');
+      fs.writeSync(this.lockFd, JSON.stringify({ pid: process.pid, time: new Date().toISOString() }));
+    } catch (err: any) {
+      if (err.code === 'EEXIST') {
+        try {
+          const content = fs.readFileSync(this.lockPath, 'utf8');
+          const data = JSON.parse(content);
+          if (data.pid) {
+            try {
+              process.kill(data.pid, 0);
+              const lockError: any = new Error(`JOB_LOCKED: Job directory is currently locked by PID ${data.pid}`);
+              lockError.code = 'JOB_LOCKED';
+              throw lockError;
+            } catch (killErr: any) {
+              if (killErr.code === 'ESRCH') {
+                fs.unlinkSync(this.lockPath);
+                this.lockFd = fs.openSync(this.lockPath, 'wx');
+                fs.writeSync(this.lockFd, JSON.stringify({ pid: process.pid, time: new Date().toISOString() }));
+                return;
+              }
+              throw killErr;
+            }
+          }
+        } catch (readErr: any) {
+          if (readErr.code === 'JOB_LOCKED') throw readErr;
+        }
+        const lockError: any = new Error(`JOB_LOCKED: Job directory is currently locked`);
+        lockError.code = 'JOB_LOCKED';
+        throw lockError;
+      }
+      throw err;
+    }
+  }
+
+  private releaseJobLock(): void {
+    if (this.lockFd !== null) {
+      try {
+        fs.closeSync(this.lockFd);
+      } catch {
+        // ignore
+      }
+      this.lockFd = null;
+    }
+    if (this.lockPath && fs.existsSync(this.lockPath)) {
+      try {
+        fs.unlinkSync(this.lockPath);
+      } catch {
+        // ignore
+      }
+      this.lockPath = null;
     }
   }
 
@@ -838,9 +925,10 @@ private initializeStorage(): void {
   }
 
   /**
-   * Close storage drivers and release file handles
+   * Close storage drivers and release file handles and locks
    */
   public close(): void {
+    this.releaseJobLock();
     if (this.sqliteDriver) {
       this.sqliteDriver.close();
     }
@@ -861,6 +949,7 @@ private initializeStorage(): void {
     this.seqCounter = 0;
     this.projectionWatermarks.clear();
     this.latestSnapshot = null;
+    this.releaseJobLock();
     if (this.sqliteDriver) {
       this.sqliteDriver.clear();
     }

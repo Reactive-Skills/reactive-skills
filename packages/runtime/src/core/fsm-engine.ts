@@ -17,12 +17,14 @@ import { EventStore, createSortableId } from './event-store.js';
 import { GuardEvaluator } from './guard-evaluator.js';
 import { LegacySkillAdapter } from './legacy-adapter.js';
 import { ProjectionEngine } from './projection-engine.js';
+import { JobManager } from './job-manager.js';
 
 export interface FSMEngineOptions {
   skillDir: string;
   workspaceDir?: string;
   eventStore?: EventStore;
   eventContext?: EventContext;
+  jobId?: string;
   runId?: string;
   initialContext?: Record<string, any>;
   autoRehydrate?: boolean;
@@ -46,6 +48,9 @@ export class FSMEngine {
   private turnsSinceLastSignal: number;
   private inBypassState: boolean;
   private readonly strictExecution: boolean;
+  private jobId?: string;
+  private isActiveJob: boolean;
+  private jobManager: JobManager;
 
   constructor(options: FSMEngineOptions) {
     this.skillDir = path.resolve(options.skillDir);
@@ -54,10 +59,33 @@ export class FSMEngine {
     this.strictExecution = this.manifest.strict_execution === true;
     this.turnsSinceLastSignal = 0;
     this.inBypassState = false;
+
+    const effectiveJobId = options.jobId || options.runId;
+    this.jobManager = new JobManager(this.workspaceDir);
+    const activeJobId = this.jobManager.getActiveJobId(this.manifest.name);
+    const resolvedJobId = effectiveJobId || activeJobId;
+    const isActiveJob = (resolvedJobId === activeJobId);
+
+    this.jobId = resolvedJobId;
+    this.isActiveJob = isActiveJob;
+
+    if (this.jobId) {
+      const existingJob = this.jobManager.getJob(this.manifest.name, this.jobId);
+      if (!existingJob) {
+        this.jobManager.createJob(this.manifest.name, {
+          id: this.jobId,
+          name: this.jobId,
+          initialState: this.manifest.initial_state,
+          setActive: this.isActiveJob,
+        });
+      }
+    }
+
     this.eventStore = options.eventStore || new EventStore({
       skillId: this.manifest.name,
       workspaceDir: this.workspaceDir,
-      runId: options.runId,
+      jobId: this.jobId,
+      runId: this.jobId,
       enableSqlite: true,
       ...options.eventContext,
     });
@@ -68,7 +96,9 @@ export class FSMEngine {
     this.projectionEngine = new ProjectionEngine(
       this.skillDir,
       this.manifest.deliverable_projections || [],
-      options.workspaceDir || process.cwd()
+      options.workspaceDir || process.cwd(),
+      this.jobId,
+      this.isActiveJob
     );
 
     const autoRehydrate = options.autoRehydrate !== false;
@@ -79,6 +109,11 @@ export class FSMEngine {
 
     if (autoRehydrate && (latestSnapshot || history.length > 0)) {
       this.rehydrate(history, latestSnapshot);
+      if (this.jobId) {
+        this.jobManager.updateJob(this.manifest.name, this.jobId, {
+          currentState: this.getCurrentState(),
+        });
+      }
     } else {
       const initialPath = this.resolveInitialPath([this.manifest.initial_state]);
       this.activeStatePath = [...initialPath];
@@ -92,6 +127,11 @@ export class FSMEngine {
 
       this.enterPath(initialPath, [], 'INITIAL_BOOT');
       this.eventStore.saveSnapshot(this.eventStore.getLatestSequence(), this.getCurrentState(), this.context);
+      if (this.jobId) {
+        this.jobManager.updateJob(this.manifest.name, this.jobId, {
+          currentState: this.getCurrentState(),
+        });
+      }
     }
   }
 
@@ -656,6 +696,12 @@ export class FSMEngine {
             }
           }
 
+          if (this.jobId) {
+            this.jobManager.updateJob(this.manifest.name, this.jobId, {
+              currentState: this.getCurrentState(),
+            });
+          }
+
           return {
             transitioned: true,
             previousState,
@@ -790,5 +836,21 @@ export class FSMEngine {
         });
       }
     }
+  }
+
+  public getJobId(): string | undefined {
+    return this.jobId;
+  }
+
+  public isJobActive(): boolean {
+    return this.isActiveJob;
+  }
+
+  public getJobManager(): JobManager {
+    return this.jobManager;
+  }
+
+  public close(): void {
+    this.eventStore.close();
   }
 }

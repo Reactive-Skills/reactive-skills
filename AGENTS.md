@@ -68,6 +68,7 @@ Reactive skills can be consumed through three integration modes. The runtime its
 - `packages/runtime/src/core/runtime-hooks.ts`: In-harness interceptor hooks (onBeforeAgentTurn, onAfterToolExecution, onHumanResponse).
 - `packages/runtime/src/core/legacy-adapter.ts`: Backward compatibility wrapper and converter for `SKILL.md`.
 - `packages/runtime/src/core/migration.ts`: Retroactive project migrator and schema upgrader.
+- `packages/runtime/src/core/job-manager.ts`: Run isolation, active pointer resolution & job metadata manager.
 - `packages/runtime/src/mcp/server.ts`: Stdio Model Context Protocol (MCP) server integration.
 - `packages/runtime/src/telemetry/server.ts`: Real-time telemetry server and SSE event streamer.
 - `apps/axi/src/cli/index.ts`: AXI CLI entry point (`reactive-skills-axi`).

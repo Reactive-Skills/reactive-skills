@@ -16,6 +16,8 @@ vi.mock('@reactive-skills/runtime', () => ({
         { id: '01a06e96-initial-event-id', type: 'SKILL_INITIALIZED' },
       ]),
     })),
+    getJobId: vi.fn(() => 'default'),
+    close: vi.fn(),
   })),
 }));
 
