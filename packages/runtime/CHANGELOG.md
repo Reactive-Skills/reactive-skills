@@ -1,4 +1,12 @@
 
+## [0.2.0] - 2026-09-13
+
+- feat: add real-time telemetry server, AXI view command, and live visual telemetry deck (46b4b95)
+- refactor(apps): rename apps/reactive-skills-axi to apps/axi to eliminate path stutter (7148b9a)
+- copy(site): sharpen hero subhead and fix command block wrapping in quickstart CTA (b3ecf55)
+- feat(site): move Registry link to the end of primary navigation (6908b51)
+- style(site): polish skill registry surfaces against craft floor standards (8e373f8)
+
 # Changelog
 
 ## [2.0.2] - 2026-09-11

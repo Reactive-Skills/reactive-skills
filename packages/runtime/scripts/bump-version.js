@@ -36,7 +36,8 @@ const repoRoot = path.resolve(projectRoot, '../..');
 const packageJsonPaths = [
   pkgPath,
   path.join(repoRoot, 'package.json'),
-  path.join(repoRoot, 'apps', 'reactive-skills-axi', 'package.json'),
+  path.join(repoRoot, 'apps', 'axi', 'package.json'),
+  path.join(repoRoot, 'apps', 'site', 'package.json'),
 ];
 
 for (const p of packageJsonPaths) {
@@ -74,15 +75,15 @@ for (const sDir of skillsDirs) {
   if (fs.existsSync(sDir)) {
     const skillFolders = fs.readdirSync(sDir, { withFileTypes: true });
     for (const dirent of skillFolders) {
-      if (dirent.isDirectory()) {
+      if (dirent.isDirectory() && !dirent.name.startsWith('_')) {
         const skillYamlPath = path.join(sDir, dirent.name, 'skill.yaml');
         if (fs.existsSync(skillYamlPath)) {
           let content = fs.readFileSync(skillYamlPath, 'utf8');
-          if (content.includes('version:')) {
-            content = content.replace(/version:\s*["'][^"']+["']/g, `version: "${nextVersion}"`);
-            content = content.replace(/version:\s*([0-9.]+)/g, `version: "${nextVersion}"`);
+          if (/^version:\s*/m.test(content)) {
+            content = content.replace(/^version:\s*["'][^"']+["']/gm, `version: "${nextVersion}"`);
+            content = content.replace(/^version:\s*([0-9.]+)/gm, `version: "${nextVersion}"`);
           } else {
-            content = content.replace(/name:\s*["']?([^"'\n]+)["']?/, `name: "$1"\nversion: "${nextVersion}"`);
+            content = content.replace(/^name:\s*["']?([^"'\n]+)["']?/m, `name: "$1"\nversion: "${nextVersion}"`);
           }
           fs.writeFileSync(skillYamlPath, content, 'utf8');
           filesUpdated.push(path.relative(projectRoot, skillYamlPath));

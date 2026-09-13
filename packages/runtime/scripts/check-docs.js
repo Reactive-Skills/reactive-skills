@@ -34,6 +34,7 @@ for (const doc of requiredDocs) {
 // 2. Check CLI commands documented in README.md
 const readmeContent = fs.readFileSync(path.join(projectRoot, 'README.md'), 'utf8');
 const cliPath = [
+  path.join(projectRoot, 'apps', 'axi', 'src', 'cli', 'index.ts'),
   path.join(projectRoot, 'apps', 'reactive-skills-axi', 'src', 'cli', 'index.ts'),
   path.join(projectRoot, 'packages', 'runtime', 'src', 'cli', 'index.ts'),
   path.join(projectRoot, 'src', 'cli', 'index.ts'),
