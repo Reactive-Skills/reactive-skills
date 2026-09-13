@@ -8,7 +8,8 @@
     "axi": "./dist/cli/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",

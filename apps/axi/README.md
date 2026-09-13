@@ -2,6 +2,8 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
+> 🚀 **What's New in v0.3.0:** First-class Job & Run Management, isolated event ledgers, dual-write deliverable archives, and AXI `jobs` suite (`list`, `switch`, `archive`). [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.3.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+
 ## Installation
 
 Run directly without installing (zero install, recommended for agents):
@@ -22,7 +24,9 @@ npm install -g @reactive-skills/axi
 # Zero-install via npx:
 npx -y @reactive-skills/axi                          # dashboard
 npx -y @reactive-skills/axi state <skill>            # active state & prompt
+npx -y @reactive-skills/axi state <skill> --job <id> # target specific run
 npx -y @reactive-skills/axi emit <skill> <signal>    # advance state machine
+npx -y @reactive-skills/axi jobs <skill> list        # list isolated runs
 npx -y @reactive-skills/axi init <name>              # scaffold new reactive skill
 npx -y @reactive-skills/axi upgrade <path>           # upgrade legacy SKILL.md
 npx -y @reactive-skills/axi inspect <path>           # inspect statechart
@@ -106,6 +110,21 @@ Output (TOON format):
 - State inspection endpoint (`/state`)
 - Health check endpoint (`/health`)
 
+### jobs
+
+Inspect, switch, and archive isolated execution runs and deliverables.
+
+```bash
+npx -y @reactive-skills/axi jobs my-skill list             # list all runs
+npx -y @reactive-skills/axi jobs my-skill switch <job-id>  # switch active pointer
+npx -y @reactive-skills/axi jobs my-skill archive <job-id> # mark run archived
+```
+
+Output (TOON format):
+- Active job pointer
+- Job list with status, creation timestamp, and title
+- Archived status confirmations
+
 ## Design Principles
 
 This CLI follows the [AXI (Agent eXperience Interface)](https://axi.md) principles:
@@ -118,4 +137,4 @@ This CLI follows the [AXI (Agent eXperience Interface)](https://axi.md) principl
 
 ## License
 
-MIT
+AGPL-3.0-only

@@ -14,7 +14,8 @@
     "reactive-skills-mcp": "./dist/mcp/server.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsc",

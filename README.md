@@ -5,6 +5,17 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.3.0)
+
+---
+
+> 🚀 **What's New in v0.3.0:**
+> - **Job & Run Management:** Isolate execution runs under `.reactive/skills/<skill>/jobs/<job-id>/` with independent event logs.
+> - **Dual-Write Deliverables:** Archive read models in `.docs/<skill>/jobs/<job-id>/` with canonical root mirroring for the active job.
+> - **AXI `jobs` Suite:** New `jobs list`, `jobs switch`, and `jobs archive` commands + `--job <id>` targeting.
+> - **Subagent Swarm Isolation:** Execute parallel tasks concurrently without state machine mutex contention.
+> 
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.3.0) · [View Changelog](CHANGELOG.md)
 
 ---
 

@@ -1,6 +1,8 @@
 # @reactive-skills/runtime
 
-Reactive Skills Architecture (RSA) core runtime - FSM engine, event store, guard evaluator, projection engine, and MCP server.
+Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
+
+> 🚀 **What's New in v0.3.0:** First-class Job & Run Management, isolated event logs, dual-write deliverable mirroring, and subagent swarm concurrency. [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.3.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -11,15 +13,16 @@ npm install @reactive-skills/runtime
 ## Usage
 
 ```ts
-import { FSMEngine, EventStore, LegacySkillAdapter, ProjectionEngine } from '@reactive-skills/runtime';
+import { FSMEngine, EventStore, JobManager, LegacySkillAdapter, ProjectionEngine } from '@reactive-skills/runtime';
 ```
 
 ## Core Modules
 
 - `FSMEngine` - Hierarchical State Machine loader, state path resolver, and signal-driven transition engine
+- `JobManager` - Run isolation, active pointer resolution, metadata management, and safe directory pathing
 - `EventStore` - Immutable append-only event ledger (JSONL + SQLite)
 - `GuardEvaluator` - Sandbox evaluator for transition guard expressions
-- `ProjectionEngine` - Handlebars deliverable generator for read-model projections
+- `ProjectionEngine` - Handlebars deliverable generator for read-model projections with dual-write archiving
 - `LegacySkillAdapter` - Backward compatibility wrapper and converter for SKILL.md
 - `McpServer` - Stdio Model Context Protocol (MCP) server integration
 - `TelemetryServer` - Real-time Server-Sent Events (SSE) broadcaster and Private Network Access (PNA) HTTP bridge
