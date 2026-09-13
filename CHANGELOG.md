@@ -1,4 +1,8 @@
 
+## [0.3.0] - 2026-09-13
+
+- feat(core): implement job management, isolated run storage, dual-write projections, and AXI jobs suite (c76c6cb)
+
 ## [2.0.0] - 2026-09-01
 
 - feat: implement SQLite event store engine, state snapshotting, and JSONL log rotation with supporting documentation (6912493)

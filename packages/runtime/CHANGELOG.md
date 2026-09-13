@@ -1,4 +1,12 @@
 
+## [0.3.0] - 2026-09-13
+
+- feat(core): implement job management, isolated run storage, dual-write projections, and AXI jobs suite (c76c6cb)
+- chore: release v0.2.0 (bb33cfc)
+- feat: add real-time telemetry server, AXI view command, and live visual telemetry deck (46b4b95)
+- refactor(apps): rename apps/reactive-skills-axi to apps/axi to eliminate path stutter (7148b9a)
+- copy(site): sharpen hero subhead and fix command block wrapping in quickstart CTA (b3ecf55)
+
 ## [0.2.0] - 2026-09-13
 
 - feat: add real-time telemetry server, AXI view command, and live visual telemetry deck (46b4b95)
