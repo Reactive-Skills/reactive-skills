@@ -15,7 +15,7 @@ This repository houses the **Reactive Skills Architecture (RSA)**: a TypeScript 
 - `pnpm install` — Install workspace dependencies.
 - `pnpm run build` — Compile TypeScript source across `@reactive-skills/runtime` and `@reactive-skills/axi`.
 - `pnpm test` — Run runtime Vitest suites (`packages/runtime/tests/`). **Mandatory gate before finishing any task.**
-- `pnpm test:axi` — Run AXI CLI Vitest suites (`apps/reactive-skills-axi/tests/`).
+- `pnpm test:axi` — Run AXI CLI Vitest suites (`apps/axi/tests/`).
 - `pnpm demo` — Run the end-to-end TDD refactor simulation.
 - `npx -y @reactive-skills/axi mcp` — Run MCP stdio server.
 - `npx -y @reactive-skills/axi <command>` (or `reactive-skills-axi <command>`):
@@ -68,7 +68,7 @@ Reactive skills can be consumed through three integration modes. The runtime its
 - `packages/runtime/src/core/legacy-adapter.ts`: Backward compatibility wrapper and converter for `SKILL.md`.
 - `packages/runtime/src/core/migration.ts`: Retroactive project migrator and schema upgrader.
 - `packages/runtime/src/mcp/server.ts`: Stdio Model Context Protocol (MCP) server integration.
-- `apps/reactive-skills-axi/src/cli/index.ts`: AXI CLI entry point (`reactive-skills-axi`).
+- `apps/axi/src/cli/index.ts`: AXI CLI entry point (`reactive-skills-axi`).
 - `skills/`: Synthetic test and verification fixtures (`_test_fsm_skill`, `_test_hitl_skill`, `_test_hsm_skill`, `_test_legacy_skill`).
 - `tests/`: Automated unit and integration test suites.
 

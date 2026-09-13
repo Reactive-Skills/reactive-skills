@@ -113,7 +113,9 @@ export interface SetupResult {
 
 export function buildServerEntry(useLocal = false): { command: string; args: string[] } {
   if (useLocal) {
-    const localCli = path.resolve(process.cwd(), 'apps/reactive-skills-axi/dist/cli/index.js');
+    const localCli = fs.existsSync(path.resolve(process.cwd(), 'apps/axi/dist/cli/index.js'))
+      ? path.resolve(process.cwd(), 'apps/axi/dist/cli/index.js')
+      : path.resolve(process.cwd(), 'apps/reactive-skills-axi/dist/cli/index.js');
     return {
       command: 'node',
       args: [localCli, 'mcp'],

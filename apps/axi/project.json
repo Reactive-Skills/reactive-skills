@@ -1,7 +1,7 @@
 {
   "name": "reactive-skills-axi",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "apps/reactive-skills-axi/src",
+  "sourceRoot": "apps/axi/src",
   "projectType": "application",
   "tags": ["ai", "agent", "cli", "axi"],
   "targets": {

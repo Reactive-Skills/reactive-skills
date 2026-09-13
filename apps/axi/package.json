@@ -13,7 +13,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Reactive-Skills/reactive-skills.git",
-    "directory": "apps/reactive-skills-axi"
+    "directory": "apps/axi"
   },
   "engines": {
     "node": ">=22.5.0"
