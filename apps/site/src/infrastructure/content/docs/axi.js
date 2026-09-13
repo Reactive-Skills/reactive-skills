@@ -19,13 +19,14 @@ export const axi = {
       heading: 'The public CLI contract',
       blocks: [
         { type: 'text', text: 'The CLI entrypoint is zero-install via npx, or installed globally with npm i -g @reactive-skills/axi.' },
-        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi <command> [options]', explanation: 'Available commands: init, state, emit, events, inspect, reset, upgrade, mcp.' } },
+        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi <command> [options]', explanation: 'Available commands: init, state, emit, events, inspect, reset, upgrade, view, mcp.' } },
         { type: 'list', items: [
           'axi (dashboard) — lists registered skills, current states, and suggested next actions.',
           'axi state <skill> — outputs active state, hierarchical path, and allowed transitions.',
           'axi emit <skill> <signal> — dispatches a typed signal to evaluate guards and advance.',
           'axi inspect <path> — displays complete statechart hierarchy and guard rules.',
           'axi events <skill> [limit] — tails the immutable append-only event ledger.',
+          'axi view <skill> — launches real-time telemetry server and live visual viewer.',
           'axi init <name> — scaffolds a modular reactive skill directory.',
           'axi reset <skill> — resets active execution run while preserving deliverables.',
           'axi mcp — launches stdio MCP server for GUI IDE host connectivity.',

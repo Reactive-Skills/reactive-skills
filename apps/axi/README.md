@@ -27,6 +27,7 @@ npx -y @reactive-skills/axi init <name>              # scaffold new reactive ski
 npx -y @reactive-skills/axi upgrade <path>           # upgrade legacy SKILL.md
 npx -y @reactive-skills/axi inspect <path>           # inspect statechart
 npx -y @reactive-skills/axi events [limit]           # tail event ledger
+npx -y @reactive-skills/axi view <skill>             # launch telemetry viewer
 
 # Or if installed globally:
 reactive-skills-axi state <skill>
@@ -88,6 +89,22 @@ npx -y @reactive-skills/axi events 100 my-skill # last 100 events for my-skill
 Output (TOON format):
 - Count of events shown
 - Event entries with seq, timestamp, type, state
+
+### view
+
+Launch the real-time telemetry streaming server and live viewer for a skill.
+
+```bash
+npx -y @reactive-skills/axi view my-skill             # default port 4242
+npx -y @reactive-skills/axi view my-skill --port 5000 # custom port
+```
+
+Output (TOON format):
+- Telemetry listener status
+- Bound port and base URL
+- SSE events endpoint (`/events`)
+- State inspection endpoint (`/state`)
+- Health check endpoint (`/health`)
 
 ## Design Principles
 

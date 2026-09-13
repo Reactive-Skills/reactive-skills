@@ -26,6 +26,7 @@ Update `context/progress-tracker.md` after each meaningful implementation change
   - `upgrade <path>`: Convert legacy `SKILL.md` to reactive format.
   - `inspect <path>`: Print statechart, transitions, and guards.
   - `events [limit]`: Tail `.reactive/skills/<skill>/events.jsonl`.
+  - `view <skill>`: Launch real-time telemetry viewer and SSE stream.
 
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->

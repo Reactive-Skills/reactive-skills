@@ -100,6 +100,7 @@ Reactive skills can be driven through two primary integration paths:
 | `inspect` | `npx -y @reactive-skills/axi inspect <skill>` | Print statechart topology, substates, and guard rules |
 | `init` | `npx -y @reactive-skills/axi init <name>` | Scaffold a new modular reactive skill package |
 | `reset` | `npx -y @reactive-skills/axi reset <skill>` | Clear execution run state while preserving deliverables |
+| `view` | `npx -y @reactive-skills/axi view <skill>` | Launch real-time telemetry server and live visual statechart viewer |
 
 ---
 

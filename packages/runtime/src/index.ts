@@ -10,3 +10,5 @@ export * from './mcp/server.js';
 export * from './sync/types.js';
 export { runSync } from './sync/engine.js';
 export { syncEngineCommand } from './sync/cli.js';
+export * from './telemetry/types.js';
+export * from './telemetry/server.js';

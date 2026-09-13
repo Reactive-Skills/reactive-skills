@@ -25,6 +25,7 @@ This repository houses the **Reactive Skills Architecture (RSA)**: a TypeScript 
   - `events [limit]`: Tail `.reactive/skills/<skill>/events.jsonl`.
   - `init <name>`: Scaffold new modular reactive skill in `skills/<name>/`.
   - `reset <skill>`: Clear active execution run while preserving deliverables.
+  - `view <skill>`: Launch real-time telemetry viewer and SSE event stream.
 
 ---
 
@@ -68,6 +69,7 @@ Reactive skills can be consumed through three integration modes. The runtime its
 - `packages/runtime/src/core/legacy-adapter.ts`: Backward compatibility wrapper and converter for `SKILL.md`.
 - `packages/runtime/src/core/migration.ts`: Retroactive project migrator and schema upgrader.
 - `packages/runtime/src/mcp/server.ts`: Stdio Model Context Protocol (MCP) server integration.
+- `packages/runtime/src/telemetry/server.ts`: Real-time telemetry server and SSE event streamer.
 - `apps/axi/src/cli/index.ts`: AXI CLI entry point (`reactive-skills-axi`).
 - `skills/`: Synthetic test and verification fixtures (`_test_fsm_skill`, `_test_hitl_skill`, `_test_hsm_skill`, `_test_legacy_skill`).
 - `tests/`: Automated unit and integration test suites.

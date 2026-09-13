@@ -22,6 +22,7 @@ import { FSMEngine, EventStore, LegacySkillAdapter, ProjectionEngine } from '@re
 - `ProjectionEngine` - Handlebars deliverable generator for read-model projections
 - `LegacySkillAdapter` - Backward compatibility wrapper and converter for SKILL.md
 - `McpServer` - Stdio Model Context Protocol (MCP) server integration
+- `TelemetryServer` - Real-time Server-Sent Events (SSE) broadcaster and Private Network Access (PNA) HTTP bridge
 
 ## Skill Manifest Schema
 

@@ -1,0 +1,323 @@
+import http from 'node:http';
+import { URL } from 'node:url';
+import { EventStore } from '../core/event-store.js';
+import { FSMEngine } from '../core/fsm-engine.js';
+import { SignalEvent } from '../core/types.js';
+import {
+  TelemetryHealthResponse,
+  TelemetryServerOptions,
+  TelemetrySignalRequest,
+  TelemetrySignalResponse,
+  TelemetryStateResponse,
+} from './types.js';
+
+export class TelemetryServer {
+  private server: http.Server | null = null;
+  private eventStore: EventStore;
+  private fsmEngine?: FSMEngine;
+  private port: number;
+  private host: string;
+  private heartbeatIntervalMs: number;
+  private skillName?: string;
+  private startTime: number = Date.now();
+  private activeClients: Set<http.ServerResponse> = new Set();
+  private activeSockets: Set<any> = new Set();
+  private unsubscribeEventStore?: () => void;
+
+  constructor(options: TelemetryServerOptions) {
+    this.eventStore = options.eventStore;
+    this.fsmEngine = options.fsmEngine;
+    this.port = options.port ?? 4242;
+    this.host = options.host ?? '127.0.0.1';
+    this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 15000;
+    this.skillName = options.skillName ?? (options.fsmEngine ? options.fsmEngine.getManifest().name : undefined);
+  }
+
+  public getPort(): number {
+    if (!this.server) return this.port;
+    const addr = this.server.address();
+    if (typeof addr === 'object' && addr !== null) {
+      return addr.port;
+    }
+    return this.port;
+  }
+
+  public getUrl(): string {
+    return `http://${this.host}:${this.getPort()}`;
+  }
+
+  public async start(): Promise<{ port: number; url: string }> {
+    if (this.server) {
+      return { port: this.getPort(), url: this.getUrl() };
+    }
+
+    this.server = http.createServer((req, res) => {
+      this.handleRequest(req, res);
+    });
+
+    this.server.on('connection', (socket) => {
+      this.activeSockets.add(socket);
+      socket.on('close', () => {
+        this.activeSockets.delete(socket);
+      });
+    });
+
+    // Subscribe to EventStore updates to broadcast to all connected SSE clients
+    this.unsubscribeEventStore = this.eventStore.subscribe((event: SignalEvent) => {
+      this.broadcastEvent(event);
+    });
+
+    return new Promise((resolve, reject) => {
+      this.server!.once('error', reject);
+      this.server!.listen(this.port, this.host, () => {
+        this.server!.removeListener('error', reject);
+        const actualPort = this.getPort();
+        resolve({ port: actualPort, url: this.getUrl() });
+      });
+    });
+  }
+
+  public async stop(): Promise<void> {
+    if (this.unsubscribeEventStore) {
+      this.unsubscribeEventStore();
+      this.unsubscribeEventStore = undefined;
+    }
+
+    for (const client of this.activeClients) {
+      try {
+        client.end();
+      } catch {
+        // ignore client close errors
+      }
+    }
+    this.activeClients.clear();
+
+    for (const socket of this.activeSockets) {
+      try {
+        socket.destroy();
+      } catch {
+        // ignore socket destruction errors
+      }
+    }
+    this.activeSockets.clear();
+
+    if (this.server) {
+      const serverToClose = this.server;
+      this.server = null;
+      await new Promise<void>((resolve, reject) => {
+        serverToClose.close((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    }
+  }
+
+  private setCorsHeaders(res: http.ServerResponse): void {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Last-Event-ID, Cache-Control');
+  }
+
+  private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
+    this.setCorsHeaders(res);
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    const hostHeader = req.headers.host || `${this.host}:${this.port}`;
+    const parsedUrl = new URL(req.url || '/', `http://${hostHeader}`);
+    const pathname = parsedUrl.pathname;
+
+    if (req.method === 'GET' && (pathname === '/health' || pathname === '/status')) {
+      this.handleHealth(res);
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/state') {
+      this.handleState(res);
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/events/history') {
+      this.handleEventsHistory(parsedUrl, res);
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/events') {
+      this.handleSseEvents(req, parsedUrl, res);
+      return;
+    }
+
+    if (req.method === 'POST' && pathname === '/signal') {
+      this.handleSignal(req, res);
+      return;
+    }
+
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: `Not found: ${pathname}` }));
+  }
+
+  private handleHealth(res: http.ServerResponse): void {
+    const payload: TelemetryHealthResponse = {
+      status: 'ok',
+      skillName: this.skillName,
+      latestSeq: this.eventStore.getLatestSequence(),
+      uptimeSeconds: Math.floor((Date.now() - this.startTime) / 1000),
+    };
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(payload));
+  }
+
+  private handleState(res: http.ServerResponse): void {
+    const latestSeq = this.eventStore.getLatestSequence();
+    const snapshot = this.eventStore.getLatestSnapshot();
+    const activeState = this.fsmEngine ? this.fsmEngine.getCurrentState() : snapshot?.state;
+    const context = this.fsmEngine ? this.fsmEngine.getContext() : snapshot?.context;
+
+    const payload: TelemetryStateResponse = {
+      skillName: this.skillName,
+      latestSeq,
+      activeState,
+      context,
+      snapshot,
+    };
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(payload));
+  }
+
+  private handleEventsHistory(url: URL, res: http.ServerResponse): void {
+    const sinceSeqParam = url.searchParams.get('sinceSeq');
+    const limitParam = url.searchParams.get('limit');
+
+    const sinceSeq = sinceSeqParam !== null ? parseInt(sinceSeqParam, 10) : undefined;
+    const limit = limitParam !== null ? parseInt(limitParam, 10) : undefined;
+
+    let events: SignalEvent[];
+    if (sinceSeq !== undefined && !isNaN(sinceSeq)) {
+      events = this.eventStore.getSince(sinceSeq);
+    } else {
+      events = this.eventStore.getAll();
+    }
+
+    if (limit !== undefined && !isNaN(limit) && limit > 0) {
+      events = events.slice(-limit);
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ count: events.length, events }));
+  }
+
+  private handleSseEvents(req: http.IncomingMessage, url: URL, res: http.ServerResponse): void {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    this.activeClients.add(res);
+
+    // Initial greeting / connect event
+    res.write(`event: connected\ndata: ${JSON.stringify({ skillName: this.skillName, connectedAt: new Date().toISOString() })}\n\n`);
+
+    // Determine initial backlog sequence
+    const sinceSeqParam = url.searchParams.get('sinceSeq') || (req.headers['last-event-id'] as string | undefined);
+    if (sinceSeqParam) {
+      const sinceSeq = parseInt(sinceSeqParam, 10);
+      if (!isNaN(sinceSeq)) {
+        const backlog = this.eventStore.getSince(sinceSeq);
+        for (const event of backlog) {
+          this.sendSseEvent(res, event);
+        }
+      }
+    }
+
+    // Keepalive heartbeat
+    const heartbeatTimer = setInterval(() => {
+      try {
+        res.write(': heartbeat\n\n');
+      } catch {
+        clearInterval(heartbeatTimer);
+      }
+    }, this.heartbeatIntervalMs);
+
+    req.on('close', () => {
+      clearInterval(heartbeatTimer);
+      this.activeClients.delete(res);
+    });
+  }
+
+  private sendSseEvent(client: http.ServerResponse, event: SignalEvent): void {
+    try {
+      client.write(`id: ${event.seq}\n`);
+      client.write(`event: signal_event\n`);
+      client.write(`data: ${JSON.stringify(event)}\n\n`);
+    } catch {
+      this.activeClients.delete(client);
+    }
+  }
+
+  private broadcastEvent(event: SignalEvent): void {
+    for (const client of this.activeClients) {
+      this.sendSseEvent(client, event);
+    }
+  }
+
+  private handleSignal(req: http.IncomingMessage, res: http.ServerResponse): void {
+    let rawBody = '';
+    req.setEncoding('utf8');
+
+    req.on('data', (chunk) => {
+      rawBody += chunk;
+      if (rawBody.length > 1024 * 1024) {
+        // 1MB safety guard
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Payload too large' }));
+        req.destroy();
+      }
+    });
+
+    req.on('end', async () => {
+      try {
+        const parsed = JSON.parse(rawBody || '{}') as TelemetrySignalRequest;
+        if (!parsed.signal) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Missing required field: signal' }));
+          return;
+        }
+
+        if (this.fsmEngine) {
+          const transition = await this.fsmEngine.handleSignal(parsed.signal, parsed.payload || {});
+          const response: TelemetrySignalResponse = {
+            success: true,
+            transition,
+          };
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(response));
+        } else {
+          // If no FSM engine attached, append signal directly to event store
+          const event = this.eventStore.append(
+            parsed.signal,
+            parsed.payload || {},
+            { source: 'telemetry_bridge' }
+          );
+          const response: TelemetrySignalResponse = {
+            success: true,
+            event: event as SignalEvent,
+          };
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(response));
+        }
+      } catch (err: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message || 'Signal dispatch failure' }));
+      }
+    });
+  }
+}

@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   ChevronRight,
@@ -12,10 +15,13 @@ import {
   Package,
   ExternalLink,
   Star,
+  Activity,
 } from 'lucide-react';
 import { CommandBlock } from '@/components/common/CommandBlock';
 import { CopyButton } from '@/components/common/CopyButton';
 import { MermaidViewer } from '@/components/common/MermaidViewer';
+import { LiveTelemetryDeck } from '@/features/telemetry/LiveTelemetryDeck';
+import { cn } from '@/lib/utils';
 
 function GithubIcon({ className, ...props }) {
   return (
@@ -26,6 +32,7 @@ function GithubIcon({ className, ...props }) {
 }
 
 export function SkillDetailView({ skill }) {
+  const [statechartMode, setStatechartMode] = useState('diagram'); // 'diagram' | 'live'
   const githubSkillUrl = `https://github.com/Reactive-Skills/skills/tree/main/${skill.slug}`;
   const skillsShCmd = skill.skillsShInstallCmd || `npx skills add Reactive-Skills/skills --skill ${skill.slug}`;
   const axiRunCmd = skill.installCmd || `npx -y @reactive-skills/axi invoke ${skill.slug}`;
@@ -180,17 +187,55 @@ export function SkillDetailView({ skill }) {
         <div className="space-y-10 lg:col-span-2">
           {/* Statechart Section */}
           {skill.mermaidChart && (
-            <section className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Code2 className="h-4 w-4 text-phino-signal" aria-hidden="true" />
-                <h2 className="font-display text-xl font-semibold text-phino-text">
-                  Statechart Diagram
-                </h2>
+            <section className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Code2 className="h-4 w-4 text-phino-signal" aria-hidden="true" />
+                  <h2 className="font-display text-xl font-semibold text-phino-text">
+                    {statechartMode === 'live' ? 'Live Telemetry Deck' : 'Statechart Topology'}
+                  </h2>
+                </div>
+
+                <div className="flex items-center rounded-lg border border-phino-border bg-phino-canvas p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setStatechartMode('diagram')}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors',
+                      statechartMode === 'diagram'
+                        ? 'bg-phino-surface-raised text-phino-text shadow-sm'
+                        : 'text-phino-text-muted hover:text-phino-text'
+                    )}
+                  >
+                    <Code2 className="h-3.5 w-3.5" />
+                    <span>Static Statechart</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatechartMode('live')}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors',
+                      statechartMode === 'live'
+                        ? 'bg-phino-signal text-phino-canvas font-semibold shadow-sm'
+                        : 'text-phino-text-muted hover:text-phino-text'
+                    )}
+                  >
+                    <Activity className="h-3.5 w-3.5" />
+                    <span>Live Telemetry</span>
+                  </button>
+                </div>
               </div>
-              <p className="text-sm text-phino-text-muted">
-                Visual state machine topology parsed directly from the official <code className="text-phino-text font-mono">STATECHART.md</code> in <code className="text-phino-text font-mono">Reactive-Skills/skills</code>:
-              </p>
-              <MermaidViewer chart={skill.mermaidChart} title={`${skill.name} (stateDiagram-v2)`} />
+
+              {statechartMode === 'live' ? (
+                <LiveTelemetryDeck skill={skill} />
+              ) : (
+                <>
+                  <p className="text-sm text-phino-text-muted">
+                    Visual state machine topology parsed directly from the official <code className="text-phino-text font-mono">STATECHART.md</code> in <code className="text-phino-text font-mono">Reactive-Skills/skills</code>:
+                  </p>
+                  <MermaidViewer chart={skill.mermaidChart} title={`${skill.name} (stateDiagram-v2)`} />
+                </>
+              )}
             </section>
           )}
 

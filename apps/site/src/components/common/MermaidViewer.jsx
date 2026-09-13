@@ -6,7 +6,7 @@ import { Eye, Code2, AlertCircle, ZoomIn, ZoomOut, RotateCcw } from 'lucide-reac
 import { CopyButton } from './CopyButton';
 import { cn } from '@/lib/utils';
 
-export function MermaidViewer({ chart, title = 'Statechart Topology', className }) {
+export function MermaidViewer({ chart, title = 'Statechart Topology', className, activeState }) {
   const [view, setView] = useState('diagram'); // 'diagram' | 'code'
   const [svg, setSvg] = useState('');
   const [error, setError] = useState(null);
@@ -87,6 +87,37 @@ export function MermaidViewer({ chart, title = 'Statechart Topology', className 
       isMounted = false;
     };
   }, [chart, resolvedTheme, uniqueId]);
+
+  useEffect(() => {
+    if (!containerRef.current || !activeState || !svg) return;
+    try {
+      const stateElements = containerRef.current.querySelectorAll('g.node, g.state, g[id*="state"]');
+      stateElements.forEach((el) => {
+        const textContent = el.textContent?.trim() || '';
+        const id = el.id || '';
+        const isMatch = textContent.includes(activeState) || id.toLowerCase().includes(activeState.toLowerCase());
+
+        const rects = el.querySelectorAll('rect, polygon, circle, path');
+        if (isMatch) {
+          el.classList.add('active-hsm-state');
+          rects.forEach((r) => {
+            r.style.stroke = '#2dd4bf';
+            r.style.strokeWidth = '3px';
+            r.style.filter = 'drop-shadow(0 0 10px rgba(45, 212, 191, 0.8))';
+          });
+        } else {
+          el.classList.remove('active-hsm-state');
+          rects.forEach((r) => {
+            r.style.stroke = '';
+            r.style.strokeWidth = '';
+            r.style.filter = '';
+          });
+        }
+      });
+    } catch {
+      // ignore DOM styling exceptions
+    }
+  }, [svg, activeState]);
 
   return (
     <div className={cn('overflow-hidden rounded-xl border border-phino-border bg-phino-surface', className)}>
