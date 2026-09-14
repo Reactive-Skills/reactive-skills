@@ -177,6 +177,44 @@ skills/<skill-name>/
 
 ---
 
+## 🗂️ Job & Run Isolation (Multi-Run Management)
+
+RSA provides multi-run isolation, allowing teams and autonomous agents to execute multiple independent runs of the same skill without event log pollution or deliverable overwrites.
+
+### Storage Architecture
+
+- **Isolated Event Ledgers:** Each run maintains its own scoped event ledger under `.reactive/skills/<skill>/jobs/<job-id>/` with independent `events.jsonl` and SQLite `events.db` stores.
+- **Active Job Pointer:** The active run pointer is tracked at `.reactive/skills/<skill>/active_job` (defaults to `default`). All CLI commands and MCP operations target the active run unless explicitly overridden.
+- **Dual-Write Deliverable Mirroring:** Projections write to `.docs/<skill>/jobs/<job-id>/` for permanent archival, and automatically mirror to the canonical `.docs/` path for the active job.
+- **Template Context:** Handlebars templates receive `jobId` directly inside `ProjectionContext`, enabling deliverables to reference their run ID.
+
+### CLI Run Management
+
+```bash
+# List all execution runs for a skill (active job highlighted)
+npx -y @reactive-skills/axi jobs <skill> list
+# (or bidirectional syntax: npx -y @reactive-skills/axi jobs list <skill>)
+
+# Switch the active execution run
+npx -y @reactive-skills/axi jobs <skill> switch <job-id>
+
+# Archive a completed run
+npx -y @reactive-skills/axi jobs <skill> archive <job-id>
+
+# Target a specific job explicitly without switching active pointer
+npx -y @reactive-skills/axi state <skill> --job <job-id>
+npx -y @reactive-skills/axi emit <skill> <signal> --job <job-id>
+```
+
+### Model Context Protocol (MCP) Tools
+
+When interacting with agents over MCP, job operations are exposed as native tools:
+- `reactive_list_jobs`: Lists all runs for a skill with state and active indicators.
+- `reactive_switch_job`: Switches the active job pointer.
+- `reactive_archive_job`: Marks a job run as archived.
+
+---
+
 ## 📊 Telemetry & Performance Metrics
 
 RSA provides real-time performance instrumentation and token economy tracking with zero runtime latency tax.

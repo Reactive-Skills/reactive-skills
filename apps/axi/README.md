@@ -133,9 +133,19 @@ Output (TOON format):
 Inspect, switch, and archive isolated execution runs and deliverables.
 
 ```bash
-npx -y @reactive-skills/axi jobs my-skill list             # list all runs
-npx -y @reactive-skills/axi jobs my-skill switch <job-id>  # switch active pointer
-npx -y @reactive-skills/axi jobs my-skill archive <job-id> # mark run archived
+# List all runs (supports bidirectional argument ordering)
+npx -y @reactive-skills/axi jobs my-skill list
+npx -y @reactive-skills/axi jobs list my-skill
+
+# Switch active run pointer:
+npx -y @reactive-skills/axi jobs my-skill switch <job-id>
+
+# Archive a run:
+npx -y @reactive-skills/axi jobs my-skill archive <job-id>
+
+# Target a specific job explicitly without switching:
+npx -y @reactive-skills/axi state my-skill --job <job-id>
+npx -y @reactive-skills/axi emit my-skill <signal> --job <job-id>
 ```
 
 Output (TOON format):

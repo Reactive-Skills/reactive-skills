@@ -69,6 +69,26 @@ Dual-mode event sourcing:
 1. **JSONL** (`.reactive/skills/<skill>/events.jsonl`) - Human-readable append-only log
 2. **SQLite** (`.reactive/skills/<skill>/events.db`) - Indexed relational database
 
+## Job & Run Management
+
+The runtime isolates execution runs through `JobManager`:
+
+```ts
+import { JobManager, FSMEngine } from '@reactive-skills/runtime';
+
+// 1. Manage isolated runs:
+const jobManager = new JobManager();
+jobManager.createJob('my-skill', { id: 'sprint-1', name: 'Sprint 1 Run', setActive: true });
+
+// 2. Instantiate engine targeted to a specific run:
+const engine = new FSMEngine({
+  skillDir: './skills/my-skill',
+  jobId: 'sprint-1',
+});
+
+// Deliverables automatically mirror to .docs/my-skill/jobs/sprint-1/ and canonical .docs/
+```
+
 ## Performance & Telemetry
 
 The runtime captures execution telemetry and token estimates with zero latency penalty:
