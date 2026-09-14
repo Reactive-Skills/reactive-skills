@@ -40,7 +40,7 @@ const cliPath = [
   path.join(projectRoot, 'src', 'cli', 'index.ts'),
 ].find((p) => fs.existsSync(p));
 
-const cliCommands = ['mcp', 'state', 'emit', 'events', 'inspect', 'reset', 'init'];
+const cliCommands = ['mcp', 'state', 'emit', 'events', 'inspect', 'validate', 'reset', 'init', 'jobs'];
 for (const cmd of cliCommands) {
   if (!readmeContent.includes(cmd)) {
     errors.push(`CLI command '${cmd}' is missing from README.md`);

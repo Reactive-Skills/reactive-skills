@@ -109,6 +109,7 @@ Reactive skills can be driven through two primary integration paths:
 | `invoke` | `npx -y @reactive-skills/axi invoke <skill> [--payload JSON]` | Initialize and start a skill run |
 | `events` | `npx -y @reactive-skills/axi events <skill> [limit]` | Tail recent events from the append-only event store |
 | `inspect` | `npx -y @reactive-skills/axi inspect <skill>` | Print statechart topology, substates, and guard rules |
+| `validate` | `npx -y @reactive-skills/axi validate [path]` | Validate skill manifest, prompt templates, transition targets, and bootloader |
 | `init` | `npx -y @reactive-skills/axi init <name>` | Scaffold a new modular reactive skill package |
 | `reset` | `npx -y @reactive-skills/axi reset <skill>` | Clear execution run state while preserving deliverables |
 | `jobs` | `npx -y @reactive-skills/axi jobs <skill> [list\|switch\|archive]` | Inspect, switch, and archive isolated execution runs and deliverables |

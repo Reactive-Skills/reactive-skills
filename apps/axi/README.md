@@ -80,6 +80,24 @@ Output (TOON format):
 - States list with descriptions
 - Transitions with signals, targets, and guard expressions
 
+### validate
+
+Validate a reactive skill's manifest, prompt templates, transition targets, and universal bootloader.
+
+```bash
+# Validate a specific skill directory:
+npx -y @reactive-skills/axi validate skills/my-skill
+
+# Or discover and validate all skills in ./skills/:
+npx -y @reactive-skills/axi validate
+```
+
+Output (TOON format):
+- Validation status (`valid` or `invalid`)
+- States and transition counts
+- Formatted error and warning lists
+- Non-zero exit code (1) on validation failure for CI integration
+
 ### events
 
 Tail the event store ledger for a skill.
