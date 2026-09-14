@@ -1,4 +1,12 @@
 
+## [0.4.1] - 2026-09-14
+
+- feat(runtime,axi): add mcp job tools, template jobId context, and flexible jobs cli arguments (2b31451)
+- feat(mcp): add reactive_switch_job and reactive_archive_job tools with active job indicators
+- feat(projections): expose jobId directly in ProjectionContext for Handlebars templates
+- feat(axi): support bidirectional argument ordering in jobs command (jobs list <skill> and jobs <skill> list)
+- docs: introduce PERFORMANCE-STANDARDS.md for P0-P3 latency budgets, caching tiers, and CRAP score limits
+
 ## [0.4.0] - 2026-09-14
 
 - feat(axi): implement native validate command for skill manifest and statechart verification (3b75a21)

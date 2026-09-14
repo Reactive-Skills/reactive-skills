@@ -5,17 +5,17 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.0)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.1)
 
 ---
 
-> 🚀 **What's New in v0.4.0:**
-> - **Native `validate` Command:** Complete verification of skill manifests, states, prompt templates on disk, transition targets, and universal bootloaders in TOON format with clean CI exit codes.
-> - **Job & Run Management:** Isolate execution runs under `.reactive/skills/<skill>/jobs/<job-id>/` with independent event logs.
-> - **Dual-Write Deliverables:** Archive read models in `.docs/<skill>/jobs/<job-id>/` with canonical root mirroring for the active job.
-> - **AXI `jobs` Suite:** New `jobs list`, `jobs switch`, and `jobs archive` commands + `--job <id>` targeting.
+> 🚀 **What's New in v0.4.1:**
+> - **First-Class MCP Job Tools:** Added `reactive_switch_job` and `reactive_archive_job` to the MCP server suite, with active job indicators on `reactive_list_jobs`.
+> - **Template-Level `jobId` Context:** `ProjectionContext` directly exposes `jobId` to all Handlebars deliverable templates.
+> - **Bidirectional `jobs` CLI Syntax:** Accepts both `reactive-skills-axi jobs list <skill>` and `reactive-skills-axi jobs <skill> list`.
+> - **Performance Engineering Standards:** Introduced `PERFORMANCE-STANDARDS.md` defining latency budgets (P0 < 5ms), memory caching tiers, and CRAP risk limits.
 > 
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.0) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.1) · [View Changelog](CHANGELOG.md)
 
 ---
 
