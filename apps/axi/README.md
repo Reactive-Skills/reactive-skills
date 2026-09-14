@@ -2,7 +2,7 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.3.0:** First-class Job & Run Management, isolated event ledgers, dual-write deliverable archives, and AXI `jobs` suite (`list`, `switch`, `archive`). [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.3.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.4.0:** Native `validate` command, first-class Job & Run Management, isolated event ledgers, and AXI `jobs` suite (`list`, `switch`, `archive`). [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

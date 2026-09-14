@@ -2,7 +2,7 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.3.0:** First-class Job & Run Management, isolated event logs, dual-write deliverable mirroring, and subagent swarm concurrency. [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.3.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.4.0:** Native `validate` command in AXI, first-class Job & Run Management, isolated event logs, and dual-write deliverable mirroring. [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

@@ -1,4 +1,12 @@
 
+## [0.4.0] - 2026-09-14
+
+- feat(axi): implement native validate command for skill manifest and statechart verification (3b75a21)
+- docs: add v0.3.0 release highlights to READMEs and bundle changelog in package files (732f72b)
+- chore: release v0.3.0 (ae379ca)
+- feat(core): implement job management, isolated run storage, dual-write projections, and AXI jobs suite (c76c6cb)
+- chore: release v0.2.0 (bb33cfc)
+
 ## [0.3.0] - 2026-09-13
 
 - feat(core): implement job management, isolated run storage, dual-write projections, and AXI jobs suite (c76c6cb)
