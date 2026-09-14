@@ -1,4 +1,12 @@
 
+## [0.4.3] - 2026-09-14
+
+- feat(telemetry): embed standalone live web dashboard at GET / (4ffb3a9)
+- docs: add comprehensive job management documentation across readmes (e1a626a)
+- docs: add practical telemetry inspection and metrics querying guide (ef37fb6)
+- chore: release v0.4.2 (28c16b9)
+- feat(runtime): add in-engine telemetry, template caching, and performance budget verification (7dfae37)
+
 ## [0.4.2] - 2026-09-14
 
 - feat(runtime): add in-engine telemetry, template caching, and performance budget verification (7dfae37)
