@@ -205,4 +205,32 @@ states:
     expect(signalJson.success).toBe(true);
     expect(engine.getCurrentState()).toBe('RUNNING');
   });
+
+  it('should serve standalone live web dashboard at GET / and GET /index.html', async () => {
+    server = new TelemetryServer({
+      eventStore,
+      port: 0,
+      skillName: 'test-telemetry',
+    });
+
+    const { url } = await server.start();
+
+    // GET /
+    const rootRes = await fetch(url);
+    expect(rootRes.status).toBe(200);
+    expect(rootRes.headers.get('content-type')).toContain('text/html');
+    const rootHtml = await rootRes.text();
+    expect(rootHtml).toContain('<!DOCTYPE html>');
+    expect(rootHtml).toContain('test-telemetry');
+    expect(rootHtml).toContain('Reactive Skills Telemetry');
+    expect(rootHtml).toContain('EventSource');
+
+    // GET /index.html
+    const indexRes = await fetch(`${url}/index.html`);
+    expect(indexRes.status).toBe(200);
+    expect(indexRes.headers.get('content-type')).toContain('text/html');
+    const indexHtml = await indexRes.text();
+    expect(indexHtml).toContain('<!DOCTYPE html>');
+    expect(indexHtml).toContain('test-telemetry');
+  });
 });

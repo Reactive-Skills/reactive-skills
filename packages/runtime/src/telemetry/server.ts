@@ -10,6 +10,7 @@ import {
   TelemetrySignalResponse,
   TelemetryStateResponse,
 } from './types.js';
+import { renderDashboardHtml } from './dashboard.js';
 
 export class TelemetryServer {
   private server: http.Server | null = null;
@@ -132,19 +133,25 @@ export class TelemetryServer {
     const hostHeader = req.headers.host || `${this.host}:${this.port}`;
     const parsedUrl = new URL(req.url || '/', `http://${hostHeader}`);
     const pathname = parsedUrl.pathname;
+    const isGetOrHead = req.method === 'GET' || req.method === 'HEAD';
 
-    if (req.method === 'GET' && (pathname === '/health' || pathname === '/status')) {
-      this.handleHealth(res);
+    if (isGetOrHead && (pathname === '/' || pathname === '/index.html')) {
+      this.handleDashboard(req, res);
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/state') {
-      this.handleState(res);
+    if (isGetOrHead && (pathname === '/health' || pathname === '/status')) {
+      this.handleHealth(req, res);
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/events/history') {
-      this.handleEventsHistory(parsedUrl, res);
+    if (isGetOrHead && pathname === '/state') {
+      this.handleState(req, res);
+      return;
+    }
+
+    if (isGetOrHead && pathname === '/events/history') {
+      this.handleEventsHistory(req, parsedUrl, res);
       return;
     }
 
@@ -162,18 +169,43 @@ export class TelemetryServer {
     res.end(JSON.stringify({ error: `Not found: ${pathname}` }));
   }
 
-  private handleHealth(res: http.ServerResponse): void {
+  private handleDashboard(req: http.IncomingMessage, res: http.ServerResponse): void {
+    const html = renderDashboardHtml({
+      skillName: this.skillName,
+      port: this.getPort(),
+      host: this.host,
+    });
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Length': Buffer.byteLength(html),
+    });
+    if (req.method === 'HEAD') {
+      res.end();
+    } else {
+      res.end(html);
+    }
+  }
+
+  private handleHealth(req: http.IncomingMessage, res: http.ServerResponse): void {
     const payload: TelemetryHealthResponse = {
       status: 'ok',
       skillName: this.skillName,
       latestSeq: this.eventStore.getLatestSequence(),
       uptimeSeconds: Math.floor((Date.now() - this.startTime) / 1000),
     };
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(payload));
+    const body = JSON.stringify(payload);
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body),
+    });
+    if (req.method === 'HEAD') {
+      res.end();
+    } else {
+      res.end(body);
+    }
   }
 
-  private handleState(res: http.ServerResponse): void {
+  private handleState(req: http.IncomingMessage, res: http.ServerResponse): void {
     const latestSeq = this.eventStore.getLatestSequence();
     const snapshot = this.eventStore.getLatestSnapshot();
     const activeState = this.fsmEngine ? this.fsmEngine.getCurrentState() : snapshot?.state;
@@ -187,11 +219,19 @@ export class TelemetryServer {
       snapshot,
     };
 
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(payload));
+    const body = JSON.stringify(payload);
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body),
+    });
+    if (req.method === 'HEAD') {
+      res.end();
+    } else {
+      res.end(body);
+    }
   }
 
-  private handleEventsHistory(url: URL, res: http.ServerResponse): void {
+  private handleEventsHistory(req: http.IncomingMessage, url: URL, res: http.ServerResponse): void {
     const sinceSeqParam = url.searchParams.get('sinceSeq');
     const limitParam = url.searchParams.get('limit');
 
@@ -209,8 +249,20 @@ export class TelemetryServer {
       events = events.slice(-limit);
     }
 
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ count: events.length, events }));
+    const payload = {
+      count: events.length,
+      events,
+    };
+    const body = JSON.stringify(payload);
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body),
+    });
+    if (req.method === 'HEAD') {
+      res.end();
+    } else {
+      res.end(body);
+    }
   }
 
   private handleSseEvents(req: http.IncomingMessage, url: URL, res: http.ServerResponse): void {

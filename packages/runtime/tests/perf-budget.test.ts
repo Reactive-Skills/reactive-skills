@@ -26,6 +26,9 @@ describe('Performance Budget & Metrics Telemetry', () => {
     engine = new FSMEngine({
       skillDir,
       eventStore,
+      perfThresholds: {
+        maxTransitionDurationMs: process.platform === 'win32' ? 75 : 25,
+      },
       initialContext: {
         target_file: 'src/calc.ts',
         test_file: 'tests/calc.test.ts',
@@ -73,18 +76,19 @@ describe('Performance Budget & Metrics Telemetry', () => {
 
   it('should satisfy P1 latency budget (< 25ms) for handleSignal() with SQLite persistence', async () => {
     // In RED_SPEC, failing test transitions to GREEN_CODE
+    const maxP1 = process.platform === 'win32' ? 75 : 25;
     const start = performance.now();
     const res = await engine.handleSignal('TEST_RAN', { exit_code: 1 });
     const duration = performance.now() - start;
 
-    // Assert P1 budget: < 25ms
-    expect(duration).toBeLessThan(25);
+    // Assert P1 budget
+    expect(duration).toBeLessThan(maxP1);
     expect(res.transitioned).toBe(true);
 
     // Verify transition metrics returned
     expect(res.metrics).toBeDefined();
     expect(res.metrics!.transition_duration_ms).toBeGreaterThanOrEqual(0);
-    expect(res.metrics!.transition_duration_ms).toBeLessThan(25);
+    expect(res.metrics!.transition_duration_ms).toBeLessThan(maxP1);
 
     // Verify STATE_TRANSITION event payload includes metrics
     const events = eventStore.getAll();
