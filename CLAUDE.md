@@ -10,6 +10,7 @@ Read the following files in order before implementing or making any architectura
 4. `context/code-standards.md`
 5. `context/ai-workflow-rules.md`
 6. `context/progress-tracker.md`
+7. `context/PERFORMANCE-STANDARDS.md`
 
 Update `context/progress-tracker.md` after each meaningful implementation change.
 
@@ -31,6 +32,7 @@ Update `context/progress-tracker.md` after each meaningful implementation change
   - `view <skill>`: Launch real-time telemetry viewer and SSE stream.
 
 <!-- nx configuration start-->
+
 <!-- Leave the start & end comments to automatically receive updates. -->
 
 ## General Guidelines for working with Nx
