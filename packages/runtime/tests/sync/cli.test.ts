@@ -84,4 +84,24 @@ describe('syncEngineCommand CLI contract', () => {
       fs.rmSync(dest, { recursive: true, force: true });
     }
   });
+
+  it('accepts --link to create symlinks/junctions', async () => {
+    const src = makeTmpDir();
+    const dest = makeTmpDir();
+    try {
+      createSkill(src, 'alpha');
+      const out = await syncEngineCommand([
+        '--source', src,
+        '--target', dest,
+        '--link',
+      ]);
+      expect(out).toContain('OK');
+      const destAlpha = path.join(dest, 'alpha');
+      expect(fs.lstatSync(destAlpha).isSymbolicLink()).toBe(true);
+      expect(fs.readFileSync(path.join(destAlpha, 'SKILL.md'), 'utf8')).toContain('alpha');
+    } finally {
+      fs.rmSync(src, { recursive: true, force: true });
+      fs.rmSync(dest, { recursive: true, force: true });
+    }
+  });
 });

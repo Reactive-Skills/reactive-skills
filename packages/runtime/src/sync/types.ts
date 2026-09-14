@@ -7,17 +7,19 @@ export interface SkillEntry {
 }
 
 export interface SyncOptions {
-  sourceDir: string;
+  sourceDir?: string;
+  sourceDirs?: string[];
   targetDirs: string[];
   targetSkill?: string;
   dryRun?: boolean;
   backup?: boolean;
+  link?: boolean;
 }
 
 export interface SyncResult {
   skill: string;
   target: string;
-  action: 'mirrored' | 'unchanged' | 'skipped_invalid' | 'backed_up' | 'skipped_overlap';
+  action: 'mirrored' | 'linked' | 'unchanged' | 'skipped_invalid' | 'backed_up' | 'skipped_overlap';
   backupPath?: string;
   reason?: string;
 }
@@ -25,6 +27,7 @@ export interface SyncResult {
 export interface SyncReport {
   dryRun: boolean;
   sourceDir: string;
+  sourceDirs?: string[];
   targetDirs: string[];
   skillsFound: number;
   skillsValid: number;

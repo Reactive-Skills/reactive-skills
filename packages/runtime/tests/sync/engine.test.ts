@@ -517,4 +517,53 @@ describe('runSync', () => {
     expect(fs.existsSync(b1)).toBe(true);
     expect(fs.existsSync(b2)).toBe(true);
   });
+
+  describe('link / junction mode', () => {
+    it('creates directory junction/symlink pointing to source', () => {
+      createSkill(src, 'alpha');
+      const r = runSync({ sourceDir: src, targetDirs: [dest], link: true });
+
+      const linkResult = r.results.find(res => res.skill === 'alpha');
+      expect(linkResult?.action).toBe('linked');
+
+      const destAlpha = path.join(dest, 'alpha');
+      const stat = fs.lstatSync(destAlpha);
+      expect(stat.isSymbolicLink()).toBe(true);
+
+      // Verify content is accessible
+      expect(fs.readFileSync(path.join(destAlpha, 'SKILL.md'), 'utf8')).toContain('alpha');
+
+      // Verify live propagation without re-sync
+      fs.writeFileSync(path.join(src, 'alpha', 'SKILL.md'), '# modified live\n');
+      expect(fs.readFileSync(path.join(destAlpha, 'SKILL.md'), 'utf8')).toBe('# modified live\n');
+    });
+
+    it('reports unchanged when link already points to target', () => {
+      createSkill(src, 'alpha');
+      runSync({ sourceDir: src, targetDirs: [dest], link: true });
+
+      const r2 = runSync({ sourceDir: src, targetDirs: [dest], link: true });
+      const linkResult = r2.results.find(res => res.skill === 'alpha');
+      expect(linkResult?.action).toBe('unchanged');
+    });
+
+    it('replaces existing physical directory with junction and backs up', () => {
+      createSkill(src, 'alpha');
+      // First sync as physical copy
+      runSync({ sourceDir: src, targetDirs: [dest], link: false });
+      expect(fs.lstatSync(path.join(dest, 'alpha')).isSymbolicLink()).toBe(false);
+
+      // Second sync with link: true
+      const r2 = runSync({ sourceDir: src, targetDirs: [dest], link: true, backup: true });
+      expect(fs.lstatSync(path.join(dest, 'alpha')).isSymbolicLink()).toBe(true);
+      expect(r2.results.some(res => res.action === 'backed_up')).toBe(true);
+    });
+
+    it('dryRun does not create links on disk', () => {
+      createSkill(src, 'alpha');
+      const r = runSync({ sourceDir: src, targetDirs: [dest], link: true, dryRun: true });
+      expect(r.results.find(res => res.skill === 'alpha')?.action).toBe('linked');
+      expect(fs.existsSync(path.join(dest, 'alpha'))).toBe(false);
+    });
+  });
 });

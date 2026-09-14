@@ -248,15 +248,24 @@ function pathsOverlap(sourceDir: string, targetDir: string): boolean {
 export function runSync(options: SyncOptions): SyncReport {
   const {
     sourceDir,
+    sourceDirs,
     targetDirs,
     targetSkill,
     dryRun = false,
     backup = true,
+    link = false,
   } = options;
+
+  const sources = sourceDirs && sourceDirs.length > 0
+    ? sourceDirs
+    : (sourceDir ? [sourceDir] : []);
+
+  const primarySource = sources[0] || sourceDir || '';
 
   const report: SyncReport = {
     dryRun,
-    sourceDir,
+    sourceDir: primarySource,
+    sourceDirs: sources,
     targetDirs,
     skillsFound: 0,
     skillsValid: 0,
@@ -266,19 +275,34 @@ export function runSync(options: SyncOptions): SyncReport {
     errors: [],
   };
 
-  if (!fs.existsSync(sourceDir)) {
-    report.errors.push(`Source directory not found: ${sourceDir}`);
+  if (sources.length === 0) {
+    report.errors.push(`No source directory provided`);
     return report;
   }
 
-  const skills = discoverSkills(sourceDir, targetSkill);
+  const skillsMap = new Map<string, SkillEntry>();
+  for (const src of sources) {
+    if (!fs.existsSync(src)) {
+      report.errors.push(`Source directory not found: ${src}`);
+      continue;
+    }
+    const found = discoverSkills(src, targetSkill);
+    for (const skill of found) {
+      if (!skillsMap.has(skill.name)) {
+        skillsMap.set(skill.name, skill);
+      }
+    }
+  }
+
+  const skills = Array.from(skillsMap.values());
   report.skillsFound = skills.length;
   report.skillsValid = skills.filter(s => s.isValid).length;
   report.skillsInvalid = skills.filter(s => !s.isValid).length;
 
   for (const targetDir of targetDirs) {
-    if (pathsOverlap(sourceDir, targetDir)) {
-      report.errors.push(`Source and destination overlap: ${sourceDir} -> ${targetDir}`);
+    const overlapping = sources.find(src => pathsOverlap(src, targetDir));
+    if (overlapping) {
+      report.errors.push(`Source and destination overlap: ${overlapping} -> ${targetDir}`);
       for (const skill of skills) {
         report.results.push({
           skill: skill.name,
@@ -304,6 +328,93 @@ export function runSync(options: SyncOptions): SyncReport {
           action: 'skipped_invalid',
           reason: 'Missing SKILL.md or skill.yaml',
         });
+        continue;
+      }
+
+      if (link) {
+        let lstat: fs.Stats | undefined;
+        try {
+          lstat = fs.lstatSync(destPath);
+        } catch {
+          lstat = undefined;
+        }
+
+        let backupPath: string | undefined;
+
+        if (lstat) {
+          if (lstat.isSymbolicLink()) {
+            let currentTarget: string | undefined;
+            try {
+              currentTarget = fs.readlinkSync(destPath);
+              currentTarget = path.resolve(path.dirname(destPath), currentTarget);
+            } catch {
+              currentTarget = undefined;
+            }
+            if (currentTarget && path.resolve(currentTarget) === path.resolve(skill.path)) {
+              report.results.push({
+                skill: skill.name,
+                target: targetDir,
+                action: 'unchanged',
+              });
+              continue;
+            }
+            if (dryRun) {
+              report.results.push({
+                skill: skill.name,
+                target: targetDir,
+                action: 'linked',
+                reason: 'dry-run',
+              });
+              continue;
+            }
+            fs.unlinkSync(destPath);
+          } else {
+            if (dryRun) {
+              report.results.push({
+                skill: skill.name,
+                target: targetDir,
+                action: 'linked',
+                reason: 'dry-run',
+              });
+              continue;
+            }
+            if (backup) {
+              backupPath = createExternalBackup(targetDir, skill.name);
+              report.results.push({
+                skill: skill.name,
+                target: targetDir,
+                action: 'backed_up',
+                backupPath,
+              });
+            }
+            removeDirectoryRecursive(destPath);
+          }
+        }
+
+        if (dryRun) {
+          report.results.push({
+            skill: skill.name,
+            target: targetDir,
+            action: 'linked',
+            reason: 'dry-run',
+          });
+          continue;
+        }
+
+        const linkType = process.platform === 'win32' ? 'junction' : 'dir';
+        try {
+          fs.symlinkSync(path.resolve(skill.path), destPath, linkType);
+          report.results.push({
+            skill: skill.name,
+            target: targetDir,
+            action: 'linked',
+            backupPath,
+          });
+        } catch (linkErr: any) {
+          report.errors.push(
+            `Link failed for ${skill.name} to ${targetDir}: ${linkErr.message}`,
+          );
+        }
         continue;
       }
 
@@ -392,7 +503,7 @@ export function runSync(options: SyncOptions): SyncReport {
       const destEntries = fs.readdirSync(targetDir, { withFileTypes: true });
       const destNames = destEntries
         .filter(e =>
-          e.isDirectory() &&
+          (e.isDirectory() || e.isSymbolicLink()) &&
           !e.name.startsWith('.staging') &&
           !e.name.startsWith('.old-') &&
           e.name !== '.sync-backups',

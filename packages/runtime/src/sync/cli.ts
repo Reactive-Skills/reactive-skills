@@ -4,27 +4,42 @@ import os from 'node:os';
 import { runSync } from './engine.js';
 import { SyncReport } from './types.js';
 
+function expandPath(p: string): string {
+  if (p === '~' || p.startsWith('~/') || p.startsWith('~\\')) {
+    return path.join(os.homedir(), p.slice(1));
+  }
+  return path.resolve(p);
+}
+
 function parseArgs(args: string[]): {
   sourceDir?: string;
+  sourceDirs: string[];
   targetDirs: string[];
   targetSkill?: string;
   dryRun: boolean;
   noBackup: boolean;
+  link?: boolean;
+  allSources?: boolean;
   json: boolean;
   help: boolean;
 } {
   const result: {
     sourceDir?: string;
+    sourceDirs: string[];
     targetDirs: string[];
     targetSkill?: string;
     dryRun: boolean;
     noBackup: boolean;
+    link?: boolean;
+    allSources?: boolean;
     json: boolean;
     help: boolean;
   } = {
+    sourceDirs: [],
     targetDirs: [],
     dryRun: false,
     noBackup: false,
+    allSources: false,
     json: false,
     help: false,
   };
@@ -42,6 +57,15 @@ function parseArgs(args: string[]): {
         break;
       case '--force':
         break;
+      case '--link':
+        result.link = true;
+        break;
+      case '--copy':
+        result.link = false;
+        break;
+      case '--all-sources':
+        result.allSources = true;
+        break;
       case '--no-backup':
         result.noBackup = true;
         break;
@@ -51,13 +75,15 @@ function parseArgs(args: string[]): {
       case '--source':
       case '-s':
         if (i + 1 < args.length) {
-          result.sourceDir = path.resolve(args[++i]);
+          const s = expandPath(args[++i]);
+          result.sourceDirs.push(s);
+          if (!result.sourceDir) result.sourceDir = s;
         }
         break;
       case '--target':
       case '-t':
         if (i + 1 < args.length) {
-          result.targetDirs.push(path.resolve(args[++i]));
+          result.targetDirs.push(expandPath(args[++i]));
         }
         break;
       case '--skill':
@@ -69,10 +95,12 @@ function parseArgs(args: string[]): {
         if (arg.startsWith('-')) {
           throw new Error(`Unknown flag: ${arg}`);
         }
-        if (!result.sourceDir) {
-          result.sourceDir = path.resolve(arg);
+        if (result.sourceDirs.length === 0) {
+          const s = expandPath(arg);
+          result.sourceDir = s;
+          result.sourceDirs.push(s);
         } else {
-          result.targetDirs.push(path.resolve(arg));
+          result.targetDirs.push(expandPath(arg));
         }
     }
     i++;
@@ -97,8 +125,9 @@ Flags:
   --target, -t <dir>    Add a target directory (repeatable)
   --skill <name>        Sync a specific skill only
   --dry-run             Preview changes without writing
-  --mirror              Mirror mode (default, only supported mode): destination
-                        becomes identical to source distributable payload
+  --link                Use symlinks/junctions instead of physical file copy (preferred)
+  --copy                Force physical file copy (opposite of --link)
+  --mirror              Mirror mode (default): destination becomes identical to source payload
   --force               Accepted but no-op (mirror is the only mode)
   --no-backup           Skip timestamped backup before overwrite
   --json                Machine-readable JSON output
@@ -149,6 +178,7 @@ function formatReport(report: SyncReport, json: boolean): string {
 
   for (const r of report.results) {
     const icon =
+      r.action === 'linked' ? '⚯' :
       r.action === 'mirrored' ? '⇄' :
       r.action === 'unchanged' ? '=' :
       r.action === 'skipped_invalid' ? '!' :
@@ -194,15 +224,46 @@ export async function syncEngineCommand(args: string[]): Promise<string> {
     return '';
   }
 
-  const sourceDir = opts.sourceDir || path.join(os.homedir(), '.agents', 'skills');
+  let sourceDirs: string[] = [...opts.sourceDirs];
+
+  // If --all-sources or no source was explicitly passed via CLI, load ~/.agents/sources.json
+  const sourcesCfgPath = path.join(os.homedir(), '.agents', 'sources.json');
+  if ((opts.allSources || sourceDirs.length === 0) && fs.existsSync(sourcesCfgPath)) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(sourcesCfgPath, 'utf8'));
+      if (Array.isArray(cfg.sources)) {
+        for (const s of cfg.sources) {
+          const exp = expandPath(s);
+          if (!sourceDirs.includes(exp)) {
+            sourceDirs.push(exp);
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // If still no sources found, check if current working directory is a skill repo
+  if (sourceDirs.length === 0) {
+    const cwd = process.cwd();
+    const hasSkillYaml = fs.existsSync(path.join(cwd, 'skill.yaml'));
+    const hasSkillsDir = fs.existsSync(path.join(cwd, 'skills'));
+    if (hasSkillYaml || hasSkillsDir) {
+      sourceDirs.push(cwd);
+    } else {
+      sourceDirs.push(path.join(os.homedir(), '.agents', 'skills'));
+    }
+  }
+
   const targetDirs = opts.targetDirs.length > 0 ? opts.targetDirs : defaultTargets();
 
   const report = runSync({
-    sourceDir,
+    sourceDirs,
+    sourceDir: sourceDirs[0],
     targetDirs,
     targetSkill: opts.targetSkill,
     dryRun: opts.dryRun,
     backup: !opts.noBackup,
+    link: opts.link,
   });
 
   return formatReport(report, opts.json);
