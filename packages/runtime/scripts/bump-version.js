@@ -113,7 +113,20 @@ if (fs.existsSync(changelogPath)) {
 }
 filesUpdated.push('CHANGELOG.md');
 
-// 6. Build and Pack fresh .tgz bundle
+// 6. Synchronize changelog to root and documentation site
+console.log('\n📄 Synchronizing CHANGELOG to root and documentation site...');
+try {
+  const syncChangelogScript = path.join(repoRoot, 'scripts', 'sync-changelog.js');
+  if (fs.existsSync(syncChangelogScript)) {
+    execSync(`node "${syncChangelogScript}"`, { stdio: 'inherit' });
+    filesUpdated.push(path.relative(projectRoot, path.join(repoRoot, 'CHANGELOG.md')));
+    filesUpdated.push(path.relative(projectRoot, path.join(repoRoot, 'apps', 'site', 'src', 'infrastructure', 'content', 'docs', 'changelog.js')));
+  }
+} catch (err) {
+  console.warn(`Could not sync site changelog: ${err.message}`);
+}
+
+// 7. Build and Pack fresh .tgz bundle
 console.log('\n📦 Compiling TypeScript & Packing fresh .tgz bundle...');
 try {
   // Clean old .tgz files

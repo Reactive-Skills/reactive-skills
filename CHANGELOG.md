@@ -1,4 +1,28 @@
 
+## [0.4.5] - 2026-09-14
+
+- feat(sync): add Windows NTFS Directory Junction linking and POSIX symlink engine for zero-drift live skill sync
+- feat(sync): support multi-source authoring discovery via ~/.agents/sources.json and --all-sources flag
+- feat(sync): add tilde (~) path expansion and intelligent current-working-directory fallback for third-party authors
+- feat(sync): add --link, --copy, and repeatable --source / --target CLI flags
+- test(sync): comprehensive 35-test unit suite covering junction linking, fallback copy, and multi-source discovery
+
+## [0.4.4] - 2026-09-14
+
+- fix(ci): calibrate perf budget for virtualized CI runners & automate GitHub Releases (e2dd853)
+- chore(release): bump version to 0.4.3 (2f89b7d)
+- feat(telemetry): embed standalone live web dashboard at GET / (4ffb3a9)
+- docs: add comprehensive job management documentation across readmes (e1a626a)
+- docs: add practical telemetry inspection and metrics querying guide (ef37fb6)
+
+## [0.4.3] - 2026-09-14
+
+- feat(telemetry): embed standalone live web dashboard at GET / (4ffb3a9)
+- docs: add comprehensive job management documentation across readmes (e1a626a)
+- docs: add practical telemetry inspection and metrics querying guide (ef37fb6)
+- chore: release v0.4.2 (28c16b9)
+- feat(runtime): add in-engine telemetry, template caching, and performance budget verification (7dfae37)
+
 ## [0.4.2] - 2026-09-14
 
 - feat(runtime): add in-engine telemetry, template caching, and performance budget verification (7dfae37)

@@ -623,6 +623,319 @@ export const registrySkills = [
     ]
   },
   {
+    "slug": "product-manager",
+    "name": "Product Manager",
+    "version": "1.0.0",
+    "schemaVersion": "2.1.0",
+    "category": "Metaprogramming & Lifecycle",
+    "description": "Event-driven product management and opportunity realization engine. Orchestrates opportunity discovery & worthwhileness research (new green-field projects vs existing product feature enhancements), strategic goal alignment, SMART requirement scoping, Eisenhower matrix prioritization, and lean vertical slice architecture.",
+    "tags": [
+      "product-manager",
+      "product",
+      "manager"
+    ],
+    "strictExecution": false,
+    "featured": false,
+    "initialState": "INIT",
+    "contextKeys": [
+      "product_name",
+      "opportunity_type",
+      "target_persona",
+      "problem_statement",
+      "worthwhileness_score",
+      "strategic_goals",
+      "anti_goals",
+      "tested_requirements",
+      "smart_requirements",
+      "eisenhower_matrix",
+      "vertical_slices",
+      "mvp_slice_ids",
+      "output_dir",
+      "spec_path",
+      "matrix_path"
+    ],
+    "defaultContext": {
+      "product_name": null,
+      "opportunity_type": null,
+      "target_persona": null,
+      "problem_statement": null,
+      "worthwhileness_score": null,
+      "strategic_goals": [],
+      "anti_goals": [],
+      "tested_requirements": [],
+      "smart_requirements": [],
+      "eisenhower_matrix": {
+        "q1_do_now": [],
+        "q2_schedule": [],
+        "q3_delegate": [],
+        "q4_defer_reject": []
+      },
+      "vertical_slices": [],
+      "mvp_slice_ids": [],
+      "output_dir": null,
+      "spec_path": null,
+      "matrix_path": null
+    },
+    "tools": [
+      "run_command",
+      "ask_question",
+      "view_file",
+      "list_dir",
+      "search_web",
+      "read_url_content",
+      "grep_search",
+      "write_to_file"
+    ],
+    "registryRepo": "Reactive-Skills/skills",
+    "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill product-manager",
+    "installCmd": "npx -y @reactive-skills/axi invoke product-manager",
+    "author": "Reactive Skills Core Team",
+    "stateCount": 14,
+    "states": [
+      {
+        "name": "INIT",
+        "description": "Bootloader: Verify reactive runtime environment",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "RUNTIME_READY",
+            "target": "SELECT_OPPORTUNITY_TYPE"
+          },
+          {
+            "signal": "SETUP_REQUIRED",
+            "target": "SETUP_RUNTIME"
+          }
+        ]
+      },
+      {
+        "name": "SETUP_RUNTIME",
+        "description": "Auto-configure harness MCP server or reactive CLI",
+        "tools": [
+          "run_command"
+        ],
+        "transitions": [
+          {
+            "signal": "SETUP_COMPLETE",
+            "target": "SELECT_OPPORTUNITY_TYPE",
+            "guard": "payload.exit_code == 0"
+          },
+          {
+            "signal": "SETUP_FAILED",
+            "target": "ERROR",
+            "guard": "payload.exit_code != 0"
+          }
+        ]
+      },
+      {
+        "name": "SELECT_OPPORTUNITY_TYPE",
+        "description": "Classify opportunity: NEW_PRODUCT (green-field) vs PRODUCT_ENHANCEMENT (existing product feature)",
+        "tools": [
+          "ask_question",
+          "view_file",
+          "list_dir"
+        ],
+        "transitions": [
+          {
+            "signal": "OPPORTUNITY_SELECTED",
+            "target": "RESEARCH_DISCOVERY",
+            "guard": "context.opportunity_type != null"
+          }
+        ]
+      },
+      {
+        "name": "RESEARCH_DISCOVERY",
+        "description": "Investigate problem space, target persona, market/user evidence, and competitive landscape",
+        "tools": [
+          "search_web",
+          "read_url_content",
+          "view_file",
+          "grep_search",
+          "ask_question"
+        ],
+        "transitions": [
+          {
+            "signal": "DISCOVERY_COMPLETED",
+            "target": "VALIDATE_WORTHWHILENESS"
+          },
+          {
+            "signal": "PIVOT_INTAKE",
+            "target": "SELECT_OPPORTUNITY_TYPE"
+          }
+        ]
+      },
+      {
+        "name": "VALIDATE_WORTHWHILENESS",
+        "description": "Assess Desirability, Feasibility, Viability, and Defensibility to verify if pursuit is worthwhile",
+        "tools": [
+          "ask_question",
+          "view_file"
+        ],
+        "transitions": [
+          {
+            "signal": "WORTHWHILE_CONFIRMED",
+            "target": "ALIGN_GOALS"
+          },
+          {
+            "signal": "WORTHWHILE_DOUBTFUL",
+            "target": "REVIEW_GATE"
+          }
+        ]
+      },
+      {
+        "name": "ALIGN_GOALS",
+        "description": "Align product outcomes with overarching strategic vision, North Star metric, and explicit anti-goals",
+        "tools": [
+          "view_file",
+          "write_to_file",
+          "ask_question"
+        ],
+        "transitions": [
+          {
+            "signal": "GOALS_ALIGNED",
+            "target": "GATHER_TEST_REQUIREMENTS"
+          },
+          {
+            "signal": "REALIGN_RESEARCH",
+            "target": "RESEARCH_DISCOVERY"
+          }
+        ]
+      },
+      {
+        "name": "GATHER_TEST_REQUIREMENTS",
+        "description": "Gather functional and non-functional requirements and test them with falsification checks",
+        "tools": [
+          "ask_question",
+          "view_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "REQUIREMENTS_TESTED",
+            "target": "FORMULATE_SMART"
+          },
+          {
+            "signal": "REVISE_GOALS",
+            "target": "ALIGN_GOALS"
+          }
+        ]
+      },
+      {
+        "name": "FORMULATE_SMART",
+        "description": "Scope vetted requirements into Specific, Measurable, Achievable, Relevant, and Time-bound specifications",
+        "tools": [
+          "view_file",
+          "write_to_file",
+          "ask_question"
+        ],
+        "transitions": [
+          {
+            "signal": "SMART_SCOPED",
+            "target": "EISENHOWER_PRIORITIZATION"
+          },
+          {
+            "signal": "REFINE_REQUIREMENTS",
+            "target": "GATHER_TEST_REQUIREMENTS"
+          }
+        ]
+      },
+      {
+        "name": "EISENHOWER_PRIORITIZATION",
+        "description": "Prioritize scope using Eisenhower Matrix: Q1 Do Now, Q2 Schedule, Q3 Delegate/Ops, Q4 Defer/Reject",
+        "tools": [
+          "ask_question",
+          "view_file",
+          "write_to_file"
+        ],
+        "transitions": [
+          {
+            "signal": "PRIORITIZATION_COMPLETE",
+            "target": "VERTICAL_SLICING"
+          },
+          {
+            "signal": "REVISE_SCOPE",
+            "target": "FORMULATE_SMART"
+          }
+        ]
+      },
+      {
+        "name": "VERTICAL_SLICING",
+        "description": "Decompose prioritized scope into end-to-end deliverable vertical slices and define MVP boundary",
+        "tools": [
+          "view_file",
+          "write_to_file",
+          "ask_question"
+        ],
+        "transitions": [
+          {
+            "signal": "SLICES_DECOMPOSED",
+            "target": "REVIEW_GATE"
+          },
+          {
+            "signal": "REVISE_PRIORITIES",
+            "target": "EISENHOWER_PRIORITIZATION"
+          }
+        ]
+      },
+      {
+        "name": "REVIEW_GATE",
+        "description": "Human Gate: Review and approve consolidated Lean Product Charter, Eisenhower Matrix, and Slices",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "USER_APPROVED",
+            "target": "PROJECTING"
+          },
+          {
+            "signal": "REVISE_SLICES",
+            "target": "VERTICAL_SLICING"
+          },
+          {
+            "signal": "REVISE_PRIORITIES",
+            "target": "EISENHOWER_PRIORITIZATION"
+          },
+          {
+            "signal": "ABORT",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "PROJECTING",
+        "description": "Render and write deliverable markdown specs, matrices, and catalog inventory",
+        "tools": [
+          "write_to_file",
+          "view_file"
+        ],
+        "transitions": [
+          {
+            "signal": "PROJECTED",
+            "target": "SUCCESS"
+          }
+        ]
+      },
+      {
+        "name": "SUCCESS",
+        "description": "Terminal success state summarizing approved product slices and execution handover",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "ERROR",
+        "description": "Terminal error state with diagnostic logs and triage instructions",
+        "tools": [
+          "write_to_file"
+        ],
+        "transitions": []
+      }
+    ],
+    "mermaidChart": "stateDiagram-v2\n    [*] --> INIT\n\n    INIT --> SELECT_OPPORTUNITY_TYPE: RUNTIME_READY\n    INIT --> SETUP_RUNTIME: SETUP_REQUIRED\n\n    SETUP_RUNTIME --> SELECT_OPPORTUNITY_TYPE: SETUP_COMPLETE (exit_code == 0)\n    SETUP_RUNTIME --> ERROR: SETUP_FAILED (exit_code != 0)\n\n    SELECT_OPPORTUNITY_TYPE --> RESEARCH_DISCOVERY: OPPORTUNITY_SELECTED (opportunity_type != null)\n\n    RESEARCH_DISCOVERY --> VALIDATE_WORTHWHILENESS: DISCOVERY_COMPLETED\n    RESEARCH_DISCOVERY --> SELECT_OPPORTUNITY_TYPE: PIVOT_INTAKE\n\n    VALIDATE_WORTHWHILENESS --> ALIGN_GOALS: WORTHWHILE_CONFIRMED\n    VALIDATE_WORTHWHILENESS --> REVIEW_GATE: WORTHWHILE_DOUBTFUL\n\n    ALIGN_GOALS --> GATHER_TEST_REQUIREMENTS: GOALS_ALIGNED\n    ALIGN_GOALS --> RESEARCH_DISCOVERY: REALIGN_RESEARCH\n\n    GATHER_TEST_REQUIREMENTS --> FORMULATE_SMART: REQUIREMENTS_TESTED\n    GATHER_TEST_REQUIREMENTS --> ALIGN_GOALS: REVISE_GOALS\n\n    FORMULATE_SMART --> EISENHOWER_PRIORITIZATION: SMART_SCOPED\n    FORMULATE_SMART --> GATHER_TEST_REQUIREMENTS: REFINE_REQUIREMENTS\n\n    EISENHOWER_PRIORITIZATION --> VERTICAL_SLICING: PRIORITIZATION_COMPLETE\n    EISENHOWER_PRIORITIZATION --> FORMULATE_SMART: REVISE_SCOPE\n\n    VERTICAL_SLICING --> REVIEW_GATE: SLICES_DECOMPOSED\n    VERTICAL_SLICING --> EISENHOWER_PRIORITIZATION: REVISE_PRIORITIES\n\n    REVIEW_GATE --> PROJECTING: USER_APPROVED\n    REVIEW_GATE --> VERTICAL_SLICING: REVISE_SLICES\n    REVIEW_GATE --> EISENHOWER_PRIORITIZATION: REVISE_PRIORITIES\n    REVIEW_GATE --> ERROR: ABORT\n\n    PROJECTING --> SUCCESS: PROJECTED\n\n    SUCCESS --> [*]\n    ERROR --> [*]",
+    "deliverables": [
+      ".docs/product-manager/{{context.product_name}}-spec.md",
+      ".docs/product-manager/{{context.product_name}}-eisenhower.md",
+      ".docs/product-manager/inventory.json"
+    ]
+  },
+  {
     "slug": "resume-manager",
     "name": "Resume Manager",
     "version": "2.2.0",

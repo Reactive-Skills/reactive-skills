@@ -3,6 +3,7 @@
   "version": "0.4.5",
   "description": "Reactive Skills Architecture (RSA) — monorepo workspace",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "pnpm --filter @reactive-skills/runtime build && pnpm --filter @reactive-skills/axi build",
     "test": "pnpm --filter @reactive-skills/runtime test",
@@ -11,9 +12,11 @@
     "check:docs": "pnpm --filter @reactive-skills/runtime run check:docs",
     "check:prose": "pnpm --filter @reactive-skills/runtime run check:prose",
     "demo": "pnpm --filter @reactive-skills/runtime demo",
-    "build:site": "pnpm --filter @reactive-skills/site build",
+    "build:site": "node scripts/sync-registry.js && node scripts/sync-changelog.js && pnpm --filter @reactive-skills/site build",
     "dev:site": "pnpm --filter @reactive-skills/site dev",
     "sync:registry": "node scripts/sync-registry.js",
+    "sync:changelog": "node scripts/sync-changelog.js",
+    "sync:all": "node scripts/sync-registry.js && node scripts/sync-changelog.js",
     "bump:patch": "pnpm --filter @reactive-skills/runtime run bump:patch",
     "bump:minor": "pnpm --filter @reactive-skills/runtime run bump:minor",
     "bump:major": "pnpm --filter @reactive-skills/runtime run bump:major"
