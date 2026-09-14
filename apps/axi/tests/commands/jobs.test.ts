@@ -104,4 +104,24 @@ deliverable_projections:
     // Pointer rotated
     expect(jobManager.getActiveJobId('test-jobs-skill')).not.toBe('job-to-archive');
   });
+
+  it('supports both <subcommand> <skill> and <skill> <subcommand> argument orderings', async () => {
+    await emitCommand(['test-jobs-skill', 'ADVANCE', '--job', 'order-test']);
+
+    // <skill> <subcommand>
+    const listOutput1 = await jobsCommand(['test-jobs-skill', 'list']);
+    expect(listOutput1).toContain('order-test');
+
+    // <subcommand> <skill>
+    const listOutput2 = await jobsCommand(['list', 'test-jobs-skill']);
+    expect(listOutput2).toContain('order-test');
+
+    // <skill> switch <job>
+    const switchOutput = await jobsCommand(['test-jobs-skill', 'switch', 'order-test']);
+    expect(switchOutput).toContain('order-test');
+
+    // <skill> archive <job>
+    const archiveOutput = await jobsCommand(['test-jobs-skill', 'archive', 'order-test']);
+    expect(archiveOutput).toContain('order-test');
+  });
 });

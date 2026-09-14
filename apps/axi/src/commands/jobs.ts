@@ -24,18 +24,24 @@ function resolveSkillPath(skillName: string): string | null {
 }
 
 export async function jobsCommand(args: string[]): Promise<string> {
-  let subCommand = args[0];
-  let remainingArgs = args.slice(1);
+  const KNOWN_SUBCOMMANDS = ['list', 'switch', 'archive'];
+  let subCommand = 'list';
+  let skillName = '';
+  let targetJobId: string | undefined;
 
-  // If first arg is not a known subcommand, treat it as skillName for list
-  if (subCommand && !['list', 'switch', 'archive'].includes(subCommand)) {
-    remainingArgs = args;
+  if (args.length > 0 && KNOWN_SUBCOMMANDS.includes(args[0])) {
+    subCommand = args[0];
+    skillName = args[1] || '';
+    targetJobId = args[2];
+  } else if (args.length > 1 && KNOWN_SUBCOMMANDS.includes(args[1])) {
+    skillName = args[0] || '';
+    subCommand = args[1];
+    targetJobId = args[2];
+  } else {
     subCommand = 'list';
-  } else if (!subCommand) {
-    subCommand = 'list';
+    skillName = args[0] || '';
+    targetJobId = args[1];
   }
-
-  const skillName = remainingArgs[0];
 
   if (!skillName) {
     const error = new AxiError(
@@ -66,7 +72,6 @@ export async function jobsCommand(args: string[]): Promise<string> {
 
   switch (subCommand) {
     case 'switch': {
-      const targetJobId = remainingArgs[1];
       if (!targetJobId) {
         const error = new AxiError(
           'Missing target job ID to switch to',
@@ -127,18 +132,18 @@ export async function jobsCommand(args: string[]): Promise<string> {
     }
 
     case 'archive': {
-      const targetJobId = remainingArgs[1] || jobManager.getActiveJobId(skillName);
-      const job = jobManager.getJob(skillName, targetJobId);
+      const archiveJobId = targetJobId || jobManager.getActiveJobId(skillName);
+      const job = jobManager.getJob(skillName, archiveJobId);
       if (!job) {
         const error = new AxiError(
-          `Job '${targetJobId}' not found to archive`,
+          `Job '${archiveJobId}' not found to archive`,
           'NOT_FOUND',
           [`Run \`reactive-skills-axi jobs ${skillName}\` to list available jobs`]
         );
         return renderOutput([renderError(error.message, error.code, error.suggestions)]);
       }
 
-      jobManager.updateJob(skillName, targetJobId, {
+      jobManager.updateJob(skillName, archiveJobId, {
         status: 'archived',
         completedAt: new Date().toISOString(),
       });
@@ -146,7 +151,7 @@ export async function jobsCommand(args: string[]): Promise<string> {
       // Rotate pointer if active job was archived
       const currentActive = jobManager.getActiveJobId(skillName);
       let freshJobId = currentActive;
-      if (currentActive === targetJobId) {
+      if (currentActive === archiveJobId) {
         const freshJob = jobManager.createJob(skillName, { setActive: true });
         freshJobId = freshJob.id;
       }
@@ -154,7 +159,7 @@ export async function jobsCommand(args: string[]): Promise<string> {
       const lines: string[] = [];
       lines.push(renderDetail('jobs_archive', {
         skill_id: skillName,
-        archived_job: targetJobId,
+        archived_job: archiveJobId,
         active_job: freshJobId,
       }, [
         { type: 'field', key: 'skill_id' },
@@ -162,7 +167,7 @@ export async function jobsCommand(args: string[]): Promise<string> {
         { type: 'field', key: 'active_job' },
       ]));
       lines.push(renderHelp([
-        `Job '${targetJobId}' archived successfully.`,
+        `Job '${archiveJobId}' archived successfully.`,
         `Current active job is '${freshJobId}'.`,
       ]));
       return renderOutput(lines);

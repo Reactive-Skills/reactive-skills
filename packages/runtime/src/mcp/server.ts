@@ -553,7 +553,10 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
         const targetSkill = skill || defaultSkill;
         const jobManager = new JobManager(workspaceDir);
         const activeJobId = jobManager.getActiveJobId(targetSkill);
-        const jobs = jobManager.listJobs(targetSkill);
+        const jobs = jobManager.listJobs(targetSkill).map(j => ({
+          ...j,
+          isActive: j.id === activeJobId,
+        }));
 
         return {
           content: [
@@ -564,6 +567,132 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
                   skill: targetSkill,
                   activeJobId,
                   jobs,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } catch (err: any) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 10. TOOL: reactive_switch_job
+  server.tool(
+    'reactive_switch_job',
+    'Switch the active execution job pointer for a reactive skill and synchronize deliverables',
+    {
+      skill: z.string().optional().describe('Name of the reactive skill (defaults to active skill)'),
+      job_id: z.string().describe('Target job ID to set as active'),
+    },
+    async ({ skill, job_id }) => {
+      try {
+        const skillName = skill || defaultSkill;
+        const jobManager = new JobManager(workspaceDir);
+        const job = jobManager.getJob(skillName, job_id);
+        if (!job) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ error: `Job '${job_id}' not found for skill '${skillName}'` }) }],
+            isError: true,
+          };
+        }
+
+        jobManager.setActiveJobId(skillName, job_id);
+
+        // Re-mirror deliverables: copy archive deliverables to root if they exist
+        const docsDir = path.join(workspaceDir, '.docs', skillName);
+        const archiveDir = path.join(docsDir, 'jobs', job_id);
+        let mirroredCount = 0;
+
+        if (fs.existsSync(archiveDir)) {
+          const files = fs.readdirSync(archiveDir);
+          for (const file of files) {
+            const src = path.join(archiveDir, file);
+            if (fs.statSync(src).isFile()) {
+              const dest = path.join(docsDir, file);
+              fs.copyFileSync(src, dest);
+              mirroredCount++;
+            }
+          }
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  skill: skillName,
+                  activeJobId: job_id,
+                  status: job.status,
+                  currentState: job.currentState,
+                  mirroredDeliverables: mirroredCount,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } catch (err: any) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // 11. TOOL: reactive_archive_job
+  server.tool(
+    'reactive_archive_job',
+    'Archive an execution job for a reactive skill and rotate active pointer if archived was active',
+    {
+      skill: z.string().optional().describe('Name of the reactive skill (defaults to active skill)'),
+      job_id: z.string().optional().describe('Job ID to archive (defaults to active job)'),
+    },
+    async ({ skill, job_id }) => {
+      try {
+        const skillName = skill || defaultSkill;
+        const jobManager = new JobManager(workspaceDir);
+        const targetId = job_id || jobManager.getActiveJobId(skillName);
+        const currentActive = jobManager.getActiveJobId(skillName);
+
+        const job = jobManager.getJob(skillName, targetId);
+        if (!job) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ error: `Job '${targetId}' not found for skill '${skillName}'` }) }],
+            isError: true,
+          };
+        }
+
+        jobManager.updateJob(skillName, targetId, {
+          status: 'archived',
+          completedAt: new Date().toISOString(),
+        });
+
+        let freshJobId = currentActive;
+        if (currentActive === targetId) {
+          const freshJob = jobManager.createJob(skillName, { setActive: true });
+          freshJobId = freshJob.id;
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  skill: skillName,
+                  archivedJobId: targetId,
+                  status: 'archived',
+                  activeJobId: freshJobId,
                 },
                 null,
                 2

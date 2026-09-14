@@ -7,6 +7,7 @@ import { EventStore } from './event-store.js';
 export interface ProjectionContext {
   skillName: string;
   currentState: string;
+  jobId?: string;
   context: Record<string, any>;
   events: SignalEvent[];
   transitions: { from: string; to: string; timestamp: string; signal: string }[];
@@ -166,6 +167,7 @@ export class ProjectionEngine {
     const projContext: ProjectionContext = {
       skillName,
       currentState,
+      jobId: this.jobId,
       context,
       events,
       transitions,

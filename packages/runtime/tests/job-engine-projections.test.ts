@@ -158,4 +158,18 @@ deliverable_projections:
     // Root file must STILL be MIDDLE from primary job!
     expect(fs.readFileSync(rootFile, 'utf8')).toContain('Current State: MIDDLE');
   });
+
+  it('template receives jobId: exposes jobId directly in projection context', async () => {
+    fs.writeFileSync(
+      path.join(skillDir, 'templates', 'summary.md.hbs'),
+      '# Summary for {{skillName}}\nJob: {{jobId}}\nState: {{currentState}}'
+    );
+    const engine = createEngine({ jobId: 'feature-abc' });
+    await engine.handleSignal('ADVANCE');
+
+    const archiveFile = path.join(tmpDir, '.docs', 'test-skill', 'jobs', 'feature-abc', 'SUMMARY.md');
+    expect(fs.existsSync(archiveFile)).toBe(true);
+    const content = fs.readFileSync(archiveFile, 'utf8');
+    expect(content).toContain('Job: feature-abc');
+  });
 });

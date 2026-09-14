@@ -237,4 +237,41 @@ describe('Reactive MCP Server Integration', () => {
     expect(jobOne.status).toBe('active');
     expect(jobOne.currentState).toBe('RED_SPEC');
   });
+
+  it('reactive_switch_job tool: switches active job and reports status', async () => {
+    const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
+    const tools = (server as any)._registeredTools;
+
+    expect(tools['reactive_switch_job']).toBeDefined();
+
+    // Create job-target
+    const emitHandler = tools['reactive_emit_signal'];
+    await emitHandler.handler({ signal: 'RUNTIME_READY', skill: 'test-fsm', job_id: 'job-target' }, {} as any);
+
+    const switchHandler = tools['reactive_switch_job'];
+    const res = await switchHandler.handler({ skill: 'test-fsm', job_id: 'job-target' }, {} as any);
+    const parsed = JSON.parse(res.content[0].text);
+
+    expect(parsed.skill).toBe('test-fsm');
+    expect(parsed.activeJobId).toBe('job-target');
+  });
+
+  it('reactive_archive_job tool: marks job as archived and rotates active pointer', async () => {
+    const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
+    const tools = (server as any)._registeredTools;
+
+    expect(tools['reactive_archive_job']).toBeDefined();
+
+    // Create job-archive-me
+    const emitHandler = tools['reactive_emit_signal'];
+    await emitHandler.handler({ signal: 'RUNTIME_READY', skill: 'test-fsm', job_id: 'job-archive-me' }, {} as any);
+
+    const archiveHandler = tools['reactive_archive_job'];
+    const res = await archiveHandler.handler({ skill: 'test-fsm', job_id: 'job-archive-me' }, {} as any);
+    const parsed = JSON.parse(res.content[0].text);
+
+    expect(parsed.skill).toBe('test-fsm');
+    expect(parsed.archivedJobId).toBe('job-archive-me');
+    expect(parsed.status).toBe('archived');
+  });
 });
