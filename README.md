@@ -177,6 +177,51 @@ skills/<skill-name>/
 
 ---
 
+## 📊 Telemetry & Performance Metrics
+
+RSA provides real-time performance instrumentation and token economy tracking with zero runtime latency tax.
+
+### Inspecting Metrics from the Event Ledger
+
+Every state transition records execution telemetry inside `.reactive/skills/<skill>/events.jsonl`:
+
+```json
+{
+  "type": "STATE_TRANSITION",
+  "payload": {
+    "from": "RED_SPEC",
+    "to": "GREEN_CODE",
+    "metrics": {
+      "transition_duration_ms": 1.151,
+      "slice_duration_ms": 0.922,
+      "slice_tokens_est": 282
+    }
+  }
+}
+```
+
+Tail latest transition metrics from your terminal:
+
+```bash
+# PowerShell
+Get-Content .reactive/skills/<skill>/events.jsonl | ConvertFrom-Json | Where-Object { $_.type -eq "STATE_TRANSITION" } | Select-Object -ExpandProperty payload | Select-Object from, to, metrics
+
+# SQLite
+sqlite3 .reactive/skills/<skill>/events.db "SELECT seq, json_extract(payload, '$.metrics') FROM events WHERE type = 'STATE_TRANSITION';"
+```
+
+### Real-Time Telemetry Dashboard
+
+Launch the live telemetry dashboard and SSE event stream:
+
+```bash
+npx -y @reactive-skills/axi view <skill-name>
+```
+
+For performance tiers, algorithmic budgets, and caching standards, see [PERFORMANCE-STANDARDS.md](PERFORMANCE-STANDARDS.md).
+
+---
+
 ## 📜 License
 
 The core Reactive Skills framework (`@reactive-skills/runtime` and `@reactive-skills/axi`) is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. See [LICENSE](LICENSE) for details.

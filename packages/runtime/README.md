@@ -69,7 +69,26 @@ Dual-mode event sourcing:
 1. **JSONL** (`.reactive/skills/<skill>/events.jsonl`) - Human-readable append-only log
 2. **SQLite** (`.reactive/skills/<skill>/events.db`) - Indexed relational database
 
+## Performance & Telemetry
+
+The runtime captures execution telemetry and token estimates with zero latency penalty:
+
+```ts
+// 1. In-turn prompt slice telemetry:
+const slice = engine.generatePromptSlice();
+console.log(slice.metrics);
+// => { slice_duration_ms: 0.23, slice_tokens_est: 282, allowed_tools_count: 4 }
+
+// 2. State transition telemetry:
+const res = await engine.handleSignal('TEST_RAN', { exit_code: 0 });
+console.log(res.metrics);
+// => { transition_duration_ms: 1.05, slice_duration_ms: 0.23, slice_tokens_est: 282 }
+```
+
+See [PERFORMANCE-STANDARDS.md](../../PERFORMANCE-STANDARDS.md) for full latency budgets and caching architecture.
+
 ## License
 
 MIT
+
 

@@ -126,6 +126,78 @@ export interface ExecutionTelemetryMetadata {
 
 ---
 
+### 3. How to View and Query Metrics
+
+#### A. JSONL Event Log Inspection
+Every `STATE_TRANSITION` event record contains embedded telemetry metadata:
+```json
+{
+  "seq": 4,
+  "type": "STATE_TRANSITION",
+  "state": "GREEN_CODE",
+  "payload": {
+    "from": "RED_SPEC",
+    "to": "GREEN_CODE",
+    "signal": "TEST_RAN",
+    "metrics": {
+      "transition_duration_ms": 1.151,
+      "slice_duration_ms": 0.922,
+      "slice_tokens_est": 282
+    }
+  }
+}
+```
+
+Tail latest transition metrics via shell:
+```bash
+# PowerShell
+Get-Content .reactive/skills/<skill>/events.jsonl | ConvertFrom-Json | Where-Object { $_.type -eq "STATE_TRANSITION" } | Select-Object -ExpandProperty payload | Select-Object from, to, metrics
+
+# jq
+cat .reactive/skills/<skill>/events.jsonl | jq 'select(.type == "STATE_TRANSITION") | {from: .payload.from, to: .payload.to, metrics: .payload.metrics}'
+```
+
+#### B. Direct SQLite SQL Queries (`events.db`)
+Execute SQL queries against `.reactive/skills/<skill>/events.db`:
+```sql
+SELECT 
+  seq, 
+  timestamp, 
+  json_extract(payload, '$.from') as from_state,
+  json_extract(payload, '$.to') as to_state,
+  json_extract(payload, '$.metrics.transition_duration_ms') as transition_ms,
+  json_extract(payload, '$.metrics.slice_tokens_est') as prompt_tokens
+FROM events 
+WHERE type = 'STATE_TRANSITION';
+```
+
+#### C. Programmatic SDK Access
+Access live metrics directly from `FSMEngine`:
+```typescript
+import { FSMEngine } from '@reactive-skills/runtime';
+
+const engine = new FSMEngine({ skillDir: './skills/my-skill' });
+
+// 1. In-turn prompt slice metrics:
+const slice = engine.generatePromptSlice();
+console.log(slice.metrics);
+// => { slice_duration_ms: 0.23, slice_tokens_est: 282, allowed_tools_count: 4 }
+
+// 2. State transition metrics:
+const res = await engine.handleSignal('TEST_RAN', { exit_code: 0 });
+console.log(res.metrics);
+// => { transition_duration_ms: 1.05, slice_duration_ms: 0.23, slice_tokens_est: 282 }
+```
+
+#### D. Inspecting Performance Degradation Alarms
+Filter for alarm events when an operation exceeds configured latency budgets:
+```bash
+# PowerShell
+Get-Content .reactive/skills/<skill>/events.jsonl | ConvertFrom-Json | Where-Object { $_.type -eq "PERF_DEGRADATION" }
+```
+
+---
+
 ## Caching Standards
 
 ### Cache Tiers
