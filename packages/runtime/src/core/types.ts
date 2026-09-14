@@ -128,6 +128,17 @@ export interface SkillManifest {
 }
 
 /**
+ * Real-time execution performance metrics
+ */
+export interface ExecutionMetrics {
+  slice_duration_ms?: number;
+  slice_tokens_est?: number;
+  transition_duration_ms?: number;
+  allowed_tools_count?: number;
+  [key: string]: any;
+}
+
+/**
  * Hydrated prompt slice generated for an active LLM turn
  */
 export interface PromptSlice {
@@ -137,6 +148,7 @@ export interface PromptSlice {
   allowedTools: string[];
   context: Record<string, any>;
   exitConditions: string[];
+  metrics?: ExecutionMetrics;
 }
 
 /**

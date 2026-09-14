@@ -9,6 +9,7 @@ import {
   TransitionDefinition,
   SignalEvent,
   PromptSlice,
+  ExecutionMetrics,
   EventContext,
   ChildRunSummary,
   DecisionRecord,
@@ -28,6 +29,10 @@ export interface FSMEngineOptions {
   runId?: string;
   initialContext?: Record<string, any>;
   autoRehydrate?: boolean;
+  perfThresholds?: {
+    maxSliceDurationMs?: number;
+    maxTransitionDurationMs?: number;
+  };
 }
 
 /** Maximum lifecycle-signal drain steps per top-level handleSignal call.
@@ -51,6 +56,10 @@ export class FSMEngine {
   private jobId?: string;
   private isActiveJob: boolean;
   private jobManager: JobManager;
+  private templateCache = new Map<string, HandlebarsTemplateDelegate>();
+  private lastSliceMetrics?: ExecutionMetrics;
+  private maxSliceDurationMs = 10;
+  private maxTransitionDurationMs = 25;
 
   constructor(options: FSMEngineOptions) {
     this.skillDir = path.resolve(options.skillDir);
@@ -59,6 +68,12 @@ export class FSMEngine {
     this.strictExecution = this.manifest.strict_execution === true;
     this.turnsSinceLastSignal = 0;
     this.inBypassState = false;
+    if (options.perfThresholds?.maxSliceDurationMs !== undefined) {
+      this.maxSliceDurationMs = options.perfThresholds.maxSliceDurationMs;
+    }
+    if (options.perfThresholds?.maxTransitionDurationMs !== undefined) {
+      this.maxTransitionDurationMs = options.perfThresholds.maxTransitionDurationMs;
+    }
 
     const effectiveJobId = options.jobId || options.runId;
     this.jobManager = new JobManager(this.workspaceDir);
@@ -431,6 +446,7 @@ export class FSMEngine {
    * Generates the prompt slice for the active state hierarchy
    */
   public generatePromptSlice(): PromptSlice {
+    const startTime = performance.now();
     const activeLeaf = this.getStateDefinition(this.activeStatePath);
     if (!activeLeaf) {
       throw new Error(`Active state definition not found: ${this.getCurrentState()}`);
@@ -471,8 +487,12 @@ export class FSMEngine {
 
     let rawPrompt = '';
     if (templatePath && fs.existsSync(templatePath)) {
-      const templateContent = fs.readFileSync(templatePath, 'utf8');
-      const compiled = Handlebars.compile(templateContent);
+      let compiled = this.templateCache.get(templatePath);
+      if (!compiled) {
+        const templateContent = fs.readFileSync(templatePath, 'utf8');
+        compiled = Handlebars.compile(templateContent);
+        this.templateCache.set(templatePath, compiled);
+      }
       rawPrompt = compiled({
         state: this.getCurrentState(),
         activeStatePath: this.activeStatePath,
@@ -543,6 +563,24 @@ export class FSMEngine {
       `</reactive_skill_state>`,
     ].filter(Boolean).join('\n');
 
+    const durationMs = Number((performance.now() - startTime).toFixed(3));
+    const estTokens = Math.ceil(formattedXml.length / 4);
+    const metrics: ExecutionMetrics = {
+      slice_duration_ms: durationMs,
+      slice_tokens_est: estTokens,
+      allowed_tools_count: allowedTools.length,
+    };
+    this.lastSliceMetrics = metrics;
+
+    if (durationMs > this.maxSliceDurationMs) {
+      this.eventStore.append('PERF_DEGRADATION', {
+        operation: 'generatePromptSlice',
+        duration_ms: durationMs,
+        threshold_ms: this.maxSliceDurationMs,
+        state: this.getCurrentState(),
+      }, { state: this.getCurrentState() });
+    }
+
     return {
       state: this.getCurrentState(),
       rawPrompt,
@@ -550,6 +588,7 @@ export class FSMEngine {
       allowedTools,
       context: { ...this.context },
       exitConditions,
+      metrics,
     };
   }
 
@@ -575,7 +614,9 @@ export class FSMEngine {
     event: SignalEvent;
     handledAtDepth?: number;
     deliverablesWritten: string[];
+    metrics?: ExecutionMetrics;
   }> {
+    const startTime = performance.now();
     const previousState = this.getCurrentState();
     const prevPath = [...this.activeStatePath];
 
@@ -652,8 +693,26 @@ export class FSMEngine {
           const targetSegments = transDef.target.split('.');
           const fullTargetPath = this.resolveInitialPath(targetSegments);
 
+          const transitionDurationMs = Number((performance.now() - startTime).toFixed(3));
+          const metrics: ExecutionMetrics = {
+            transition_duration_ms: transitionDurationMs,
+            slice_duration_ms: this.lastSliceMetrics?.slice_duration_ms,
+            slice_tokens_est: this.lastSliceMetrics?.slice_tokens_est,
+          };
+
+          if (transitionDurationMs > this.maxTransitionDurationMs) {
+            this.eventStore.append('PERF_DEGRADATION', {
+              operation: 'handleSignal',
+              duration_ms: transitionDurationMs,
+              threshold_ms: this.maxTransitionDurationMs,
+              signal: signalName,
+              from: previousState,
+              to: fullTargetPath.join('.'),
+            }, { state: fullTargetPath.join('.') });
+          }
+
           // Execute exit hooks and entry hooks along the transition path
-          this.transitionBetweenPaths(prevPath, fullTargetPath, signalName, event.id, payload);
+          this.transitionBetweenPaths(prevPath, fullTargetPath, signalName, event.id, payload, metrics);
 
           // PERF-02 / INV-08: Persist state snapshot for fast cold-boot rehydration
           this.eventStore.saveSnapshot(this.eventStore.getLatestSequence(), this.getCurrentState(), this.context);
@@ -709,6 +768,7 @@ export class FSMEngine {
             event,
             handledAtDepth: depth,
             deliverablesWritten,
+            metrics,
           };
         }
       }
@@ -731,7 +791,8 @@ export class FSMEngine {
     toPath: string[],
     signalName: string,
     causationId: string,
-    payload: Record<string, any>
+    payload: Record<string, any>,
+    metrics?: ExecutionMetrics
   ): void {
     // 1. Find Lowest Common Ancestor (LCA)
     let lcaDepth = 0;
@@ -752,6 +813,7 @@ export class FSMEngine {
       to: toPath.join('.'),
       signal: signalName,
       payload,
+      metrics,
     }, {
       state: toPath.join('.'),
       causationId,
@@ -846,8 +908,12 @@ export class FSMEngine {
     return this.isActiveJob;
   }
 
-  public getJobManager(): JobManager {
-    return this.jobManager;
+  public getLastMetrics(): ExecutionMetrics | undefined {
+    return this.lastSliceMetrics;
+  }
+
+  public clearTemplateCache(): void {
+    this.templateCache.clear();
   }
 
   public close(): void {
