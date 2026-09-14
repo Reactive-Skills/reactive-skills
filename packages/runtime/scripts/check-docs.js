@@ -76,6 +76,25 @@ if (mcpServerPath && !agentsContent.includes('server.ts') && !agentsContent.incl
   errors.push(`'server.ts' is missing from AGENTS.md repository map.`);
 }
 
+// 5. Check What's New Release Banners match current version
+const rootPkg = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+const currentVer = rootPkg.version;
+const bannerFiles = [
+  'README.md',
+  'apps/axi/README.md',
+  'packages/runtime/README.md',
+];
+
+for (const bFile of bannerFiles) {
+  const fullPath = path.join(projectRoot, bFile);
+  if (fs.existsSync(fullPath)) {
+    const content = fs.readFileSync(fullPath, 'utf8');
+    if (!content.includes(`What's New in v${currentVer}`)) {
+      errors.push(`Release banner out of date in '${bFile}': missing 'What's New in v${currentVer}'`);
+    }
+  }
+}
+
 // Results
 if (errors.length > 0) {
   console.error('\n❌ Documentation Invariant Failures:');

@@ -21,6 +21,8 @@ Update `context/progress-tracker.md` after each meaningful implementation change
 - `npm run build` — Compile TypeScript source to `dist/`.
 - `npm test` — Run all Vitest suites (`tests/`). **Mandatory gate before finishing tasks.**
 - `npm run demo` — Run the end-to-end TDD refactor simulation.
+- `npm run bump:patch` (or `bump:minor`/`bump:major`) — Bump version across workspace packages.
+- **Release Ceremony:** When releasing, update the `> 🚀 **What's New in vX.Y.Z:**` hero banner across `README.md`, `apps/axi/README.md`, and `packages/runtime/README.md`. Enforced by `npm test`.
 - `node dist/cli/index.js <command>` — Run RSA CLI:
   - `init <name>`: Scaffold new modular reactive skill in `skills/<name>/`.
   - `upgrade <path>`: Convert legacy `SKILL.md` to reactive format.

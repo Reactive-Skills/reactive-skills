@@ -38,8 +38,24 @@ This repository houses the **Reactive Skills Architecture (RSA)**: a TypeScript 
 5. **Read-Model Projections:** Deliverables (`.docs/*.md`, `.json`) are rendered from Handlebars templates in `templates/*.hbs` via `ProjectionEngine`. Never instruct the LLM to manually author summary files that the event stream already computes.
 6. **Strict Runtime Execution (No Bypassing):** You MUST NOT manually bypass the reactive state machine. If tools are missing (e.g. `allowed_tools: none` because the MCP server is not attached), you MUST abort the run immediately and ask the user to restart their agent harness or fix the connection. Never "helpfully" guess the next states or manually scaffold the `.docs/` read models if the runtime is blocked.
 7. **Lifecycle Management & Statecharts:** Never manually hand-author reactive skill structures. Always use the `skill-manager` skill to CREATE, UPDATE, or MIGRATE skills. Every reactive skill must maintain a synchronized `STATECHART.md` containing a Mermaid `stateDiagram-v2` visualization matching its `skill.yaml` topology.
+8. **Release Ceremony & README Banners:** When cutting a release, the hero banner (`> 🚀 **What's New in vX.Y.Z:**`) across root `README.md`, `apps/axi/README.md`, and `packages/runtime/README.md` MUST be updated to highlight the release milestone. This invariant is programmatically enforced by `scripts/check-docs.js` during `pnpm test`. Releases will fail CI if the banners do not match `package.json.version`.
 
 ---
+
+## 🚀 Release Ceremony Protocol
+
+To cut and publish a new release:
+1. **Bump Version**: Run `npm run bump:patch` (or `bump:minor`/`bump:major`).
+2. **Update README Banners**: Update the `> 🚀 **What's New in vX.Y.Z:**` callouts in `README.md`, `apps/axi/README.md`, and `packages/runtime/README.md`.
+3. **Verify Documentation Invariants**: Run `pnpm test` (executes Vitest + `check:docs` + `check:prose`).
+4. **Commit & Tag**:
+   ```bash
+   git commit -am "chore(release): vX.Y.Z - <headline>"
+   git tag -a vX.Y.Z -m "vX.Y.Z - <headline>"
+   git push origin main
+   git push origin vX.Y.Z
+   ```
+5. **Automated CI/CD**: Pushing tag `v*` triggers `.github/workflows/publish.yml` to build, test, and publish packages to npm and create the GitHub Release.
 
 ## Integration Modes
 

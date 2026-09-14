@@ -2,7 +2,7 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.4.2:** In-engine telemetry metrics inside state transitions, template caching, and performance degradation detection. [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.2) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.4.5:** Zero-drift NTFS Directory Junction sync, multi-source resolution, and cross-platform tilde path expansion. [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.5) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

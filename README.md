@@ -5,17 +5,17 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.2)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.5)
 
 ---
 
-> 🚀 **What's New in v0.4.2:**
-> - **In-Engine Telemetry & Zero I/O Metrics:** Automatic capture of `transition_duration_ms`, `slice_duration_ms`, and `slice_tokens_est` directly inside `STATE_TRANSITION` event payloads.
-> - **L1 Handlebars Template Caching:** Pre-compiled template delegate caching reduces active prompt slice latency to sub-millisecond execution.
-> - **Performance Degradation Alarms:** Automated `PERF_DEGRADATION` events emitted to the event store if prompt slicing (>10ms) or state transitions (>25ms) breach latency budgets.
-> - **Automated Performance Budget Suite:** Vitest test suite enforcing P0 (<5ms) and P1 (<25ms) latency tiers in continuous integration.
+> 🚀 **What's New in v0.4.5:**
+> - **Zero-Drift Junction Sync Engine:** Windows NTFS Directory Junctions and POSIX symlinks for instant, zero-copy live updates across satellites.
+> - **Multi-Source Authoring Registry:** Automatic discovery of multiple skill repositories via `~/.agents/sources.json` and `--all-sources`.
+> - **Universal Tilde (`~`) Path Expansion:** Cross-platform path resolution for macOS, Linux, and Windows.
+> - **Zero-Config CWD Detection:** Instant auto-detection when running `npx @reactive-skills/axi sync` inside any skill workspace.
 > 
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.2) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.5) · [View Changelog](CHANGELOG.md)
 
 ---
 
