@@ -1,9 +1,10 @@
-name: Publish to NPM
+name: Publish Release (NPM & GitHub)
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write

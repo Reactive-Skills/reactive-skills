@@ -1,6 +1,6 @@
 {
   "name": "@reactive-skills/runtime",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, MCP server",
   "type": "module",
   "main": "dist/index.js",
@@ -17,6 +17,9 @@
     "dist",
     "CHANGELOG.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest run --config vitest.config.ts && npm run check:docs && npm run check:prose",
@@ -46,9 +49,6 @@
   },
   "engines": {
     "node": ">=22.5.0"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

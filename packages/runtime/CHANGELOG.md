@@ -1,4 +1,12 @@
 
+## [0.4.4] - 2026-09-14
+
+- fix(ci): calibrate perf budget for virtualized CI runners & automate GitHub Releases (e2dd853)
+- chore(release): bump version to 0.4.3 (2f89b7d)
+- feat(telemetry): embed standalone live web dashboard at GET / (4ffb3a9)
+- docs: add comprehensive job management documentation across readmes (e1a626a)
+- docs: add practical telemetry inspection and metrics querying guide (ef37fb6)
+
 ## [0.4.3] - 2026-09-14
 
 - feat(telemetry): embed standalone live web dashboard at GET / (4ffb3a9)
