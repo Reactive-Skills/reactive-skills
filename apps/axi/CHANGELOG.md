@@ -1,4 +1,12 @@
 
+## [0.4.2] - 2026-09-14
+
+- feat(runtime): add in-engine telemetry, template caching, and performance budget verification (7dfae37)
+- feat(telemetry): record real-time transition_duration_ms, slice_duration_ms, and slice_tokens_est in STATE_TRANSITION events
+- feat(fsm): L1 Handlebars compiled template delegate cache for sub-millisecond prompt slicing
+- feat(alarms): emit PERF_DEGRADATION event on slice (>10ms) or transition (>25ms) threshold breaches
+- test(perf): add automated Vitest test suite enforcing P0 (<5ms) and P1 (<25ms) latency budgets
+
 ## [0.4.1] - 2026-09-14
 
 - feat(runtime,axi): add mcp job tools, template jobId context, and flexible jobs cli arguments (2b31451)
