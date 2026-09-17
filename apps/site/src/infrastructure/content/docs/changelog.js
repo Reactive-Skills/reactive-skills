@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-5-1",
+    "heading": "v0.5.1 (2026-09-17)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "feat: add context scoping with per-state scope and delta tracking",
+          "chore: groom AGENTS.md into terse references",
+          "refactor(docs): reorganize documentation and move performance standards to context",
+          "feat(site): automate changelog generation from runtime CHANGELOG.md and sync product-manager to registry",
+          "docs: update v0.4.5 hero banners and enforce release banner invariant in check-docs.js and AGENTS.md"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-5-0",
     "heading": "v0.5.0 (2026-09-17)",
     "blocks": [
