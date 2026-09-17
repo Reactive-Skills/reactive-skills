@@ -1,6 +1,6 @@
 {
   "name": "@reactive-skills/runtime",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, MCP server",
   "type": "module",
   "main": "dist/index.js",
@@ -28,6 +28,9 @@
     "bump:patch": "node scripts/bump-version.js patch",
     "bump:minor": "node scripts/bump-version.js minor",
     "bump:major": "node scripts/bump-version.js major",
+    "release:patch": "node scripts/release.js patch",
+    "release:minor": "node scripts/release.js minor",
+    "release:major": "node scripts/release.js major",
     "demo": "tsx examples/simulate-tdd.ts"
   },
   "keywords": [

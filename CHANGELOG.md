@@ -1,4 +1,12 @@
 
+## [0.5.1] - 2026-09-17
+
+- feat: add context scoping with per-state scope and delta tracking (028d383)
+- chore: groom AGENTS.md into terse references (c6f17da)
+- refactor(docs): reorganize documentation and move performance standards to context (947975e)
+- feat(site): automate changelog generation from runtime CHANGELOG.md and sync product-manager to registry (7e635ba)
+- docs: update v0.4.5 hero banners and enforce release banner invariant in check-docs.js and AGENTS.md (b76cdae)
+
 ## [0.5.0] - 2026-09-17
 
 - chore: groom AGENTS.md into terse references (c6f17da)
