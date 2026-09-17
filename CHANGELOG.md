@@ -1,4 +1,12 @@
 
+## [0.5.0] - 2026-09-17
+
+- chore: groom AGENTS.md into terse references (c6f17da)
+- refactor(docs): reorganize documentation and move performance standards to context (947975e)
+- feat(site): automate changelog generation from runtime CHANGELOG.md and sync product-manager to registry (7e635ba)
+- docs: update v0.4.5 hero banners and enforce release banner invariant in check-docs.js and AGENTS.md (b76cdae)
+- chore(release): v0.4.5 - junction linking sync engine and multi-source resolution (59c1f3d)
+
 ## [0.4.5] - 2026-09-14
 
 - feat(sync): add Windows NTFS Directory Junction linking and POSIX symlink engine for zero-drift live skill sync

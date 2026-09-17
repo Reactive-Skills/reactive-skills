@@ -13,6 +13,8 @@ import {
   EventContext,
   ChildRunSummary,
   DecisionRecord,
+  StateVisitRecord,
+  ContextDelta,
 } from './types.js';
 import { EventStore, createSortableId } from './event-store.js';
 import { GuardEvaluator } from './guard-evaluator.js';
@@ -60,6 +62,7 @@ export class FSMEngine {
   private lastSliceMetrics?: ExecutionMetrics;
   private maxSliceDurationMs = 10;
   private maxTransitionDurationMs = 25;
+  private stateVisits: Map<string, StateVisitRecord> = new Map();
 
   constructor(options: FSMEngineOptions) {
     this.skillDir = path.resolve(options.skillDir);
@@ -380,6 +383,9 @@ export class FSMEngine {
         formattedXml: '',
         allowedTools: [],
         context: {},
+        scopedContext: {},
+        contextDelta: null,
+        visitCount: 0,
         exitConditions: [],
       };
     }
@@ -493,10 +499,11 @@ export class FSMEngine {
         compiled = Handlebars.compile(templateContent);
         this.templateCache.set(templatePath, compiled);
       }
+      const scopedContext = this.computeScopedContext();
       rawPrompt = compiled({
         state: this.getCurrentState(),
         activeStatePath: this.activeStatePath,
-        context: this.context,
+        context: scopedContext,
         manifest: this.manifest,
       });
     } else {
@@ -541,6 +548,20 @@ export class FSMEngine {
       ].filter(Boolean).join('\n');
     }
 
+    const contextDelta = this.computeContextDelta();
+    const scopedContext = this.computeScopedContext();
+
+    const deltaXml = contextDelta
+      ? [
+        `  <context_delta is_revisit="${contextDelta.is_revisit}" previous_visit_seq="${contextDelta.previous_visit_seq}">`,
+        contextDelta.changed_keys.length > 0
+          ? `    <changed_keys>${contextDelta.changed_keys.map(k => `${k.key}`).join(', ')}</changed_keys>`
+          : `    <changed_keys></changed_keys>`,
+        `    <new_since_last_visit>${contextDelta.new_since_last_visit}</new_since_last_visit>`,
+        `  </context_delta>`,
+      ].join('\n')
+      : '';
+
     const formattedXml = [
       `<reactive_skill_state name="${this.getCurrentState()}" path="${this.activeStatePath.join('/')}" skill="${this.manifest.name}">`,
       this.strictExecution ? '  <strict_execution mode="enforced">' : '',
@@ -550,6 +571,7 @@ export class FSMEngine {
       '    <contract>Allowed tools are enforced. Tools outside the allowed list will trigger bypass detection in interceptor mode.</contract>',
       '    <contract>Recovery: reactive-skills-axi reset <skill> then re-invoke.</contract>',
       '  </strict_execution>',
+      contextDelta ? `  <context_optimization state_visit_count="${contextDelta.is_revisit ? 'revisit' : 'first'}">Context is scoped to this state\'s relevant keys only. Delta shown for revisions.</context_optimization>` : '',
       `  <state_goal>`,
       rawPrompt.trim().split('\n').map(line => `    ${line}`).join('\n'),
       `  </state_goal>`,
@@ -557,6 +579,7 @@ export class FSMEngine {
       allowedTools.map(t => `    <tool name="${t}" />`).join('\n'),
       `  </allowed_tools>`,
       humanGateXml,
+      deltaXml,
       `  <transition_contracts>`,
       exitConditions.map(c => `    <contract>${c}</contract>`).join('\n'),
       `  </transition_contracts>`,
@@ -587,6 +610,9 @@ export class FSMEngine {
       formattedXml,
       allowedTools,
       context: { ...this.context },
+      scopedContext,
+      contextDelta,
+      visitCount: this.eventStore.query({ type: 'STATE_VISITED', state: this.getCurrentState() }).length,
       exitConditions,
       metrics,
     };
@@ -843,6 +869,35 @@ export class FSMEngine {
     const def = this.getStateDefinition(statePath);
     if (!def) return;
 
+    const stateKey = statePath.join('.');
+
+    // Track state visitation for delta detection on revisits
+    const prevVisit = this.stateVisits.get(stateKey);
+    const visitSeq = this.eventStore.getLatestSequence();
+    const contextSnapshot = { ...this.context };
+
+    if (prevVisit) {
+      this.eventStore.append('STATE_REVISITED', {
+        state: stateKey,
+        previous_visit_seq: prevVisit.seq,
+        current_seq: visitSeq,
+        changed_keys: this.computeChangedKeys(prevVisit.context_snapshot, this.context),
+        context_snapshot: contextSnapshot,
+      }, { state: stateKey, causationId: prevVisit.seq.toString() });
+    } else {
+      this.eventStore.append('STATE_VISITED', {
+        state: stateKey,
+        seq: visitSeq,
+        context_snapshot: contextSnapshot,
+      }, { state: stateKey });
+    }
+
+    this.stateVisits.set(stateKey, {
+      state: stateKey,
+      seq: visitSeq,
+      context_snapshot: contextSnapshot,
+    });
+
     if (def.human_gate) {
       this.eventStore.append('HUMAN_GATE_ENTERED', {
         state: statePath.join('.'),
@@ -914,6 +969,122 @@ export class FSMEngine {
 
   public clearTemplateCache(): void {
     this.templateCache.clear();
+  }
+
+  /**
+   * Compute the scoped context for the active state: only include context_keys
+   * declared in this state's (or any ancestor's) `context_scope`. Internal
+   * keys (starting with _) and context_keys not in any scope are always included.
+   */
+   private computeScopedContext(): Record<string, any> {
+    const scopeKeys = new Set<string>();
+    let hasAnyScopeDeclaration = false;
+    for (let i = 1; i <= this.activeStatePath.length; i++) {
+      const def = this.getStateDefinition(this.activeStatePath.slice(0, i));
+      if (def?.context_scope !== undefined) {
+        hasAnyScopeDeclaration = true;
+        for (const key of def!.context_scope) {
+          scopeKeys.add(key);
+        }
+      }
+    }
+
+    // No context_scope declared on any state in the active path: return full context
+    if (!hasAnyScopeDeclaration) {
+      return { ...this.context };
+    }
+
+    // context_scope was explicitly declared (even if empty): scope to those keys
+    const scoped: Record<string, any> = {};
+    for (const key of this.manifest.context_keys || []) {
+      if (scopeKeys.has(key) || key.startsWith('_')) {
+        scoped[key] = this.context[key];
+      }
+    }
+    return scoped;
+  }
+
+  /**
+   * Compute context delta for revisiting a state. Returns null if this is a
+   * first visit. If revisiting, compares current context against the snapshot
+   * captured at the previous visit, restricted to this state's scope.
+   */
+  private computeContextDelta(): ContextDelta | null {
+    const stateKey = this.getCurrentState();
+
+    // Query the event store for all visit events for this state (both
+    // STATE_VISITED for first entry and STATE_REVISITED for returns).
+    const visitedEvents = this.eventStore.query({ type: 'STATE_VISITED', state: stateKey });
+    const revisitedEvents = this.eventStore.query({ type: 'STATE_REVISITED', state: stateKey });
+    const allVisitEvents = [...visitedEvents, ...revisitedEvents].sort((a, b) => a.seq - b.seq);
+
+    // No visits or only one visit = first visit, no delta
+    if (allVisitEvents.length <= 1) {
+      return null;
+    }
+
+    // This is a revisit: use the second-to-last visit event as the
+    // "previous visit" baseline for diffing.
+    const prevVisit = allVisitEvents[allVisitEvents.length - 2];
+    const prevVisitSeq = prevVisit.seq;
+    const prevContextSnapshot = prevVisit.payload.context_snapshot || {};
+
+    const scopeKeys = new Set<string>();
+    for (let i = 1; i <= this.activeStatePath.length; i++) {
+      const def = this.getStateDefinition(this.activeStatePath.slice(0, i));
+      if (def?.context_scope) {
+        for (const key of def.context_scope) {
+          scopeKeys.add(key);
+        }
+      }
+    }
+
+    const changedKeys = this.computeChangedKeys(prevContextSnapshot, this.context, scopeKeys);
+
+    const eventsSince = this.eventStore.query({ sinceSeq: prevVisitSeq });
+    const newSinceLastVisit = eventsSince.length;
+
+    return {
+      is_revisit: true,
+      previous_visit_seq: prevVisitSeq,
+      changed_keys: changedKeys,
+      new_since_last_visit: newSinceLastVisit,
+      context_snapshot: this.computeScopedContext(),
+    };
+  }
+
+  /**
+   * Compute which context keys (restricted to scopeKeys if provided) differ
+   * between two context snapshots. Returns an array of {key, previous, current}.
+   */
+  private computeChangedKeys(
+    prevContext: Record<string, any>,
+    currContext: Record<string, any>,
+    scopeKeys?: Set<string>,
+  ): Array<{ key: string; previous: any; current: any }> {
+    const changed: Array<{ key: string; previous: any; current: any }> = [];
+    const keysToCompare = scopeKeys
+      ? Array.from(scopeKeys)
+      : Object.keys(currContext);
+
+    for (const key of keysToCompare) {
+      const prevVal = prevContext[key];
+      const currVal = currContext[key];
+      if (JSON.stringify(prevVal) !== JSON.stringify(currVal)) {
+        changed.push({ key, previous: prevVal, current: currVal });
+      }
+    }
+    return changed;
+  }
+
+  public getVisitHistory(): StateVisitRecord[] {
+    return Array.from(this.stateVisits.values());
+  }
+
+  public getStateVisitCount(stateKey: string): number {
+    const visited = this.eventStore.query({ type: 'STATE_VISITED', state: stateKey });
+    const revisited = this.eventStore.query({ type: 'STATE_REVISITED', state: stateKey });
+    return visited.length + revisited.length;
   }
 
   public close(): void {

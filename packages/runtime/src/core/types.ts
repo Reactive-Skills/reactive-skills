@@ -92,6 +92,7 @@ export interface StateDefinition {
   description?: string;
   prompt_template?: string; // Path to markdown file in states/
   tools?: string[]; // Scoped list of allowed tools in this state
+  context_scope?: string[]; // Subset of context_keys relevant to this state for lean delivery
   human_gate?: HumanGateDefinition; // HITL gate configuration
   on_enter?: StateLifecycleAction[];
   on_exit?: StateLifecycleAction[];
@@ -100,6 +101,15 @@ export interface StateDefinition {
   initial_substate?: string;
   max_idle_turns?: number; // Max turns before bypass detection triggers (default 2)
   bypass_target?: string; // Target state when bypass is detected (default "BYPASS_DETECTED")
+}
+
+/**
+ * Record of a state visit for delta detection on revisits
+ */
+export interface StateVisitRecord {
+  state: string;
+  seq: number;
+  context_snapshot: Record<string, any>;
 }
 
 /**
@@ -147,8 +157,22 @@ export interface PromptSlice {
   formattedXml: string;
   allowedTools: string[];
   context: Record<string, any>;
+  scopedContext: Record<string, any>;
+  contextDelta: ContextDelta | null;
+  visitCount: number;
   exitConditions: string[];
   metrics?: ExecutionMetrics;
+}
+
+/**
+ * Delta of context keys that changed since the last visit to this state
+ */
+export interface ContextDelta {
+  is_revisit: boolean;
+  previous_visit_seq: number;
+  changed_keys: Array<{ key: string; previous: any; current: any }>;
+  new_since_last_visit: number;
+  context_snapshot: Record<string, any>;
 }
 
 /**
@@ -184,6 +208,7 @@ export const StateSchema: z.ZodType<StateDefinition> = z.lazy(() =>
     description: z.string().optional(),
     prompt_template: z.string().optional(),
     tools: z.array(z.string()).optional(),
+    context_scope: z.array(z.string()).optional(),
     human_gate: HumanGateSchema.optional(),
     on_enter: z.array(StateLifecycleActionSchema).optional(),
     on_exit: z.array(StateLifecycleActionSchema).optional(),
