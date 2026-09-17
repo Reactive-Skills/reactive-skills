@@ -712,6 +712,83 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     }
   );
 
+  // 12. TOOL: reactive_reset
+  server.tool(
+    'reactive_reset',
+    'Reset a reactive skill session, archive completed/stuck jobs, and rotate to a fresh run',
+    {
+      skill: z.string().optional().describe('Skill name (defaults to active skill)'),
+      purge: z.boolean().optional().describe('Permanently delete all events and jobs rather than archiving'),
+    },
+    async ({ skill, purge }) => {
+      try {
+        const skillName = skill || defaultSkill;
+        const jobManager = new JobManager(workspaceDir);
+        const reactiveDir = path.join(workspaceDir, '.reactive', 'skills', skillName);
+
+        for (const [key] of engines.entries()) {
+          if (key.startsWith(`${skillName}::`)) {
+            engines.delete(key);
+          }
+        }
+
+        if (purge) {
+          if (fs.existsSync(reactiveDir)) {
+            fs.rmSync(reactiveDir, { recursive: true, force: true });
+          }
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    skill: skillName,
+                    status: 'purged',
+                    message: `Purged all historical data for ${skillName}. Call reactive_state to start a fresh run.`,
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+
+        const activeJobId = jobManager.getActiveJobId(skillName);
+        jobManager.updateJob(skillName, activeJobId, {
+          status: 'archived',
+          completedAt: new Date().toISOString(),
+        });
+
+        const freshJob = jobManager.createJob(skillName, { setActive: true });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  skill: skillName,
+                  status: 'archived_and_rotated',
+                  archived_job: activeJobId,
+                  fresh_job: freshJob.id,
+                  message: `Archived job '${activeJobId}' and rotated to fresh job '${freshJob.id}'. Call reactive_state to proceed.`,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } catch (err: any) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
+          isError: true,
+        };
+      }
+    }
+  );
+
   // RESOURCE 1: reactive://events
   server.resource(
     'reactive-events',

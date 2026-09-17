@@ -94,7 +94,6 @@ for (const sDir of skillsDirs) {
 }
 
 // 5. Update CHANGELOG.md
-const changelogPath = path.join(projectRoot, 'CHANGELOG.md');
 const dateStr = new Date().toISOString().split('T')[0];
 let recentCommits = '';
 try {
@@ -104,14 +103,21 @@ try {
 }
 
 const changelogEntry = `\n## [${nextVersion}] - ${dateStr}\n\n${recentCommits}\n`;
+const changelogPaths = [
+  path.join(projectRoot, 'CHANGELOG.md'),
+  path.join(repoRoot, 'apps', 'axi', 'CHANGELOG.md'),
+];
 
-if (fs.existsSync(changelogPath)) {
-  const existing = fs.readFileSync(changelogPath, 'utf8');
-  fs.writeFileSync(changelogPath, changelogEntry + existing, 'utf8');
-} else {
-  fs.writeFileSync(changelogPath, `# Changelog\n${changelogEntry}`, 'utf8');
+for (const cp of changelogPaths) {
+  if (fs.existsSync(cp)) {
+    const existing = fs.readFileSync(cp, 'utf8');
+    fs.writeFileSync(cp, changelogEntry + existing, 'utf8');
+  } else {
+    fs.writeFileSync(cp, `# Changelog\n${changelogEntry}`, 'utf8');
+  }
+  filesUpdated.push(path.relative(projectRoot, cp));
 }
-filesUpdated.push('CHANGELOG.md');
+
 
 // 6. Synchronize changelog to root and documentation site
 console.log('\n📄 Synchronizing CHANGELOG to root and documentation site...');

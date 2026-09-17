@@ -274,4 +274,30 @@ describe('Reactive MCP Server Integration', () => {
     expect(parsed.archivedJobId).toBe('job-archive-me');
     expect(parsed.status).toBe('archived');
   });
+
+  it('reactive_reset tool: resets skill session and rotates active job', async () => {
+    const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
+    const tools = (server as any)._registeredTools;
+
+    expect(tools['reactive_reset']).toBeDefined();
+
+    // Emit to advance state
+    const emitHandler = tools['reactive_emit_signal'];
+    await emitHandler.handler({ signal: 'RUNTIME_READY', skill: 'test-fsm' }, {} as any);
+
+    const resetHandler = tools['reactive_reset'];
+    const res = await resetHandler.handler({ skill: 'test-fsm' }, {} as any);
+    const parsed = JSON.parse(res.content[0].text);
+
+    expect(parsed.skill).toBe('test-fsm');
+    expect(parsed.status).toBe('archived_and_rotated');
+    expect(parsed.fresh_job).toBeDefined();
+
+    // Check that state on fresh job is INIT
+    const stateHandler = tools['reactive_state'];
+    const stateRes = await stateHandler.handler({ skill: 'test-fsm' }, {} as any);
+    const stateParsed = JSON.parse(stateRes.content[0].text);
+    expect(stateParsed.activeState).toBe('INIT');
+  });
 });
+

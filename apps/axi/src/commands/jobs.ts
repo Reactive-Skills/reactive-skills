@@ -4,24 +4,8 @@ import fs from 'node:fs';
 import { JobManager } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderList, renderDetail, renderOutput } from '../toon.js';
-import { resolveWorkspaceDir } from '../args.js';
+import { resolveWorkspaceDir, resolveSkillPath } from '../args.js';
 
-const HOME_DIR = os.homedir();
-
-function resolveSkillPath(skillName: string): string | null {
-  const candidates = [
-    path.resolve(process.cwd(), 'skills', skillName),
-    path.resolve(HOME_DIR, '.agents', 'skills', skillName),
-    path.resolve(HOME_DIR, '.gemini', 'config', 'skills', skillName),
-  ];
-  for (const candidate of candidates) {
-    const yamlPath = path.join(candidate, 'skill.yaml');
-    if (fs.existsSync(yamlPath)) {
-      return candidate;
-    }
-  }
-  return null;
-}
 
 export async function jobsCommand(args: string[]): Promise<string> {
   const KNOWN_SUBCOMMANDS = ['list', 'switch', 'archive'];

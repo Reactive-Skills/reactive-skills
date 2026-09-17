@@ -5,24 +5,8 @@ import { JobManager } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
-import { extractJobFlag, resolveWorkspaceDir } from '../args.js';
+import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.js';
 
-const HOME_DIR = os.homedir();
-
-function resolveSkillPath(skillName: string): string | null {
-  const candidates = [
-    path.resolve(process.cwd(), 'skills', skillName),
-    path.resolve(HOME_DIR, '.agents', 'skills', skillName),
-    path.resolve(HOME_DIR, '.gemini', 'config', 'skills', skillName),
-  ];
-  for (const candidate of candidates) {
-    const yamlPath = path.join(candidate, 'skill.yaml');
-    if (fs.existsSync(yamlPath)) {
-      return candidate;
-    }
-  }
-  return null;
-}
 
 function deleteRecursive(dirPath: string): { deleted: string[]; errors: string[] } {
   const deleted: string[] = [];
@@ -90,8 +74,9 @@ export async function resetCommand(args: string[]): Promise<string> {
 
   const workspaceDir = resolveWorkspaceDir(skillPath);
   const reactiveDir = path.join(workspaceDir, '.reactive', 'skills', skillName);
+  const skillParentReactiveDir = path.join(path.dirname(skillPath), '.reactive', 'skills', skillName);
 
-  if (!fs.existsSync(reactiveDir)) {
+  if (!fs.existsSync(reactiveDir) && !fs.existsSync(skillParentReactiveDir)) {
     const suggestions = getSuggestions({ domain: 'reset', action: 'call', skillName });
     return renderOutput([
       renderDetail('reset', {
@@ -115,6 +100,11 @@ export async function resetCommand(args: string[]): Promise<string> {
 
   if (isPurge) {
     const { deleted, errors } = deleteRecursive(reactiveDir);
+    if (skillParentReactiveDir !== reactiveDir && fs.existsSync(skillParentReactiveDir)) {
+      const { deleted: oDel, errors: oErr } = deleteRecursive(skillParentReactiveDir);
+      deleted.push(...oDel);
+      errors.push(...oErr);
+    }
     const lines: string[] = [];
     lines.push(renderDetail('reset', {
       skill_id: skillName,

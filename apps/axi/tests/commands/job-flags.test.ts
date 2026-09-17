@@ -5,7 +5,9 @@ import os from 'node:os';
 import { stateCommand } from '../../src/commands/state.js';
 import { emitCommand } from '../../src/commands/emit.js';
 import { resetCommand } from '../../src/commands/reset.js';
+import { resolveWorkspaceDir } from '../../src/args.js';
 import { JobManager } from '@reactive-skills/runtime';
+
 
 describe('AXI CLI Job Flags & Fallbacks (Leaf 4)', () => {
   let tmpDir: string;
@@ -96,4 +98,11 @@ states:
     const jobs = jobManager.listJobs('flags-skill');
     expect(jobs.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('resolveWorkspaceDir resolves cwd when skill is outside cwd', () => {
+    const externalSkillPath = path.join(os.homedir(), '.agents', 'skills', 'global-skill');
+    const resolved = resolveWorkspaceDir(externalSkillPath);
+    expect(resolved).toBe(process.cwd());
+  });
 });
+
