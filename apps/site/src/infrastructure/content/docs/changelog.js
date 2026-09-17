@@ -8,6 +8,38 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-5-2",
+    "heading": "v0.5.2 (2026-09-17)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "fix(axi,runtime): resolve workspace correctly for global skills, handle stale state, and add reactive_reset MCP tool",
+          "chore(release): v0.5.1 - Fix check-docs invariant: follow AGENTS.md reference to repository-map.md",
+          "feat: add context scoping with per-state scope and delta tracking",
+          "chore: groom AGENTS.md into terse references",
+          "refactor(docs): reorganize documentation and move performance standards to context"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "v0-5-2",
+    "heading": "v0.5.2 (2026-09-17)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "fix(axi,runtime): resolve workspace correctly for global skills, handle stale state, and add reactive_reset MCP tool",
+          "chore(release): v0.5.1 - Fix check-docs invariant: follow AGENTS.md reference to repository-map.md",
+          "feat: add context scoping with per-state scope and delta tracking",
+          "chore: groom AGENTS.md into terse references",
+          "refactor(docs): reorganize documentation and move performance standards to context"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-5-1",
     "heading": "v0.5.1 (2026-09-17)",
     "blocks": [

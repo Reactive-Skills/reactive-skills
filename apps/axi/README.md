@@ -2,7 +2,7 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.5.1: Fix check-docs invariant: follow AGENTS.md reference to repository-map.md [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.5.2: Fix global skill workspace resolution, handle stale state, and add reactive_reset MCP tool  [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.2) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

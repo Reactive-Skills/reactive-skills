@@ -47,7 +47,7 @@ for (const bannerFile of bannerFiles) {
     if (isRoot) {
       // Multi-line banner: replace the first bullet after version line
       const firstBulletRegex = new RegExp(
-        `(What's New in v\${nextVersion}:\*\*\n)(> - .*?\n)`,
+        `(What's New in v${nextVersion}:\\*\\*\\r?\\n)(> - .*?\\r?\\n)`,
         's'
       );
       if (firstBulletRegex.test(content)) {
@@ -58,7 +58,7 @@ for (const bannerFile of bannerFiles) {
       } else {
         // No bullet found, insert one after version line
         content = content.replace(
-          new RegExp(`(What's New in v\${nextVersion}:\*\*\n)`),
+          new RegExp(`(What's New in v${nextVersion}:\\*\\*\\r?\\n)`),
           `$1> - ${headline}\n`
         );
       }
@@ -66,7 +66,7 @@ for (const bannerFile of bannerFiles) {
       // Single-line banner: replace text between version and [Read Full]
       content = content.replace(
         new RegExp(`(What's New in v${nextVersion}:)\\s*.+?(?=\\s*\\[Read Full)`, 's'),
-        `$1 ${headline}`
+        `$1 ${headline} `
       );
     }
   }
