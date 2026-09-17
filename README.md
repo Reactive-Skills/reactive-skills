@@ -5,17 +5,17 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.5)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.0)
 
 ---
 
-> 🚀 **What's New in v0.4.5:**
-> - **Zero-Drift Junction Sync Engine:** Windows NTFS Directory Junctions and POSIX symlinks for instant, zero-copy live updates across satellites.
-> - **Multi-Source Authoring Registry:** Automatic discovery of multiple skill repositories via `~/.agents/sources.json` and `--all-sources`.
-> - **Universal Tilde (`~`) Path Expansion:** Cross-platform path resolution for macOS, Linux, and Windows.
-> - **Zero-Config CWD Detection:** Instant auto-detection when running `npx @reactive-skills/axi sync` inside any skill workspace.
-> 
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.5) · [View Changelog](CHANGELOG.md)
+> 🚀 **What's New in v0.5.0:**
+> - **Context Scoping:** Optional `context_scope` field on states to filter context keys per state, reducing token cost on state revisits.
+> - **Delta Tracking:** State revisits now emit `<context_delta>` with `changed_keys`, `previous_visit_seq`, and `new_since_last_visit` for efficient delta-aware prompt delivery.
+> - **Bug Fix:** `computeContextDelta` no longer falsely reports first-visit as a revisit (was reading the `stateVisits` map that `executeEntryHook` updated in the same cycle).
+> - **Bug Fix:** `computeScopedContext` now correctly distinguishes `context_scope: []` (explicitly empty) from no `context_scope` (full context).
+>
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.0) · [View Changelog](CHANGELOG.md)
 
 ---
 

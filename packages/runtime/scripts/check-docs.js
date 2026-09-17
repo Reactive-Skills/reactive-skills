@@ -47,8 +47,14 @@ for (const cmd of cliCommands) {
   }
 }
 
-// 3. Check Core Modules mapped in AGENTS.md
+// 3. Check Core Modules mapped in AGENTS.md (or referenced file)
 const agentsContent = fs.readFileSync(path.join(projectRoot, 'AGENTS.md'), 'utf8');
+const repoMapPath = path.join(projectRoot, '.agents', 'references', 'repository-map.md');
+let mapContent = '';
+if (fs.existsSync(repoMapPath)) {
+  mapContent = fs.readFileSync(repoMapPath, 'utf8');
+}
+const mapContentToCheck = agentsContent + mapContent;
 const coreDir = [
   path.join(projectRoot, 'packages', 'runtime', 'src', 'core'),
   path.join(projectRoot, 'src', 'core'),
@@ -59,7 +65,7 @@ if (coreDir) {
   for (const file of coreFiles) {
     if (file.endsWith('.ts')) {
       const baseName = file.replace('.ts', '');
-      if (!agentsContent.includes(baseName)) {
+      if (!mapContentToCheck.includes(baseName)) {
         errors.push(`Core module '${baseName}' is missing from AGENTS.md repository map.`);
       }
     }
@@ -72,7 +78,7 @@ const mcpServerPath = [
   path.join(projectRoot, 'src', 'mcp', 'server.ts'),
 ].find((p) => fs.existsSync(p));
 
-if (mcpServerPath && !agentsContent.includes('server.ts') && !agentsContent.includes('mcp/server.ts')) {
+if (mcpServerPath && !mapContentToCheck.includes('server.ts') && !mapContentToCheck.includes('mcp/server.ts')) {
   errors.push(`'server.ts' is missing from AGENTS.md repository map.`);
 }
 

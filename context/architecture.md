@@ -131,5 +131,13 @@ human_gate:
 
 1. **NEVER Mutate Historical Events:** The event store is strictly append-only.
 2. **NEVER Trust Subjective Claims:** State transitions must be guarded by testable boolean conditions (`exit_code`, schema check, custom JS guard).
-3. **NEVER Couple States Directly:** Each state's prompt in `states/*.md` must be self-contained; cross-state data must travel through `context_keys` or the event stream.
+- **NEVER Couple States Directly:** Each state's prompt in `states/*.md` must be self-contained; cross-state data must travel through `context_keys` or the event stream.
 4. **ALWAYS Support Bubbling:** Unhandled events in child substates must escalate to ancestor states.
+
+### Context Scoping
+
+States can declare an optional `context_scope` array to limit which `context_keys` are included in the prompt slice for that state. This reduces token cost on state revisits and enables delta-aware delivery:
+
+- **First visit:** `contextDelta` is `null`, `scopedContext` contains only scoped keys.
+- **Revisit:** `contextDelta` includes `is_revisit`, `previous_visit_seq`, `changed_keys` (scoped keys that changed), and `new_since_last_visit`.
+- The MCP `reactive_state` response includes `scopedContext`, `contextDelta`, and `visitCount` fields.

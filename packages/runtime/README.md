@@ -2,7 +2,7 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.4.5:** Zero-drift NTFS Directory Junction sync, multi-source resolution via sources.json, and universal tilde path expansion. [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.4.5) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.5.0:** Context scoping with per-state `context_scope`, visitation-based delta tracking, and optimized prompt delivery. [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -53,6 +53,50 @@ states:
         target: "DONE"
         guard: "event.payload.completed === true"
 ```
+
+## Context Scoping (Optional)
+
+For hierarchical skills with many substates, you can declare `context_scope` on individual states to limit the context variables passed into that state's prompt. This reduces token cost when revisiting states and enables delta-aware prompt delivery.
+
+```yaml
+context_keys:
+  - mission
+  - glossary
+  - slices
+  - depth_tree
+  - active_leaf
+  - execution_log
+
+states:
+  ENTRY:
+    prompt_template: states/entry.md
+    context_scope:
+      - mission          # Only pass `mission` and internal keys to this state's prompt
+    transitions:
+      PROCEED: WORK
+  WORK:
+    initial_substate: TASK_A
+    substates:
+      TASK_A:
+        prompt_template: states/task_a.md
+        context_scope:
+          - slices
+          - depth_tree     # Only pass `slices` and `depth_tree` to TASK_A
+        transitions:
+          GOTO_B: WORK.TASK_B
+      TASK_B:
+        prompt_template: states/task_b.md
+        context_scope:
+          - active_leaf
+          - execution_log
+```
+
+**Rules:**
+- `context_scope` is optional. States without it receive the full context (backward compatible).
+- Only keys declared in `context_keys` are eligible for scoping.
+- Internal keys (prefixed with `_`) are always included regardless of scope.
+- When a state is visited more than once, the prompt slice includes a `<context_delta>` block showing which scoped keys changed since the previous visit.
+- The MCP `reactive_state` response includes `scopedContext`, `contextDelta`, and `visitCount` fields for client-side consumption.
 
 ## Integration Modes
 
