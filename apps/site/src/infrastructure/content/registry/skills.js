@@ -2567,6 +2567,7 @@ export const registrySkills = [
         "transitions": []
       }
     ],
+    "mermaidChart": "stateDiagram-v2\n    [*] --> INIT\n\n    %% Bootloader\n    INIT --> RED_SPEC: RUNTIME_READY\n    INIT --> SETUP_MCP: SETUP_REQUIRED\n\n    SETUP_MCP --> RED_SPEC: SETUP_COMPLETE [exit_code == 0]\n    SETUP_MCP --> ERROR: SETUP_FAILED [exit_code != 0]\n\n    %% TDD Micro-cycle\n    RED_SPEC --> GREEN_CODE: TEST_RAN [exit_code != 0]\n    GREEN_CODE --> REFACTOR: TEST_RAN [exit_code === 0]\n\n    %% Composite state: REFACTOR with nested substates\n    state REFACTOR {\n        [*] --> CLEAN_CODE\n        CLEAN_CODE --> PERF_AUDIT: CLEANING_DONE\n        PERF_AUDIT --> AUDIT_VERIFY: AUDIT_PASSED\n    }\n\n    %% External transitions from composite REFACTOR and substates\n    REFACTOR --> RED_SPEC: GLOBAL_ABORT\n    REFACTOR --> GREEN_CODE: TEST_RAN [exit_code != 0]\n    AUDIT_VERIFY --> COMPLETED: ALL_CHECKS_PASSED [exit_code === 0]\n    AUDIT_VERIFY --> GREEN_CODE: REGRESSION_DETECTED\n\n    %% Terminal states\n    COMPLETED --> [*]\n    ERROR --> [*]",
     "deliverables": [
       ".docs/tdd-refactor-summary.md",
       ".docs/state-snapshot.json"

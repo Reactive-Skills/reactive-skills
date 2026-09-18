@@ -38,6 +38,26 @@ function extractMermaid(statechartContent) {
   return match ? match[1].trim() : null;
 }
 
+function generateMermaidFromStates(doc) {
+  if (!doc.states || typeof doc.states !== 'object') return null;
+  const lines = ['stateDiagram-v2'];
+  const initial = doc.initial_state || doc.initialState;
+  if (initial) {
+    lines.push(`    [*] --> ${initial}`);
+  }
+  for (const [stateName, stateDef] of Object.entries(doc.states)) {
+    if (!stateDef || typeof stateDef !== 'object') continue;
+    if (stateDef.transitions && typeof stateDef.transitions === 'object') {
+      for (const [sig, transDef] of Object.entries(stateDef.transitions)) {
+        const target = typeof transDef === 'string' ? transDef : (transDef?.target || 'UNKNOWN');
+        const guard = typeof transDef === 'object' && transDef?.guard ? ` [${transDef.guard}]` : '';
+        lines.push(`    ${stateName} --> ${target}: ${sig}${guard}`);
+      }
+    }
+  }
+  return lines.length > 1 ? lines.join('\n') : null;
+}
+
 const PRIORITY_SKILLS = {
   'skill-manager': {
     featured: true,
@@ -91,6 +111,9 @@ export function syncSkills() {
       let mermaidChart = null;
       if (fs.existsSync(statechartPath)) {
         mermaidChart = extractMermaid(fs.readFileSync(statechartPath, 'utf8'));
+      }
+      if (!mermaidChart) {
+        mermaidChart = generateMermaidFromStates(doc);
       }
 
       // Collect unique tools across all states
