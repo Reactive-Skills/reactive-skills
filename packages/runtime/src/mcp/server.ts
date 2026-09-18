@@ -789,6 +789,66 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     }
   );
 
+  // 13. TOOL: reactive_sync
+  server.tool(
+    'reactive_sync',
+    'Synchronize reactive and agent skills between authoring workspaces and agent satellite environments using zero-drift directory junctions',
+    {
+      skill: z.string().optional().describe('Skill name to sync (optional, syncs all skills if omitted)'),
+      link: z.boolean().optional().describe('Use directory junctions / symlinks for zero-drift live editing (default: true)'),
+      copy: z.boolean().optional().describe('Force physical copy instead of junctions (default: false)'),
+      dryRun: z.boolean().optional().describe('Preview sync actions without touching disk (default: false)'),
+      source: z.string().optional().describe('Custom source directory (optional)'),
+      target: z.string().optional().describe('Custom target directory (optional)'),
+    },
+    async ({ skill, link = true, copy = false, dryRun = false, source, target }) => {
+      try {
+        const syncArgs: string[] = [];
+        if (skill) {
+          syncArgs.push('--skill', skill);
+        }
+        if (copy) {
+          syncArgs.push('--copy');
+        } else if (link) {
+          syncArgs.push('--link');
+        }
+        if (dryRun) {
+          syncArgs.push('--dry-run');
+        }
+        if (source) {
+          syncArgs.push('--source', source);
+        }
+        if (target) {
+          syncArgs.push('--target', target);
+        }
+        syncArgs.push('--json');
+
+        const { syncEngineCommand } = await import('../sync/cli.js');
+        const jsonOutput = await syncEngineCommand(syncArgs);
+        let report: any;
+        try {
+          report = JSON.parse(jsonOutput);
+        } catch {
+          report = { output: jsonOutput };
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(report, null, 2),
+            },
+          ],
+        };
+      } catch (err: any) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
+          isError: true,
+        };
+      }
+    }
+  );
+
   // RESOURCE 1: reactive://events
   server.resource(
     'reactive-events',

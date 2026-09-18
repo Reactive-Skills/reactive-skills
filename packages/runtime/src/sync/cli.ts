@@ -143,6 +143,7 @@ Satellites (default targets):
   ~/.copilot/skills
   ~/.hermes/skills
   ~/.crew/skills
+  ~/.devin/skills
 `);
 }
 
@@ -158,6 +159,7 @@ function defaultTargets(): string[] {
     path.join(home, '.copilot', 'skills'),
     path.join(home, '.hermes', 'skills'),
     path.join(home, '.crew', 'skills'),
+    path.join(home, '.devin', 'skills'),
   ];
 }
 

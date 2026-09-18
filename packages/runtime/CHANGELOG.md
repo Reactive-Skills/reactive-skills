@@ -1,4 +1,12 @@
 
+## [0.5.3] - 2026-09-18
+
+- chore(release): v0.5.2 - Fix global skill workspace resolution, handle stale state, and add reactive_reset MCP tool (966c130)
+- fix(axi,runtime): resolve workspace correctly for global skills, handle stale state, and add reactive_reset MCP tool (c527380)
+- chore(release): v0.5.1 - Fix check-docs invariant: follow AGENTS.md reference to repository-map.md (2790cf8)
+- feat: add context scoping with per-state scope and delta tracking (028d383)
+- chore: groom AGENTS.md into terse references (c6f17da)
+
 ## [0.5.2] - 2026-09-17
 
 - fix(axi,runtime): resolve workspace correctly for global skills, handle stale state, and add reactive_reset MCP tool (c527380)

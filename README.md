@@ -5,19 +5,19 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.2)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.3)
 
 ---
 
-> 🚀 **What's New in v0.5.2:**
-> - Fix global skill workspace resolution, handle stale state, and add reactive_reset MCP tool
+> 🚀 **What's New in v0.5.3:**
+> - Add axi sync command and reactive_sync MCP tool
 > - **Delta Tracking:** State revisits now emit `<context_delta>` with `changed_keys`, `previous_visit_seq`, and `new_since_last_visit` for efficient delta-aware prompt delivery.
 > - **Bug Fix:** `computeContextDelta` no longer falsely reports first-visit as a revisit (was reading the `stateVisits` map that `executeEntryHook` updated in the same cycle).
 > - **Bug Fix:** `computeScopedContext` now correctly distinguishes `context_scope: []` (explicitly empty) from no `context_scope` (full context).
 > - **Bug Fix:** `check-docs.js` now follows AGENTS.md's reference to `.agents/references/repository-map.md` for core module validation.
 > - **Release Automation:** Added `release:minor`/`release:patch`/`release:major` scripts that bump version, update banners, commit, tag, and push in one command.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.2) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.3) · [View Changelog](CHANGELOG.md)
 
 ---
 
@@ -116,6 +116,7 @@ Reactive skills can be driven through two primary integration paths:
 | `reset` | `npx -y @reactive-skills/axi reset <skill>` | Clear execution run state while preserving deliverables |
 | `jobs` | `npx -y @reactive-skills/axi jobs <skill> [list\|switch\|archive]` | Inspect, switch, and archive isolated execution runs and deliverables |
 | `view` | `npx -y @reactive-skills/axi view <skill>` | Launch real-time telemetry server and live visual statechart viewer |
+| `sync` | `npx -y @reactive-skills/axi sync [skill]` | Synchronize skills across authoring workspaces and agent satellites via zero-drift junctions |
 
 ---
 

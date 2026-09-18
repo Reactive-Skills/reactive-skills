@@ -1,5 +1,5 @@
 export interface SuggestionContext {
-  domain?: 'home' | 'init' | 'upgrade' | 'inspect' | 'events' | 'invoke' | 'state' | 'emit' | 'setup' | 'reset';
+  domain?: 'home' | 'init' | 'upgrade' | 'inspect' | 'events' | 'invoke' | 'state' | 'emit' | 'setup' | 'reset' | 'sync';
   action?: 'list' | 'create' | 'convert' | 'view' | 'tail' | 'call' | 'get' | 'signal' | 'configure';
   skillName?: string;
   isEmpty?: boolean;
@@ -139,6 +139,14 @@ export function getSuggestions(ctx: SuggestionContext): string[] {
       }
       return [
         'Run `reactive-skills-axi reset <skill-name>` to clear a prior skill run',
+        'Run `reactive-skills-axi` to return to the dashboard',
+      ];
+
+    case 'sync':
+      return [
+        'Run `reactive-skills-axi sync <skill>` to link a specific skill via junctions',
+        'Run `reactive-skills-axi sync --dry-run` to preview sync operations without writing',
+        'Run `reactive-skills-axi sync --copy` to perform a physical file copy instead of junctions',
         'Run `reactive-skills-axi` to return to the dashboard',
       ];
 

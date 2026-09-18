@@ -299,5 +299,21 @@ describe('Reactive MCP Server Integration', () => {
     const stateParsed = JSON.parse(stateRes.content[0].text);
     expect(stateParsed.activeState).toBe('INIT');
   });
+
+  it('reactive_sync tool: synchronizes skills in dry-run mode', async () => {
+    const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
+    const tools = (server as any)._registeredTools;
+
+    expect(tools['reactive_sync']).toBeDefined();
+
+    const syncHandler = tools['reactive_sync'];
+    const res = await syncHandler.handler({ skill: 'test-fsm', dryRun: true }, {} as any);
+    expect(res.content[0].type).toBe('text');
+
+    const parsed = JSON.parse(res.content[0].text);
+    expect(parsed.dryRun).toBe(true);
+    expect(parsed.results).toBeDefined();
+    expect(Array.isArray(parsed.results)).toBe(true);
+  });
 });
 

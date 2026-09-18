@@ -2,7 +2,7 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.5.2: Fix global skill workspace resolution, handle stale state, and add reactive_reset MCP tool  [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.2) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.5.3: Add axi sync command and reactive_sync MCP tool   [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.3) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -152,6 +152,24 @@ Output (TOON format):
 - Active job pointer
 - Job list with status, creation timestamp, and title
 - Archived status confirmations
+
+### sync
+
+Synchronize skills from workspaces to global registry and satellite agent directories using zero-drift directory junctions.
+
+```bash
+# Sync all skills across all satellites via junctions:
+npx -y @reactive-skills/axi sync
+
+# Sync a specific skill:
+npx -y @reactive-skills/axi sync my-skill
+
+# Preview sync operations without touching disk:
+npx -y @reactive-skills/axi sync --dry-run
+
+# Force physical file copy instead of junctions:
+npx -y @reactive-skills/axi sync my-skill --copy
+```
 
 ## Design Principles
 

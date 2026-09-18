@@ -5,8 +5,8 @@ import { renderError } from '../toon.js';
 const DESCRIPTION = 'AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format';
 
 export const TOP_HELP = `usage: reactive-skills-axi [command] [args] [flags]
-commands[16]:
-  (none)=dashboard, init, upgrade, inspect, validate, events, invoke, state, emit, setup, mcp, reset, rebuild-sqlite, view, watch, jobs
+commands[17]:
+  (none)=dashboard, init, upgrade, inspect, validate, events, invoke, state, emit, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync
 flags[1]:
   --help
 examples:
@@ -25,6 +25,7 @@ examples:
   reactive-skills-axi reset my-skill
   reactive-skills-axi rebuild-sqlite my-skill
   reactive-skills-axi view my-skill
+  reactive-skills-axi sync [my-skill]
   reactive-skills-axi mcp
 `;
 
@@ -112,6 +113,11 @@ export async function main() {
         const { runMcpServer } = await import('@reactive-skills/runtime');
         await runMcpServer();
         return;
+      }
+      case 'sync': {
+        const { syncCommand } = await import('../commands/sync.js');
+        output = await syncCommand(args.slice(1));
+        break;
       }
       default: {
         process.stderr.write(renderError('Unknown command: ' + command, 'UNKNOWN_COMMAND', ['Run `reactive-skills-axi` with no args for dashboard', 'Run `reactive-skills-axi --help` for command reference']) + '\n');
