@@ -423,6 +423,412 @@ export const registrySkills = [
     ]
   },
   {
+    "slug": "api-contract",
+    "name": "Api Contract",
+    "version": "1.0.0",
+    "schemaVersion": "2.0.0",
+    "category": "General",
+    "description": "OpenAPI/Swagger spec vs client code drift detector — parses spec, walks fetch/axios calls, detects mismatches",
+    "tags": [
+      "api-contract",
+      "api",
+      "contract"
+    ],
+    "strictExecution": false,
+    "featured": false,
+    "initialState": "DISCOVER_APIS",
+    "contextKeys": [
+      "api_spec_path",
+      "client_code_paths",
+      "spec_schema",
+      "client_endpoints",
+      "drift_findings",
+      "missing_endpoints",
+      "type_mismatches",
+      "deprecated_usage",
+      "coverage_matrix"
+    ],
+    "defaultContext": {
+      "api_spec_path": null,
+      "client_code_paths": [],
+      "spec_schema": null,
+      "client_endpoints": [],
+      "drift_findings": [],
+      "missing_endpoints": [],
+      "type_mismatches": [],
+      "deprecated_usage": [],
+      "coverage_matrix": {}
+    },
+    "tools": [
+      "view_file",
+      "grep_search",
+      "find_by_name"
+    ],
+    "registryRepo": "Reactive-Skills/skills",
+    "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill api-contract",
+    "installCmd": "npx -y @reactive-skills/axi invoke api-contract",
+    "author": "Reactive Skills Core Team",
+    "stateCount": 8,
+    "states": [
+      {
+        "name": "DISCOVER_APIS",
+        "description": "Discover OpenAPI/Swagger spec and identify client code paths",
+        "tools": [
+          "view_file",
+          "grep_search",
+          "find_by_name"
+        ],
+        "transitions": [
+          {
+            "signal": "SPEC_LOADED",
+            "target": "VALIDATION_PIPELINE",
+            "guard": "Boolean(event.payload.api_spec_path) && Boolean(event.payload.client_code_paths)"
+          }
+        ]
+      },
+      {
+        "name": "VALIDATION_PIPELINE",
+        "description": "Composite state: spec validation, client code walking, and drift diffing",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "SECURITY_CRITICAL_FOUND",
+            "target": "BLOCKED",
+            "guard": "event.payload.severity === 'critical'"
+          }
+        ]
+      },
+      {
+        "name": "DRIFT_ANALYSIS",
+        "description": "Analyze drift findings and classify by severity",
+        "tools": [
+          "view_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "DRIFT_CLASSIFIED",
+            "target": "REPORT"
+          },
+          {
+            "signal": "CRITICAL_DRIFT",
+            "target": "BLOCKED",
+            "guard": "event.payload.severity === 'critical'"
+          }
+        ]
+      },
+      {
+        "name": "REPORT",
+        "description": "Composite state: generate drift report and fix recommendations",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "REPORT_ERROR",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "GATE",
+        "description": "Human review gate: approve, request revisions, or reject",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "USER_APPROVED",
+            "target": "COMPLETED",
+            "guard": "event.payload.approved === true"
+          },
+          {
+            "signal": "USER_REQUEST_REVISIONS",
+            "target": "DRIFT_ANALYSIS",
+            "guard": "event.payload.revisions_requested === true"
+          },
+          {
+            "signal": "USER_REJECTED",
+            "target": "BLOCKED",
+            "guard": "event.payload.rejected === true"
+          }
+        ]
+      },
+      {
+        "name": "COMPLETED",
+        "description": "Terminal state: API contract validation complete",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "BLOCKED",
+        "description": "Terminal state: Critical issues found, workflow halted",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "ERROR",
+        "description": "Terminal state: Unrecoverable error occurred",
+        "tools": [],
+        "transitions": []
+      }
+    ],
+    "mermaidChart": "stateDiagram-v2\n    [*] --> DISCOVER_APIS\n    DISCOVER_APIS --> VALIDATION_PIPELINE : SPEC_LOADED\\n(guard: api_spec_path && client_code_paths)\n\n    state VALIDATION_PIPELINE {\n        [*] --> SCHEMA_VALIDATION\n        state SCHEMA_VALIDATION {\n            [*] --> OPENAPI_CHECK\n            OPENAPI_CHECK --> TYPE_COMPATIBILITY : OPENAPI_CHECK_DONE\\n(guard: exit_code === 0)\n            TYPE_COMPATIBILITY --> BREAKING_CHANGE_DETECTION : TYPE_CHECK_DONE\\n(guard: exit_code === 0)\n            BREAKING_CHANGE_DETECTION --> EXAMPLE_CONFORMANCE : BREAKING_CHECK_DONE\\n(guard: exit_code === 0)\n            EXAMPLE_CONFORMANCE --> DRIFT_DIFFING : EXAMPLE_CHECK_DONE\\n(guard: exit_code === 0, exits to VALIDATION_PIPELINE.DRIFT_DIFFING)\n        }\n        DRIFT_DIFFING --> DRIFT_ANALYSIS : DRIFT_DIFFED\\n(guard: exit_code === 0, exits VALIDATION_PIPELINE)\n        note right of DRIFT_DIFFING\n          Bubble-up: SECURITY_CRITICAL_FOUND\n          (guard: severity === 'critical')\n          --> BLOCKED\n        end note\n    }\n\n    DRIFT_ANALYSIS --> REPORT : DRIFT_CLASSIFIED\n    DRIFT_ANALYSIS --> BLOCKED : CRITICAL_DRIFT\\n(guard: severity === 'critical')\n\n    state REPORT {\n        [*] --> VIOLATION_SUMMARY\n        VIOLATION_SUMMARY --> FIX_RECOMMENDATIONS : SUMMARY_GENERATED\n        FIX_RECOMMENDATIONS --> GATE : RECOMMENDATIONS_GENERATED\\n(exits REPORT)\n        note right of REPORT\n          Bubble-up: REPORT_ERROR\n          --> ERROR\n        end note\n    }\n\n    GATE --> COMPLETED : USER_APPROVED\\n(guard: approved === true)\n    GATE --> DRIFT_ANALYSIS : USER_REQUEST_REVISIONS\\n(guard: revisions_requested === true)\n    GATE --> BLOCKED : USER_REJECTED\\n(guard: rejected === true)\n\n    COMPLETED --> [*]\n    BLOCKED --> [*]\n    ERROR --> [*]",
+    "deliverables": [
+      ".docs/api-contract/drift.md",
+      ".docs/api-contract/coverage.md",
+      ".docs/api-contract/state.json"
+    ]
+  },
+  {
+    "slug": "docs-architect",
+    "name": "Docs Architect",
+    "version": "1.0.0",
+    "schemaVersion": "2.0.0",
+    "category": "Metaprogramming & Lifecycle",
+    "description": "Documentation architecture workflow that discovers source truth, designs information architecture, authors living documentation, embeds diagrams, validates links, and gates publication.",
+    "tags": [
+      "docs-architect",
+      "docs",
+      "architect"
+    ],
+    "strictExecution": false,
+    "featured": false,
+    "initialState": "INTAKE",
+    "contextKeys": [
+      "source_paths",
+      "audience",
+      "outcomes",
+      "documentation_scope",
+      "extracted_facts",
+      "architecture_decision",
+      "documentation_outline",
+      "diagram_inventory",
+      "draft_path",
+      "validation_exit_code",
+      "review_decision",
+      "deliverable_path"
+    ],
+    "defaultContext": {
+      "source_paths": [],
+      "audience": null,
+      "outcomes": [],
+      "documentation_scope": null,
+      "extracted_facts": [],
+      "architecture_decision": null,
+      "documentation_outline": null,
+      "diagram_inventory": [],
+      "draft_path": null,
+      "validation_exit_code": null,
+      "review_decision": null,
+      "deliverable_path": null
+    },
+    "tools": [
+      "view_file",
+      "find_by_name",
+      "grep_search",
+      "run_command",
+      "write_to_file"
+    ],
+    "registryRepo": "Reactive-Skills/skills",
+    "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill docs-architect",
+    "installCmd": "npx -y @reactive-skills/axi invoke docs-architect",
+    "author": "Reactive Skills Core Team",
+    "stateCount": 11,
+    "states": [
+      {
+        "name": "INTAKE",
+        "description": "Collect source paths, audience, outcomes, and documentation scope",
+        "tools": [
+          "view_file",
+          "find_by_name",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "INTAKE_READY",
+            "target": "DISCOVER",
+            "guard": "Array.isArray(event.payload.source_paths) && event.payload.source_paths.length > 0 && event.payload.audience != null && Array.isArray(event.payload.outcomes)"
+          },
+          {
+            "signal": "INTAKE_INVALID",
+            "target": "ERROR",
+            "guard": "!(Array.isArray(event.payload.source_paths) && event.payload.source_paths.length > 0 && event.payload.audience != null && Array.isArray(event.payload.outcomes))"
+          }
+        ]
+      },
+      {
+        "name": "DISCOVER",
+        "description": "Inventory source files and identify authoritative documentation inputs",
+        "tools": [
+          "find_by_name",
+          "grep_search",
+          "view_file"
+        ],
+        "transitions": [
+          {
+            "signal": "DISCOVERY_COMPLETE",
+            "target": "EXTRACT",
+            "guard": "event.payload.exit_code === 0"
+          },
+          {
+            "signal": "DISCOVERY_FAILED",
+            "target": "ERROR",
+            "guard": "event.payload.exit_code !== 0"
+          }
+        ]
+      },
+      {
+        "name": "EXTRACT",
+        "description": "Extract facts, APIs, decisions, interfaces, and operational constraints",
+        "tools": [
+          "view_file",
+          "grep_search",
+          "run_command"
+        ],
+        "transitions": [
+          {
+            "signal": "FACTS_EXTRACTED",
+            "target": "DESIGN",
+            "guard": "Array.isArray(event.payload.extracted_facts) && event.payload.extracted_facts.length > 0"
+          },
+          {
+            "signal": "EXTRACTION_FAILED",
+            "target": "ERROR",
+            "guard": "!Array.isArray(event.payload.extracted_facts) || event.payload.extracted_facts.length === 0"
+          }
+        ]
+      },
+      {
+        "name": "DESIGN",
+        "description": "Choose information architecture and map content to audience outcomes",
+        "tools": [
+          "view_file",
+          "write_to_file"
+        ],
+        "transitions": [
+          {
+            "signal": "ARCHITECTURE_DESIGNED",
+            "target": "AUTHOR",
+            "guard": "event.payload.architecture_decision != null && Array.isArray(event.payload.documentation_outline) && event.payload.documentation_outline.length > 0"
+          },
+          {
+            "signal": "DESIGN_FAILED",
+            "target": "ERROR",
+            "guard": "event.payload.architecture_decision == null || !Array.isArray(event.payload.documentation_outline) || event.payload.documentation_outline.length === 0"
+          }
+        ]
+      },
+      {
+        "name": "AUTHOR",
+        "description": "Draft concise, source-linked documentation from the approved outline",
+        "tools": [
+          "view_file",
+          "write_to_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "DRAFT_WRITTEN",
+            "target": "DIAGRAM",
+            "guard": "event.payload.draft_path != null && event.payload.draft_path.length > 0"
+          },
+          {
+            "signal": "AUTHORING_FAILED",
+            "target": "ERROR",
+            "guard": "event.payload.draft_path == null || event.payload.draft_path.length === 0"
+          }
+        ]
+      },
+      {
+        "name": "DIAGRAM",
+        "description": "Create embedded diagrams from documented relationships and decisions",
+        "tools": [
+          "view_file",
+          "write_to_file",
+          "run_command"
+        ],
+        "transitions": [
+          {
+            "signal": "DIAGRAMS_EMBEDDED",
+            "target": "VALIDATE",
+            "guard": "Array.isArray(event.payload.diagram_inventory) && event.payload.diagram_inventory.length > 0"
+          },
+          {
+            "signal": "DIAGRAM_FAILED",
+            "target": "ERROR",
+            "guard": "!Array.isArray(event.payload.diagram_inventory) || event.payload.diagram_inventory.length === 0"
+          }
+        ]
+      },
+      {
+        "name": "VALIDATE",
+        "description": "Check links, terminology, source traceability, diagram integrity, and readability",
+        "tools": [
+          "run_command",
+          "view_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "VALIDATION_PASSED",
+            "target": "REVIEW",
+            "guard": "event.payload.validation_exit_code === 0"
+          },
+          {
+            "signal": "VALIDATION_FAILED",
+            "target": "ERROR",
+            "guard": "event.payload.validation_exit_code !== 0"
+          }
+        ]
+      },
+      {
+        "name": "REVIEW",
+        "description": "Human review gate for accuracy, usefulness, and publication readiness",
+        "tools": [
+          "view_file"
+        ],
+        "transitions": [
+          {
+            "signal": "USER_APPROVED",
+            "target": "SUCCESS",
+            "guard": "event.payload.approved === true"
+          },
+          {
+            "signal": "USER_REQUEST_REVISIONS",
+            "target": "AUTHOR",
+            "guard": "event.payload.revisions_requested === true"
+          },
+          {
+            "signal": "USER_REJECTED",
+            "target": "BLOCKED",
+            "guard": "event.payload.rejected === true"
+          }
+        ]
+      },
+      {
+        "name": "SUCCESS",
+        "description": "Terminal state: validated documentation architecture is published",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "BLOCKED",
+        "description": "Terminal state: publication rejected or blocked by review",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "ERROR",
+        "description": "Terminal state: documentation workflow failed",
+        "tools": [],
+        "transitions": []
+      }
+    ],
+    "mermaidChart": "stateDiagram-v2\n    [*] --> INTAKE\n    INTAKE --> DISCOVER: INTAKE_READY (valid intake)\n    INTAKE --> ERROR: INTAKE_INVALID (invalid intake)\n    DISCOVER --> EXTRACT: DISCOVERY_COMPLETE (exit_code == 0)\n    DISCOVER --> ERROR: DISCOVERY_FAILED (exit_code != 0)\n    EXTRACT --> DESIGN: FACTS_EXTRACTED (facts present)\n    EXTRACT --> ERROR: EXTRACTION_FAILED (no facts)\n    DESIGN --> AUTHOR: ARCHITECTURE_DESIGNED (decision and outline present)\n    DESIGN --> ERROR: DESIGN_FAILED (decision or outline missing)\n    AUTHOR --> DIAGRAM: DRAFT_WRITTEN (draft path present)\n    AUTHOR --> ERROR: AUTHORING_FAILED (draft path missing)\n    DIAGRAM --> VALIDATE: DIAGRAMS_EMBEDDED (diagram inventory present)\n    DIAGRAM --> ERROR: DIAGRAM_FAILED (diagram inventory empty)\n    VALIDATE --> REVIEW: VALIDATION_PASSED (exit_code == 0)\n    VALIDATE --> ERROR: VALIDATION_FAILED (exit_code != 0)\n    REVIEW --> SUCCESS: USER_APPROVED (approved == true)\n    REVIEW --> AUTHOR: USER_REQUEST_REVISIONS (revisions_requested == true)\n    REVIEW --> BLOCKED: USER_REJECTED (rejected == true)\n    SUCCESS --> [*]\n    BLOCKED --> [*]\n    ERROR --> [*]",
+    "deliverables": [
+      ".docs/docs-architect/documentation-architecture.md",
+      ".docs/docs-architect/diagram-inventory.md",
+      ".docs/docs-architect/state.json"
+    ]
+  },
+  {
     "slug": "mutation-tester",
     "name": "Mutation Tester",
     "version": "1.0.0",
@@ -620,6 +1026,342 @@ export const registrySkills = [
     "deliverables": [
       ".docs/mutation-scorecard.md",
       ".docs/mutation-report.json"
+    ]
+  },
+  {
+    "slug": "onboarding-map",
+    "name": "Onboarding Map",
+    "version": "1.0.0",
+    "schemaVersion": "reactive/v2.0.0",
+    "category": "General",
+    "description": "Codebase onboarding workflow: intake role and scope, scan architecture and ownership, map modules and dependencies, design a personalized learning path, review with stakeholders, and approve completion.",
+    "tags": [
+      "onboarding-map",
+      "onboarding",
+      "map"
+    ],
+    "strictExecution": false,
+    "featured": false,
+    "initialState": "INTAKE",
+    "contextKeys": [
+      "repo_path",
+      "user_role",
+      "module_count",
+      "dependency_graph",
+      "learning_path",
+      "stakeholder_feedback"
+    ],
+    "defaultContext": {},
+    "tools": [],
+    "registryRepo": "Reactive-Skills/skills",
+    "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill onboarding-map",
+    "installCmd": "npx -y @reactive-skills/axi invoke onboarding-map",
+    "author": "Reactive Skills Core Team",
+    "stateCount": 8,
+    "states": [
+      {
+        "name": "INTAKE",
+        "description": "Operational state INTAKE",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "INGESTED",
+            "target": "SCAN",
+            "guard": "context.repo_path != null && context.user_role != null"
+          }
+        ]
+      },
+      {
+        "name": "SCAN",
+        "description": "Operational state SCAN",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "SCANNED",
+            "target": "MAP",
+            "guard": "context.module_count > 0"
+          },
+          {
+            "signal": "SCAN_FAILED",
+            "target": "ERROR",
+            "guard": "context.module_count == 0"
+          }
+        ]
+      },
+      {
+        "name": "MAP",
+        "description": "Operational state MAP",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "MAPPED",
+            "target": "PATH",
+            "guard": "context.dependency_graph != null"
+          },
+          {
+            "signal": "MAP_FAILED",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "PATH",
+        "description": "Operational state PATH",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "DESIGNED",
+            "target": "REVIEW",
+            "guard": "context.learning_path != null"
+          },
+          {
+            "signal": "PATH_FAILED",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "REVIEW",
+        "description": "Operational state REVIEW",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "APPROVED",
+            "target": "SUCCESS"
+          },
+          {
+            "signal": "REJECTED",
+            "target": "PATH"
+          },
+          {
+            "signal": "BLOCKED",
+            "target": "BLOCKED"
+          },
+          {
+            "signal": "REVIEW_FAILED",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "SUCCESS",
+        "description": "Operational state SUCCESS",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "BLOCKED",
+        "description": "Operational state BLOCKED",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "ERROR",
+        "description": "Operational state ERROR",
+        "tools": [],
+        "transitions": []
+      }
+    ],
+    "mermaidChart": "stateDiagram-v2\n    [*] --> INTAKE\n    INTAKE --> SCAN: INGESTED\n    SCAN --> MAP: SCANNED\n    MAP --> PATH: MAPPED\n    PATH --> REVIEW: DESIGNED\n    REVIEW --> SUCCESS: APPROVED\n    REVIEW --> PATH: REJECTED\n    REVIEW --> BLOCKED: BLOCKED\n    SCAN --> ERROR: SCAN_FAILED\n    MAP --> ERROR: MAP_FAILED\n    PATH --> ERROR: PATH_FAILED\n    REVIEW --> ERROR: REVIEW_FAILED\n    SUCCESS --> [*]\n    BLOCKED --> [*]\n    ERROR --> [*]"
+  },
+  {
+    "slug": "pr-triage",
+    "name": "Pr Triage",
+    "version": "1.0.0",
+    "schemaVersion": "2.0.0",
+    "category": "Testing & Quality",
+    "description": "Pull request triage workflow that collects PR metadata, classifies risk and ownership, assesses readiness, routes work, and pauses at a human disposition gate.",
+    "tags": [
+      "pr-triage",
+      "pr",
+      "triage"
+    ],
+    "strictExecution": false,
+    "featured": false,
+    "initialState": "INTAKE",
+    "contextKeys": [
+      "repository",
+      "pull_requests",
+      "triage_policy",
+      "collected_items",
+      "classifications",
+      "assessments",
+      "routing_plan",
+      "review_decision",
+      "deliverable_path"
+    ],
+    "defaultContext": {
+      "repository": null,
+      "pull_requests": [],
+      "triage_policy": null,
+      "collected_items": [],
+      "classifications": [],
+      "assessments": [],
+      "routing_plan": [],
+      "review_decision": null,
+      "deliverable_path": null
+    },
+    "tools": [
+      "view_file",
+      "run_command",
+      "grep_search",
+      "write_to_file"
+    ],
+    "registryRepo": "Reactive-Skills/skills",
+    "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill pr-triage",
+    "installCmd": "npx -y @reactive-skills/axi invoke pr-triage",
+    "author": "Reactive Skills Core Team",
+    "stateCount": 9,
+    "states": [
+      {
+        "name": "INTAKE",
+        "description": "Collect repository, pull request batch, and triage policy",
+        "tools": [
+          "view_file",
+          "run_command"
+        ],
+        "transitions": [
+          {
+            "signal": "INTAKE_READY",
+            "target": "COLLECT",
+            "guard": "event.payload.repository != null && Array.isArray(event.payload.pull_requests) && event.payload.pull_requests.length > 0 && event.payload.triage_policy != null"
+          },
+          {
+            "signal": "INTAKE_INVALID",
+            "target": "ERROR",
+            "guard": "event.payload.repository == null || !Array.isArray(event.payload.pull_requests) || event.payload.pull_requests.length === 0 || event.payload.triage_policy == null"
+          }
+        ]
+      },
+      {
+        "name": "COLLECT",
+        "description": "Collect PR metadata, checks, reviews, diffs, and ownership signals",
+        "tools": [
+          "run_command",
+          "view_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "COLLECTION_COMPLETE",
+            "target": "CLASSIFY",
+            "guard": "Array.isArray(event.payload.collected_items) && event.payload.collected_items.length > 0"
+          },
+          {
+            "signal": "COLLECTION_FAILED",
+            "target": "ERROR",
+            "guard": "!Array.isArray(event.payload.collected_items) || event.payload.collected_items.length === 0"
+          }
+        ]
+      },
+      {
+        "name": "CLASSIFY",
+        "description": "Classify each PR by risk, size, ownership, and required reviewer",
+        "tools": [
+          "view_file",
+          "write_to_file"
+        ],
+        "transitions": [
+          {
+            "signal": "CLASSIFICATION_COMPLETE",
+            "target": "ASSESS",
+            "guard": "Array.isArray(event.payload.classifications) && event.payload.classifications.length > 0"
+          },
+          {
+            "signal": "CLASSIFICATION_FAILED",
+            "target": "ERROR",
+            "guard": "!Array.isArray(event.payload.classifications) || event.payload.classifications.length === 0"
+          }
+        ]
+      },
+      {
+        "name": "ASSESS",
+        "description": "Assess readiness, risk signals, test status, and policy compliance",
+        "tools": [
+          "view_file",
+          "grep_search",
+          "run_command"
+        ],
+        "transitions": [
+          {
+            "signal": "ASSESSMENT_COMPLETE",
+            "target": "ROUTE",
+            "guard": "Array.isArray(event.payload.assessments) && event.payload.assessments.length > 0"
+          },
+          {
+            "signal": "ASSESSMENT_FAILED",
+            "target": "ERROR",
+            "guard": "!Array.isArray(event.payload.assessments) || event.payload.assessments.length === 0"
+          }
+        ]
+      },
+      {
+        "name": "ROUTE",
+        "description": "Build deterministic routing and disposition recommendations",
+        "tools": [
+          "view_file",
+          "write_to_file"
+        ],
+        "transitions": [
+          {
+            "signal": "ROUTING_COMPLETE",
+            "target": "REVIEW",
+            "guard": "Array.isArray(event.payload.routing_plan) && event.payload.routing_plan.length > 0"
+          },
+          {
+            "signal": "ROUTING_FAILED",
+            "target": "ERROR",
+            "guard": "!Array.isArray(event.payload.routing_plan) || event.payload.routing_plan.length === 0"
+          }
+        ]
+      },
+      {
+        "name": "REVIEW",
+        "description": "Human gate to approve, rework, or block the triage result",
+        "tools": [
+          "view_file"
+        ],
+        "transitions": [
+          {
+            "signal": "USER_APPROVED",
+            "target": "SUCCESS",
+            "guard": "event.payload.approved === true"
+          },
+          {
+            "signal": "USER_REQUEST_REWORK",
+            "target": "ASSESS",
+            "guard": "event.payload.rework_requested === true"
+          },
+          {
+            "signal": "USER_REJECTED",
+            "target": "BLOCKED",
+            "guard": "event.payload.rejected === true"
+          }
+        ]
+      },
+      {
+        "name": "SUCCESS",
+        "description": "Terminal state: PR triage approved",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "BLOCKED",
+        "description": "Terminal state: PR triage blocked",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "ERROR",
+        "description": "Terminal state: PR triage workflow failed",
+        "tools": [],
+        "transitions": []
+      }
+    ],
+    "mermaidChart": "stateDiagram-v2\n    [*] --> INTAKE\n    INTAKE --> COLLECT: INTAKE_READY (valid intake)\n    INTAKE --> ERROR: INTAKE_INVALID (invalid intake)\n    COLLECT --> CLASSIFY: COLLECTION_COMPLETE (items present)\n    COLLECT --> ERROR: COLLECTION_FAILED (no items)\n    CLASSIFY --> ASSESS: CLASSIFICATION_COMPLETE (classifications present)\n    CLASSIFY --> ERROR: CLASSIFICATION_FAILED (no classifications)\n    ASSESS --> ROUTE: ASSESSMENT_COMPLETE (assessments present)\n    ASSESS --> ERROR: ASSESSMENT_FAILED (no assessments)\n    ROUTE --> REVIEW: ROUTING_COMPLETE (routing plan present)\n    ROUTE --> ERROR: ROUTING_FAILED (no routing plan)\n    REVIEW --> SUCCESS: USER_APPROVED (approved == true)\n    REVIEW --> ASSESS: USER_REQUEST_REWORK (rework_requested == true)\n    REVIEW --> BLOCKED: USER_REJECTED (rejected == true)\n    SUCCESS --> [*]\n    BLOCKED --> [*]\n    ERROR --> [*]",
+    "deliverables": [
+      ".docs/pr-triage/triage-report.md",
+      ".docs/pr-triage/state.json"
     ]
   },
   {
@@ -933,6 +1675,206 @@ export const registrySkills = [
       ".docs/product-manager/{{context.product_name}}-spec.md",
       ".docs/product-manager/{{context.product_name}}-eisenhower.md",
       ".docs/product-manager/inventory.json"
+    ]
+  },
+  {
+    "slug": "release-notes",
+    "name": "Release Notes",
+    "version": "1.0.0",
+    "schemaVersion": "2.0.0",
+    "category": "General",
+    "description": "Automated changelog and release note generator that scopes changes, classifies entries, composes draft notes, validates formatting, and gates human approval.",
+    "tags": [
+      "release-notes",
+      "release",
+      "notes"
+    ],
+    "strictExecution": false,
+    "featured": false,
+    "initialState": "INTAKE",
+    "contextKeys": [
+      "repository",
+      "release_version",
+      "scope_refs",
+      "commits",
+      "changelog_entries",
+      "release_notes",
+      "reviewed_notes",
+      "review_decision",
+      "deliverable_path"
+    ],
+    "defaultContext": {
+      "repository": null,
+      "release_version": null,
+      "scope_refs": [],
+      "commits": [],
+      "changelog_entries": [],
+      "release_notes": null,
+      "reviewed_notes": null,
+      "review_decision": null,
+      "deliverable_path": null
+    },
+    "tools": [
+      "view_file",
+      "run_command",
+      "grep_search",
+      "write_to_file"
+    ],
+    "registryRepo": "Reactive-Skills/skills",
+    "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill release-notes",
+    "installCmd": "npx -y @reactive-skills/axi invoke release-notes",
+    "author": "Reactive Skills Core Team",
+    "stateCount": 9,
+    "states": [
+      {
+        "name": "INTAKE",
+        "description": "Collect repository, release version, scope refs, and format policy",
+        "tools": [
+          "view_file",
+          "run_command"
+        ],
+        "transitions": [
+          {
+            "signal": "INTAKE_READY",
+            "target": "COLLECT",
+            "guard": "event.payload.repository != null && event.payload.release_version != null && Array.isArray(event.payload.scope_refs) && event.payload.scope_refs.length > 0"
+          },
+          {
+            "signal": "INTAKE_INVALID",
+            "target": "ERROR",
+            "guard": "event.payload.repository == null || event.payload.release_version == null || !Array.isArray(event.payload.scope_refs) || event.payload.scope_refs.length === 0"
+          }
+        ]
+      },
+      {
+        "name": "COLLECT",
+        "description": "Collect commits, artifacts, and source changes within the release scope",
+        "tools": [
+          "run_command",
+          "view_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "COLLECTION_COMPLETE",
+            "target": "CLASSIFY",
+            "guard": "Array.isArray(event.payload.commits) && event.payload.commits.length > 0"
+          },
+          {
+            "signal": "COLLECTION_FAILED",
+            "target": "ERROR",
+            "guard": "!Array.isArray(event.payload.commits) || event.payload.commits.length === 0"
+          }
+        ]
+      },
+      {
+        "name": "CLASSIFY",
+        "description": "Classify changes into changelog categories using conventional rules",
+        "tools": [
+          "view_file",
+          "write_to_file"
+        ],
+        "transitions": [
+          {
+            "signal": "ENTRIES_CLASSIFIED",
+            "target": "COMPOSE",
+            "guard": "Array.isArray(event.payload.changelog_entries) && event.payload.changelog_entries.length > 0"
+          },
+          {
+            "signal": "CLASSIFICATION_FAILED",
+            "target": "ERROR",
+            "guard": "!Array.isArray(event.payload.changelog_entries) || event.payload.changelog_entries.length === 0"
+          }
+        ]
+      },
+      {
+        "name": "COMPOSE",
+        "description": "Compose human-readable release notes from classified entries",
+        "tools": [
+          "view_file",
+          "write_to_file"
+        ],
+        "transitions": [
+          {
+            "signal": "NOTES_COMPOSED",
+            "target": "VALIDATE",
+            "guard": "event.payload.release_notes != null && event.payload.release_notes.length > 0"
+          },
+          {
+            "signal": "COMPOSITION_FAILED",
+            "target": "ERROR",
+            "guard": "event.payload.release_notes == null || event.payload.release_notes.length === 0"
+          }
+        ]
+      },
+      {
+        "name": "VALIDATE",
+        "description": "Validate formatting, link integrity, and scope coverage",
+        "tools": [
+          "run_command",
+          "view_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "VALIDATION_PASSED",
+            "target": "REVIEW",
+            "guard": "event.payload.exit_code === 0"
+          },
+          {
+            "signal": "VALIDATION_FAILED",
+            "target": "ERROR",
+            "guard": "event.payload.exit_code !== 0"
+          }
+        ]
+      },
+      {
+        "name": "REVIEW",
+        "description": "Human gate to approve, revise, or reject release notes",
+        "tools": [
+          "view_file"
+        ],
+        "transitions": [
+          {
+            "signal": "USER_APPROVED",
+            "target": "SUCCESS",
+            "guard": "event.payload.approved === true"
+          },
+          {
+            "signal": "USER_REQUEST_REVISIONS",
+            "target": "COMPOSE",
+            "guard": "event.payload.revisions_requested === true"
+          },
+          {
+            "signal": "USER_REJECTED",
+            "target": "BLOCKED",
+            "guard": "event.payload.rejected === true"
+          }
+        ]
+      },
+      {
+        "name": "SUCCESS",
+        "description": "Terminal state: release notes approved",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "BLOCKED",
+        "description": "Terminal state: release notes rejected",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "ERROR",
+        "description": "Terminal state: release note workflow failed",
+        "tools": [],
+        "transitions": []
+      }
+    ],
+    "mermaidChart": "stateDiagram-v2\n    [*] --> INTAKE\n    INTAKE --> COLLECT: INTAKE_READY (valid scope)\n    INTAKE --> ERROR: INTAKE_INVALID (invalid scope)\n    COLLECT --> CLASSIFY: COLLECTION_COMPLETE (commits present)\n    COLLECT --> ERROR: COLLECTION_FAILED (no commits)\n    CLASSIFY --> COMPOSE: ENTRIES_CLASSIFIED (entries present)\n    CLASSIFY --> ERROR: CLASSIFICATION_FAILED (no entries)\n    COMPOSE --> VALIDATE: NOTES_COMPOSED (notes present)\n    COMPOSE --> ERROR: COMPOSITION_FAILED (no notes)\n    VALIDATE --> REVIEW: VALIDATION_PASSED (exit_code == 0)\n    VALIDATE --> ERROR: VALIDATION_FAILED (exit_code != 0)\n    REVIEW --> SUCCESS: USER_APPROVED (approved == true)\n    REVIEW --> COMPOSE: USER_REQUEST_REVISIONS (revisions_requested == true)\n    REVIEW --> BLOCKED: USER_REJECTED (rejected == true)\n    SUCCESS --> [*]\n    BLOCKED --> [*]\n    ERROR --> [*]",
+    "deliverables": [
+      ".docs/release-notes/release-notes.md",
+      ".docs/release-notes/state.json"
     ]
   },
   {
@@ -1327,6 +2269,508 @@ export const registrySkills = [
     "deliverables": [
       ".docs/resume-manager/snapshot.md",
       ".docs/resume-manager/inventory.json"
+    ]
+  },
+  {
+    "slug": "security-scan",
+    "name": "Security Scan",
+    "version": "1.0.0",
+    "schemaVersion": "2.0.0",
+    "category": "General",
+    "description": "Pre-commit secret and credential scanner with remediation checklist — scans staged changes for API keys, tokens, private keys, hardcoded credentials, insecure defaults",
+    "tags": [
+      "security-scan",
+      "security",
+      "scan"
+    ],
+    "strictExecution": false,
+    "featured": false,
+    "initialState": "COLLECT_STAGED",
+    "contextKeys": [
+      "staged_files",
+      "scan_results",
+      "secrets_found",
+      "credentials_found",
+      "insecure_configs",
+      "findings",
+      "remediation_steps",
+      "pass_fail_verdict",
+      "critical_findings"
+    ],
+    "defaultContext": {
+      "staged_files": [],
+      "scan_results": [],
+      "secrets_found": [],
+      "credentials_found": [],
+      "insecure_configs": [],
+      "findings": [],
+      "remediation_steps": [],
+      "pass_fail_verdict": null,
+      "critical_findings": []
+    },
+    "tools": [
+      "run_command",
+      "view_file",
+      "grep_search"
+    ],
+    "registryRepo": "Reactive-Skills/skills",
+    "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill security-scan",
+    "installCmd": "npx -y @reactive-skills/axi invoke security-scan",
+    "author": "Reactive Skills Core Team",
+    "stateCount": 7,
+    "states": [
+      {
+        "name": "COLLECT_STAGED",
+        "description": "Collect git-staged files for scanning",
+        "tools": [
+          "run_command",
+          "view_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "STAGED_FILES",
+            "target": "SCAN_PIPELINE",
+            "guard": "Array.isArray(event.payload.staged_files) && event.payload.staged_files.length > 0"
+          }
+        ]
+      },
+      {
+        "name": "SCAN_PIPELINE",
+        "description": "Composite state: secrets scan, credentials scan, config scan",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "CRITICAL_SECRET_FOUND",
+            "target": "BLOCKED",
+            "guard": "event.payload.severity === 'critical'"
+          }
+        ]
+      },
+      {
+        "name": "REPORT",
+        "description": "Composite state: generate findings summary and remediation checklist",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "REPORT_ERROR",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "GATE",
+        "description": "Human review gate: pass, request remediation, or block",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "USER_APPROVED",
+            "target": "COMPLETED",
+            "guard": "event.payload.approved === true"
+          },
+          {
+            "signal": "REQUEST_REMEDIATION",
+            "target": "SCAN_PIPELINE",
+            "guard": "event.payload.remediation_requested === true"
+          },
+          {
+            "signal": "USER_REJECTED",
+            "target": "BLOCKED",
+            "guard": "event.payload.rejected === true"
+          }
+        ]
+      },
+      {
+        "name": "COMPLETED",
+        "description": "Terminal state: Scan complete, no critical issues",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "BLOCKED",
+        "description": "Terminal state: Critical secrets or credentials found, commit blocked",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "ERROR",
+        "description": "Terminal state: Unrecoverable error occurred",
+        "tools": [],
+        "transitions": []
+      }
+    ],
+    "mermaidChart": "stateDiagram-v2\n    [*] --> COLLECT_STAGED\n    COLLECT_STAGED --> SCAN_PIPELINE : STAGED_FILES\\n(guard: staged_files.length > 0)\n\n    state SCAN_PIPELINE {\n        [*] --> SECRETS_SCAN\n        SECRETS_SCAN --> CREDENTIALS_SCAN : SECRETS_SCANNED\\n(guard: exit_code === 0)\n        CREDENTIALS_SCAN --> CONFIG_SCAN : CREDENTIALS_SCANNED\\n(guard: exit_code === 0)\n        CONFIG_SCAN --> REPORT : CONFIG_SCANNED\\n(guard: exit_code === 0, exits SCAN_PIPELINE)\n    }\n\n    state REPORT {\n        [*] --> VIOLATION_SUMMARY\n        VIOLATION_SUMMARY --> REMEDIATION : SUMMARY_GENERATED\\n(guard: exit_code === 0)\n        REMEDIATION --> GATE : REMEDIATION_GENERATED\\n(guard: exit_code === 0, exits REPORT)\n    }\n\n    GATE --> COMPLETED : USER_APPROVED\\n(guard: approved === true)\n    GATE --> SCAN_PIPELINE : REQUEST_REMEDIATION\\n(guard: remediation_requested === true)\n    GATE --> BLOCKED : USER_REJECTED\\n(guard: rejected === true)\n\n    COMPLETED --> [*]\n    BLOCKED --> [*]\n    ERROR --> [*]",
+    "deliverables": [
+      ".docs/security-scan/findings.md",
+      ".docs/security-scan/remediation-checklist.md",
+      ".docs/security-scan/state.json"
+    ]
+  },
+  {
+    "slug": "tdd-refactor",
+    "name": "Tdd Refactor",
+    "version": "2.0.2",
+    "schemaVersion": "2.0.2",
+    "category": "Testing & Quality",
+    "description": "Hierarchical TDD & Refactoring state machine with nested micro-cycles, regression detection, event bubbling, and live projections",
+    "tags": [
+      "tdd-refactor",
+      "tdd",
+      "refactor"
+    ],
+    "strictExecution": true,
+    "featured": false,
+    "initialState": "INIT",
+    "contextKeys": [
+      "target_file",
+      "test_file",
+      "refactor_cycles",
+      "clean_passes"
+    ],
+    "defaultContext": {
+      "target_file": "src/auth.ts",
+      "test_file": "tests/auth.test.ts",
+      "refactor_cycles": 0,
+      "clean_passes": 0
+    },
+    "tools": [
+      "run_command",
+      "view_file",
+      "write_to_file",
+      "replace_file_content"
+    ],
+    "registryRepo": "Reactive-Skills/skills",
+    "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill tdd-refactor",
+    "installCmd": "npx -y @reactive-skills/axi invoke tdd-refactor",
+    "author": "Reactive Skills Core Team",
+    "stateCount": 9,
+    "states": [
+      {
+        "name": "INIT",
+        "description": "Bootloader: Verify reactive runtime environment",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "RUNTIME_READY",
+            "target": "RED_SPEC"
+          },
+          {
+            "signal": "SETUP_REQUIRED",
+            "target": "SETUP_RUNTIME"
+          }
+        ]
+      },
+      {
+        "name": "SETUP_RUNTIME",
+        "description": "Auto-configure harness MCP server",
+        "tools": [
+          "run_command"
+        ],
+        "transitions": [
+          {
+            "signal": "SETUP_COMPLETE",
+            "target": "RED_SPEC",
+            "guard": "payload.exit_code == 0"
+          },
+          {
+            "signal": "SETUP_FAILED",
+            "target": "ERROR",
+            "guard": "payload.exit_code != 0"
+          }
+        ]
+      },
+      {
+        "name": "RED_SPEC",
+        "description": "Author a strictly failing test specifying the new requirement",
+        "tools": [
+          "view_file",
+          "write_to_file",
+          "replace_file_content",
+          "run_command"
+        ],
+        "transitions": [
+          {
+            "signal": "TEST_RAN",
+            "target": "GREEN_CODE",
+            "guard": "event.payload.exit_code != 0"
+          }
+        ]
+      },
+      {
+        "name": "GREEN_CODE",
+        "description": "Write minimal implementation code to turn the test suite green",
+        "tools": [
+          "view_file",
+          "write_to_file",
+          "replace_file_content",
+          "run_command"
+        ],
+        "transitions": [
+          {
+            "signal": "TEST_RAN",
+            "target": "REFACTOR",
+            "guard": "event.payload.exit_code === 0"
+          }
+        ]
+      },
+      {
+        "name": "REFACTOR",
+        "description": "Composite state: Clean Code, Optimize Architecture, and Verify Invariants",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "GLOBAL_ABORT",
+            "target": "RED_SPEC"
+          },
+          {
+            "signal": "TEST_RAN",
+            "target": "GREEN_CODE",
+            "guard": "event.payload.exit_code != 0"
+          }
+        ]
+      },
+      {
+        "name": "AUDIT_VERIFY",
+        "description": "Run full verification suite, linter, and type checks",
+        "tools": [
+          "run_command",
+          "view_file"
+        ],
+        "transitions": [
+          {
+            "signal": "ALL_CHECKS_PASSED",
+            "target": "COMPLETED",
+            "guard": "event.payload.exit_code === 0"
+          },
+          {
+            "signal": "REGRESSION_DETECTED",
+            "target": "GREEN_CODE"
+          }
+        ]
+      },
+      {
+        "name": "COMPLETED",
+        "description": "TDD Refactor cycle finished successfully",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "ERROR",
+        "description": "Runtime setup failed",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "BYPASS_DETECTED",
+        "description": "Terminal State: Bypass detected - Agent operated outside signal contract",
+        "tools": [],
+        "transitions": []
+      }
+    ],
+    "deliverables": [
+      ".docs/tdd-refactor-summary.md",
+      ".docs/state-snapshot.json"
+    ]
+  },
+  {
+    "slug": "test-coverage-gate",
+    "name": "Test Coverage Gate",
+    "version": "1.0.0",
+    "schemaVersion": "2.0.0",
+    "category": "Testing & Quality",
+    "description": "Test coverage quality gate that establishes a clean baseline, measures statement, branch, function, and line coverage, analyzes gaps, and blocks release below explicit thresholds.",
+    "tags": [
+      "test-coverage-gate",
+      "test",
+      "coverage",
+      "gate"
+    ],
+    "strictExecution": false,
+    "featured": false,
+    "initialState": "INTAKE",
+    "contextKeys": [
+      "target_dir",
+      "test_command",
+      "coverage_command",
+      "thresholds",
+      "baseline_exit_code",
+      "coverage_report",
+      "coverage_metrics",
+      "coverage_gaps",
+      "gate_decision",
+      "deliverable_path"
+    ],
+    "defaultContext": {
+      "target_dir": ".",
+      "test_command": null,
+      "coverage_command": null,
+      "thresholds": null,
+      "baseline_exit_code": null,
+      "coverage_report": null,
+      "coverage_metrics": null,
+      "coverage_gaps": [],
+      "gate_decision": null,
+      "deliverable_path": null
+    },
+    "tools": [
+      "view_file",
+      "run_command",
+      "write_to_file",
+      "grep_search"
+    ],
+    "registryRepo": "Reactive-Skills/skills",
+    "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill test-coverage-gate",
+    "installCmd": "npx -y @reactive-skills/axi invoke test-coverage-gate",
+    "author": "Reactive Skills Core Team",
+    "stateCount": 9,
+    "states": [
+      {
+        "name": "INTAKE",
+        "description": "Collect target, test command, coverage command, and quality thresholds",
+        "tools": [
+          "view_file",
+          "run_command"
+        ],
+        "transitions": [
+          {
+            "signal": "INTAKE_READY",
+            "target": "CONFIGURE",
+            "guard": "event.payload.target_dir != null && event.payload.test_command != null && event.payload.coverage_command != null && event.payload.thresholds != null"
+          },
+          {
+            "signal": "INTAKE_INVALID",
+            "target": "ERROR",
+            "guard": "event.payload.target_dir == null || event.payload.test_command == null || event.payload.coverage_command == null || event.payload.thresholds == null"
+          }
+        ]
+      },
+      {
+        "name": "CONFIGURE",
+        "description": "Validate commands, threshold schema, and coverage report format",
+        "tools": [
+          "run_command",
+          "view_file"
+        ],
+        "transitions": [
+          {
+            "signal": "CONFIGURATION_READY",
+            "target": "BASELINE",
+            "guard": "event.payload.exit_code === 0 && event.payload.thresholds != null"
+          },
+          {
+            "signal": "CONFIGURATION_FAILED",
+            "target": "ERROR",
+            "guard": "event.payload.exit_code !== 0 || event.payload.thresholds == null"
+          }
+        ]
+      },
+      {
+        "name": "BASELINE",
+        "description": "Run the unmodified test suite and require a clean baseline",
+        "tools": [
+          "run_command"
+        ],
+        "transitions": [
+          {
+            "signal": "BASELINE_PASSED",
+            "target": "MEASURE",
+            "guard": "event.payload.exit_code === 0"
+          },
+          {
+            "signal": "BASELINE_FAILED",
+            "target": "ERROR",
+            "guard": "event.payload.exit_code !== 0"
+          }
+        ]
+      },
+      {
+        "name": "MEASURE",
+        "description": "Run coverage collection and parse the machine-readable report",
+        "tools": [
+          "run_command",
+          "view_file"
+        ],
+        "transitions": [
+          {
+            "signal": "COVERAGE_MEASURED",
+            "target": "ANALYZE",
+            "guard": "event.payload.coverage_report != null && event.payload.coverage_metrics != null"
+          },
+          {
+            "signal": "MEASUREMENT_FAILED",
+            "target": "ERROR",
+            "guard": "event.payload.coverage_report == null || event.payload.coverage_metrics == null"
+          }
+        ]
+      },
+      {
+        "name": "ANALYZE",
+        "description": "Compare coverage metrics with thresholds and identify actionable gaps",
+        "tools": [
+          "view_file",
+          "write_to_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "GAPS_ANALYZED",
+            "target": "GATE",
+            "guard": "event.payload.coverage_metrics != null && Array.isArray(event.payload.coverage_gaps)"
+          },
+          {
+            "signal": "ANALYSIS_FAILED",
+            "target": "ERROR",
+            "guard": "event.payload.coverage_metrics == null || !Array.isArray(event.payload.coverage_gaps)"
+          }
+        ]
+      },
+      {
+        "name": "GATE",
+        "description": "Human quality gate for threshold exceptions and release blocking",
+        "tools": [
+          "view_file"
+        ],
+        "transitions": [
+          {
+            "signal": "USER_APPROVED",
+            "target": "SUCCESS",
+            "guard": "event.payload.approved === true"
+          },
+          {
+            "signal": "USER_REQUEST_REMEDIATION",
+            "target": "MEASURE",
+            "guard": "event.payload.remediation_requested === true"
+          },
+          {
+            "signal": "USER_REJECTED",
+            "target": "BLOCKED",
+            "guard": "event.payload.rejected === true"
+          }
+        ]
+      },
+      {
+        "name": "SUCCESS",
+        "description": "Terminal state: coverage gate passed",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "BLOCKED",
+        "description": "Terminal state: coverage gate blocked release",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "ERROR",
+        "description": "Terminal state: coverage workflow failed",
+        "tools": [],
+        "transitions": []
+      }
+    ],
+    "mermaidChart": "stateDiagram-v2\n    [*] --> INTAKE\n    INTAKE --> CONFIGURE: INTAKE_READY (valid intake)\n    INTAKE --> ERROR: INTAKE_INVALID (invalid intake)\n    CONFIGURE --> BASELINE: CONFIGURATION_READY (exit_code == 0)\n    CONFIGURE --> ERROR: CONFIGURATION_FAILED (invalid configuration)\n    BASELINE --> MEASURE: BASELINE_PASSED (exit_code == 0)\n    BASELINE --> ERROR: BASELINE_FAILED (exit_code != 0)\n    MEASURE --> ANALYZE: COVERAGE_MEASURED (report and metrics present)\n    MEASURE --> ERROR: MEASUREMENT_FAILED (report or metrics missing)\n    ANALYZE --> GATE: GAPS_ANALYZED (metrics and gaps present)\n    ANALYZE --> ERROR: ANALYSIS_FAILED (metrics or gaps missing)\n    GATE --> SUCCESS: USER_APPROVED (approved == true)\n    GATE --> MEASURE: USER_REQUEST_REMEDIATION (remediation_requested == true)\n    GATE --> BLOCKED: USER_REJECTED (rejected == true)\n    SUCCESS --> [*]\n    BLOCKED --> [*]\n    ERROR --> [*]",
+    "deliverables": [
+      ".docs/test-coverage-gate/coverage-report.md",
+      ".docs/test-coverage-gate/state.json"
     ]
   }
 ];

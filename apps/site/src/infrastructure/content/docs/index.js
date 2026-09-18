@@ -1,6 +1,7 @@
 import { overview } from './overview';
 import { quickstart } from './quickstart';
 import { authoring } from './authoring';
+import { syncing } from './syncing';
 import { conceptsDoc } from './conceptsDoc';
 import { mcp } from './mcp';
 import { axi } from './axi';
@@ -12,6 +13,7 @@ export const docPages = {
   overview,
   quickstart,
   authoring,
+  syncing,
   concepts: conceptsDoc,
   axi,
   mcp,
@@ -20,5 +22,5 @@ export const docPages = {
 };
 
 /** @type {import('@/contracts/types').DocPage[]} */
-export const docPageList = [overview, quickstart, authoring, conceptsDoc, axi, mcp, troubleshooting, changelog];
+export const docPageList = [overview, quickstart, authoring, syncing, conceptsDoc, axi, mcp, troubleshooting, changelog];
 

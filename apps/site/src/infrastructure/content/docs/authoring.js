@@ -180,9 +180,23 @@ states:
         } },
       ],
     },
+    {
+      id: 'distribute-sync',
+      heading: '6. Distribute to agent satellites with axi sync',
+      blocks: [
+        { type: 'text', text: 'Once your skill validates cleanly, synchronize it across all local agent harnesses (Claude, Gemini, Codex, Devin, Cline, Copilot) using zero-drift directory junctions:' },
+        { type: 'code', example: {
+          language: 'bash',
+          command: 'npx -y @reactive-skills/axi sync tdd-flow',
+          explanation: 'Links the newly authored skill into ~/.agents/skills/ and all detected satellites without copying files.',
+        } },
+        { type: 'callout', variant: 'signal', title: 'Zero-drift linking', text: 'Directory junctions allow you to continue refining states and prompts in your authoring repository while every agent tool immediately sees the live changes. See the Syncing Skills guide for full options.' },
+      ],
+    },
   ],
   relatedPages: [
     { title: 'Quickstart walkthrough', href: '/docs/quickstart' },
+    { title: 'Syncing & distributing skills', href: '/docs/syncing' },
     { title: 'State machine concepts', href: '/docs/concepts' },
     { title: 'AXI CLI reference', href: '/docs/axi' },
     { title: 'Troubleshooting guide', href: '/docs/troubleshooting' },

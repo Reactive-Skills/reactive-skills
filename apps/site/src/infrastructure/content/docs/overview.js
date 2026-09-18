@@ -23,6 +23,7 @@ export const overview = {
           'AXI (Preferred) — Direct, token-lean CLI interface for autonomous agents with TOON output and zero daemon overhead.',
           'Quickstart — Scaffold, inspect, and advance a skill in under five minutes.',
           'Authoring Skills — Design, customize, and verify domain states, guards, and projections.',
+          'Syncing Skills — Distribute skills across agent runtimes with zero-drift junctions or physical mirroring.',
           'Concepts — Understand states, signals, guards, bubbling, and event sourcing.',
           'MCP — Stdio server configuration for GUI hosts like Cursor, Claude Desktop, and VS Code.',
         ] },
@@ -33,6 +34,7 @@ export const overview = {
     { title: 'AXI CLI (Preferred)', href: '/docs/axi' },
     { title: 'Quickstart', href: '/docs/quickstart' },
     { title: 'Authoring & customizing skills', href: '/docs/authoring' },
+    { title: 'Syncing & distributing skills', href: '/docs/syncing' },
     { title: 'Concepts', href: '/docs/concepts' },
   ],
 };

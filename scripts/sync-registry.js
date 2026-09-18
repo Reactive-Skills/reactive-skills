@@ -182,6 +182,12 @@ export function syncSkills() {
 export const registrySkills = ${JSON.stringify(skills, null, 2)};
 `;
 
+  try {
+    if (fs.existsSync(OUTPUT_FILE)) {
+      fs.unlinkSync(OUTPUT_FILE);
+    }
+  } catch {}
+
   fs.writeFileSync(OUTPUT_FILE, fileContent, 'utf8');
   console.log(`[sync-registry] Successfully wrote ${skills.length} skills to ${OUTPUT_FILE}`);
 }

@@ -180,6 +180,52 @@ skills/<skill-name>/
 
 ---
 
+## 🔄 Syncing & Distributing Skills
+
+When authoring reactive skills in a central repository, consumer agent environments need immediate access to the updated definitions.
+Different harnesses look for skills in separate user-level directories, including `~/.claude/skills`, `~/.gemini/config/skills`, `~/.codex/skills`, `~/.devin/skills`, and `~/.agents/skills`.
+Copying files manually between these folders causes immediate version drift.
+
+Reactive Skills solves this problem with zero-drift directory junctions on Windows and symbolic links on POSIX platforms.
+A junction allows consumer satellites to reference the authoritative authoring repository directly.
+Edits made in your authoring repository are instantly active in every agent environment with zero synchronization latency.
+
+### CLI Synchronization
+
+```bash
+# Synchronize all discovered skills to default satellites via directory junctions:
+npx -y @reactive-skills/axi sync
+
+# Synchronize a specific skill only:
+npx -y @reactive-skills/axi sync <skill-name>
+
+# Preview changes without modifying files:
+npx -y @reactive-skills/axi sync <skill-name> --dry-run
+
+# Force physical file copy instead of directory junctions:
+npx -y @reactive-skills/axi sync <skill-name> --copy
+```
+
+### Model Context Protocol (MCP)
+
+Agents running in GUI environments can call the native `reactive_sync` tool:
+
+```json
+{
+  "skill": "my-skill",
+  "link": true,
+  "dryRun": false
+}
+```
+
+### Safety and Backups
+
+The synchronizer automatically discovers authoring directories from `~/.agents/sources.json` and the active repository.
+Before converting any pre-existing physical directory into a directory junction, the synchronizer creates a timestamped backup under `.sync-backups/`.
+Previous files are never removed without a safe backup copy.
+
+---
+
 ## 🗂️ Job & Run Isolation (Multi-Run Management)
 
 RSA provides multi-run isolation, allowing teams and autonomous agents to execute multiple independent runs of the same skill without event log pollution or deliverable overwrites.

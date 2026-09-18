@@ -19,7 +19,7 @@ export const axi = {
       heading: 'The public CLI contract',
       blocks: [
         { type: 'text', text: 'The CLI entrypoint is zero-install via npx, or installed globally with npm i -g @reactive-skills/axi.' },
-        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi <command> [options]', explanation: 'Available commands: init, state, emit, events, inspect, reset, upgrade, view, mcp.' } },
+        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi <command> [options]', explanation: 'Available commands: init, state, emit, events, inspect, reset, upgrade, view, sync, mcp.' } },
         { type: 'list', items: [
           'axi (dashboard) — lists registered skills, current states, and suggested next actions.',
           'axi state <skill> — outputs active state, hierarchical path, and allowed transitions.',
@@ -29,6 +29,7 @@ export const axi = {
           'axi view <skill> — launches real-time telemetry server and live visual viewer.',
           'axi init <name> — scaffolds a modular reactive skill directory.',
           'axi reset <skill> — resets active execution run while preserving deliverables.',
+          'axi sync [skill] — synchronizes skills across authoring workspaces and agent satellites via zero-drift junctions.',
           'axi mcp — launches stdio MCP server for GUI IDE host connectivity.',
         ] },
       ],
@@ -66,6 +67,7 @@ export const axi = {
   ],
   relatedPages: [
     { title: 'Quickstart', href: '/docs/quickstart' },
+    { title: 'Syncing & distributing skills', href: '/docs/syncing' },
     { title: 'Model Context Protocol (MCP)', href: '/docs/mcp' },
     { title: 'Troubleshooting guide', href: '/docs/troubleshooting' },
   ],
