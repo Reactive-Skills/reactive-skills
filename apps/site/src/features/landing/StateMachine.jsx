@@ -103,9 +103,11 @@ export function StateMachine({ machine }) {
   };
 
   // Universal reset
-  const reset = useCallback(() => {
-    setPlaying(false);
-    clearTimer();
+  const reset = useCallback((keepPlaying = false) => {
+    if (!keepPlaying) {
+      setPlaying(false);
+      clearTimer();
+    }
     setActive(0);
     setGuardStatus('pass');
     setBubbleAlert(null);
@@ -138,7 +140,6 @@ export function StateMachine({ machine }) {
 
   // Step function for forward progression
   const step = useCallback(() => {
-    setPlaying(false);
     setBubbleAlert(null);
     if (atEnd) {
       reset();
@@ -258,9 +259,17 @@ export function StateMachine({ machine }) {
 
   const togglePlay = () => {
     if (atEnd) {
-      reset();
+      reset(true);
+      setPlaying(true);
+      return;
     }
     setPlaying((p) => !p);
+  };
+
+  const handleManualStep = () => {
+    setPlaying(false);
+    clearTimer();
+    step();
   };
 
   // HSM Specific: Simulate Event Bubbling Upwards
@@ -447,7 +456,7 @@ export function StateMachine({ machine }) {
           </button>
           <button
             type="button"
-            onClick={step}
+            onClick={handleManualStep}
             aria-label="Step forward"
             title="Step to next transition"
             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-phino-border bg-phino-surface text-phino-text-muted transition-colors hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
@@ -456,7 +465,7 @@ export function StateMachine({ machine }) {
           </button>
           <button
             type="button"
-            onClick={reset}
+            onClick={() => reset()}
             aria-label="Reset run"
             title="Reset state machine"
             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-phino-border bg-phino-surface text-phino-text-muted transition-colors hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
