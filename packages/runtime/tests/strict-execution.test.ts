@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { FSMEngine } from '../src/core/fsm-engine.js';
 import { EventStore } from '../src/core/event-store.js';
-import { ReactiveRuntimeHooks } from '../src/core/runtime-hooks.js';
 import { createReactiveMcpServer } from '../src/mcp/server.js';
 
 describe('Strict Execution Mode', () => {
@@ -217,66 +216,4 @@ describe('Strict Execution Mode', () => {
     });
   });
 
-  describe('Runtime hooks', () => {
-    it('onBeforeAgentTurn injects BYPASS_WARNING when turnsSinceLastSignal > 0', () => {
-      const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
-      const eventStore = new EventStore({ inMemory: true });
-      const engine = new FSMEngine({ skillDir, eventStore });
-
-      engine.recordTurnStart();
-      expect(engine.getTurnsSinceLastSignal()).toBeGreaterThan(0);
-
-      const result = ReactiveRuntimeHooks.onBeforeAgentTurn(engine, 'base prompt');
-      expect(result.injectedPrompt).toContain('BYPASS_WARNING');
-      expect(result.injectedPrompt).toContain('idle budget');
-    });
-
-    it('onBeforeAgentTurn does NOT inject BYPASS_WARNING when turnsSinceLastSignal is 0', () => {
-      const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
-      const eventStore = new EventStore({ inMemory: true });
-      const engine = new FSMEngine({ skillDir, eventStore });
-
-      const result = ReactiveRuntimeHooks.onBeforeAgentTurn(engine, 'base prompt');
-      expect(result.injectedPrompt).not.toContain('BYPASS_WARNING');
-    });
-
-    it('auditToolExecution allows runtime tools', () => {
-      const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
-      const eventStore = new EventStore({ inMemory: true });
-      const engine = new FSMEngine({ skillDir, eventStore });
-
-      const result = ReactiveRuntimeHooks.auditToolExecution(engine, { tool: 'reactive_state' });
-      expect(result.bypassed).toBe(false);
-    });
-
-    it('auditToolExecution allows allowed tools', () => {
-      const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
-      const eventStore = new EventStore({ inMemory: true });
-      const engine = new FSMEngine({ skillDir, eventStore });
-
-      const slice = engine.generatePromptSlice();
-      const firstTool = slice.allowedTools[0];
-      if (firstTool) {
-        const result = ReactiveRuntimeHooks.auditToolExecution(engine, { tool: firstTool });
-        expect(result.bypassed).toBe(false);
-      }
-    });
-
-    it('auditToolExecution detects non-allowed non-runtime tools', () => {
-      const skillDir = path.resolve(tempDir, 'skills', '_test_hitl_skill');
-      const eventStore = new EventStore({ inMemory: true });
-      const engine = new FSMEngine({ skillDir, eventStore });
-
-      const result = ReactiveRuntimeHooks.auditToolExecution(engine, { tool: 'some_random_tool' });
-      expect(result.bypassed).toBe(true);
-    });
-
-    it('auditToolExecution throws in strict mode for non-allowed tools', () => {
-      const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
-      const eventStore = new EventStore({ inMemory: true });
-      const engine = new FSMEngine({ skillDir, eventStore });
-
-      expect(() => ReactiveRuntimeHooks.auditToolExecution(engine, { tool: 'malicious_tool' })).toThrow('BYPASS_DETECTED');
-    });
-  });
 });

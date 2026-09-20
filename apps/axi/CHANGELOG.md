@@ -1,4 +1,12 @@
 
+## [0.6.0] - 2026-09-20
+
+- docs: add project context and architecture documentation files (18e2a78)
+- docs: add Reactive Skills Architecture overview to AGENTS.md (f064203)
+- chore(release): v0.5.4 - -- (9b4c347)
+- fix(axi): isolate jobs and default bootloaders to AXI (8264acc)
+- feat(site): refactor hero to tactical workbench and fix simulation controls (40c340e)
+
 ## [0.5.4] - 2026-09-20
 
 - fix(axi): isolate jobs and default bootloaders to AXI (8264acc)

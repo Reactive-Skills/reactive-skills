@@ -2,7 +2,7 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.5.4: --    [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.4) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.6.0: --    [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.6.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

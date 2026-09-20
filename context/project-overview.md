@@ -44,7 +44,7 @@ Conventional agent skills are static markdown files (`SKILL.md`). The LLM is loa
 ## 4. Scope Boundaries
 
 ### In Scope
-- Core TypeScript runtime (`FSMEngine`, `EventStore`, `GuardEvaluator`, `ProjectionEngine`, `ReactiveRuntimeHooks`, `LegacySkillAdapter`, `MigrationEngine`, `JobManager`).
+- Core TypeScript runtime (`FSMEngine`, `EventStore`, `GuardEvaluator`, `ProjectionEngine`, `LegacySkillAdapter`, `MigrationEngine`, `JobManager`).
 - Declarative statechart schema (`skill.yaml`) with nested composite states and lifecycle hooks (`on_enter`, `on_exit`, `initial_substate`).
 - **`apps/axi`** — The `reactive-skills-axi` user-facing CLI: `state`, `emit`, `events`, `inspect`, `invoke`, `init`, `setup`, `reset`, `jobs`, `validate`, `view`, `sync`, `rebuild-sqlite`, `upgrade`.
 - **`apps/site`** — Next.js marketing and documentation site.

@@ -3,7 +3,6 @@ export * from './core/event-store.js';
 export * from './core/guard-evaluator.js';
 export * from './core/projection-engine.js';
 export * from './core/fsm-engine.js';
-export * from './core/runtime-hooks.js';
 export * from './core/legacy-adapter.js';
 export * from './core/migration.js';
 export * from './core/job-manager.js';

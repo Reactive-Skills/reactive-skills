@@ -146,33 +146,51 @@ Each logical "run" is tracked as a **Job** with its own `jobId`. `JobManager` re
 
 ---
 
-## 4. In-Harness Interceptor Runtime Mechanics
+## 4. Integration Modes
+
+Three modes exist — choose based on portability requirements. The runtime itself has no dependency on any specific mode.
+
+### Mode 1 — AXI CLI (recommended, no-install)
+
+`reactive-skills-axi` is the recommended integration path. It requires **no installation** — agents run it directly via `npx reactive-skills-axi@latest <command>`, making it the most accessible option across any agent harness or CI environment without configuration overhead.
 
 ```
-                  ┌────────────────────────┐
-                  │   Event / Signal Bus   │ (Tool Results, Subagents, Human Signals)
-                  └───────────┬────────────┘
-                              │
-                              ▼
-┌──────────────────────────────────────────────────────────────┐
-│                  In-Harness Interceptor                      │
-│                                                              │
-│  [Pre-Turn Hook]                     [Post-Turn / Human Hook]│
-│  • Reads Active State (HSM)          • Ingests Tool/User Resp│
-│  • Detects `human_gate` requirements • Evaluates Guard Expr  │
-│  • Hydrates states/{state}.md        • Drives Transition     │
-│  • Injects Scoped Prompt & Tools     • Binds User Feedback   │
-└──────────────┬───────────────────────────────▲───────────────┘
-               │                               │
-               ▼                               │
-┌──────────────────────────────┐ ┌─────────────┴────────────────┐
-│      LLM Reasoning Loop      │ │     Immutable Event Store    │
-│  • Reasons in focused state  │ │  • .reactive/events.jsonl    │
-│  • Executes scoped tools     ├─┤  • .reactive/events.db       │
-│  • Emits results & signals   │ │  • Live Deliverable Sinks    │
-└──────────────────────────────┘ │    (.docs/*.md projections)  │
-                                 └──────────────────────────────┘
+Agent Turn
+  │
+  ├─► npx reactive-skills-axi state    → TOON-formatted prompt slice + allowed_tools
+  │
+  │   [Agent reasons, executes allowed tools]
+  │
+  └─► npx reactive-skills-axi emit <SIGNAL> [payload]
+        │
+        ├─ GuardEvaluator.evaluate()   → passes/fails
+        ├─ on_exit hooks (skill.yaml)  → executed by FSMEngine on leaving state
+        ├─ STATE_TRANSITION event      → written to EventStore
+        ├─ on_enter hooks (skill.yaml) → executed by FSMEngine on entering state
+        └─ ProjectionEngine.project()  → deliverable sinks rendered
 ```
+
+### Mode 2 — MCP stdio (portable, integration)
+
+The MCP server exposes `reactive_state`, `reactive_emit_signal`, `reactive_respond_human`, `reactive_inspect`, `reactive_query_events`, and related tools over stdio. Use when the agent harness has native MCP support and the extra tool-call ergonomics are preferable to shell invocations.
+
+
+
+### HSM Lifecycle Hooks (`on_enter` / `on_exit`)
+
+State transitions in any integration mode automatically execute lifecycle hooks declared in `skill.yaml`. These are the primary mechanism for automatic context setup and signal emission — not the `ReactiveRuntimeHooks` class.
+
+```yaml
+states:
+  GREEN_CODE:
+    on_enter:
+      - signal: SNAPSHOT_TAKEN
+        payload: { checkpoint: true }
+    on_exit:
+      - signal: CLEANUP_TRIGGERED
+```
+
+`FSMEngine` executes `on_enter` hooks after entering a new state and `on_exit` hooks before leaving, appending corresponding events to the `EventStore` and potentially triggering further transitions via the signal queue.
 
 ---
 

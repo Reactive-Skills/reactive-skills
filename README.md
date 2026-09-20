@@ -5,11 +5,11 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.4)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.6.0)
 
 ---
 
-> 🚀 **What's New in v0.5.4:**
+> 🚀 **What's New in v0.6.0:**
 > - --
 > - **Delta Tracking:** State revisits now emit `<context_delta>` with `changed_keys`, `previous_visit_seq`, and `new_since_last_visit` for efficient delta-aware prompt delivery.
 > - **Bug Fix:** `computeContextDelta` no longer falsely reports first-visit as a revisit (was reading the `stateVisits` map that `executeEntryHook` updated in the same cycle).
@@ -17,7 +17,7 @@
 > - **Bug Fix:** `check-docs.js` now follows AGENTS.md's reference to `.agents/references/repository-map.md` for core module validation.
 > - **Release Automation:** Added `release:minor`/`release:patch`/`release:major` scripts that bump version, update banners, commit, tag, and push in one command.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.5.4) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.6.0) · [View Changelog](CHANGELOG.md)
 
 ---
 
