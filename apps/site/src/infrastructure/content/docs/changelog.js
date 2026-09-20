@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-5-4",
+    "heading": "v0.5.4 (2026-09-20)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "fix(axi): isolate jobs and default bootloaders to AXI",
+          "feat(site): refactor hero to tactical workbench and fix simulation controls",
+          "fix(site): update api-contract mermaid chart syntax",
+          "fix(site): add fallback Mermaid generation from skill states and restore tdd-refactor statechart",
+          "docs: add customer-facing Syncing Skills guide and cross-references"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-5-3",
     "heading": "v0.5.3 (2026-09-18)",
     "blocks": [

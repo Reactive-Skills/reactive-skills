@@ -1,4 +1,12 @@
 
+## [0.5.4] - 2026-09-20
+
+- fix(axi): isolate jobs and default bootloaders to AXI (8264acc)
+- feat(site): refactor hero to tactical workbench and fix simulation controls (40c340e)
+- fix(site): update api-contract mermaid chart syntax (a71334b)
+- fix(site): add fallback Mermaid generation from skill states and restore tdd-refactor statechart (5fddc7e)
+- docs: add customer-facing Syncing Skills guide and cross-references (cb6214d)
+
 ## [0.5.3] - 2026-09-18
 
 - chore(release): v0.5.2 - Fix global skill workspace resolution, handle stale state, and add reactive_reset MCP tool (966c130)
