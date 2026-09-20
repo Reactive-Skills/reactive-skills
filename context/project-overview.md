@@ -44,10 +44,13 @@ Conventional agent skills are static markdown files (`SKILL.md`). The LLM is loa
 ## 4. Scope Boundaries
 
 ### In Scope
-- Core TypeScript runtime (`FSMEngine`, `EventStore`, `GuardEvaluator`, `ProjectionEngine`, `ReactiveRuntimeHooks`, `LegacySkillAdapter`).
+- Core TypeScript runtime (`FSMEngine`, `EventStore`, `GuardEvaluator`, `ProjectionEngine`, `ReactiveRuntimeHooks`, `LegacySkillAdapter`, `MigrationEngine`, `JobManager`).
 - Declarative statechart schema (`skill.yaml`) with nested composite states and lifecycle hooks (`on_enter`, `on_exit`, `initial_substate`).
-- CLI tooling (`init`, `upgrade`, `inspect`, `events`, `project`).
+- **`apps/axi`** — The `reactive-skills-axi` user-facing CLI: `state`, `emit`, `events`, `inspect`, `invoke`, `init`, `setup`, `reset`, `jobs`, `validate`, `view`, `sync`, `rebuild-sqlite`, `upgrade`.
+- **`apps/site`** — Next.js marketing and documentation site.
 - Synthetic test and verification fixtures (`_test_fsm_skill`, `_test_hitl_skill`, `_test_hsm_skill`, `_test_legacy_skill`).
+- Real-time telemetry server (SSE) and terminal dashboard.
+- Workspace sync engine (`reactive-skills-sync`).
 
 ### Out of Scope (v1.0)
 - Remote distributed multi-node message broker (in-process / workspace-local event store is the target).
@@ -56,7 +59,7 @@ Conventional agent skills are static markdown files (`SKILL.md`). The LLM is loa
 ---
 
 ## 5. Success Criteria
-- [x] Zero compilation errors with strict TypeScript settings (`npm run build`).
-- [x] 100% test pass rate across all Vitest suites (`npm test`).
-- [x] Full simulation demo passes end-to-end (`npm run demo`).
-- [x] CLI tools functional for scaffolding and inspecting skills.
+- [x] Zero compilation errors with strict TypeScript settings (`pnpm -F @reactive-skills/runtime build`).
+- [x] 100% test pass rate across all Vitest suites (`pnpm -F @reactive-skills/runtime test`).
+- [x] Full simulation demo passes end-to-end (`pnpm -F @reactive-skills/runtime demo`).
+- [x] CLI tools functional for scaffolding and inspecting skills (`reactive-skills-axi`).

@@ -5,7 +5,7 @@
 ## 1. Incremental Scoping & Stop Conditions
 - Execute changes in small, verified atomic slices.
 - Never refactor unrelated files outside the target feature scope.
-- Always run `npm test` after modifying code in `src/` or `skills/`.
+- Always run `pnpm -F @reactive-skills/runtime test` after modifying code in `src/` or `skills/`.
 
 ---
 
@@ -24,7 +24,7 @@
 ---
 
 ## 4. Verification Checklist Before Marking Work Complete
-- [ ] Run `npm run build` to ensure zero TypeScript compiler errors.
-- [ ] Run `npm test` and verify $100\%$ pass rate across all Vitest suites.
+- [ ] Run `pnpm -F @reactive-skills/runtime build` to ensure zero TypeScript compiler errors.
+- [ ] Run `pnpm -F @reactive-skills/runtime test` and verify $100\%$ pass rate across all Vitest suites.
 - [ ] Ensure all modified/created files are referenced in `context/progress-tracker.md`.
 - [ ] Update `README.md` or `AGENTS.md` if public APIs or CLI commands were added/changed.

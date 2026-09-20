@@ -25,7 +25,7 @@
 ---
 
 ## 4. File Organization & Naming Rules
-- `src/core/`: Core runtime classes (`types.ts`, `fsm-engine.ts`, `event-store.ts`, `guard-evaluator.ts`, `projection-engine.ts`, `runtime-hooks.ts`, `legacy-adapter.ts`).
+- `src/core/`: Core runtime classes (`types.ts`, `fsm-engine.ts`, `event-store.ts`, `guard-evaluator.ts`, `projection-engine.ts`, `runtime-hooks.ts`, `legacy-adapter.ts`, `migration.ts`, `job-manager.ts`).
 - `src/cli/`: CLI commands and utilities.
 - `skills/<name>/`: Self-contained reactive skill packages.
 - `tests/<name>.test.ts`: Paired Vitest test suites.
@@ -41,4 +41,4 @@
   4. HSM event bubbling from child to ancestor.
   5. State lifecycle hooks (`on_enter`, `on_exit`).
   6. Deliverable projection file output.
-- **Gate:** `npm test` and `npm run build` must pass before finishing any task.
+- **Gate:** `pnpm -F @reactive-skills/runtime test` and `pnpm -F @reactive-skills/runtime build` must pass before finishing any task.
