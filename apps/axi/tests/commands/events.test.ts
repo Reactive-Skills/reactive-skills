@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { JobManager } from '@reactive-skills/runtime';
 
 describe('eventsCommand', () => {
   let originalCwd: string;
@@ -57,5 +58,26 @@ describe('eventsCommand', () => {
     const { eventsCommand } = await import('../../src/commands/events.js');
     const result = await eventsCommand(['20', 'test-events-skill']);
     expect(result).toContain('NO_EVENT_STORE');
+  });
+
+  it('reads events from a job-scoped event log', async () => {
+    const skillDir = path.join(process.cwd(), 'skills', 'test-events-skill');
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(path.join(skillDir, 'skill.yaml'), 'name: test-events-skill\n', 'utf8');
+
+    const jobManager = new JobManager(process.cwd());
+    jobManager.createJob('test-events-skill', { id: 'slice-alpha', name: 'slice-alpha', setActive: true });
+    const jobDir = path.join(process.cwd(), '.reactive', 'skills', 'test-events-skill', 'jobs', 'slice-alpha');
+    fs.mkdirSync(jobDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(jobDir, 'events.jsonl'),
+      '{"id":"event-1","seq":1,"timestamp":"2026-01-01T00:00:00.000Z","type":"SKILL_INITIALIZED","state":"INIT","payload":{}}\n',
+      'utf8'
+    );
+
+    const { eventsCommand } = await import('../../src/commands/events.js');
+    const result = await eventsCommand(['test-events-skill', '--job', 'slice-alpha']);
+    expect(result).toContain('count: 1 events shown');
+    expect(result).toContain('SKILL_INITIALIZED');
   });
 });

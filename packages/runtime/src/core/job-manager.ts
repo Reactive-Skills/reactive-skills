@@ -90,7 +90,7 @@ export class JobManager {
    */
   public createJob(skillId: string, options: CreateJobOptions = {}): JobMetadata {
     const id = options.id || createSortableId();
-    const name = options.name ? normalizeJobSlug(options.name) : (options.id ? normalizeJobSlug(options.id) : DEFAULT_JOB_ID);
+    const name = options.name ? normalizeJobSlug(options.name) : normalizeJobSlug(id);
     const now = new Date().toISOString();
 
     const metadata: JobMetadata = {

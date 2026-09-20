@@ -1,5 +1,3 @@
-import path from 'node:path';
-import os from 'node:os';
 import fs from 'node:fs';
 import { FSMEngine } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
@@ -88,19 +86,12 @@ export async function emitCommand(args: string[]): Promise<string> {
       }
     }
 
-    // Load run_id from workspace to continue the same skill run
-    let runId: string | undefined;
-    const runIdPath = path.join(skillPath, '.reactive', 'run-id.txt');
-    if (fs.existsSync(runIdPath)) {
-      runId = fs.readFileSync(runIdPath, 'utf8').trim();
-    }
-
     const workspaceDir = resolveWorkspaceDir(skillPath);
     const engine = new FSMEngine({ 
       skillDir: skillPath, 
       workspaceDir,
       jobId,
-      eventContext: { run_id: jobId || runId }
+      eventContext: { run_id: jobId }
     });
 
     try {
@@ -115,12 +106,14 @@ export async function emitCommand(args: string[]): Promise<string> {
       const result = await engine.handleSignal(signalName, payload, { source: 'cli', causationId: eventId });
 
       const lines: string[] = [];
+      const effectiveJobId = (typeof engine.getJobId === 'function' ? engine.getJobId() : jobId) || 'default';
       lines.push(renderDetail('emit', {
         skill_id: skillName,
         signal: signalName,
         transitioned: result.transitioned,
         previous_state: result.previousState,
         current_state: result.newState,
+        run_id: effectiveJobId,
         event_id: result.event.id,
         handled_at_depth: result.handledAtDepth,
         deliverables: result.deliverablesWritten,
@@ -130,6 +123,7 @@ export async function emitCommand(args: string[]): Promise<string> {
         { type: 'field', key: 'transitioned' },
         { type: 'field', key: 'previous_state' },
         { type: 'field', key: 'current_state' },
+        { type: 'field', key: 'run_id' },
         { type: 'field', key: 'event_id' },
       ]));
 
@@ -146,7 +140,13 @@ export async function emitCommand(args: string[]): Promise<string> {
         ]));
       }
 
-      const suggestions = getSuggestions({ domain: 'emit', action: 'signal', skillName });
+      const suggestions = getSuggestions({
+        domain: 'emit',
+        action: 'signal',
+        skillName,
+        jobId: effectiveJobId,
+        currentState: result.newState,
+      });
       lines.push(renderHelp(suggestions));
 
       return renderOutput(lines);

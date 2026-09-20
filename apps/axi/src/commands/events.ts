@@ -1,26 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
+import { JobManager } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderList, renderOutput } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
-
-const HOME_DIR = os.homedir();
-
-function resolveSkillPath(skillName: string): string | null {
-  const candidates = [
-    path.resolve(process.cwd(), 'skills', skillName),
-    path.resolve(HOME_DIR, '.agents', 'skills', skillName),
-    path.resolve(HOME_DIR, '.gemini', 'config', 'skills', skillName),
-  ];
-  for (const candidate of candidates) {
-    const yamlPath = path.join(candidate, 'skill.yaml');
-    if (fs.existsSync(yamlPath)) {
-      return candidate;
-    }
-  }
-  return null;
-}
+import { resolveSkillPath, resolveWorkspaceDir } from '../args.js';
 
 interface EventEntry {
   seq: number;
@@ -29,35 +13,59 @@ interface EventEntry {
   state: string;
 }
 
-function readEventsJsonl(skillPath: string, limit: number, runId?: string | null): EventEntry[] {
-  const workspaceDir = path.dirname(skillPath);
-  const skillName = path.basename(skillPath);
-  const skillStoreDir = path.join(workspaceDir, '.reactive', 'skills', skillName);
+function parseEventsArgs(args: string[]): { limit: number; skillName?: string; jobId?: string } {
+  const filtered: string[] = [];
+  let jobId: string | undefined;
 
-  let eventsPath: string;
-  if (runId) {
-    eventsPath = path.join(skillStoreDir, runId, 'events.jsonl');
-  } else {
-    let latestRunDir: string | null = null;
-    if (fs.existsSync(skillStoreDir)) {
-      const runDirs = fs.readdirSync(skillStoreDir, { withFileTypes: true })
-        .filter(dirent => dirent.isDirectory())
-        .map(dirent => dirent.name)
-        .sort();
-      if (runDirs.length > 0) {
-        latestRunDir = path.join(skillStoreDir, runDirs[runDirs.length - 1]);
-      }
-    }
-    if (latestRunDir) {
-      eventsPath = path.join(latestRunDir, 'events.jsonl');
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--job' || arg === '-j' || arg === '--run-id') {
+      jobId = args[++i];
+    } else if (arg.startsWith('--job=')) {
+      jobId = arg.slice('--job='.length);
+    } else if (arg.startsWith('--run-id=')) {
+      jobId = arg.slice('--run-id='.length);
     } else {
-      eventsPath = path.join(skillStoreDir, 'events.jsonl');
+      filtered.push(arg);
     }
   }
 
-  if (!fs.existsSync(eventsPath)) {
-    return [];
+  const parsedLimit = parseInt(filtered[0], 10);
+  if (!Number.isNaN(parsedLimit)) {
+    return { limit: parsedLimit, skillName: filtered[1], jobId };
   }
+  return { limit: 20, skillName: filtered[0], jobId };
+}
+
+function findDefaultSkillFromWorkspace(): string | undefined {
+  const reactiveSkillsDir = path.resolve(process.cwd(), '.reactive', 'skills');
+  if (!fs.existsSync(reactiveSkillsDir)) return undefined;
+
+  const dirs = fs.readdirSync(reactiveSkillsDir, { withFileTypes: true });
+  const found = dirs.find((dirent) => {
+    if (!dirent.isDirectory()) return false;
+    const skillDir = path.join(reactiveSkillsDir, dirent.name);
+    return fs.existsSync(path.join(skillDir, 'events.jsonl')) ||
+      fs.existsSync(path.join(skillDir, 'jobs'));
+  });
+  return found?.name;
+}
+
+function resolveEventsPath(workspaceDir: string, skillName: string, jobId?: string): string {
+  const skillStoreDir = path.join(workspaceDir, '.reactive', 'skills', skillName);
+  const jobManager = new JobManager(workspaceDir);
+  const activeJobId = jobId || jobManager.getActiveJobId(skillName);
+  const jobEventsPath = path.join(skillStoreDir, 'jobs', activeJobId, 'events.jsonl');
+  if (fs.existsSync(jobEventsPath)) return jobEventsPath;
+
+  const legacyEventsPath = path.join(skillStoreDir, 'events.jsonl');
+  if (!jobId && fs.existsSync(legacyEventsPath)) return legacyEventsPath;
+
+  return jobEventsPath;
+}
+
+function readEventsJsonl(eventsPath: string, limit: number): EventEntry[] {
+  if (!fs.existsSync(eventsPath)) return [];
 
   const content = fs.readFileSync(eventsPath, 'utf8');
   const lines = content.split('\n').filter(line => line.trim().length > 0);
@@ -73,7 +81,7 @@ function readEventsJsonl(skillPath: string, limit: number, runId?: string | null
         state: parsed.state || '',
       });
     } catch {
-      // skip malformed lines
+      // Skip malformed lines.
     }
   }
 
@@ -81,33 +89,14 @@ function readEventsJsonl(skillPath: string, limit: number, runId?: string | null
 }
 
 export async function eventsCommand(args: string[]): Promise<string> {
-  const limit = parseInt(args[0], 10) || 20;
-  let targetSkill = args[1];
-  let runId: string | null = null;
-
-  if (!targetSkill || isNaN(parseInt(args[0], 10))) {
-    targetSkill = args[0];
-  }
-
-  const runIdIdx = args.indexOf('--run-id');
-  if (runIdIdx !== -1) runId = args[runIdIdx + 1];
-
-  if (!targetSkill) {
-    const reactiveSkillsDir = path.resolve(process.cwd(), '.reactive', 'skills');
-    if (fs.existsSync(reactiveSkillsDir)) {
-      const dirs = fs.readdirSync(reactiveSkillsDir, { withFileTypes: true });
-      const found = dirs.find((d) => d.isDirectory() && fs.existsSync(path.join(reactiveSkillsDir, d.name, 'events.jsonl')));
-      if (found) {
-        targetSkill = found.name;
-      }
-    }
-  }
+  const parsed = parseEventsArgs(args);
+  let targetSkill = parsed.skillName || findDefaultSkillFromWorkspace();
 
   if (!targetSkill) {
     const error = new AxiError(
       'No skill specified and no active skill runs found',
       'VALIDATION_ERROR',
-      ['Usage: reactive-skills-axi events [limit] <skill-name>']
+      ['Usage: reactive-skills-axi events [limit] <skill-name> [--job <job-id>]']
     );
     return renderOutput([
       renderError(error.message, error.code, error.suggestions),
@@ -120,19 +109,18 @@ export async function eventsCommand(args: string[]): Promise<string> {
     const error = new AxiError(
       `Skill '${targetSkill}' not found in any known location`,
       'NOT_FOUND',
-      ['Checked: ./skills/, ~/.agents/skills/, ~/.gemini/config/skills/', 'Usage: reactive-skills-axi events [limit] [skill-name]']
+      ['Checked: ./skills/, ~/.agents/skills/, ~/.gemini/config/skills/', 'Usage: reactive-skills-axi events [limit] [skill-name] [--job <job-id>]']
     );
     return renderOutput([
       renderError(error.message, error.code, error.suggestions),
     ]);
   }
 
-  const events = readEventsJsonl(targetPath, limit, runId);
-
-  const lines: string[] = [];
+  const workspaceDir = resolveWorkspaceDir(targetPath);
+  const eventsPath = resolveEventsPath(workspaceDir, targetSkill, parsed.jobId);
+  const events = readEventsJsonl(eventsPath, parsed.limit);
 
   if (events.length === 0) {
-    const eventsPath = '.reactive/skills/' + targetSkill + '/events.jsonl';
     const error = new AxiError(
       'No events found for skill: ' + targetSkill,
       'NO_EVENT_STORE',
@@ -143,6 +131,7 @@ export async function eventsCommand(args: string[]): Promise<string> {
     ]);
   }
 
+  const lines: string[] = [];
   lines.push('count: ' + events.length + ' events shown');
 
   lines.push(renderList('events', events, [

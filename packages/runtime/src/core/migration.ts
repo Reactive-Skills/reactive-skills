@@ -10,9 +10,79 @@ export interface MigrationResult {
   notes: string[];
 }
 
+function createReactiveBootloader(skillName: string): string {
+  return `<!-- REACTIVE BOOTLOADER -->
+> **REACTIVE SKILL: STRICT RUNTIME EXECUTION**
+> This skill is an event-driven state machine. Manual execution is forbidden.
+>
+> **DEFAULT EXECUTION: AXI CLI**
+> AXI is the default runtime path, even when MCP tools are present.
+> 1. Run \`reactive-skills-axi state ${skillName}\` to read the active job instructions.
+> 2. Run \`reactive-skills-axi invoke ${skillName}\` only when you need a fresh isolated job.
+> 3. For named or parallel work, keep the same \`--job <job-id>\` flag on every \`state\` and \`emit\` command.
+> 4. Run \`reactive-skills-axi emit ${skillName} <signal>\` to advance the current job.
+>
+> **FALLBACK EXECUTION: MCP**
+> Use \`reactive_state\` and \`reactive_emit_signal\` only when shell access to AXI is unavailable.
+> Do not troubleshoot MCP before trying AXI.
+>
+> **TERMINAL STATE RECOVERY**
+> If the current job is terminal, run \`reactive-skills-axi reset ${skillName}\` or \`reactive-skills-axi invoke ${skillName}\`.
+>
+> **STRICT INVARIANT**
+> Do not manually author \`.docs/\` deliverables or guess next states.
+> The runtime governs all transitions and projections.
+<!-- END REACTIVE BOOTLOADER -->`;
+}
+
+function createAxiFirstInitState(skillName: string): string {
+  return `---
+name: ${skillName}
+description: Bootloader - Verify reactive runtime
+type: reactive
+---
+
+# ${skillName} - INIT
+
+Verify access to the reactive runtime.
+
+## Instructions
+1. Prefer AXI CLI.
+   Run \`reactive-skills-axi state ${skillName}\` to inspect this job, or \`reactive-skills-axi invoke ${skillName}\` to start a fresh isolated job.
+2. If this is named or parallel work, choose a job ID and keep \`--job <job-id>\` on every \`state\` and \`emit\` command.
+3. Use MCP tools only when shell access to AXI is unavailable.
+4. If AXI or MCP runtime access works, emit \`RUNTIME_READY\`.
+5. If neither path works, emit \`SETUP_REQUIRED\`.
+`;
+}
+
+function createAxiFirstBypassState(skillName: string): string {
+  return `---
+name: ${skillName}
+description: Bypass detected - Agent operated outside signal contract
+type: reactive
+---
+
+# ${skillName} - BYPASS_DETECTED
+
+The runtime detected work outside the signal contract.
+
+## Recovery
+1. Run \`reactive-skills-axi reset ${skillName}\`.
+2. Run \`reactive-skills-axi invoke ${skillName}\` to start a fresh isolated job.
+3. Use \`reactive-skills-axi state ${skillName} --job <job-id>\` only when resuming a known job.
+
+## Prevention
+- Use AXI \`state\` to load the TODO card.
+- Use AXI \`emit\` after each completed state task.
+- Keep \`--job <job-id>\` on every command for named or parallel work.
+- Use MCP only when shell access to AXI is unavailable.
+`;
+}
+
 /**
- * Retroactive Migration Engine for Reactive Projects and Skills
- * Upgrades existing projects and skills to latest standards (bootloader, INIT states, event store).
+ * Retroactive Migration Engine for Reactive Projects and Skills.
+ * Upgrades existing projects and skills to latest standards.
  */
 export class ProjectMigrator {
   public static migrate(targetDir: string): MigrationResult {
@@ -29,25 +99,47 @@ export class ProjectMigrator {
       fs.mkdirSync(docsDir, { recursive: true });
     }
 
-    // 1. Generate GLOSSARY.md if missing
     const glossaryPath = path.join(docsDir, 'GLOSSARY.md');
     if (!fs.existsSync(glossaryPath)) {
-      const initialGlossary = `# Ubiquitous Domain Glossary\n\n> Authoritative definitions for core business concepts and domain vocabulary.\n\n| Term | Definition & Context |\n| :--- | :--- |\n| **Session** | An active execution or domain workflow lifecycle. |\n| **Decider** | Pure business logic function validating commands and emitting events with zero I/O. |\n| **Projection** | Materialized read-model view updated asynchronously from domain events. |\n| **Command** | Intent to mutate state, validated by pure deciders. |\n`;
+      const initialGlossary = `# Ubiquitous Domain Glossary
+
+> Authoritative definitions for core business concepts and domain vocabulary.
+
+| Term | Definition & Context |
+| :--- | :--- |
+| **Session** | An active execution or domain workflow lifecycle. |
+| **Decider** | Pure business logic function validating commands and emitting events with zero I/O. |
+| **Projection** | Materialized read-model view updated asynchronously from domain events. |
+| **Command** | Intent to mutate state, validated by pure deciders. |
+`;
       fs.writeFileSync(glossaryPath, initialGlossary, 'utf8');
       filesUpdated.push(glossaryPath);
       notes.push('Generated missing GLOSSARY.md');
     }
 
-    // 2. Generate PROGRESS.md if missing
     const progressPath = path.join(docsDir, 'PROGRESS.md');
     if (!fs.existsSync(progressPath)) {
-      const initialProgress = `# Project Progress & MVP Status Tracker\n\n- **Project Status:** Active\n- **Last Migrated:** ${new Date().toISOString()}\n\n## Slice Completion by Priority (Eisenhower Matrix)\n\n### 🚀 Q1 / P0 (MVP / Walking Skeleton Slices)\n- [x] **[State Change] Core Domain Slices:** Verified\n\n### 🛠️ Q2 / P1 (Core Quality & Secondary Views)\n- [ ] Queued for next iteration\n\n### ⚡ Q3 / P2 (Ops, Metrics & Enhancements)\n- [ ] Queued for next iteration\n`;
+      const initialProgress = `# Project Progress & MVP Status Tracker
+
+- **Project Status:** Active
+- **Last Migrated:** ${new Date().toISOString()}
+
+## Slice Completion by Priority
+
+### Q1 / P0: MVP / Walking Skeleton Slices
+- [x] **[State Change] Core Domain Slices:** Verified
+
+### Q2 / P1: Core Quality & Secondary Views
+- [ ] Queued for next iteration
+
+### Q3 / P2: Ops, Metrics & Enhancements
+- [ ] Queued for next iteration
+`;
       fs.writeFileSync(progressPath, initialProgress, 'utf8');
       filesUpdated.push(progressPath);
       notes.push('Generated missing PROGRESS.md');
     }
 
-    // 3. Detect legacy workspace storage without mutating or guessing its skill ownership
     const reactiveDir = path.join(absDir, '.reactive');
     const legacyJsonlPath = path.join(reactiveDir, 'events.jsonl');
     const legacySqlitePath = path.join(reactiveDir, 'events.db');
@@ -56,7 +148,6 @@ export class ProjectMigrator {
       notes.push('Create a skill-scoped store explicitly before resuming any skill run.');
     }
 
-    // 4. Auto-migrate child skills if skills/ folder exists
     const skillsFolder = path.join(absDir, 'skills');
     if (fs.existsSync(skillsFolder)) {
       const entries = fs.readdirSync(skillsFolder, { withFileTypes: true });
@@ -83,9 +174,6 @@ export class ProjectMigrator {
     };
   }
 
-  /**
-   * Migrate a single skill package: inject bootloader in SKILL.md, INIT state in skill.yaml, and init.md / setup_mcp.md.
-   */
   public static migrateSkill(skillDir: string): MigrationResult {
     const absDir = path.resolve(skillDir);
     const filesUpdated: string[] = [];
@@ -104,13 +192,12 @@ export class ProjectMigrator {
 
     const skillName = path.basename(absDir);
 
-    // 1. Update SKILL.md with bootloader if missing
     if (fs.existsSync(skillMdPath)) {
       const rawMd = fs.readFileSync(skillMdPath, 'utf8');
       if (!rawMd.includes('REACTIVE BOOTLOADER')) {
-        const bootloaderBlock = `<!-- REACTIVE BOOTLOADER -->\n> **REACTIVE SKILL — STRICT RUNTIME EXECUTION**\n> This skill is an event-driven state machine. Manual execution without the runtime is FORBIDDEN.\n>\n> **PRIMARY EXECUTION (AXI CLI — Shell):**\n> 1. Run \`reactive-skills-axi state ${skillName}\` (or \`invoke ${skillName}\`) to read your current instructions.\n> 2. Complete the tasks described in the state prompt.\n> 3. Run \`reactive-skills-axi emit ${skillName} <signal>\` to advance to the next state.\n>\n> **ALTERNATIVE (MCP Mode):**\n> If the \`reactive_state\` MCP tool is present in your tool list, you may use \`reactive_state\` and \`reactive_emit_signal\`.\n>\n> **STRICT INVARIANT:**\n> Never manually author \`.docs/\` deliverables or guess next states. The runtime governs all transitions and projections.\n<!-- END REACTIVE BOOTLOADER -->\n\n`;
-
+        const bootloaderBlock = createReactiveBootloader(skillName) + '\n\n';
         let updatedMd: string;
+
         if (rawMd.startsWith('---')) {
           const secondYamlMarker = rawMd.indexOf('---', 3);
           if (secondYamlMarker !== -1) {
@@ -123,19 +210,28 @@ export class ProjectMigrator {
         } else {
           updatedMd = `${bootloaderBlock}${rawMd}`;
         }
+
         fs.writeFileSync(skillMdPath, updatedMd, 'utf8');
         filesUpdated.push(skillMdPath);
         notes.push('Injected reactive runtime bootloader into SKILL.md');
       }
-      } else {
-        const bootloaderBlock = `<!-- REACTIVE BOOTLOADER -->\n> **REACTIVE SKILL — STRICT RUNTIME EXECUTION**\n> This skill is an event-driven state machine. Manual execution without the runtime is FORBIDDEN.\n>\n> **PRIMARY EXECUTION (AXI CLI — Shell):**\n> 1. Run \`reactive-skills-axi state ${skillName}\` (or \`invoke ${skillName}\`) to read your current instructions.\n> 2. Complete the tasks described in the state prompt.\n> 3. Run \`reactive-skills-axi emit ${skillName} <signal>\` to advance to the next state.\n>\n> **ALTERNATIVE (MCP Mode):**\n> If the \`reactive_state\` MCP tool is present in your tool list, you may use \`reactive_state\` and \`reactive_emit_signal\`.\n>\n> **STRICT INVARIANT:**\n> Never manually author \`.docs/\` deliverables or guess next states. The runtime governs all transitions and projections.\n<!-- END REACTIVE BOOTLOADER -->\n\n`;
-        const initialMd = `---\nname: ${skillName}\ndescription: Skill: ${skillName}\ntype: reactive\n---\n\n${bootloaderBlock}# ${skillName}\n\nSkill: ${skillName} governed by \`skill.yaml\`.\n`;
+    } else {
+      const bootloaderBlock = createReactiveBootloader(skillName) + '\n\n';
+      const initialMd = `---
+name: ${skillName}
+description: Skill: ${skillName}
+type: reactive
+---
+
+${bootloaderBlock}# ${skillName}
+
+Skill: ${skillName} governed by \`skill.yaml\`.
+`;
       fs.writeFileSync(skillMdPath, initialMd, 'utf8');
       filesUpdated.push(skillMdPath);
       notes.push('Created SKILL.md with reactive runtime bootloader');
     }
 
-    // 2. Update skill.yaml with INIT and SETUP_MCP states and bump schema to 2.1.0
     const rawYaml = fs.readFileSync(skillYamlPath, 'utf8');
     const manifest = yaml.load(rawYaml) as any;
     let yamlModified = false;
@@ -196,18 +292,14 @@ export class ProjectMigrator {
         }
         fs.writeFileSync(skillYamlPath, yaml.dump(manifest, { indent: 2 }), 'utf8');
         filesUpdated.push(skillYamlPath);
-      } else {
-        // INIT/SETUP_MCP already exist; still enforce strict_execution
-        if (manifest.strict_execution !== true) {
-          manifest.strict_execution = true;
-          fs.writeFileSync(skillYamlPath, yaml.dump(manifest, { indent: 2 }), 'utf8');
-          filesUpdated.push(skillYamlPath);
-          notes.push('Set strict_execution: true on existing manifest');
-        }
+      } else if (manifest.strict_execution !== true) {
+        manifest.strict_execution = true;
+        fs.writeFileSync(skillYamlPath, yaml.dump(manifest, { indent: 2 }), 'utf8');
+        filesUpdated.push(skillYamlPath);
+        notes.push('Set strict_execution: true on existing manifest');
       }
     }
 
-    // 2.5 Generate skill-release.json if missing
     const releaseJsonPath = path.join(absDir, 'skill-release.json');
     if (!fs.existsSync(releaseJsonPath)) {
       const releaseData = {
@@ -223,7 +315,6 @@ export class ProjectMigrator {
       notes.push('Created skill-release.json (v2.1.0)');
     }
 
-    // 3. Ensure states/init.md and states/setup_mcp.md exist
     const statesDir = path.join(absDir, 'states');
     if (!fs.existsSync(statesDir)) {
       fs.mkdirSync(statesDir, { recursive: true });
@@ -231,7 +322,7 @@ export class ProjectMigrator {
 
     const initMdPath = path.join(statesDir, 'init.md');
     if (!fs.existsSync(initMdPath)) {
-      const initContent = `---\nname: ${skillName}\ndescription: Bootloader - Verify reactive runtime\ntype: reactive\n---\n\n# ${skillName} - INIT\n\nVerify agent harness has access to reactive runtime.\n\n## Instructions\n1. Check if \`reactive_state\` MCP tool is available in active tool whitelist.\n2. If \`reactive_state\` tool is present, emit signal \`RUNTIME_READY\`.\n3. If \`reactive_state\` tool is absent, emit signal \`SETUP_REQUIRED\`.\n`;
+      const initContent = createAxiFirstInitState(skillName);
       fs.writeFileSync(initMdPath, initContent, 'utf8');
       filesUpdated.push(initMdPath);
       notes.push('Created states/init.md');
@@ -239,41 +330,31 @@ export class ProjectMigrator {
 
     const setupMcpMdPath = path.join(statesDir, 'setup_mcp.md');
     if (!fs.existsSync(setupMcpMdPath)) {
-      const setupMcpContent = `---\nname: ${skillName}\ndescription: Auto-configure harness MCP server\ntype: reactive\n---\n\n# ${skillName} - SETUP_MCP\n\nConfigure host harness with \`reactive-skills-axi\` MCP server.\n\n## Instructions\n1. Run shell command via \`run_command\`:\n   \`npx -y reactive-skills-axi setup\`\n2. When command completes:\n   - If exit code 0, emit signal \`SETUP_COMPLETE\` with payload \`{\"exit_code\": 0}\`.\n   - If non-zero exit code, emit signal \`SETUP_FAILED\` with payload \`{\"exit_code\": 1}\`.\n`;
+      const setupMcpContent = `---
+name: ${skillName}
+description: Auto-configure harness MCP server
+type: reactive
+---
+
+# ${skillName} - SETUP_MCP
+
+Configure host harness with \`reactive-skills-axi\` MCP server.
+
+## Instructions
+1. Run shell command via \`run_command\`:
+   \`npx -y reactive-skills-axi setup\`
+2. When command completes:
+   - If exit code 0, emit signal \`SETUP_COMPLETE\` with payload \`{"exit_code": 0}\`.
+   - If non-zero exit code, emit signal \`SETUP_FAILED\` with payload \`{"exit_code": 1}\`.
+`;
       fs.writeFileSync(setupMcpMdPath, setupMcpContent, 'utf8');
       filesUpdated.push(setupMcpMdPath);
       notes.push('Created states/setup_mcp.md');
     }
 
-    // Create BYPASS_DETECTED template if missing
     const bypassDetectedMdPath = path.join(statesDir, 'bypass_detected.md');
     if (!fs.existsSync(bypassDetectedMdPath)) {
-      const bypassContent = [
-        '---',
-        'name: ' + skillName,
-        'description: Bypass detected - Agent operated outside signal contract',
-        'type: reactive',
-        '---',
-        '',
-        '# ' + skillName + ' - BYPASS_DETECTED',
-        '',
-        '**STRICT EXECUTION BYPASS DETECTED**',
-        '',
-        'The runtime detected that the agent operated outside the signal contract:',
-        '- Fetched state without emitting a signal within the allowed turn budget.',
-        '- Used tools not in the allowed_tools list (interceptor mode).',
-        '- Attempted to read skill files directly instead of going through the runtime.',
-        '',
-        '## Recovery',
-        '1. Run: `reactive-skills-axi reset ' + skillName + '`',
-        '2. Then: `reactive-skills-axi invoke ' + skillName + '`',
-        '3. Or re-invoke the skill through the MCP server.',
-        '',
-        '## Prevention',
-        '- Use ONLY `reactive_state` to load your TODO card.',
-        '- After each turn, emit a signal via `reactive_emit_signal`.',
-        '- Do NOT read skill files directly.',
-      ].join('\n') + '\n';
+      const bypassContent = createAxiFirstBypassState(skillName);
       fs.writeFileSync(bypassDetectedMdPath, bypassContent, 'utf8');
       filesUpdated.push(bypassDetectedMdPath);
       notes.push('Created states/bypass_detected.md');

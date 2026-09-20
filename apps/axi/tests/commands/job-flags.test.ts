@@ -68,6 +68,7 @@ states:
     // custom-slice must be PHASE_2
     const customOutput = await stateCommand(['flags-skill', '--job', 'custom-slice']);
     expect(customOutput).toContain('PHASE_2');
+    expect(customOutput).toContain('emit flags-skill <signal> --job custom-slice');
   });
 
   it('emit targeted job transition: transitions only targeted job', async () => {
@@ -75,6 +76,7 @@ states:
 
     const isolatedState = await stateCommand(['flags-skill', '--job', 'isolated-run']);
     expect(isolatedState).toContain('PHASE_2');
+    expect(isolatedState).toContain('emit flags-skill <signal> --job isolated-run');
 
     const defaultState = await stateCommand(['flags-skill']);
     expect(defaultState).toContain('PHASE_1');
@@ -105,4 +107,3 @@ states:
     expect(resolved).toBe(process.cwd());
   });
 });
-

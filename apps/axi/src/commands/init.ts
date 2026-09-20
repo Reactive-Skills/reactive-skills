@@ -4,6 +4,7 @@ import yaml from 'js-yaml';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderOutput } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
+import { createAxiFirstBypassState, createAxiFirstInitState, createReactiveBootloader } from '../bootloader.js';
 
 const SKILLS_DIR = path.resolve(process.cwd(), 'skills');
 
@@ -61,21 +62,7 @@ description: Skill: ${name}
 type: reactive
 ---
 
-<!-- REACTIVE BOOTLOADER -->
-> **REACTIVE SKILL — STRICT RUNTIME EXECUTION**
-> This skill is an event-driven state machine. Manual execution is FORBIDDEN.
->
-> **PRIMARY EXECUTION (AXI CLI — Shell):**
-> 1. Run \`reactive-skills-axi state ${name}\` (or \`invoke ${name}\`) to read your current instructions.
-> 2. Complete the tasks described in the state prompt.
-> 3. Run \`reactive-skills-axi emit ${name} <signal>\` to advance to the next state.
->
-> **ALTERNATIVE (MCP Mode):**
-> If the \`reactive_state\` MCP tool is present in your tool list, you may use \`reactive_state\` and \`reactive_emit_signal\`.
->
-> **STRICT INVARIANT:**
-> Do NOT manually author \`.docs/\` deliverables or guess next states. The runtime governs all transitions and projections.
-<!-- END REACTIVE BOOTLOADER -->
+${createReactiveBootloader(name)}
 
 # ${name}
 
@@ -98,21 +85,7 @@ function createStatechartMarkdown(name: string): string {
 }
 
 function createInitStateMarkdown(name: string): string {
-  return `---
-name: ${name}
-description: Bootloader - Verify reactive runtime
-type: reactive
----
-
-# ${name} - INIT
-
-Verify agent harness has access to reactive runtime.
-
-## Instructions
-1. Check if \`reactive_state\` MCP tool is available, OR if driving via AXI CLI (\`reactive-skills-axi state ${name}\`).
-2. If the reactive runtime is available in either mode, emit signal \`RUNTIME_READY\` (e.g. \`reactive-skills-axi emit ${name} RUNTIME_READY\`).
-3. If neither mode is available, emit signal \`SETUP_REQUIRED\`.
-`;
+  return createAxiFirstInitState(name);
 }
 
 function createSetupMcpStateMarkdown(name: string): string {
@@ -124,11 +97,11 @@ type: reactive
 
 # ${name} - SETUP_MCP
 
-Configure host harness with \`reactive-skills-axi\` MCP server.
+Configure host harness with the \`@reactive-skills/axi\` MCP server only when AXI CLI is unavailable.
 
 ## Instructions
 1. Run shell command via \`run_command\`:
-   \`npx -y reactive-skills-axi setup\`
+   \`npx -y @reactive-skills/axi setup\`
 2. When command completes:
    - If exit code 0, emit signal \`SETUP_COMPLETE\` with payload \`{"exit_code": 0}\`.
    - If non-zero exit code, emit signal \`SETUP_FAILED\` with payload \`{"exit_code": 1}\`.
@@ -166,31 +139,7 @@ Skill execution completed.
 }
 
 function createBypassDetectedStateMarkdown(name: string): string {
-  return `---
-name: ${name}
-description: Bypass detected - Agent operated outside signal contract
-type: reactive
----
-
-# ${name} - BYPASS_DETECTED
-
-**STRICT EXECUTION BYPASS DETECTED**
-
-The runtime detected that the agent operated outside the signal contract:
-- Fetched state without emitting a signal within the allowed turn budget.
-- Used tools not in the allowed_tools list (interceptor mode).
-- Attempted to read skill files directly instead of going through the runtime.
-
-## Recovery
-1. Run: \`reactive-skills-axi reset ${name}\`
-2. Then: \`reactive-skills-axi invoke ${name}\`
-3. Or re-invoke the skill through the MCP server.
-
-## Prevention
-- Use ONLY \`reactive_state\` to load your TODO card.
-- After each turn, emit a signal via \`reactive_emit_signal\`.
-- Do NOT read skill files directly.
-`;
+  return createAxiFirstBypassState(name);
 }
 
 function createSkillReleaseJson(name: string): string {

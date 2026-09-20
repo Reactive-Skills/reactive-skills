@@ -1,72 +1,62 @@
-import path from 'node:path';
-import os from 'node:os';
 import fs from 'node:fs';
-import { FSMEngine, createSortableId } from '@reactive-skills/runtime';
+import { FSMEngine, JobManager, createSortableId } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
+import { extractJobFlag, resolveSkillPath, resolveWorkspaceDir } from '../args.js';
 
-const HOME_DIR = os.homedir();
+function parsePayload(args: string[]): Record<string, any> | AxiError {
+  let initialContext: Record<string, any> = {};
+  const payloadIdx = args.indexOf('--payload');
+  if (payloadIdx === -1) return initialContext;
 
-function resolveSkillPath(skillName: string): string | null {
-  const candidates = [
-    path.resolve(process.cwd(), 'skills', skillName),
-    path.resolve(HOME_DIR, '.agents', 'skills', skillName),
-    path.resolve(HOME_DIR, '.gemini', 'config', 'skills', skillName),
-  ];
-  for (const candidate of candidates) {
-    const yamlPath = path.join(candidate, 'skill.yaml');
-    if (fs.existsSync(yamlPath)) {
-      return candidate;
+  const payloadStr = args.slice(payloadIdx + 1).join(' ').trim();
+  if (!payloadStr) return initialContext;
+
+  if (payloadStr.startsWith('@') || fs.existsSync(payloadStr)) {
+    const filePath = payloadStr.startsWith('@') ? payloadStr.slice(1) : payloadStr;
+    try {
+      initialContext = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      return initialContext;
+    } catch {
+      return new AxiError(
+        'Invalid JSON payload file: ' + filePath,
+        'VALIDATION_ERROR',
+        ['Usage: --payload \'{"key":"value"}\' or --payload @filepath.json']
+      );
     }
   }
-  return null;
+
+  try {
+    initialContext = JSON.parse(payloadStr);
+    return initialContext;
+  } catch {
+    return new AxiError(
+      'Invalid JSON payload',
+      'VALIDATION_ERROR',
+      ['Usage: --payload \'{"key":"value"}\' or --payload @filepath.json']
+    );
+  }
 }
 
 export async function invokeCommand(args: string[]): Promise<string> {
-  const skillName = args[0];
+  const { jobId, filteredArgs } = extractJobFlag(args);
+  const skillName = filteredArgs[0];
 
   if (!skillName) {
     const error = new AxiError(
       'Missing skill name',
       'VALIDATION_ERROR',
-      ['Usage: reactive-skills-axi invoke <skill-name> [--payload JSON]', 'Example: reactive-skills-axi invoke resume-customizer --payload \'{"company_name":"Worksoft"}\'']
+      ['Usage: reactive-skills-axi invoke <skill-name> [--job <job-id>] [--payload JSON]', 'Example: reactive-skills-axi invoke resume-customizer --job worksoft --payload \'{"company_name":"Worksoft"}\'']
     );
     return renderOutput([
       renderError(error.message, error.code, error.suggestions),
     ]);
   }
 
-  let initialContext: Record<string, any> = {};
-  const payloadIdx = args.indexOf('--payload');
-  if (payloadIdx !== -1) {
-    const payloadStr = args.slice(payloadIdx + 1).join(' ').trim();
-    if (payloadStr) {
-      if (payloadStr.startsWith('@') || fs.existsSync(path.resolve(payloadStr))) {
-        const filePath = payloadStr.startsWith('@') ? path.resolve(payloadStr.slice(1)) : path.resolve(payloadStr);
-        try {
-          initialContext = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        } catch {
-          const error = new AxiError(
-            'Invalid JSON payload file: ' + filePath,
-            'VALIDATION_ERROR',
-            ['Usage: --payload \'{"key":"value"}\' or --payload @filepath.json']
-          );
-          return renderOutput([renderError(error.message, error.code, error.suggestions)]);
-        }
-      } else {
-        try {
-          initialContext = JSON.parse(payloadStr);
-        } catch {
-          const error = new AxiError(
-            'Invalid JSON payload',
-            'VALIDATION_ERROR',
-            ['Usage: --payload \'{"key":"value"}\' or --payload @filepath.json']
-          );
-          return renderOutput([renderError(error.message, error.code, error.suggestions)]);
-        }
-      }
-    }
+  const parsedPayload = parsePayload(filteredArgs);
+  if (parsedPayload instanceof AxiError) {
+    return renderOutput([renderError(parsedPayload.message, parsedPayload.code, parsedPayload.suggestions)]);
   }
 
   try {
@@ -79,47 +69,66 @@ export async function invokeCommand(args: string[]): Promise<string> {
       );
       return renderOutput([renderError(error.message, error.code, error.suggestions)]);
     }
-    const runId = createSortableId();
-    const parentEngine = new FSMEngine({
-      skillDir: skillPath,
-      workspaceDir: path.dirname(skillPath),
-      runId,
-      initialContext,
+
+    const workspaceDir = resolveWorkspaceDir(skillPath);
+    const runId = jobId || createSortableId();
+    const jobManager = new JobManager(workspaceDir);
+    jobManager.createJob(skillName, {
+      id: runId,
+      name: runId,
+      setActive: true,
     });
-    const result = await parentEngine.invokeSkill(skillName);
 
-    // Persist run_id for subsequent emit calls
-    const runIdPath = path.join(skillPath, '.reactive', 'run-id.txt');
-    fs.mkdirSync(path.dirname(runIdPath), { recursive: true });
-    if (runId) {
-      fs.writeFileSync(runIdPath, runId, 'utf8');
+    const engine = new FSMEngine({
+      skillDir: skillPath,
+      workspaceDir,
+      jobId: runId,
+      initialContext: parsedPayload,
+      eventContext: { run_id: runId },
+    });
+
+    try {
+      const currentState = engine.getCurrentState();
+      const promptSlice = engine.generatePromptSlice();
+      const events = engine.getEventStore().getAll();
+      const latestEvent = events.length > 0 ? events[events.length - 1] : undefined;
+
+      const lines: string[] = [];
+      lines.push(renderDetail('invoke', {
+        skill_id: skillName,
+        current_state: currentState,
+        run_id: runId,
+        event_id: latestEvent?.id || 'none',
+      }, [
+        { type: 'field', key: 'skill_id' },
+        { type: 'field', key: 'current_state' },
+        { type: 'field', key: 'run_id' },
+        { type: 'field', key: 'event_id' },
+      ]));
+
+      lines.push(renderDetail('prompt', {
+        raw_prompt: promptSlice.rawPrompt,
+        allowed_tools: promptSlice.allowedTools.join(',') || 'none',
+        exit_conditions: promptSlice.exitConditions.length,
+      }, [
+        { type: 'field', key: 'raw_prompt' },
+        { type: 'field', key: 'allowed_tools' },
+        { type: 'field', key: 'exit_conditions' },
+      ]));
+
+      const suggestions = getSuggestions({
+        domain: 'invoke',
+        action: 'call',
+        skillName,
+        jobId: runId,
+        currentState,
+      });
+      lines.push(renderHelp(suggestions));
+
+      return renderOutput(lines);
+    } finally {
+      engine.close?.();
     }
-
-    const lines: string[] = [];
-    lines.push(renderDetail('invoke', {
-      skill_id: result.skillId,
-      current_state: result.currentState,
-      event_id: result.event.id,
-    }, [
-      { type: 'field', key: 'skill_id' },
-      { type: 'field', key: 'current_state' },
-      { type: 'field', key: 'event_id' },
-    ]));
-
-    lines.push(renderDetail('prompt', {
-      raw_prompt: result.promptSlice.rawPrompt,
-      allowed_tools: result.promptSlice.allowedTools.join(',') || 'none',
-      exit_conditions: result.promptSlice.exitConditions.length,
-    }, [
-      { type: 'field', key: 'raw_prompt' },
-      { type: 'field', key: 'allowed_tools' },
-      { type: 'field', key: 'exit_conditions' },
-    ]));
-
-    const suggestions = getSuggestions({ domain: 'invoke', action: 'call', skillName: result.skillId });
-    lines.push(renderHelp(suggestions));
-
-    return renderOutput(lines);
   } catch (err) {
     const error = err instanceof AxiError
       ? err
@@ -133,4 +142,3 @@ export async function invokeCommand(args: string[]): Promise<string> {
     ]);
   }
 }
-

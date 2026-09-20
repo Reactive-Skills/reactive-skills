@@ -66,7 +66,10 @@ describe('ProjectMigrator (Retroactive Project Upgrader)', () => {
     const updatedMd = fs.readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8');
     expect(updatedMd).toContain('REACTIVE BOOTLOADER');
     expect(updatedMd).toContain('STRICT RUNTIME EXECUTION');
+    expect(updatedMd).toContain('DEFAULT EXECUTION: AXI CLI');
+    expect(updatedMd).toContain('FALLBACK EXECUTION: MCP');
     expect(updatedMd).toContain('reactive_state');
+    expect(updatedMd).not.toContain('If the `reactive_state` MCP tool is present');
 
     // skill.yaml has INIT and SETUP_MCP and schema_version 2.1.0
     const updatedYaml = fs.readFileSync(path.join(skillDir, 'skill.yaml'), 'utf8');
@@ -78,6 +81,12 @@ describe('ProjectMigrator (Retroactive Project Upgrader)', () => {
     // States files created
     expect(fs.existsSync(path.join(skillDir, 'states', 'init.md'))).toBe(true);
     expect(fs.existsSync(path.join(skillDir, 'states', 'setup_mcp.md'))).toBe(true);
+    const initMd = fs.readFileSync(path.join(skillDir, 'states', 'init.md'), 'utf8');
+    expect(initMd).toContain('Prefer AXI CLI');
+    expect(initMd).not.toContain('Check if `reactive_state` MCP tool is available');
+    const bypassMd = fs.readFileSync(path.join(skillDir, 'states', 'bypass_detected.md'), 'utf8');
+    expect(bypassMd).toContain('Use AXI `state`');
+    expect(bypassMd).not.toContain('Use ONLY `reactive_state`');
 
     // skill-release.json created
     const releasePath = path.join(skillDir, 'skill-release.json');

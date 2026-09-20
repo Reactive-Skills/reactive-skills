@@ -76,7 +76,13 @@ export async function stateCommand(args: string[]): Promise<string> {
         { type: 'field', key: 'exit_conditions' },
       ]));
 
-      const suggestions = getSuggestions({ domain: 'state', action: 'get', skillName });
+      const suggestions = getSuggestions({
+        domain: 'state',
+        action: 'get',
+        skillName,
+        jobId: effectiveJobId,
+        currentState,
+      });
       lines.push(renderHelp(suggestions));
 
       return renderOutput(lines);

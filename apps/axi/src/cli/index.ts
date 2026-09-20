@@ -17,9 +17,9 @@ examples:
   reactive-skills-axi inspect skills/my-skill
   reactive-skills-axi validate skills/my-skill
   reactive-skills-axi events 50
-  reactive-skills-axi invoke my-skill
-  reactive-skills-axi state my-skill
-  reactive-skills-axi emit my-skill <signal> [--payload '{"key":"value"}']
+  reactive-skills-axi invoke my-skill [--job <job-id>]
+  reactive-skills-axi state my-skill [--job <job-id>]
+  reactive-skills-axi emit my-skill <signal> [--payload '{"key":"value"}'] [--job <job-id>]
   reactive-skills-axi jobs my-skill
   reactive-skills-axi jobs switch my-skill <job-id>
   reactive-skills-axi reset my-skill

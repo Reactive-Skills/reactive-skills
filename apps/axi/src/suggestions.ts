@@ -2,6 +2,8 @@ export interface SuggestionContext {
   domain?: 'home' | 'init' | 'upgrade' | 'inspect' | 'events' | 'invoke' | 'state' | 'emit' | 'setup' | 'reset' | 'sync';
   action?: 'list' | 'create' | 'convert' | 'view' | 'tail' | 'call' | 'get' | 'signal' | 'configure';
   skillName?: string;
+  jobId?: string;
+  currentState?: string;
   isEmpty?: boolean;
   id?: string;
 }
@@ -9,7 +11,10 @@ export interface SuggestionContext {
 export type ErrorCode = 'NOT_FOUND' | 'ALREADY_EXISTS' | 'INVALID_SKILL' | 'VALIDATION_ERROR' | 'NO_EVENT_STORE' | 'RUNTIME_ERROR' | 'UNKNOWN';
 
 export function getSuggestions(ctx: SuggestionContext): string[] {
-  const { domain, action, skillName } = ctx;
+  const { domain, action, skillName, jobId, currentState } = ctx;
+  const jobFlag = jobId && jobId !== 'default' ? ' --job ' + jobId : '';
+  const terminalStates = new Set(['DONE', 'COMPLETED', 'SUCCESS', 'ERROR', 'BYPASS_DETECTED', 'ABORTED']);
+  const isTerminal = Boolean(currentState && terminalStates.has(currentState.split('.').pop() || currentState));
 
   switch (domain) {
     case 'home':
@@ -85,8 +90,8 @@ export function getSuggestions(ctx: SuggestionContext): string[] {
       if (action === 'call' && skillName) {
         return [
           'Read the state prompt above and execute the instructed tasks',
-          'Run `reactive-skills-axi emit ' + skillName + ' <signal>` to advance to the next state',
-          'Run `reactive-skills-axi state ' + skillName + '` to re-read the active state prompt',
+          'Run `reactive-skills-axi emit ' + skillName + ' <signal>' + jobFlag + '` to advance to the next state',
+          'Run `reactive-skills-axi state ' + skillName + jobFlag + '` to re-read the active state prompt',
           'Run `reactive-skills-axi reset ' + skillName + '` to clear this run and start fresh',
         ];
       }
@@ -99,8 +104,9 @@ export function getSuggestions(ctx: SuggestionContext): string[] {
       if (skillName) {
         return [
           'Read the state prompt above and execute the instructed tasks',
-          'Run `reactive-skills-axi emit ' + skillName + ' <signal>` to advance the state machine',
-          'Run `reactive-skills-axi reset ' + skillName + '` to clear this run and start fresh',
+          'Run `reactive-skills-axi emit ' + skillName + ' <signal>' + jobFlag + '` to advance the state machine',
+          'Run `reactive-skills-axi reset ' + skillName + jobFlag + '` to archive this job and start fresh',
+          ...(isTerminal ? ['Current job is terminal. Run `reactive-skills-axi invoke ' + skillName + '` for a fresh isolated job.'] : []),
         ];
       }
       return [
@@ -112,8 +118,8 @@ export function getSuggestions(ctx: SuggestionContext): string[] {
       if (action === 'signal' && skillName) {
         return [
           'Read the new state prompt above and execute the next phase tasks',
-          'Run `reactive-skills-axi emit ' + skillName + ' <signal>` to continue advancing',
-          'Run `reactive-skills-axi state ' + skillName + '` to re-read the active state prompt',
+          'Run `reactive-skills-axi emit ' + skillName + ' <signal>' + jobFlag + '` to continue advancing',
+          'Run `reactive-skills-axi state ' + skillName + jobFlag + '` to re-read the active state prompt',
           'Run `reactive-skills-axi events` to view the event history',
         ];
       }
