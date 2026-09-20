@@ -436,33 +436,33 @@ export function Hero() {
                     </ul>
                   </div>
 
-                  <div className="rounded-lg border border-teal-200 bg-teal-50 p-3.5 space-y-2 dark:border-phino-signal/40 dark:bg-phino-signal-soft/40">
-                    <div className="flex items-center justify-between border-b border-teal-200 pb-2 dark:border-phino-signal/30">
-                      <span className="font-bold text-teal-900 dark:text-phino-signal-text uppercase tracking-wide text-[11px]">
+                  <div className="rounded-lg border border-teal-200 bg-teal-50 p-3.5 space-y-2 dark:border-teal-500/30 dark:bg-teal-950/20">
+                    <div className="flex items-center justify-between border-b border-teal-200 pb-2 dark:border-teal-500/20">
+                      <span className="font-bold text-teal-800 dark:text-teal-400 uppercase tracking-wide text-[11px]">
                         Reactive Skills Runtime
                       </span>
-                      <span className="rounded bg-teal-100 text-teal-800 dark:bg-phino-signal-soft dark:text-phino-signal-text px-2 py-0.5 font-bold text-[11px]">
+                      <span className="rounded bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 px-2 py-0.5 font-semibold text-[11px]">
                         284 tokens active slice
                       </span>
                     </div>
-                    <ul className="space-y-1.5 text-teal-900 dark:text-emerald-400 text-[11px]">
-                      <li className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                        <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                    <ul className="space-y-1.5 text-teal-800 dark:text-teal-300 text-[11px]">
+                      <li className="flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden="true" />
                         <span>Only current state prompt mounted (~78% token savings)</span>
                       </li>
-                      <li className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                        <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                      <li className="flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden="true" />
                         <span>Transitions verified by code guards (exit_code === 0)</span>
                       </li>
-                      <li className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                        <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                      <li className="flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden="true" />
                         <span>Immutable append-only ledger for instant state recovery</span>
                       </li>
                     </ul>
                   </div>
 
                   <div className="rounded-lg border border-slate-200 bg-slate-50 dark:border-phino-border dark:bg-phino-code-bg p-3 text-center text-slate-700 dark:text-phino-text-muted text-[11px]">
-                    <span className="text-teal-700 dark:text-phino-signal-text font-semibold">Net Result:</span> Deterministic execution, zero agent drift, and massive API cost reduction.
+                    <span className="text-teal-700 dark:text-teal-400 font-semibold">Net Result:</span> Deterministic execution, zero agent drift, and massive API cost reduction.
                   </div>
                 </div>
               )}
