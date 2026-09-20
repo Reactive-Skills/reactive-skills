@@ -14,22 +14,6 @@ export const changelog = {
       {
         "type": "list",
         "items": [
-          "docs: add project context and architecture documentation files",
-          "docs: add Reactive Skills Architecture overview to AGENTS.md",
-          "chore(release): v0.5.4 - --",
-          "fix(axi): isolate jobs and default bootloaders to AXI",
-          "feat(site): refactor hero to tactical workbench and fix simulation controls"
-        ]
-      }
-    ]
-  },
-  {
-    "id": "v0-6-0",
-    "heading": "v0.6.0 (2026-09-20)",
-    "blocks": [
-      {
-        "type": "list",
-        "items": [
           "**removed: `ReactiveRuntimeHooks` class** (`runtime-hooks.ts`) — The Claude Code-specific in-harness hook layer (`onBeforeAgentTurn`, `onAfterToolExecution`, `onHumanResponse`, `auditToolExecution`) has been removed. Reactive Skills is LLM-agnostic; the AXI CLI (`axi state` / `axi emit`) and MCP stdio paths are the canonical integration modes. Signal emission is explicit — agents read the `transition_contracts` in the prompt slice and call `axi emit <skill> <SIGNAL>` directly.",
           "Removed export `export * from './core/runtime-hooks.js'` from `@reactive-skills/runtime` public API."
         ]

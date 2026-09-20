@@ -75,7 +75,11 @@ for (const bannerFile of bannerFiles) {
   console.log(`  ✓ Updated ${path.relative(repoRoot, bannerFile)}`);
 }
 
-// 4. Commit & tag
+// 4a. Sync changelog to root + site
+console.log(`\n📋 Step 2.5: Syncing changelog to root CHANGELOG.md and site docs...`);
+execSync(`node "${path.join(repoRoot, 'scripts', 'sync-changelog.js')}"`, { stdio: 'inherit', cwd: repoRoot });
+
+// 4b. Commit & tag
 console.log(`\n📋 Step 3: Committing and tagging v${nextVersion}...`);
 execSync('git add -A', { stdio: 'inherit' });
 
