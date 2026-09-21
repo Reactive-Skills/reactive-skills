@@ -111,6 +111,13 @@ transitions:
         { type: 'callout', variant: 'signal', title: 'Interface selection', text: 'Use AXI whenever the host has terminal/shell access: ~40% fewer tokens, zero daemon process management, and instant recovery diagnostics. Use MCP when connecting to GUI client panels.' },
       ],
     },
+    {
+      id: 'interactive-simulator',
+      heading: 'Live State Machine & Event Ledger Laboratory',
+      blocks: [
+        { type: 'text', text: 'Step through an interactive simulation to experience hierarchical state bubbling, deterministic guard gating, and real-time event ledger streaming in action.' },
+      ],
+    },
   ],
   relatedPages: [
     { title: 'Authoring & customizing skills', href: '/docs/authoring' },
