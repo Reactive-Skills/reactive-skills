@@ -32,7 +32,7 @@ function resolveSkillPath(skillName: string): string | null {
 export async function viewCommand(args: string[]): Promise<string> {
   const { jobId, filteredArgs } = extractJobFlag(args);
   let skillName: string | undefined;
-  let port = 4242;
+  let port: number | undefined;
   let host = '127.0.0.1';
   let once = false;
 
@@ -76,7 +76,7 @@ export async function viewCommand(args: string[]): Promise<string> {
     const error = new AxiError(
       'No skill specified and no active skill found in workspace',
       'VALIDATION_ERROR',
-      ['Usage: reactive-skills-axi view <skill-name> [--job <job-id>] [--port 4242]', 'Example: reactive-skills-axi view my-skill --job review-slice']
+      ['Usage: reactive-skills-axi view <skill-name> [--job <job-id>] [--port <number>]', 'Example: reactive-skills-axi view my-skill --job review-slice']
     );
     return renderOutput([
       renderError(error.message, error.code, error.suggestions),
@@ -87,7 +87,8 @@ export async function viewCommand(args: string[]): Promise<string> {
   const workspaceDir = skillPath ? resolveWorkspaceDir(skillPath) : process.cwd();
 
   let engine: FSMEngine | undefined;
-  let eventStore: EventStore;
+  let eventStore: EventStore | undefined;
+  let telemetry: TelemetryServer | undefined;
 
   try {
     if (skillPath) {
@@ -109,7 +110,11 @@ export async function viewCommand(args: string[]): Promise<string> {
       });
     }
 
-    const telemetry = new TelemetryServer({
+    if (!eventStore) {
+      throw new Error('Telemetry event store was not initialized');
+    }
+
+    const telemetryServer = new TelemetryServer({
       eventStore,
       fsmEngine: engine,
       jobId: engine?.getJobId() ?? jobId,
@@ -117,8 +122,9 @@ export async function viewCommand(args: string[]): Promise<string> {
       host,
       skillName,
     });
+    telemetry = telemetryServer;
 
-    const { port: boundPort, url } = await telemetry.start();
+    const { port: boundPort, url } = await telemetryServer.start();
 
     const detail = renderDetail('view', {
       status: 'listening',
@@ -145,7 +151,7 @@ export async function viewCommand(args: string[]): Promise<string> {
     const suggestions = getSuggestions({ domain: 'events', action: 'tail', skillName });
 
     if (once) {
-      await telemetry.stop();
+      await telemetryServer.stop();
       if (engine) {
         engine.close();
       } else {
@@ -156,16 +162,24 @@ export async function viewCommand(args: string[]): Promise<string> {
 
     // Keep process alive if running interactively
     process.on('SIGINT', async () => {
-      await telemetry.stop();
+      await telemetryServer.stop();
       process.exit(0);
     });
     process.on('SIGTERM', async () => {
-      await telemetry.stop();
+      await telemetryServer.stop();
       process.exit(0);
     });
 
     return renderOutput([detail, renderHelp(suggestions)]);
   } catch (err: any) {
+    if (telemetry) {
+      await telemetry.stop().catch(() => undefined);
+    }
+    if (engine) {
+      engine.close();
+    } else {
+      eventStore?.close();
+    }
     const error = new AxiError(
       `Failed to launch telemetry viewer: ${err.message}`,
       'RUNTIME_ERROR',

@@ -1,6 +1,6 @@
 {
   "name": "@reactive-skills/axi",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "AXI-compliant CLI for Reactive Skills Architecture - state, emit, events in TOON format",
   "type": "module",
   "bin": {

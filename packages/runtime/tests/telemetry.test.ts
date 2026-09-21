@@ -94,6 +94,8 @@ states:
     const healthJson = await healthRes.json();
     expect(healthJson.status).toBe('ok');
     expect(healthJson.skillName).toBe('test-telemetry');
+    expect(healthJson.port).toBe(portFromUrl(url));
+    expect(healthJson.url).toBe(url);
     expect(healthJson.latestSeq).toBe(1);
 
     // State
@@ -101,6 +103,8 @@ states:
     expect(stateRes.status).toBe(200);
     const stateJson = await stateRes.json();
     expect(stateJson.skillName).toBe('test-telemetry');
+    expect(stateJson.port).toBe(portFromUrl(url));
+    expect(stateJson.url).toBe(url);
     expect(stateJson.latestSeq).toBe(1);
   });
 
@@ -171,6 +175,8 @@ states:
 
     const fullStreamText = receivedChunks.join('');
     expect(fullStreamText).toContain('event: connected');
+    expect(fullStreamText).toContain(`\"port\":${port}`);
+    expect(fullStreamText).toContain(`\"url\":\"${url}\"`);
     expect(fullStreamText).toContain('PRIOR_EVENT');
     expect(fullStreamText).toContain('LIVE_SIGNAL');
     expect(fullStreamText).toContain('hello sse');
@@ -399,4 +405,34 @@ states:
     expect(indexHtml).toContain('<!DOCTYPE html>');
     expect(indexHtml).toContain('test-telemetry');
   });
+
+  it('should fall back from a busy preferred port and report the selected endpoint', async () => {
+    const blocker = http.createServer();
+    await new Promise<void>((resolve, reject) => {
+      blocker.once('error', reject);
+      blocker.listen(4242, '127.0.0.1', () => resolve());
+    });
+
+    try {
+      server = new TelemetryServer({
+        eventStore,
+        skillName: 'test-telemetry',
+      });
+
+      const { port, url } = await server.start();
+      expect(port).toBe(4243);
+
+      const health = await (await fetch(`${url}/health`)).json();
+      expect(health.port).toBe(port);
+      expect(health.url).toBe(url);
+    } finally {
+      await server?.stop();
+      server = null;
+      await new Promise<void>((resolve) => blocker.close(() => resolve()));
+    }
+  });
 });
+
+function portFromUrl(url: string): number {
+  return Number(new URL(url).port);
+}
