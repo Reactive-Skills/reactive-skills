@@ -49,7 +49,7 @@ export const conceptsDoc = {
         { type: 'text', text: 'The core runtime takes zero hard dependencies on external AI SDKs. Instead, transitions declare domain-level semantic contracts (predicate, categorical, or evaluation) which the runtime delegates to registered Judgment Adapters:' },
         { type: 'list', items: [
           'ScriptJudgmentAdapter: Built-in default (<1ms) providing deterministic sandboxed heuristic evaluation with zero configuration.',
-          'JevJudgmentAdapter: Dynamic snap-on adapter that leverages TypeSafe AI\'s System One decision model via ambient CLI (npx -y jev-axi) or HTTP endpoints (~400ms decisions).',
+          'JevJudgmentAdapter: Optional direct integration with TypeSafe AI\'s System One decision model through @typesafe-ai/sdk. It requires TYPESAFE_API_KEY, does not invoke jev-axi, and preserves Script fallback behavior when unavailable.',
           'Circuit Breaker & Fallbacks: Resilient evaluation wraps external calls in a circuit breaker. If an adapter times out or trips, the FSM transitions directly to a declared fallback_target (e.g. BLOCKED or MANUAL_REVIEW) and audits GUARD_FALLBACK_TRIGGERED into the event ledger.',
         ] },
         { type: 'code', example: {

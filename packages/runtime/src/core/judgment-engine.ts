@@ -1,9 +1,4 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
 import vm from 'node:vm';
-import { exec, spawn } from 'node:child_process';
-import { promisify } from 'node:util';
 import {
   JudgmentType,
   JudgmentDefinition,
@@ -13,7 +8,38 @@ import {
 } from './types.js';
 import { GuardEvaluationContext } from './guard-evaluator.js';
 
-const execAsync = promisify(exec);
+interface TypeSafeClientLike {
+  systemOne(
+    request: {
+      state: Record<string, unknown>;
+      questions: Record<string, unknown>;
+    },
+    options?: {
+      signal?: AbortSignal;
+      timeout?: number;
+      retry?: { maxRetries: number };
+    }
+  ): Promise<{
+    model?: string;
+    answers?: Record<string, unknown>;
+    usage?: unknown;
+  }>;
+}
+
+interface TypeSafeSdkModule {
+  TypeSafeClient: new () => TypeSafeClientLike;
+  noul(instructions: string): unknown;
+  choice(instructions: string, criteria: Record<string, null>): unknown;
+  score(instructions: string, criteria: string[]): unknown;
+}
+
+async function loadTypeSafeSdk(): Promise<TypeSafeSdkModule | null> {
+  try {
+    return (await import('@typesafe-ai/sdk')) as unknown as TypeSafeSdkModule;
+  } catch {
+    return null;
+  }
+}
 
 export interface CircuitBreakerOptions {
   failureThreshold?: number;
@@ -184,9 +210,10 @@ export class ScriptJudgmentAdapter implements JudgmentAdapter {
 }
 
 /**
- * Snap-On JevJudgmentAdapter
- * Connects to TypeSafe Jev via the local ambient environment (CLI or API)
- * Zero hard package dependency on @typesafe
+ * Snap-On JevJudgmentAdapter backed by the optional TypeSafe SDK.
+ *
+ * The SDK is loaded only when a TypeSafe API key is configured, so Script-only
+ * runtimes do not need the optional package installed.
  */
 export class JevJudgmentAdapter implements JudgmentAdapter {
   public readonly id = 'jev';
@@ -196,30 +223,8 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
   }
 
   public async isAvailable(): Promise<boolean> {
-    if (process.env.TYPESAFE_API_KEY) {
-      return true;
-    }
-
-    // Check user profile config locations
-    const candidates = [
-      path.join(process.env.APPDATA || '', 'jev-axi', 'config.json'),
-      path.join(os.homedir(), '.config', 'jev-axi', 'config.json'),
-    ];
-
-    for (const file of candidates) {
-      try {
-        if (file && fs.existsSync(file)) {
-          const content = JSON.parse(fs.readFileSync(file, 'utf8'));
-          if (content.apiKey && content.apiKey !== 'missing') {
-            return true;
-          }
-        }
-      } catch {
-        // ignore read error
-      }
-    }
-
-    return false;
+    if (!process.env.TYPESAFE_API_KEY?.trim()) return false;
+    return (await loadTypeSafeSdk()) !== null;
   }
 
   public async evaluate(
@@ -227,111 +232,142 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
     evalContext: GuardEvaluationContext
   ): Promise<JudgmentResult> {
     const startTime = performance.now();
-    const timeoutMs = (evalContext as any)?.timeout_ms || 3000;
+    const timeoutMs = Math.max(1, (evalContext as GuardEvaluationContext & { timeout_ms?: number }).timeout_ms || 3000);
+    const sdk = await loadTypeSafeSdk();
+    if (!sdk) {
+      throw new Error('TypeSafe SDK is unavailable; install @typesafe-ai/sdk and configure TYPESAFE_API_KEY');
+    }
 
-    const statePayload = {
+    const state = {
       event: evalContext.event?.payload || {},
       context: evalContext.context || {},
       currentState: evalContext.currentState,
     };
-    const stateJson = JSON.stringify(statePayload);
-    const tempStateFile = path.join(
-      os.tmpdir(),
-      `jev-state-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.json`
-    );
-    fs.writeFileSync(tempStateFile, stateJson, 'utf8');
 
-    return new Promise<JudgmentResult>((resolve, reject) => {
-      const args = ['-y', 'jev-axi'];
-      if (req.type === 'predicate') {
-        args.push('check', `"${req.criterion.replace(/"/g, '\\"')}"`, '--state', `"${tempStateFile}"`, '--json');
-      } else if (req.type === 'categorical') {
-        args.push('pick', `"${req.criterion.replace(/"/g, '\\"')}"`, '--options', `"${(req.options || []).join(',')}"`, '--state', `"${tempStateFile}"`, '--json');
-      } else {
-        args.push('rate', `"${req.criterion.replace(/"/g, '\\"')}"`, '--state', `"${tempStateFile}"`, '--json');
+    let question: unknown;
+    if (req.type === 'predicate') {
+      question = sdk.noul(req.criterion);
+    } else if (req.type === 'categorical') {
+      const criteria = Object.fromEntries((req.options || []).map((option) => [option, null]));
+      question = sdk.choice(req.criterion, criteria);
+    } else {
+      question = sdk.score(req.criterion, normalizeScoreRubric(req.rubric));
+    }
+
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error(`Jev adapter execution timed out after ${timeoutMs}ms`));
+        controller.abort();
+      }, timeoutMs);
+    });
+
+    try {
+      const response = await Promise.race([
+        new sdk.TypeSafeClient().systemOne(
+          { state, questions: { judgment: question } },
+          { signal: controller.signal, timeout: timeoutMs, retry: { maxRetries: 0 } }
+        ),
+        timeout,
+      ]);
+
+      const answer = response.answers?.judgment;
+      if (!answer || typeof answer !== 'object') {
+        throw new Error('TypeSafe SDK returned no judgment answer');
       }
 
-      const child = spawn('npx', args, {
-        shell: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
-        env: process.env,
-      });
+      const latencyMs = Number((performance.now() - startTime).toFixed(2));
+      const raw = {
+        model: response.model,
+        answers: response.answers,
+        usage: response.usage,
+      };
 
-      let stdout = '';
-      let stderr = '';
-      let timedOut = false;
-
-      const timer = setTimeout(() => {
-        timedOut = true;
-        child.kill();
-        try { fs.unlinkSync(tempStateFile); } catch {}
-        reject(new Error(`Jev adapter execution timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
-
-      child.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
-
-      child.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
-
-      child.on('error', (err) => {
-        clearTimeout(timer);
-        try { fs.unlinkSync(tempStateFile); } catch {}
-        reject(err);
-      });
-
-      child.on('close', (code) => {
-        clearTimeout(timer);
-        try { fs.unlinkSync(tempStateFile); } catch {}
-        if (timedOut) return;
-
-        const latencyMs = Number((performance.now() - startTime).toFixed(2));
-        if (code !== 0 && !stdout.trim()) {
-          return reject(new Error(`Jev process exited with code ${code}: ${stderr}`));
+      if (req.type === 'predicate') {
+        const probability = (answer as { type?: string; noul?: number }).noul;
+        if (typeof probability !== 'number' || !Number.isFinite(probability)) {
+          throw new Error('TypeSafe SDK returned an invalid predicate answer');
         }
+        const boundedProbability = Math.min(1, Math.max(0, probability));
+        const verdict = boundedProbability >= 0.5;
+        return {
+          verdict,
+          confidence: Math.abs(boundedProbability - 0.5) * 2,
+          passed: verdict,
+          adapterName: this.id,
+          latencyMs,
+          raw,
+        };
+      }
 
-        try {
-          const parsed = JSON.parse(stdout.trim());
-          if (req.type === 'predicate') {
-            const isYes = parsed.verdict === 'yes' || parsed.verdict === true;
-            const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : (parsed.p_yes ?? 0.5);
-            return resolve({
-              verdict: isYes,
-              confidence,
-              passed: isYes,
-              adapterName: this.id,
-              latencyMs,
-              raw: parsed,
-            });
-          }
-
-          if (req.type === 'categorical') {
-            return resolve({
-              verdict: parsed.verdict || parsed.choice || '',
-              confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 1.0,
-              passed: Boolean(parsed.verdict || parsed.choice),
-              adapterName: this.id,
-              latencyMs,
-              raw: parsed,
-            });
-          }
-
-          return resolve({
-            verdict: parsed.verdict || parsed.score || 0,
-            confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 1.0,
-            passed: Boolean(parsed.verdict || parsed.score),
-            adapterName: this.id,
-            latencyMs,
-            raw: parsed,
-          });
-        } catch (err: any) {
-          reject(new Error(`Failed to parse Jev output (${err.message}): ${stdout || stderr}`));
+      if (req.type === 'categorical') {
+        const choice = (answer as { choice?: unknown; confidence?: unknown }).choice;
+        if (typeof choice !== 'string') {
+          throw new Error('TypeSafe SDK returned an invalid categorical answer');
         }
-      });
-    });
+        const confidence = typeof (answer as { confidence?: unknown }).confidence === 'number'
+          ? (answer as { confidence: number }).confidence
+          : 0;
+        return {
+          verdict: choice,
+          confidence,
+          passed: req.options ? req.options.includes(choice) : Boolean(choice),
+          adapterName: this.id,
+          latencyMs,
+          raw,
+        };
+      }
+
+      const score = (answer as { score?: unknown; confidence?: unknown }).score;
+      if (typeof score !== 'number' || !Number.isFinite(score)) {
+        throw new Error('TypeSafe SDK returned an invalid score answer');
+      }
+      const confidence = typeof (answer as { confidence?: unknown }).confidence === 'number'
+        ? (answer as { confidence: number }).confidence
+        : 0;
+      return {
+        verdict: score,
+        confidence,
+        passed: score > 0,
+        adapterName: this.id,
+        latencyMs,
+        raw,
+      };
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
+}
+
+function normalizeScoreRubric(rubric: string | string[] | undefined): string[] {
+  if (Array.isArray(rubric)) {
+    if (rubric.length >= 2) return rubric;
+    throw new Error('Jev evaluation requires at least two ordered rubric criteria');
+  }
+
+  if (!rubric?.trim()) {
+    throw new Error('Jev evaluation requires ordered rubric criteria');
+  }
+
+  const trimmed = rubric.trim();
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length >= 2 && parsed.every((item) => typeof item === 'string')) {
+        return parsed;
+      }
+    } catch {
+      // Fall through to delimiter parsing for a useful validation error.
+    }
+  }
+
+  const delimiter = trimmed.includes('|') ? '|' : trimmed.includes('\n') ? '\n' : ',';
+  const criteria = trimmed.split(delimiter).map((item) => item.trim()).filter(Boolean);
+  if (criteria.length < 2) {
+    throw new Error('Jev evaluation requires at least two ordered rubric criteria separated by |');
+  }
+  return criteria;
 }
 
 /**

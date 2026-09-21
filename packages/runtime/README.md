@@ -16,6 +16,21 @@ npm install @reactive-skills/runtime
 import { FSMEngine, EventStore, JobManager, LegacySkillAdapter, ProjectionEngine } from '@reactive-skills/runtime';
 ```
 
+### Semantic Judgment Adapter
+
+`JevJudgmentAdapter` uses the optional `@typesafe-ai/sdk` package and calls TypeSafe AI's System One API directly.
+It never invokes `jev-axi`, starts a shell, or writes a temporary state file.
+
+Install the optional SDK and configure `TYPESAFE_API_KEY` when semantic judgments are needed:
+
+```bash
+npm install @reactive-skills/runtime @typesafe-ai/sdk
+```
+
+The adapter supports predicate, categorical, and ordered score judgments.
+Score judgments accept an array such as `rubric: ["weak", "acceptable", "strong"]`, or a string separated by `|`.
+If the SDK is absent, the API key is unset, or a request fails, the runtime keeps the existing Script adapter fallback and circuit-breaker behavior.
+
 ## Core Modules
 
 - `FSMEngine` - Hierarchical State Machine loader, state path resolver, and signal-driven transition engine
