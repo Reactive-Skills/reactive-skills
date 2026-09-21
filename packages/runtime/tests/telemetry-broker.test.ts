@@ -127,6 +127,37 @@ async function openSse(url: string): Promise<OpenSseConnection> {
 }
 
 describe('TelemetryBroker', () => {
+  it('falls back from an occupied preferred port and reports the selected port', async () => {
+    const workspace = createWorkspace();
+    const blocker = http.createServer();
+    await new Promise<void>((resolve, reject) => {
+      blocker.once('error', reject);
+      blocker.listen(0, '127.0.0.1', () => {
+        blocker.removeListener('error', reject);
+        resolve();
+      });
+    });
+
+    try {
+      const blockedPort = (blocker.address() as any).port as number;
+      const broker = new TelemetryBroker({
+        workspaceDir: workspace,
+        preferredPort: blockedPort,
+        tailIntervalMs: 10,
+        catalogRefreshIntervalMs: 10,
+        heartbeatIntervalMs: 100,
+      });
+      brokers.push(broker);
+
+      const result = await broker.start();
+
+      expect(result.port).toBeGreaterThan(blockedPort);
+      expect(result.url).toBe(`http://127.0.0.1:${result.port}`);
+    } finally {
+      await new Promise<void>((resolve) => blocker.close(() => resolve()));
+    }
+  });
+
   it('discovers multiple skills, multiple jobs, and active-job metadata', async () => {
     const workspace = createWorkspace();
     createSkill(workspace, 'skill-alpha', 'Alpha Skill');

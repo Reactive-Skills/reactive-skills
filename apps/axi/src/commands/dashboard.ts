@@ -3,7 +3,7 @@ import { AxiError } from '../errors.js';
 import { renderDetail, renderError, renderHelp, renderOutput } from '../toon.js';
 
 export async function dashboardCommand(args: string[]): Promise<string> {
-  let port = 4242;
+  let port: number | undefined;
   let host = '127.0.0.1';
   let once = false;
 

@@ -25,7 +25,7 @@ examples:
   reactive-skills-axi reset my-skill
   reactive-skills-axi rebuild-sqlite my-skill
   reactive-skills-axi view my-skill [--job <job-id>]
-  reactive-skills-axi dashboard [--host 127.0.0.1] [--port 4242]
+  reactive-skills-axi dashboard [--host 127.0.0.1] [--port <number>]
   reactive-skills-axi sync [my-skill]
   reactive-skills-axi mcp
 `;

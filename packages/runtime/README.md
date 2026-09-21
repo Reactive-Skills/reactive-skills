@@ -61,9 +61,9 @@ The broker is intentionally read-only and does not dispatch signals or mutate th
 
 The existing `TelemetryServer` remains the compatibility path for `view` and its single-job `/health`, `/state`, `/events`, `/events/history`, and `/signal` behavior.
 
-### Automatic Viewer Port Selection
+### Automatic Telemetry Port Selection
 
-When `--port` is omitted, the standalone viewer makes real HTTP bind attempts starting at `127.0.0.1:4242`.
+When `--port` is omitted, the standalone viewer and multi-job broker make real HTTP bind attempts starting at `127.0.0.1:4242`.
 
 If the preferred port is occupied, the runtime tries the next available port through a bounded deterministic fallback range.
 

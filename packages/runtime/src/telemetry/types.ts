@@ -15,8 +15,13 @@ export interface TelemetryServerOptions {
 
   /**
    * Port to listen on (0 for an OS-assigned port, omitted for bounded automatic selection from 4242)
-   */
+  */
   port?: number;
+
+  /**
+   * Preferred starting port for automatic selection (default: 4242)
+   */
+  preferredPort?: number;
 
   /**
    * Host to bind to (default: '127.0.0.1')
@@ -46,7 +51,15 @@ export interface TelemetryServerOptions {
 
 export interface TelemetryBrokerOptions {
   workspaceDir?: string;
+  /**
+   * Port to listen on (0 for an OS-assigned port, omitted for bounded automatic selection from 4242)
+   */
   port?: number;
+
+  /**
+   * Preferred starting port for automatic selection (default: 4242)
+   */
+  preferredPort?: number;
   host?: string;
   heartbeatIntervalMs?: number;
   tailIntervalMs?: number;
