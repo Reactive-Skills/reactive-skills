@@ -19,15 +19,21 @@ function parseEventsArgs(args: string[]): { limit: number; skillName?: string; j
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === '--job' || arg === '-j' || arg === '--run-id') {
+    if (arg === '--job' || arg === '-j' || arg === '--run' || arg === '--run-id') {
       jobId = args[++i];
     } else if (arg.startsWith('--job=')) {
       jobId = arg.slice('--job='.length);
+    } else if (arg.startsWith('--run=')) {
+      jobId = arg.slice('--run='.length);
     } else if (arg.startsWith('--run-id=')) {
       jobId = arg.slice('--run-id='.length);
     } else {
       filtered.push(arg);
     }
+  }
+
+  if (!jobId && process.env.REACTIVE_JOB_ID && process.env.REACTIVE_JOB_ID.trim()) {
+    jobId = process.env.REACTIVE_JOB_ID.trim();
   }
 
   const parsedLimit = parseInt(filtered[0], 10);
