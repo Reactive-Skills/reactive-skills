@@ -7,7 +7,7 @@ export const registrySkills = [
     "version": "1.0.0",
     "schemaVersion": "2.1.0",
     "category": "Metaprogramming & Lifecycle",
-    "description": "Reactive SDLC coordinator for taking one software change from intake to final context sync.",
+    "description": "Reactive SDLC coordinator taking software changes from intake to final context sync, implementing the JS Mastery Engineering Workflow (https://jsmastery.com/skills).",
     "tags": [
       "jsm-workflow",
       "jsm",
@@ -16,7 +16,7 @@ export const registrySkills = [
     "strictExecution": true,
     "featured": true,
     "priorityBadge": "Flagship / SDLC",
-    "featuredReason": "Reactive SDLC coordinator for taking one software change from intake through architecture, test, verify, review, and context sync with event-bubbled decision reopening.",
+    "featuredReason": "Reactive SDLC coordinator based on the JS Mastery Engineering Workflow (https://jsmastery.com/skills), orchestrating software changes from intake through architecture, test, verify, review, and context sync with event-bubbled decision reopening.",
     "initialState": "INIT",
     "contextKeys": [],
     "defaultContext": {},

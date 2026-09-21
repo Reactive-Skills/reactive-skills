@@ -31,6 +31,33 @@ function GithubIcon({ className, ...props }) {
   );
 }
 
+function renderTextWithLinks(text) {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) => {
+    if (urlRegex.test(part)) {
+      const cleanUrl = part.replace(/[).,]+$/, '');
+      const trailing = part.slice(cleanUrl.length);
+      return (
+        <span key={i}>
+          <a
+            href={cleanUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-phino-signal underline decoration-phino-signal/50 underline-offset-2 hover:text-phino-signal-text inline-flex items-center gap-0.5"
+          >
+            <span>{cleanUrl}</span>
+            <ExternalLink className="h-3 w-3 inline text-phino-text-muted" aria-hidden="true" />
+          </a>
+          {trailing}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
 export function SkillDetailView({ skill }) {
   const [statechartMode, setStatechartMode] = useState('diagram'); // 'diagram' | 'live'
   const githubSkillUrl = `https://github.com/Reactive-Skills/skills/tree/main/${skill.slug}`;
@@ -106,7 +133,7 @@ export function SkillDetailView({ skill }) {
         </h1>
 
         <p className="mt-3 max-w-3xl text-base leading-relaxed text-phino-text-muted sm:text-lg">
-          {skill.description}
+          {renderTextWithLinks(skill.description)}
         </p>
 
         {skill.featured && skill.featuredReason && (
@@ -114,15 +141,32 @@ export function SkillDetailView({ skill }) {
             <Star className="h-4 w-4 shrink-0 fill-phino-signal text-phino-signal mt-0.5" aria-hidden="true" />
             <div className="leading-relaxed">
               <span className="font-semibold text-phino-signal-text">Recommended Standard: </span>
-              {skill.featuredReason}
+              {renderTextWithLinks(skill.featuredReason)}
             </div>
           </div>
         )}
 
         {/* Source info */}
-        <div className="mt-4 flex items-center gap-2 text-xs text-phino-text-muted">
-          <Package className="h-3.5 w-3.5 text-phino-signal" aria-hidden="true" />
-          <span>Registry Repository: <strong className="font-mono text-phino-text">Reactive-Skills/skills</strong></span>
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-phino-text-muted">
+          <div className="flex items-center gap-2">
+            <Package className="h-3.5 w-3.5 text-phino-signal" aria-hidden="true" />
+            <span>Registry Repository: <strong className="font-mono text-phino-text">Reactive-Skills/skills</strong></span>
+          </div>
+          {skill.slug === 'jsm-workflow' && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-phino-border-strong select-none" aria-hidden="true">|</span>
+              <span>Based on:</span>
+              <a
+                href="https://jsmastery.com/skills"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-semibold text-phino-signal hover:underline"
+              >
+                <span>JS Mastery Skills</span>
+                <ExternalLink className="h-3 w-3 text-phino-text-muted" aria-hidden="true" />
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Command Blocks: 1. skills.sh install, 2. AXI invoke */}

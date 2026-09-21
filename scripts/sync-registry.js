@@ -67,7 +67,7 @@ const PRIORITY_SKILLS = {
   'jsm-workflow': {
     featured: true,
     priorityBadge: 'Flagship / SDLC',
-    featuredReason: 'Reactive SDLC coordinator for taking one software change from intake through architecture, test, verify, review, and context sync with event-bubbled decision reopening.',
+    featuredReason: 'Reactive SDLC coordinator based on the JS Mastery Engineering Workflow (https://jsmastery.com/skills), orchestrating software changes from intake through architecture, test, verify, review, and context sync with event-bubbled decision reopening.',
   },
 };
 
