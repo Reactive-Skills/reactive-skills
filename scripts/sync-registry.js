@@ -64,6 +64,11 @@ const PRIORITY_SKILLS = {
     priorityBadge: 'Essential / Authoring',
     featuredReason: 'Core Utility: The official tool for creating, updating, and migrating reactive skills. Automatically synchronizes skill.yaml, state prompts, and STATECHART.md.',
   },
+  'jsm-workflow': {
+    featured: true,
+    priorityBadge: 'Flagship / SDLC',
+    featuredReason: 'Reactive SDLC coordinator for taking one software change from intake through architecture, test, verify, review, and context sync with event-bubbled decision reopening.',
+  },
 };
 
 function categoryForSkill(name, rawCat) {
@@ -74,7 +79,7 @@ function categoryForSkill(name, rawCat) {
   if (name.includes('resume') || name.includes('career') || name.includes('intake')) {
     return 'Career & Automation';
   }
-  if (name.includes('manager') || name.includes('architect') || name.includes('synthesis')) {
+  if (name.includes('manager') || name.includes('architect') || name.includes('synthesis') || name.includes('workflow') || name.includes('sdlc')) {
     return 'Metaprogramming & Lifecycle';
   }
   return 'General';
@@ -120,9 +125,13 @@ export function syncSkills() {
       const toolsSet = new Set();
       const stateList = [];
 
-      if (doc.states && typeof doc.states === 'object') {
-        for (const [stateName, stateDef] of Object.entries(doc.states)) {
+      function collectStates(statesObj, parentPrefix = '') {
+        if (!statesObj || typeof statesObj !== 'object') return;
+
+        for (const [stateKey, stateDef] of Object.entries(statesObj)) {
           if (!stateDef || typeof stateDef !== 'object') continue;
+
+          const fullName = parentPrefix ? `${parentPrefix}.${stateKey}` : stateKey;
 
           if (Array.isArray(stateDef.tools)) {
             for (const t of stateDef.tools) toolsSet.add(t);
@@ -138,18 +147,36 @@ export function syncSkills() {
                   signal: sig,
                   target: transDef.target || 'UNKNOWN',
                   guard: transDef.guard ? String(transDef.guard) : undefined,
+                  judgment: transDef.judgment ? {
+                    type: transDef.judgment.type,
+                    criterion: transDef.judgment.criterion,
+                    minConfidence: transDef.judgment.min_confidence,
+                    fallbackTarget: transDef.judgment.fallback_target,
+                  } : undefined,
                 });
               }
             }
           }
 
           stateList.push({
-            name: stateName,
-            description: stateDef.description || `Operational state ${stateName}`,
+            name: fullName,
+            description: stateDef.description || `Operational state ${fullName}`,
             tools: Array.isArray(stateDef.tools) ? stateDef.tools : [],
             transitions,
+            model: stateDef.model ? {
+              tier: stateDef.model.tier,
+              suggested: stateDef.model.suggested,
+            } : undefined,
           });
+
+          if (stateDef.substates && typeof stateDef.substates === 'object') {
+            collectStates(stateDef.substates, fullName);
+          }
         }
+      }
+
+      if (doc.states && typeof doc.states === 'object') {
+        collectStates(doc.states);
       }
 
       const deliverables = [];

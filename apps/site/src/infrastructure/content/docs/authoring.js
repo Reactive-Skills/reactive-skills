@@ -86,6 +86,9 @@ states:
   RED_SPEC:
     description: "Write failing test specification"
     prompt_template: "states/red_spec.md"
+    model:
+      tier: "fast"
+      suggested: "gemini-2.5-flash / haiku"
     tools: ["view_file", "write_to_file", "run_command"]
     transitions:
       TEST_RAN:
@@ -95,6 +98,9 @@ states:
   GREEN_CODE:
     description: "Implement minimal code to pass test"
     prompt_template: "states/green_code.md"
+    model:
+      tier: "balanced"
+      suggested: "claude-3-7-sonnet"
     tools: ["view_file", "replace_file_content", "run_command"]
     transitions:
       TEST_RAN:
@@ -104,11 +110,19 @@ states:
   REFACTOR:
     description: "Clean implementation while tests stay green"
     prompt_template: "states/refactor.md"
+    model:
+      tier: "reasoning"
+      suggested: "claude-3-7-sonnet / o3-mini"
     tools: ["view_file", "replace_file_content", "run_command"]
     transitions:
       TEST_RAN:
         target: "COMPLETE"
         guard: "payload.exit_code == 0"
+        judgment:
+          type: "predicate"
+          criterion: "Did the refactoring maintain public APIs without introducing regressions?"
+          min_confidence: 0.85
+          fallback_target: "GREEN_CODE"
       REGRESSION:
         target: "GREEN_CODE"
         guard: "payload.exit_code != 0"
@@ -116,7 +130,7 @@ states:
   COMPLETE:
     description: "TDD cycle verified and closed"
     prompt_template: "states/complete.md"`,
-          explanation: 'Replaces placeholder states with explicit domain phases, tool constraints, and deterministic transition guards.',
+          explanation: 'Replaces placeholder states with explicit domain phases, cognitive model tiers, tool constraints, and deterministic or semantic transition guards.',
         } },
       ],
     },
@@ -150,11 +164,14 @@ Do NOT attempt to write application logic or make the test pass in this state.`,
     },
     {
       id: 'guards-and-deliverables',
-      heading: '4. Deterministic guards & event-sourced deliverables',
+      heading: '4. Deterministic guards, semantic judgments & deliverables',
       blocks: [
-        { type: 'text', text: 'Guards prevent subjective completion claims. Transitions require verified facts, such as exit codes or schema outputs.' },
+        { type: 'text', text: 'Guards prevent subjective completion claims. Transitions require verified facts, code assertions, or semantic verification:' },
         { type: 'list', items: [
           'Inline expressions: Written in standard JavaScript (e.g. payload.exit_code == 0 && payload.coverage >= 80).',
+          'Semantic judgments: Declared via judgment: { type, criterion, min_confidence, fallback_target }. Evaluated via the decoupled Judgment Engine (built-in sandbox or snap-on Jev System One decisions).',
+          'Circuit breaker fallback routing: If a model judgment fails, times out, or trips, the FSM transitions directly to a declared fallback_target state and logs GUARD_FALLBACK_TRIGGERED.',
+          'Model capability tiers: Declared via model: { tier: fast | balanced | reasoning | decision } to guide multi-model routing across states.',
           'Custom guard scripts: Placed in guards/<guard_name>.js for complex validation like AST checks or git status verifications.',
           'Deliverable projections: Configured via deliverable_projections in skill.yaml. Handlebars templates (templates/*.hbs) automatically fold the event log into deliverables (.docs/*.md) without requiring manual agent summarization.',
         ] },

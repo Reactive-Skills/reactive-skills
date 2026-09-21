@@ -2,6 +2,288 @@
 // Generated automatically by scripts/sync-registry.js from Reactive-Skills/skills
 export const registrySkills = [
   {
+    "slug": "jsm-workflow",
+    "name": "Jsm Workflow",
+    "version": "1.0.0",
+    "schemaVersion": "2.1.0",
+    "category": "Metaprogramming & Lifecycle",
+    "description": "Reactive SDLC coordinator for taking one software change from intake to final context sync.",
+    "tags": [
+      "jsm-workflow",
+      "jsm",
+      "workflow"
+    ],
+    "strictExecution": true,
+    "featured": true,
+    "priorityBadge": "Flagship / SDLC",
+    "featuredReason": "Reactive SDLC coordinator for taking one software change from intake through architecture, test, verify, review, and context sync with event-bubbled decision reopening.",
+    "initialState": "INIT",
+    "contextKeys": [],
+    "defaultContext": {},
+    "tools": [],
+    "registryRepo": "Reactive-Skills/skills",
+    "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill jsm-workflow",
+    "installCmd": "npx -y @reactive-skills/axi invoke jsm-workflow",
+    "author": "Reactive Skills Core Team",
+    "stateCount": 16,
+    "states": [
+      {
+        "name": "INIT",
+        "description": "Verify reactive runtime before any lifecycle work.",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "RUNTIME_READY",
+            "target": "ACTIVE"
+          },
+          {
+            "signal": "SETUP_REQUIRED",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "ACTIVE",
+        "description": "Owns every nonterminal SDLC phase and handles lifecycle-wide decision reopening.",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "DECISION_REOPENED",
+            "target": "ACTIVE.ARCHITECT"
+          }
+        ]
+      },
+      {
+        "name": "ACTIVE.INTAKE",
+        "description": "Capture the work request, repo state, and completion target.",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "WORK_REQUEST_READY",
+            "target": "ACTIVE.SCOPE"
+          },
+          {
+            "signal": "BUG_FIX_REQUESTED",
+            "target": "ACTIVE.DEBUG"
+          },
+          {
+            "signal": "AUDIT_REQUESTED",
+            "target": "ACTIVE.AUDIT"
+          },
+          {
+            "signal": "DIRECT_BUILD_REQUESTED",
+            "target": "ACTIVE.DEVELOP"
+          },
+          {
+            "signal": "INTAKE_BLOCKED",
+            "target": "COMPLETE"
+          }
+        ]
+      },
+      {
+        "name": "ACTIVE.SCOPE",
+        "description": "Convert the request into ordered work with acceptance seeds.",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "SCOPE_READY",
+            "target": "ACTIVE.ARCHITECT"
+          },
+          {
+            "signal": "SCOPE_ONLY",
+            "target": "COMPLETE"
+          },
+          {
+            "signal": "SCOPE_BLOCKED",
+            "target": "COMPLETE"
+          }
+        ]
+      },
+      {
+        "name": "ACTIVE.ARCHITECT",
+        "description": "Settle load bearing design decisions before implementation.",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "SPEC_READY",
+            "target": "ACTIVE.AUDIT"
+          },
+          {
+            "signal": "DECISION_DEFERRED",
+            "target": "COMPLETE"
+          },
+          {
+            "signal": "DESIGN_FLAW_CONFIRMED",
+            "target": "ACTIVE.SCOPE"
+          }
+        ]
+      },
+      {
+        "name": "ACTIVE.AUDIT",
+        "description": "Ensure durable project context exists and matches the work area.",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "CONTEXT_READY",
+            "target": "ACTIVE.DEVELOP"
+          },
+          {
+            "signal": "AUDIT_TO_SCOPE",
+            "target": "ACTIVE.SCOPE"
+          },
+          {
+            "signal": "CONTEXT_BLOCKED",
+            "target": "COMPLETE"
+          }
+        ]
+      },
+      {
+        "name": "ACTIVE.DEVELOP",
+        "description": "Implement the scoped and designed change.",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "BUILD_READY",
+            "target": "ACTIVE.VERIFY"
+          },
+          {
+            "signal": "DECISION_NEEDED",
+            "target": "ACTIVE.ARCHITECT"
+          },
+          {
+            "signal": "BUILD_FAILED",
+            "target": "ACTIVE.DEBUG"
+          }
+        ]
+      },
+      {
+        "name": "ACTIVE.VERIFY",
+        "description": "Prove behavior in the real product or service.",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "VERIFY_PASSED",
+            "target": "ACTIVE.TEST"
+          },
+          {
+            "signal": "VERIFY_FAILED",
+            "target": "ACTIVE.DEBUG"
+          },
+          {
+            "signal": "VERIFY_DEFERRED",
+            "target": "ACTIVE.TEST"
+          }
+        ]
+      },
+      {
+        "name": "ACTIVE.TEST",
+        "description": "Write or update tests for durable behavior.",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "TEST_PASSED",
+            "target": "ACTIVE.REVIEW"
+          },
+          {
+            "signal": "TEST_FAILED",
+            "target": "ACTIVE.DEBUG"
+          },
+          {
+            "signal": "TEST_DEFERRED",
+            "target": "ACTIVE.REVIEW"
+          }
+        ]
+      },
+      {
+        "name": "ACTIVE.DEBUG",
+        "description": "Reproduce failures, prove the root cause, apply the smallest fix, and verify it.",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "BUG_FIXED",
+            "target": "ACTIVE.VERIFY"
+          },
+          {
+            "signal": "DESIGN_FLAW",
+            "target": "ACTIVE.ARCHITECT"
+          },
+          {
+            "signal": "DEBUG_BLOCKED",
+            "target": "COMPLETE"
+          }
+        ]
+      },
+      {
+        "name": "ACTIVE.REVIEW",
+        "description": "Review the diff for defects, risks, and missed requirements.",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "REVIEW_PASSED",
+            "target": "ACTIVE.DOCUMENT"
+          },
+          {
+            "signal": "REVIEW_FINDINGS",
+            "target": "ACTIVE.DEVELOP"
+          },
+          {
+            "signal": "REVIEW_DEFERRED",
+            "target": "ACTIVE.DOCUMENT"
+          }
+        ]
+      },
+      {
+        "name": "ACTIVE.DOCUMENT",
+        "description": "Write human facing change prose from evidence.",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "DOCUMENTED",
+            "target": "ACTIVE.SYNC"
+          },
+          {
+            "signal": "DOCUMENT_DEFERRED",
+            "target": "ACTIVE.SYNC"
+          }
+        ]
+      },
+      {
+        "name": "ACTIVE.SYNC",
+        "description": "Reconcile durable context, scope status, and decision status from repo evidence.",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "SYNCED",
+            "target": "COMPLETE"
+          },
+          {
+            "signal": "SYNC_BLOCKED",
+            "target": "COMPLETE"
+          }
+        ]
+      },
+      {
+        "name": "COMPLETE",
+        "description": "Summarize outcome and next action.",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "ERROR",
+        "description": "Runtime setup failed or execution became unsafe.",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "BYPASS_DETECTED",
+        "description": "Bypass detected because execution moved outside the signal contract.",
+        "tools": [],
+        "transitions": []
+      }
+    ],
+    "mermaidChart": "stateDiagram-v2\n    [*] --> INIT\n    INIT --> ACTIVE : RUNTIME_READY\n    INIT --> ERROR : SETUP_REQUIRED\n\n    state ACTIVE {\n        [*] --> INTAKE\n        INTAKE --> SCOPE : WORK_REQUEST_READY\n        INTAKE --> DEBUG : BUG_FIX_REQUESTED\n        INTAKE --> AUDIT : AUDIT_REQUESTED\n        INTAKE --> DEVELOP : DIRECT_BUILD_REQUESTED\n        INTAKE --> COMPLETE : INTAKE_BLOCKED\n        SCOPE --> ARCHITECT : SCOPE_READY\n        SCOPE --> COMPLETE : SCOPE_ONLY\n        SCOPE --> COMPLETE : SCOPE_BLOCKED\n        ARCHITECT --> AUDIT : SPEC_READY\n        ARCHITECT --> COMPLETE : DECISION_DEFERRED\n        ARCHITECT --> SCOPE : DESIGN_FLAW_CONFIRMED\n        AUDIT --> DEVELOP : CONTEXT_READY\n        AUDIT --> SCOPE : AUDIT_TO_SCOPE\n        AUDIT --> COMPLETE : CONTEXT_BLOCKED\n        DEVELOP --> VERIFY : BUILD_READY\n        DEVELOP --> ARCHITECT : DECISION_NEEDED\n        DEVELOP --> DEBUG : BUILD_FAILED\n        VERIFY --> TEST : VERIFY_PASSED\n        VERIFY --> DEBUG : VERIFY_FAILED\n        VERIFY --> TEST : VERIFY_DEFERRED\n        TEST --> REVIEW : TEST_PASSED\n        TEST --> DEBUG : TEST_FAILED\n        TEST --> REVIEW : TEST_DEFERRED\n        DEBUG --> VERIFY : BUG_FIXED\n        DEBUG --> ARCHITECT : DESIGN_FLAW\n        DEBUG --> COMPLETE : DEBUG_BLOCKED\n        REVIEW --> DOCUMENT : REVIEW_PASSED\n        REVIEW --> DEVELOP : REVIEW_FINDINGS\n        REVIEW --> DOCUMENT : REVIEW_DEFERRED\n        DOCUMENT --> SYNC : DOCUMENTED\n        DOCUMENT --> SYNC : DOCUMENT_DEFERRED\n        SYNC --> COMPLETE : SYNCED\n        SYNC --> COMPLETE : SYNC_BLOCKED\n    }\n\n    ACTIVE --> ARCHITECT : DECISION_REOPENED (bubbled from child)\n    COMPLETE --> [*]\n    state BYPASS_DETECTED"
+  },
+  {
     "slug": "skill-manager",
     "name": "Skill Manager",
     "version": "1.0.0",
@@ -462,13 +744,14 @@ export const registrySkills = [
     "tools": [
       "view_file",
       "grep_search",
-      "find_by_name"
+      "find_by_name",
+      "write_to_file"
     ],
     "registryRepo": "Reactive-Skills/skills",
     "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill api-contract",
     "installCmd": "npx -y @reactive-skills/axi invoke api-contract",
     "author": "Reactive Skills Core Team",
-    "stateCount": 8,
+    "stateCount": 16,
     "states": [
       {
         "name": "DISCOVER_APIS",
@@ -499,6 +782,87 @@ export const registrySkills = [
         ]
       },
       {
+        "name": "VALIDATION_PIPELINE.SCHEMA_VALIDATION",
+        "description": "Composite state: parse and validate OpenAPI spec schema",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "VALIDATION_PIPELINE.SCHEMA_VALIDATION.OPENAPI_CHECK",
+        "description": "Validate spec is well-formed OpenAPI/Swagger",
+        "tools": [
+          "view_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "OPENAPI_CHECK_DONE",
+            "target": "VALIDATION_PIPELINE.SCHEMA_VALIDATION.TYPE_COMPATIBILITY",
+            "guard": "event.payload.exit_code === 0"
+          }
+        ]
+      },
+      {
+        "name": "VALIDATION_PIPELINE.SCHEMA_VALIDATION.TYPE_COMPATIBILITY",
+        "description": "Verify spec schema types and definitions are consistent",
+        "tools": [
+          "view_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "TYPE_CHECK_DONE",
+            "target": "VALIDATION_PIPELINE.SCHEMA_VALIDATION.BREAKING_CHANGE_DETECTION",
+            "guard": "event.payload.exit_code === 0"
+          }
+        ]
+      },
+      {
+        "name": "VALIDATION_PIPELINE.SCHEMA_VALIDATION.BREAKING_CHANGE_DETECTION",
+        "description": "Scan for deprecated endpoints and breaking change patterns",
+        "tools": [
+          "view_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "BREAKING_CHECK_DONE",
+            "target": "VALIDATION_PIPELINE.SCHEMA_VALIDATION.EXAMPLE_CONFORMANCE",
+            "guard": "event.payload.exit_code === 0"
+          }
+        ]
+      },
+      {
+        "name": "VALIDATION_PIPELINE.SCHEMA_VALIDATION.EXAMPLE_CONFORMANCE",
+        "description": "Validate spec examples match schema definitions",
+        "tools": [
+          "view_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "EXAMPLE_CHECK_DONE",
+            "target": "VALIDATION_PIPELINE.DRIFT_DIFFING",
+            "guard": "event.payload.exit_code === 0"
+          }
+        ]
+      },
+      {
+        "name": "VALIDATION_PIPELINE.DRIFT_DIFFING",
+        "description": "Walk client code and diff against spec for mismatches",
+        "tools": [
+          "view_file",
+          "grep_search"
+        ],
+        "transitions": [
+          {
+            "signal": "DRIFT_DIFFED",
+            "target": "DRIFT_ANALYSIS",
+            "guard": "event.payload.exit_code === 0"
+          }
+        ]
+      },
+      {
         "name": "DRIFT_ANALYSIS",
         "description": "Analyze drift findings and classify by severity",
         "tools": [
@@ -525,6 +889,34 @@ export const registrySkills = [
           {
             "signal": "REPORT_ERROR",
             "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "REPORT.VIOLATION_SUMMARY",
+        "description": "Summarize all drift violations by category",
+        "tools": [
+          "view_file",
+          "write_to_file"
+        ],
+        "transitions": [
+          {
+            "signal": "SUMMARY_GENERATED",
+            "target": "REPORT.FIX_RECOMMENDATIONS"
+          }
+        ]
+      },
+      {
+        "name": "REPORT.FIX_RECOMMENDATIONS",
+        "description": "Generate actionable fix recommendations for each violation",
+        "tools": [
+          "view_file",
+          "write_to_file"
+        ],
+        "transitions": [
+          {
+            "signal": "RECOMMENDATIONS_GENERATED",
+            "target": "GATE"
           }
         ]
       },
@@ -575,6 +967,356 @@ export const registrySkills = [
       ".docs/api-contract/coverage.md",
       ".docs/api-contract/state.json"
     ]
+  },
+  {
+    "slug": "browser-verifier",
+    "name": "Browser Verifier",
+    "version": "1.0.0",
+    "schemaVersion": "2.0.0",
+    "category": "General",
+    "description": "Automated browser verification reactive skill that launches headless browser sessions, verifies DOM states, intercepts console errors, and captures visual artifacts.",
+    "tags": [
+      "browser-verifier",
+      "browser",
+      "verifier"
+    ],
+    "strictExecution": false,
+    "featured": false,
+    "initialState": "INTAKE",
+    "contextKeys": [
+      "target_url",
+      "test_suite",
+      "browser_type",
+      "assertion_rules",
+      "console_errors",
+      "network_failures",
+      "screenshot_path",
+      "gate_decision",
+      "deliverable_path"
+    ],
+    "defaultContext": {
+      "target_url": "http://localhost:3000",
+      "test_suite": null,
+      "browser_type": "chromium",
+      "assertion_rules": [],
+      "console_errors": [],
+      "network_failures": [],
+      "screenshot_path": null,
+      "gate_decision": null,
+      "deliverable_path": ".docs/browser-verifier/"
+    },
+    "tools": [],
+    "registryRepo": "Reactive-Skills/skills",
+    "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill browser-verifier",
+    "installCmd": "npx -y @reactive-skills/axi invoke browser-verifier",
+    "author": "Reactive Skills Core Team",
+    "stateCount": 10,
+    "states": [
+      {
+        "name": "INTAKE",
+        "description": "Collect target application URL, browser configuration, and DOM assertion rules",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "CONFIGURE",
+            "target": "BOOT",
+            "guard": "Boolean(context.target_url)"
+          },
+          {
+            "signal": "ABORT",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "BOOT",
+        "description": "Initialize headless browser instance and configure diagnostic listeners",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "READY",
+            "target": "NAVIGATE"
+          },
+          {
+            "signal": "FAIL",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "NAVIGATE",
+        "description": "Navigate to target URL, verify HTTP response code, and await network idle",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "LOADED",
+            "target": "ASSERT_DOM"
+          },
+          {
+            "signal": "NETWORK_FAIL",
+            "target": "BLOCKED"
+          },
+          {
+            "signal": "FAIL",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "ASSERT_DOM",
+        "description": "Execute structural DOM assertions, visibility checks, and interactive element verification",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "VERIFIED",
+            "target": "INSPECT_CONSOLE"
+          },
+          {
+            "signal": "ASSERTION_FAIL",
+            "target": "BLOCKED"
+          },
+          {
+            "signal": "FAIL",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "INSPECT_CONSOLE",
+        "description": "Inspect browser execution logs for unhandled errors, warnings, and failed network calls",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "CLEAN",
+            "target": "CAPTURE_ARTIFACT"
+          },
+          {
+            "signal": "ERRORS_FOUND",
+            "target": "BLOCKED"
+          },
+          {
+            "signal": "FAIL",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "CAPTURE_ARTIFACT",
+        "description": "Capture visual screenshot and DOM state snapshot into documentation deliverables",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "CAPTURED",
+            "target": "GATE"
+          },
+          {
+            "signal": "FAIL",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "GATE",
+        "description": "Evaluate complete browser verification results and issue release pass or block decision",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "APPROVE",
+            "target": "SUCCESS",
+            "guard": "context.console_errors.length === 0"
+          },
+          {
+            "signal": "REJECT",
+            "target": "BLOCKED"
+          }
+        ]
+      },
+      {
+        "name": "SUCCESS",
+        "description": "Browser verification passed cleanly with zero errors and all assertions verified",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "BLOCKED",
+        "description": "Verification blocked due to failed assertions, console exceptions, or network errors",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "ERROR",
+        "description": "Fatal error during browser lifecycle or unrecoverable test runner fault",
+        "tools": [],
+        "transitions": []
+      }
+    ],
+    "mermaidChart": "stateDiagram-v2\n    [*] --> INTAKE\n    INTAKE --> BOOT: CONFIGURE\n    INTAKE --> ERROR: ABORT\n\n    BOOT --> NAVIGATE: READY\n    BOOT --> ERROR: FAIL\n\n    NAVIGATE --> ASSERT_DOM: LOADED\n    NAVIGATE --> BLOCKED: NETWORK_FAIL\n    NAVIGATE --> ERROR: FAIL\n\n    ASSERT_DOM --> INSPECT_CONSOLE: VERIFIED\n    ASSERT_DOM --> BLOCKED: ASSERTION_FAIL\n    ASSERT_DOM --> ERROR: FAIL\n\n    INSPECT_CONSOLE --> CAPTURE_ARTIFACT: CLEAN\n    INSPECT_CONSOLE --> BLOCKED: ERRORS_FOUND\n    INSPECT_CONSOLE --> ERROR: FAIL\n\n    CAPTURE_ARTIFACT --> GATE: CAPTURED\n    CAPTURE_ARTIFACT --> ERROR: FAIL\n\n    GATE --> SUCCESS: APPROVE\n    GATE --> BLOCKED: REJECT\n\n    SUCCESS --> [*]\n    BLOCKED --> [*]\n    ERROR --> [*]"
+  },
+  {
+    "slug": "ci-cd-automation",
+    "name": "Ci Cd Automation",
+    "version": "1.0.0",
+    "schemaVersion": "2.0.0",
+    "category": "General",
+    "description": "Automated CI/CD pipeline generator and linter that scaffolds production-ready workflows with caching, matrix builds, and security gates.",
+    "tags": [
+      "ci-cd-automation",
+      "ci",
+      "cd",
+      "automation"
+    ],
+    "strictExecution": false,
+    "featured": false,
+    "initialState": "INTAKE",
+    "contextKeys": [
+      "provider",
+      "ecosystem",
+      "test_command",
+      "build_command",
+      "workflow_path",
+      "lint_errors",
+      "security_findings",
+      "gate_decision",
+      "deliverable_path"
+    ],
+    "defaultContext": {
+      "provider": "github-actions",
+      "ecosystem": null,
+      "test_command": null,
+      "build_command": null,
+      "workflow_path": null,
+      "lint_errors": [],
+      "security_findings": [],
+      "gate_decision": null,
+      "deliverable_path": ".docs/ci-cd-automation/"
+    },
+    "tools": [],
+    "registryRepo": "Reactive-Skills/skills",
+    "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill ci-cd-automation",
+    "installCmd": "npx -y @reactive-skills/axi invoke ci-cd-automation",
+    "author": "Reactive Skills Core Team",
+    "stateCount": 9,
+    "states": [
+      {
+        "name": "INTAKE",
+        "description": "Collect target CI provider, project build commands, and testing requirements",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "CONFIGURE",
+            "target": "DETECT_STACK",
+            "guard": "Boolean(context.provider)"
+          },
+          {
+            "signal": "ABORT",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "DETECT_STACK",
+        "description": "Detect repository language, package manager, and caching strategy",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "DETECTED",
+            "target": "GENERATE_PIPELINE"
+          },
+          {
+            "signal": "FAIL",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "GENERATE_PIPELINE",
+        "description": "Scaffold workflow configuration with matrix testing, caching, and least-privilege permissions",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "GENERATED",
+            "target": "LINT_WORKFLOW"
+          },
+          {
+            "signal": "FAIL",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "LINT_WORKFLOW",
+        "description": "Verify workflow YAML syntax, step references, and action version integrity",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "VALID",
+            "target": "SECURITY_AUDIT"
+          },
+          {
+            "signal": "SYNTAX_ERROR",
+            "target": "BLOCKED"
+          },
+          {
+            "signal": "FAIL",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "SECURITY_AUDIT",
+        "description": "Audit pipeline for permission boundaries, secret exfiltration risks, and action pinning",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "SECURE",
+            "target": "GATE"
+          },
+          {
+            "signal": "VULNERABILITY_FOUND",
+            "target": "BLOCKED"
+          },
+          {
+            "signal": "FAIL",
+            "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "GATE",
+        "description": "Evaluate workflow compliance and issue final approval for deployment",
+        "tools": [],
+        "transitions": [
+          {
+            "signal": "APPROVE",
+            "target": "SUCCESS",
+            "guard": "context.security_findings.length === 0"
+          },
+          {
+            "signal": "REJECT",
+            "target": "BLOCKED"
+          }
+        ]
+      },
+      {
+        "name": "SUCCESS",
+        "description": "CI/CD pipeline generated, verified, and hardened successfully",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "BLOCKED",
+        "description": "Pipeline blocked due to security violations, invalid syntax, or failed quality checks",
+        "tools": [],
+        "transitions": []
+      },
+      {
+        "name": "ERROR",
+        "description": "Fatal error during stack detection or workflow generation",
+        "tools": [],
+        "transitions": []
+      }
+    ],
+    "mermaidChart": "stateDiagram-v2\n    [*] --> INTAKE\n    INTAKE --> DETECT_STACK: CONFIGURE\n    INTAKE --> ERROR: ABORT\n\n    DETECT_STACK --> GENERATE_PIPELINE: DETECTED\n    DETECT_STACK --> ERROR: FAIL\n\n    GENERATE_PIPELINE --> LINT_WORKFLOW: GENERATED\n    GENERATE_PIPELINE --> ERROR: FAIL\n\n    LINT_WORKFLOW --> SECURITY_AUDIT: VALID\n    LINT_WORKFLOW --> BLOCKED: SYNTAX_ERROR\n    LINT_WORKFLOW --> ERROR: FAIL\n\n    SECURITY_AUDIT --> GATE: SECURE\n    SECURITY_AUDIT --> BLOCKED: VULNERABILITY_FOUND\n    SECURITY_AUDIT --> ERROR: FAIL\n\n    GATE --> SUCCESS: APPROVE\n    GATE --> BLOCKED: REJECT\n\n    SUCCESS --> [*]\n    BLOCKED --> [*]\n    ERROR --> [*]"
   },
   {
     "slug": "docs-architect",
@@ -2311,13 +3053,14 @@ export const registrySkills = [
     "tools": [
       "run_command",
       "view_file",
-      "grep_search"
+      "grep_search",
+      "write_to_file"
     ],
     "registryRepo": "Reactive-Skills/skills",
     "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill security-scan",
     "installCmd": "npx -y @reactive-skills/axi invoke security-scan",
     "author": "Reactive Skills Core Team",
-    "stateCount": 7,
+    "stateCount": 12,
     "states": [
       {
         "name": "COLLECT_STAGED",
@@ -2348,6 +3091,54 @@ export const registrySkills = [
         ]
       },
       {
+        "name": "SCAN_PIPELINE.SECRETS_SCAN",
+        "description": "Scan for API keys, tokens, private keys using regex + entropy heuristics",
+        "tools": [
+          "run_command",
+          "grep_search",
+          "view_file"
+        ],
+        "transitions": [
+          {
+            "signal": "SECRETS_SCANNED",
+            "target": "SCAN_PIPELINE.CREDENTIALS_SCAN",
+            "guard": "event.payload.exit_code === 0"
+          }
+        ]
+      },
+      {
+        "name": "SCAN_PIPELINE.CREDENTIALS_SCAN",
+        "description": "Scan for hardcoded credentials (passwords, API keys in config)",
+        "tools": [
+          "run_command",
+          "grep_search",
+          "view_file"
+        ],
+        "transitions": [
+          {
+            "signal": "CREDENTIALS_SCANNED",
+            "target": "SCAN_PIPELINE.CONFIG_SCAN",
+            "guard": "event.payload.exit_code === 0"
+          }
+        ]
+      },
+      {
+        "name": "SCAN_PIPELINE.CONFIG_SCAN",
+        "description": "Scan for insecure defaults, hardcoded IPs, debug mode in production",
+        "tools": [
+          "run_command",
+          "grep_search",
+          "view_file"
+        ],
+        "transitions": [
+          {
+            "signal": "CONFIG_SCANNED",
+            "target": "REPORT",
+            "guard": "event.payload.exit_code === 0"
+          }
+        ]
+      },
+      {
         "name": "REPORT",
         "description": "Composite state: generate findings summary and remediation checklist",
         "tools": [],
@@ -2355,6 +3146,34 @@ export const registrySkills = [
           {
             "signal": "REPORT_ERROR",
             "target": "ERROR"
+          }
+        ]
+      },
+      {
+        "name": "REPORT.VIOLATION_SUMMARY",
+        "description": "Summarize all findings by severity and category",
+        "tools": [
+          "view_file",
+          "write_to_file"
+        ],
+        "transitions": [
+          {
+            "signal": "SUMMARY_GENERATED",
+            "target": "REPORT.REMEDIATION"
+          }
+        ]
+      },
+      {
+        "name": "REPORT.REMEDIATION",
+        "description": "Generate actionable remediation checklist for each finding",
+        "tools": [
+          "view_file",
+          "write_to_file"
+        ],
+        "transitions": [
+          {
+            "signal": "REMEDIATION_GENERATED",
+            "target": "GATE"
           }
         ]
       },
@@ -2443,7 +3262,7 @@ export const registrySkills = [
     "skillsShInstallCmd": "npx skills add Reactive-Skills/skills --skill tdd-refactor",
     "installCmd": "npx -y @reactive-skills/axi invoke tdd-refactor",
     "author": "Reactive Skills Core Team",
-    "stateCount": 9,
+    "stateCount": 11,
     "states": [
       {
         "name": "INIT",
@@ -2526,6 +3345,38 @@ export const registrySkills = [
             "signal": "TEST_RAN",
             "target": "GREEN_CODE",
             "guard": "event.payload.exit_code != 0"
+          }
+        ]
+      },
+      {
+        "name": "REFACTOR.CLEAN_CODE",
+        "description": "Simplify naming, remove duplication, and extract deep helpers",
+        "tools": [
+          "view_file",
+          "write_to_file",
+          "replace_file_content",
+          "run_command"
+        ],
+        "transitions": [
+          {
+            "signal": "CLEANING_DONE",
+            "target": "REFACTOR.PERF_AUDIT"
+          }
+        ]
+      },
+      {
+        "name": "REFACTOR.PERF_AUDIT",
+        "description": "Analyze complexity, eliminate unnecessary allocations and redundant I/O",
+        "tools": [
+          "view_file",
+          "write_to_file",
+          "replace_file_content",
+          "run_command"
+        ],
+        "transitions": [
+          {
+            "signal": "AUDIT_PASSED",
+            "target": "AUDIT_VERIFY"
           }
         ]
       },

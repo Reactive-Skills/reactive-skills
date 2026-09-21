@@ -42,6 +42,46 @@ export const conceptsDoc = {
       ],
     },
     {
+      id: 'judgment-engine',
+      heading: 'Decoupled Judgment Engine & Snap-On Adapters',
+      blocks: [
+        { type: 'text', text: 'When deterministic boolean assertions are not enough (e.g. assessing semantic criteria like "Did the security scan identify zero critical CVEs?"), RSA provides a decoupled Judgment Engine adhering to SASH / Hexagonal Ports-and-Adapters principles.' },
+        { type: 'text', text: 'The core runtime takes zero hard dependencies on external AI SDKs. Instead, transitions declare domain-level semantic contracts (predicate, categorical, or evaluation) which the runtime delegates to registered Judgment Adapters:' },
+        { type: 'list', items: [
+          'ScriptJudgmentAdapter: Built-in default (<1ms) providing deterministic sandboxed heuristic evaluation with zero configuration.',
+          'JevJudgmentAdapter: Dynamic snap-on adapter that leverages TypeSafe AI\'s System One decision model via ambient CLI (npx -y jev-axi) or HTTP endpoints (~400ms decisions).',
+          'Circuit Breaker & Fallbacks: Resilient evaluation wraps external calls in a circuit breaker. If an adapter times out or trips, the FSM transitions directly to a declared fallback_target (e.g. BLOCKED or MANUAL_REVIEW) and audits GUARD_FALLBACK_TRIGGERED into the event ledger.',
+        ] },
+        { type: 'code', example: {
+          language: 'yaml',
+          command: `# skill.yaml transition contract
+transitions:
+  SECURITY_CLEAN:
+    target: "SPEC_ALIGNMENT"
+    judgment:
+      type: "predicate"
+      criterion: "Did the security scan confirm zero leaked API keys and no high-severity vulnerabilities?"
+      min_confidence: 0.85
+      fallback_target: "BLOCKED"`,
+          explanation: 'Transition advances only if the judgment confidence meets the threshold; otherwise diverts safely to BLOCKED.',
+        } },
+      ],
+    },
+    {
+      id: 'model-tiers',
+      heading: 'Semantic Model Capability Tiers',
+      blocks: [
+        { type: 'text', text: 'Not every state requires a flagship frontier model. RSA enables per-state cognitive tier declarations in skill.yaml so orchestrators and agents can dynamically allocate model budgets:' },
+        { type: 'list', items: [
+          'fast: Low latency, low cost for structured triage, lint parsing, and state setup (e.g. Claude Haiku, Gemini Flash).',
+          'balanced: Standard coding, refactoring, and deterministic implementations (e.g. Claude Sonnet, GPT-4o).',
+          'reasoning: Deep architectural decisions, invariant proofs, and root-cause analysis (e.g. Claude Opus, OpenAI o3, Gemini Pro).',
+          'decision: Specialized micro-decision models trained for sub-second classification (e.g. TypeSafe Jev).',
+        ] },
+        { type: 'text', text: 'When an agent enters a state, the runtime injects a structured <model_contract> tag into the prompt slice, declaring the required tier, suggested models, and cost bounds.' },
+      ],
+    },
+    {
       id: 'event-sourcing',
       heading: 'Event sourcing and projections',
       blocks: [

@@ -276,6 +276,11 @@ export function SkillDetailView({ skill }) {
                             TERMINAL
                           </span>
                         )}
+                        {state.model && (
+                          <span className="rounded bg-phino-surface px-2 py-0.5 font-mono text-[10px] font-semibold text-phino-signal-text border border-phino-signal/30">
+                            tier: {state.model.tier}{state.model.suggested ? ` (${state.model.suggested})` : ''}
+                          </span>
+                        )}
                       </div>
 
                       {state.tools && state.tools.length > 0 && (
@@ -310,6 +315,13 @@ export function SkillDetailView({ skill }) {
                               {t.guard && (
                                 <span className="rounded bg-phino-surface px-1.5 py-0.5 text-[11px] text-phino-text-muted border border-phino-border">
                                   guard: <code className="text-phino-signal-text font-semibold">{t.guard}</code>
+                                </span>
+                              )}
+                              {t.judgment && (
+                                <span className="rounded bg-phino-surface px-1.5 py-0.5 text-[11px] text-phino-signal-text border border-phino-signal/40">
+                                  judgment: <code className="font-semibold text-phino-signal">{t.judgment.type}</code>
+                                  {t.judgment.minConfidence !== undefined && ` (min ${(t.judgment.minConfidence * 100).toFixed(0)}%)`}
+                                  {t.judgment.fallbackTarget && ` → fallback: ${t.judgment.fallbackTarget}`}
                                 </span>
                               )}
                             </li>
