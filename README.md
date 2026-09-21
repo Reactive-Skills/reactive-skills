@@ -9,7 +9,7 @@
 
 ---
 
-> 🚀 **What's New in v0.8.7:**
+> 🚀 **What's New in v0.8.8:**
 > - Direct `@typesafe-ai/sdk` Jev judgments without shell execution or temporary state files
 > - AXI `--version` support for agent runtime discovery
 > - read-only multi-job, multi-skill telemetry broker and site dashboard
@@ -19,7 +19,7 @@
 > - **Inverted Bootloader Contract:** `invoke` is now the primary task inception command across universal reactive bootloaders, with `state` reserved for resuming active tasks.
 > - **CLI Ergonomics & Flag Synonyms:** Added `--run` and `--run-id` everywhere alongside `--job`.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.4) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.8) · [View Changelog](CHANGELOG.md)
 
 ---
 
