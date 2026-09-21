@@ -162,6 +162,69 @@ describe('Decoupled Judgment & Snap-On Adapters', () => {
   });
 
   describe('JudgmentEngine Fallback Cascade', () => {
+    it('automatically prefers Jev when the SDK and API key are available', async () => {
+      process.env.TYPESAFE_API_KEY = 'test-key';
+      sdkMock.systemOne.mockResolvedValue({
+        model: 'jev-test',
+        answers: { judgment: { type: 'choice', choice: 'strong_fit', confidence: 0.92 } },
+        usage: { input_tokens: 1, output_tokens: 1 },
+      });
+
+      const result = await JudgmentEngine.evaluate(
+        {
+          type: 'categorical',
+          criterion: 'What is the role fit?',
+          options: ['strong_fit', 'conditional_fit', 'low_confidence'],
+          fallback_adapter: 'script',
+        },
+        {
+          event: {
+            id: 'evt-jev-auto',
+            seq: 1,
+            timestamp: new Date().toISOString(),
+            type: 'PROFILE_SELECTION',
+            payload: { role_fit: 'conditional_fit' },
+          },
+          context: {},
+          currentState: 'PROFILE_SELECTION',
+        }
+      );
+
+      expect(result.adapterName).toBe('jev');
+      expect(result.adapterSelectionReason).toBe('jev_available');
+      expect(result.fallbackTriggered).toBe(false);
+      expect(sdkMock.systemOne).toHaveBeenCalledOnce();
+    });
+
+    it('records why script was selected when Jev is unavailable', async () => {
+      delete process.env.TYPESAFE_API_KEY;
+
+      const result = await JudgmentEngine.evaluate(
+        {
+          type: 'categorical',
+          criterion: 'payload.role_fit',
+          options: ['strong_fit', 'conditional_fit', 'low_confidence'],
+          fallback_adapter: 'script',
+        },
+        {
+          event: {
+            id: 'evt-jev-unavailable',
+            seq: 1,
+            timestamp: new Date().toISOString(),
+            type: 'PROFILE_SELECTION',
+            payload: { role_fit: 'strong_fit' },
+          },
+          context: {},
+          currentState: 'PROFILE_SELECTION',
+        }
+      );
+
+      expect(result.adapterName).toBe('script');
+      expect(result.adapterSelectionReason).toBe('jev_unavailable');
+      expect(result.fallbackTriggered).toBe(false);
+      expect(sdkMock.systemOne).not.toHaveBeenCalled();
+    });
+
     it('should cascade from failing primary adapter to fallback script adapter', async () => {
       // Create a mock failing primary adapter
       const failingAdapter: JudgmentAdapter = {

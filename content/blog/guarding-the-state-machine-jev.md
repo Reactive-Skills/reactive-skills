@@ -56,9 +56,9 @@ For semantic evaluation, the runtime provides the built-in `JevJudgmentAdapter`,
 
 Instead of generating freeform chain-of-thought tokens, TypeSafe Jev evaluates structured decision contracts directly. Calls through `JevJudgmentAdapter` resolve in ~300–500ms with calibrated probabilities.
 
-The adapter uses the optional `@typesafe-ai/sdk` package and reads `TYPESAFE_API_KEY` from the environment.
+The runtime package includes `@typesafe-ai/sdk` and the adapter reads `TYPESAFE_API_KEY` from the environment.
 It calls System One directly without invoking `jev-axi`, a shell, or a temporary state file.
-If the SDK or credentials are unavailable, the adapter reports unavailable without failing engine initialization and the engine preserves its deterministic Script fallback.
+If credentials are unavailable, the adapter reports unavailable without failing engine initialization and the engine preserves its deterministic Script fallback.
 
 ## Circuit Breakers and Fallback Cascades
 

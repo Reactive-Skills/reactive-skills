@@ -210,10 +210,10 @@ export class ScriptJudgmentAdapter implements JudgmentAdapter {
 }
 
 /**
- * Snap-On JevJudgmentAdapter backed by the optional TypeSafe SDK.
+ * JevJudgmentAdapter backed by the TypeSafe SDK.
  *
- * The SDK is loaded only when a TypeSafe API key is configured, so Script-only
- * runtimes do not need the optional package installed.
+ * The SDK is loaded only when a TypeSafe API key is configured. Script fallback
+ * remains available for offline or explicitly script-only environments.
  */
 export class JevJudgmentAdapter implements JudgmentAdapter {
   public readonly id = 'jev';
@@ -425,14 +425,25 @@ export class JudgmentEngine {
 
     // Determine target primary adapter
     let primaryAdapterId = judgment.adapter_hint;
+    let adapterSelectionReason = judgment.adapter_hint
+      ? `adapter_hint:${judgment.adapter_hint}`
+      : 'script_default';
     if (!primaryAdapterId) {
       // Default preference: if jev is available & not open, use jev; else script
       const jevAdapter = this.adapters.get('jev');
       const jevBreaker = this.breakers.get('jev');
-      if (jevAdapter && jevBreaker?.canExecute() && (await jevAdapter.isAvailable())) {
+      if (!jevAdapter) {
+        adapterSelectionReason = 'jev_not_registered';
+        primaryAdapterId = 'script';
+      } else if (!jevBreaker?.canExecute()) {
+        adapterSelectionReason = 'jev_circuit_open';
+        primaryAdapterId = 'script';
+      } else if (await jevAdapter.isAvailable()) {
         primaryAdapterId = 'jev';
+        adapterSelectionReason = 'jev_available';
       } else {
         primaryAdapterId = 'script';
+        adapterSelectionReason = 'jev_unavailable';
       }
     }
 
@@ -450,6 +461,10 @@ export class JudgmentEngine {
           timeout_ms: judgment.timeout_ms,
         } as any);
         primaryBreaker.recordSuccess();
+        result = {
+          ...result,
+          adapterSelectionReason,
+        };
       } catch (err: any) {
         primaryBreaker.recordFailure();
         primaryFailed = true;
@@ -466,6 +481,7 @@ export class JudgmentEngine {
         result = await fallbackAdapter.evaluate(req, evalContext);
         return {
           ...result,
+          adapterSelectionReason: `${adapterSelectionReason}:fallback`,
           fallbackTriggered: true,
           passed: result.passed && result.confidence >= minConfidence,
           fallbackTarget: (result.passed && result.confidence >= minConfidence) ? undefined : judgment.fallback_target,
@@ -490,6 +506,7 @@ export class JudgmentEngine {
 
     return {
       ...result,
+      fallbackTriggered: false,
       passed: finalPassed,
       fallbackTarget: finalPassed ? undefined : judgment.fallback_target,
     };
