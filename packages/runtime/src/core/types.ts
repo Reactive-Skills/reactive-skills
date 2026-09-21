@@ -61,12 +61,67 @@ export interface DecisionRecord {
 }
 
 /**
+ * Core RSA Judgment Types (Decoupled Ports-and-Adapters Domain Ontology)
+ */
+export type JudgmentType = 'predicate' | 'categorical' | 'evaluation';
+
+export interface JudgmentDefinition {
+  type: JudgmentType;
+  criterion: string;
+  min_confidence?: number;
+  options?: string[];
+  rubric?: string;
+  adapter_hint?: string;
+  fallback_adapter?: string;
+  fallback_target?: string;
+  timeout_ms?: number;
+}
+
+export interface JudgmentRequest {
+  type: JudgmentType;
+  criterion: string;
+  contextSnapshot: Record<string, any>;
+  options?: string[];
+  rubric?: string;
+}
+
+export interface JudgmentResult {
+  verdict: boolean | string | number;
+  confidence: number;
+  passed: boolean;
+  adapterName: string;
+  latencyMs: number;
+  error?: string;
+  raw?: unknown;
+}
+
+export interface JudgmentAdapter {
+  readonly id: string;
+  supports(type: JudgmentType): boolean;
+  isAvailable(): Promise<boolean>;
+  evaluate(req: JudgmentRequest, evalContext: any): Promise<JudgmentResult>;
+}
+
+/**
+ * Model Capability Tiers & State Model Contract
+ */
+export type ModelCapabilityTier = 'decision' | 'fast' | 'balanced' | 'reasoning';
+
+export interface StateModelDefinition {
+  tier?: ModelCapabilityTier;
+  suggested?: string;
+  temperature?: number;
+  provider_preference?: Record<string, string>;
+}
+
+/**
  * Transition Guard definition
  */
 export interface TransitionDefinition {
   target: string;
   guard?: string; // JavaScript expression returning boolean, e.g. "event.payload.exit_code != 0"
   guardFunction?: string; // Relative path to JS function file in guards/
+  judgment?: JudgmentDefinition; // Decoupled snap-on judgment evaluation
   description?: string;
   invoke?: string;
 }
@@ -93,6 +148,7 @@ export interface StateDefinition {
   prompt_template?: string; // Path to markdown file in states/
   tools?: string[]; // Scoped list of allowed tools in this state
   context_scope?: string[]; // Subset of context_keys relevant to this state for lean delivery
+  model?: StateModelDefinition | ModelCapabilityTier; // Semantic capability tier or model specification
   human_gate?: HumanGateDefinition; // HITL gate configuration
   on_enter?: StateLifecycleAction[];
   on_exit?: StateLifecycleAction[];
@@ -161,6 +217,7 @@ export interface PromptSlice {
   contextDelta: ContextDelta | null;
   visitCount: number;
   exitConditions: string[];
+  modelContract?: StateModelDefinition | null;
   metrics?: ExecutionMetrics;
 }
 
@@ -178,12 +235,27 @@ export interface ContextDelta {
 /**
  * Zod Schema for validation of skill.yaml
  */
+export const JudgmentTypeSchema = z.enum(['predicate', 'categorical', 'evaluation']);
+
+export const JudgmentDefinitionSchema = z.object({
+  type: JudgmentTypeSchema,
+  criterion: z.string(),
+  min_confidence: z.number().min(0).max(1).optional(),
+  options: z.array(z.string()).optional(),
+  rubric: z.string().optional(),
+  adapter_hint: z.string().optional(),
+  fallback_adapter: z.string().optional(),
+  fallback_target: z.string().optional(),
+  timeout_ms: z.number().positive().optional(),
+});
+
 export const TransitionSchema = z.union([
   z.string(),
   z.object({
     target: z.string(),
     guard: z.string().optional(),
     guardFunction: z.string().optional(),
+    judgment: JudgmentDefinitionSchema.optional(),
     description: z.string().optional(),
     invoke: z.string().optional(),
   }),
@@ -203,12 +275,25 @@ export const HumanGateSchema = z.object({
   auto_stop: z.boolean().optional(),
 });
 
+export const ModelCapabilityTierSchema = z.enum(['decision', 'fast', 'balanced', 'reasoning']);
+
+export const StateModelSchema = z.union([
+  ModelCapabilityTierSchema,
+  z.object({
+    tier: ModelCapabilityTierSchema.optional(),
+    suggested: z.string().optional(),
+    temperature: z.number().min(0).max(2).optional(),
+    provider_preference: z.record(z.string()).optional(),
+  }),
+]);
+
 export const StateSchema: z.ZodType<StateDefinition> = z.lazy(() =>
   z.object({
     description: z.string().optional(),
     prompt_template: z.string().optional(),
     tools: z.array(z.string()).optional(),
     context_scope: z.array(z.string()).optional(),
+    model: StateModelSchema.optional(),
     human_gate: HumanGateSchema.optional(),
     on_enter: z.array(StateLifecycleActionSchema).optional(),
     on_exit: z.array(StateLifecycleActionSchema).optional(),

@@ -1,4 +1,27 @@
 
+## [0.7.0] - 2026-09-21
+
+### Features
+
+- **Decoupled Judgment Engine & Snap-On Adapters (`JudgmentPort`, `JudgmentAdapter`):**
+  - Integrated SASH / Hexagonal Ports-and-Adapters architecture for transition guard evaluation without introducing hard dependencies on external AI SDKs.
+  - Built-in `ScriptJudgmentAdapter` provides instant zero-dependency (<1ms) deterministic sandboxed heuristics.
+  - Snap-on `JevJudgmentAdapter` dynamically discovers TypeSafe AI's System One decision model via ambient CLI (`npx -y jev-axi`) or HTTP endpoints, executing semantic evaluations in ~400ms.
+  - Safe cross-platform state serialization via temporary JSON files prevents shell quoting corruption and stdin-pipe hanging on Windows.
+
+- **Circuit Breaker Resilience & Fallback Routing:**
+  - `CircuitBreaker` wrapper safeguards against external judgment API latency, network partitioning, or outages (trips after configurable failure thresholds with automatic cooldown recovery).
+  - Transition contracts support `fallback_target`: if a judgment adapter fails, is unavailable, or times out, the FSM transitions directly to a designated mitigation state (e.g. `BLOCKED` or `MANUAL_REVIEW`) and emits a `GUARD_FALLBACK_TRIGGERED` event.
+
+- **Semantic Model Capability Tiers:**
+  - Manifests (`skill.yaml`) now support per-state `model` capability tier declarations (`tier: fast | balanced | reasoning | decision`) with optional `preferred_provider` and `cost_budget`.
+  - Injects a structured `<model_contract>` into prompt slices to allow orchestrators or parent agents to route state turns to optimal model architectures (e.g., Claude Haiku vs Sonnet vs Opus, Gemini Flash vs Pro, Codex/o3).
+  - Full backward compatibility: all tier declarations and judgment blocks are completely optional.
+
+- **Developer Experience & Scaffolding:**
+  - Updated `skill-manager` with model capability tier selection and semantic judgment verification questions in RED phase discovery.
+  - Added runnable interactive demo `pnpm --filter @reactive-skills/runtime demo:judgment`.
+
 ## [0.6.0] - 2026-09-20
 
 - docs: add project context and architecture documentation files (18e2a78)

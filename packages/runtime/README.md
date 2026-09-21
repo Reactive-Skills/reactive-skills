@@ -2,7 +2,7 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.6.0: --    [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.6.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.7.0:** Decoupled Judgment Engine & Snap-on Adapters (Jev/Script), Circuit Breaker Fallback Routing, and Semantic Model Capability Tiers. [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.7.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

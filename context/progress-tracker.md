@@ -4,8 +4,8 @@
 
 | Package | Version | Status |
 | :--- | :--- | :--- |
-| `@reactive-skills/runtime` | v0.5.4 | ✅ Published |
-| `@reactive-skills/axi` | v0.5.3 / v2.0.0 | ✅ Published |
+| `@reactive-skills/runtime` | v0.7.0 | ✅ Published |
+| `@reactive-skills/axi` | v0.7.0 | ✅ Published |
 
 ---
 
@@ -39,9 +39,11 @@
 
 | Slice | Archetype | Status |
 | :--- | :--- | :--- |
+| Decoupled Judgment Engine & Snap-On Adapters (`JudgmentPort`, `CircuitBreaker`) | Core | ✅ Done |
+| Semantic Model Capability Tiers (`StateModelDefinition`, `<model_contract>`) | Core | ✅ Done |
 | TSDoc `@Tier / @Complexity / @CRAPScore` annotations on hot-path methods | Quality | ⏳ Queued |
 | Automated CC/CRAP gate in CI (`check:complexity` script) | Quality | ⏳ Queued |
-| Context doc synchronization (architecture, progress tracker, project overview) | Docs | 🔄 In Progress |
+| Context doc synchronization (architecture, progress tracker, project overview) | Docs | ✅ Done |
 
 ---
 

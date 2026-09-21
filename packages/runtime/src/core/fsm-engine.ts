@@ -15,6 +15,7 @@ import {
   DecisionRecord,
   StateVisitRecord,
   ContextDelta,
+  StateModelDefinition,
 } from './types.js';
 import { EventStore, createSortableId } from './event-store.js';
 import { GuardEvaluator } from './guard-evaluator.js';
@@ -522,6 +523,17 @@ export class FSMEngine {
     }
     const allowedTools = Array.from(allowedToolsSet);
 
+    // Format model contract
+    let modelContractXml = '';
+    let modelContract: StateModelDefinition | null = null;
+    if (activeLeaf.model) {
+      modelContract = typeof activeLeaf.model === 'string' ? { tier: activeLeaf.model } : activeLeaf.model;
+      const tier = modelContract.tier || 'balanced';
+      const suggestedAttr = modelContract.suggested ? ` suggested="${modelContract.suggested}"` : '';
+      const tempAttr = modelContract.temperature !== undefined ? ` temperature="${modelContract.temperature}"` : '';
+      modelContractXml = `  <model_contract tier="${tier}"${suggestedAttr}${tempAttr} />`;
+    }
+
     // Aggregate available exit transitions
     const exitConditions: string[] = [];
     for (let i = this.activeStatePath.length; i >= 1; i--) {
@@ -530,9 +542,14 @@ export class FSMEngine {
       if (def?.transitions) {
         for (const [signal, trans] of Object.entries(def.transitions)) {
           const transDef: TransitionDefinition = typeof trans === 'string' ? { target: trans } : trans;
-          exitConditions.push(
-            `[${depthPath.join('.')}] On signal '${signal}' -> transition to '${transDef.target}'${transDef.guard ? ` (guard: ${transDef.guard})` : ''}`
-          );
+          let condStr = `[${depthPath.join('.')}] On signal '${signal}' -> transition to '${transDef.target}'`;
+          if (transDef.guard) {
+            condStr += ` (guard: ${transDef.guard})`;
+          }
+          if (transDef.judgment) {
+            condStr += ` (judgment: ${transDef.judgment.type} '${transDef.judgment.criterion}')`;
+          }
+          exitConditions.push(condStr);
         }
       }
     }
@@ -564,6 +581,7 @@ export class FSMEngine {
 
     const formattedXml = [
       `<reactive_skill_state name="${this.getCurrentState()}" path="${this.activeStatePath.join('/')}" skill="${this.manifest.name}">`,
+      modelContractXml,
       this.strictExecution ? '  <strict_execution mode="enforced">' : '',
       '    <contract>TODO Card: Load -> Execute -> Emit</contract>',
       '    <contract>Every agent turn must produce a signal via reactive_emit_signal. Fetching state without emitting a signal counts against the idle budget.</contract>',
@@ -614,6 +632,7 @@ export class FSMEngine {
       contextDelta,
       visitCount: this.eventStore.query({ type: 'STATE_VISITED', state: this.getCurrentState() }).length,
       exitConditions,
+      modelContract,
       metrics,
     };
   }
@@ -685,7 +704,7 @@ export class FSMEngine {
           }, { state: previousState, causationId: event.id });
         }
 
-        // Evaluate Guard
+        // Evaluate Guard & Snap-On Judgment
         const guardResult = await GuardEvaluator.evaluate(
           transDef.guard,
           transDef.guardFunction,
@@ -694,29 +713,52 @@ export class FSMEngine {
             context: this.context,
             currentState: testPath.join('.'),
             skillDir: this.skillDir,
-          }
+          },
+          transDef.judgment
         );
 
         this.eventStore.append(
           'GUARD_EVALUATED',
           {
-            guard: transDef.guard || transDef.guardFunction || 'true',
+            guard: transDef.guard || transDef.guardFunction || (transDef.judgment ? `judgment:${transDef.judgment.type}` : 'true'),
             passed: guardResult.passed,
             target: transDef.target,
             handledAt: testPath.join('.'),
             error: guardResult.error,
+            judgment: guardResult.judgmentResult,
+            fallbackTriggered: guardResult.fallbackTriggered,
+            fallbackTarget: guardResult.fallbackTarget,
           },
           { state: testPath.join('.'), causationId: event.id }
         );
 
-        if (guardResult.passed) {
+        let effectiveTarget = transDef.target;
+        let isTransitioning = guardResult.passed;
+
+        if (!guardResult.passed && guardResult.fallbackTarget) {
+          effectiveTarget = guardResult.fallbackTarget;
+          isTransitioning = true;
+          this.eventStore.append(
+            'GUARD_FALLBACK_TRIGGERED',
+            {
+              from: previousState,
+              to: effectiveTarget,
+              originalTarget: transDef.target,
+              reason: guardResult.error || 'Judgment rejected or below confidence threshold',
+              judgment: guardResult.judgmentResult,
+            },
+            { state: testPath.join('.'), causationId: event.id }
+          );
+        }
+
+        if (isTransitioning) {
           // Auto-invoke child skill if transition declares it
           if (transDef.invoke) {
             await this.invokeSkill(transDef.invoke);
           }
 
           // Parse target path (supports dot notation, e.g. "REFACTOR.EXTRACT_METHOD" or "GREEN_CODE")
-          const targetSegments = transDef.target.split('.');
+          const targetSegments = effectiveTarget.split('.');
           const fullTargetPath = this.resolveInitialPath(targetSegments);
 
           const transitionDurationMs = Number((performance.now() - startTime).toFixed(3));

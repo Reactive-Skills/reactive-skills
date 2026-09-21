@@ -4,6 +4,7 @@
 - `packages/runtime/src/core/types.ts`: Zod schemas & TypeScript types for FSM, signals, and projections.
 - `packages/runtime/src/core/event-store.ts`: Immutable append-only event ledger (JSONL + native SQLite driver).
 - `packages/runtime/src/core/guard-evaluator.ts`: Sandbox evaluator for transition conditions.
+- `packages/runtime/src/core/judgment-engine.ts`: Decoupled Ports-and-Adapters judgment engine with snap-on adapters and circuit breaking.
 - `packages/runtime/src/core/projection-engine.ts`: Handlebars deliverable generator.
 - `packages/runtime/src/core/fsm-engine.ts`: State machine loader, state path resolver & bubbling engine.
 - `packages/runtime/src/core/runtime-hooks.ts`: In-harness interceptor hooks (onBeforeAgentTurn, onAfterToolExecution, onHumanResponse).

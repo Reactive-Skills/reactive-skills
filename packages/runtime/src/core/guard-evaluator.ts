@@ -2,7 +2,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { pathToFileURL } from 'node:url';
-import { SignalEvent } from './types.js';
+import { SignalEvent, JudgmentDefinition, JudgmentResult } from './types.js';
+import { JudgmentEngine } from './judgment-engine.js';
 
 export interface GuardEvaluationContext {
   event: SignalEvent;
@@ -18,19 +19,47 @@ const ALLOWED_GUARD_EXTENSIONS = ['.js', '.mjs', '.cjs'];
  */
 export class GuardEvaluator {
   /**
-   * Evaluate a transition guard expression or custom JS function file
+   * Evaluate a transition guard expression, custom JS function file, or snap-on judgment
    */
   public static async evaluate(
     guardExpr: string | undefined,
     guardFunctionPath: string | undefined,
-    evalContext: GuardEvaluationContext
-  ): Promise<{ passed: boolean; error?: string }> {
-    // If no guard defined, it unconditionally passes
-    if (!guardExpr && !guardFunctionPath) {
+    evalContext: GuardEvaluationContext,
+    judgment?: JudgmentDefinition
+  ): Promise<{
+    passed: boolean;
+    error?: string;
+    judgmentResult?: JudgmentResult;
+    fallbackTriggered?: boolean;
+    fallbackTarget?: string;
+  }> {
+    // If no guard and no judgment defined, it unconditionally passes
+    if (!guardExpr && !guardFunctionPath && !judgment) {
       return { passed: true };
     }
 
     try {
+      let judgmentResult: JudgmentResult | undefined;
+      let fallbackTriggered = false;
+      let fallbackTarget: string | undefined;
+
+      // 0. Evaluate snap-on judgment if defined
+      if (judgment) {
+        const jEval = await JudgmentEngine.evaluate(judgment, evalContext);
+        judgmentResult = jEval;
+        fallbackTriggered = Boolean(jEval.fallbackTriggered);
+        fallbackTarget = jEval.fallbackTarget;
+
+        if (!jEval.passed) {
+          return {
+            passed: false,
+            error: jEval.error || `Judgment rejected: '${judgment.criterion}' (confidence: ${jEval.confidence})`,
+            judgmentResult,
+            fallbackTriggered,
+            fallbackTarget,
+          };
+        }
+      }
       // 1. Evaluate custom guard function file if specified (SEC-01)
       if (guardFunctionPath && evalContext.skillDir) {
         const ext = path.extname(guardFunctionPath).toLowerCase();
@@ -67,16 +96,27 @@ export class GuardEvaluator {
           const fn = module.default || module.guard || module.check;
           if (typeof fn === 'function') {
             const result = await fn(evalContext);
-            return { passed: Boolean(result) };
+            return {
+              passed: Boolean(result),
+              judgmentResult,
+              fallbackTriggered,
+              fallbackTarget,
+            };
           }
           return {
             passed: false,
             error: `Guard function file does not export a valid function (default, guard, check): ${guardFunctionPath}`,
+            judgmentResult,
+            fallbackTriggered,
+            fallbackTarget,
           };
         } else {
           return {
             passed: false,
             error: `Guard function file not found: ${guardFunctionPath}`,
+            judgmentResult,
+            fallbackTriggered,
+            fallbackTarget,
           };
         }
       }
@@ -110,10 +150,20 @@ export class GuardEvaluator {
         const script = new vm.Script(`"use strict"; Boolean(${guardExpr})`);
         const result = script.runInContext(vmContext, { timeout: 100 });
 
-        return { passed: Boolean(result) };
+        return {
+          passed: Boolean(result),
+          judgmentResult,
+          fallbackTriggered,
+          fallbackTarget,
+        };
       }
 
-      return { passed: true };
+      return {
+        passed: true,
+        judgmentResult,
+        fallbackTriggered,
+        fallbackTarget,
+      };
     } catch (err: any) {
       return {
         passed: false,
