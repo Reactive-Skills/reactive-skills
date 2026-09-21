@@ -12,7 +12,7 @@ export const telemetry = {
       blocks: [
         { type: 'text', text: 'Run the AXI dashboard command from the workspace that owns the `.reactive/skills` event stores.' },
         { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi dashboard', explanation: 'Starts a loopback broker on the default port and prints its actual listener URL.' } },
-        { type: 'text', text: 'Use `--port 0` to request an available port or provide an explicit port for a stable local URL.' },
+        { type: 'text', text: 'When `--port` is omitted, the broker starts at `127.0.0.1:4242` and falls back through a bounded range if that port is occupied. Use `--port 0` to request an OS-assigned port or provide an explicit port for a stable local URL.' },
         { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi dashboard --port 0\nnpx -y @reactive-skills/axi dashboard --host 0.0.0.0 --port 4500', explanation: 'The command reports the bound port after the listener starts.' } },
         { type: 'callout', variant: 'info', title: 'Browser discovery', text: 'The browser never scans arbitrary localhost ports. Copy the URL printed by AXI into the dashboard connection field.' },
       ],

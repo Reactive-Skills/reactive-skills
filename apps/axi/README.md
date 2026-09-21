@@ -154,6 +154,12 @@ npx -y @reactive-skills/axi dashboard --host 0.0.0.0 --port 4500
 
 The broker binds to `127.0.0.1` by default and reports the actual URL and port after binding.
 
+When `--port` is omitted, the broker makes real bind attempts starting at `127.0.0.1:4242` and falls back through a bounded deterministic range when the preferred port is occupied.
+
+An explicit `--port` is strict and fails clearly if that port is unavailable.
+
+Use `--port 0` to request an OS-assigned ephemeral port.
+
 Use the reported URL in the site's `/telemetry` dashboard.
 
 The dashboard discovers skill and job metadata from the broker catalog instead of reading local files in the browser.

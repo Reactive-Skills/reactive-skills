@@ -14,6 +14,10 @@ import {
   TelemetryCatalogResponse,
   TelemetryCatalogSkill,
 } from './types.js';
+import {
+  DEFAULT_TELEMETRY_PORT,
+  listenWithPortSelection,
+} from './port-selection.js';
 
 interface BrokerTarget {
   key: string;
@@ -33,7 +37,6 @@ interface BrokerClient {
 }
 
 const DEFAULT_HOST = '127.0.0.1';
-const DEFAULT_PORT = 4242;
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 15_000;
 const DEFAULT_TAIL_INTERVAL_MS = 250;
 const DEFAULT_CATALOG_REFRESH_INTERVAL_MS = 1_000;
@@ -45,7 +48,8 @@ export class TelemetryBroker {
   private server: http.Server | null = null;
   private readonly workspaceDir: string;
   private readonly jobManager: JobManager;
-  private readonly port: number;
+  private readonly requestedPort?: number;
+  private readonly preferredPort?: number;
   private readonly host: string;
   private readonly heartbeatIntervalMs: number;
   private readonly tailIntervalMs: number;
@@ -61,7 +65,8 @@ export class TelemetryBroker {
   constructor(options: TelemetryBrokerOptions = {}) {
     this.workspaceDir = path.resolve(options.workspaceDir || process.cwd());
     this.jobManager = new JobManager(this.workspaceDir);
-    this.port = options.port ?? DEFAULT_PORT;
+    this.requestedPort = options.port;
+    this.preferredPort = options.preferredPort;
     this.host = options.host ?? DEFAULT_HOST;
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? DEFAULT_HEARTBEAT_INTERVAL_MS;
     this.tailIntervalMs = options.tailIntervalMs ?? DEFAULT_TAIL_INTERVAL_MS;
@@ -69,9 +74,11 @@ export class TelemetryBroker {
   }
 
   public getPort(): number {
-    if (!this.server) return this.port;
+    if (!this.server) return this.requestedPort ?? this.preferredPort ?? DEFAULT_TELEMETRY_PORT;
     const address = this.server.address();
-    return typeof address === 'object' && address !== null ? address.port : this.port;
+    return typeof address === 'object' && address !== null
+      ? address.port
+      : this.requestedPort ?? this.preferredPort ?? DEFAULT_TELEMETRY_PORT;
   }
 
   public getUrl(): string {
@@ -85,21 +92,23 @@ export class TelemetryBroker {
 
     this.refreshCatalog();
     this.startTime = Date.now();
-    this.server = http.createServer((req, res) => this.handleRequest(req, res));
-    this.server.on('connection', (socket) => {
-      this.activeSockets.add(socket);
-      socket.on('close', () => this.activeSockets.delete(socket));
+    const bound = await listenWithPortSelection({
+      host: this.host,
+      requestedPort: this.requestedPort,
+      preferredPort: this.preferredPort,
+      createServer: () => {
+        const server = http.createServer((req, res) => this.handleRequest(req, res));
+        server.on('connection', (socket) => {
+          this.activeSockets.add(socket);
+          socket.on('close', () => this.activeSockets.delete(socket));
+        });
+        return server;
+      },
     });
-
-    return new Promise((resolve, reject) => {
-      this.server!.once('error', reject);
-      this.server!.listen(this.port, this.host, () => {
-        this.server!.removeListener('error', reject);
-        this.tailerTimer = setInterval(() => this.pollForNewEvents(), this.tailIntervalMs);
-        this.catalogTimer = setInterval(() => this.refreshCatalog(), this.catalogRefreshIntervalMs);
-        resolve({ port: this.getPort(), url: this.getUrl() });
-      });
-    });
+    this.server = bound.server;
+    this.tailerTimer = setInterval(() => this.pollForNewEvents(), this.tailIntervalMs);
+    this.catalogTimer = setInterval(() => this.refreshCatalog(), this.catalogRefreshIntervalMs);
+    return { port: bound.port, url: this.getUrl() };
   }
 
   public async stop(): Promise<void> {
@@ -164,7 +173,7 @@ export class TelemetryBroker {
       return;
     }
 
-    const hostHeader = req.headers.host || `${this.host}:${this.port}`;
+    const hostHeader = req.headers.host || `${this.host}:${this.getPort()}`;
     const parsedUrl = new URL(req.url || '/', `http://${hostHeader}`);
     const pathname = parsedUrl.pathname;
     const isGetOrHead = req.method === 'GET' || req.method === 'HEAD';

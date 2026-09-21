@@ -1,7 +1,6 @@
 import http from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  DEFAULT_TELEMETRY_PORT,
   listenWithPortSelection,
 } from '../src/telemetry/port-selection.js';
 
@@ -52,21 +51,25 @@ describe('listenWithPortSelection', () => {
   });
 
   it('uses the preferred port when it is available', async () => {
+    const preferredPort = 45200;
     const result = await listenWithPortSelection({
       host: HOST,
+      preferredPort,
       createServer: () => http.createServer(),
       maxAttempts: 1,
     });
     servers.push(result.server);
 
-    expect(result.port).toBe(DEFAULT_TELEMETRY_PORT);
+    expect(result.port).toBe(preferredPort);
   });
 
   it('falls back to the next available port after a busy preferred port', async () => {
-    await occupyPort(DEFAULT_TELEMETRY_PORT);
+    const preferredPort = 45210;
+    await occupyPort(preferredPort);
     const created: http.Server[] = [];
     const result = await listenWithPortSelection({
       host: HOST,
+      preferredPort,
       createServer: () => {
         const server = http.createServer();
         created.push(server);
@@ -76,7 +79,7 @@ describe('listenWithPortSelection', () => {
     });
     servers.push(result.server);
 
-    expect(result.port).toBe(DEFAULT_TELEMETRY_PORT + 1);
+    expect(result.port).toBe(preferredPort + 1);
     expect(created[0]?.listening).toBe(false);
     expect(created[0]?.address()).toBeNull();
   });

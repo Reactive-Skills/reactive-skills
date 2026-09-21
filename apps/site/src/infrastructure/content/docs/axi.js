@@ -49,8 +49,8 @@ export const axi = {
       id: 'telemetry-viewer',
       heading: 'Telemetry viewer ports',
       blocks: [
-        { type: 'text', text: 'When `--port` is omitted, AXI makes real bind attempts starting at `127.0.0.1:4242` and falls back through a bounded deterministic range if the preferred port is occupied.' },
-        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi view my-skill\nnpx -y @reactive-skills/axi view my-skill --port 5000\nnpx -y @reactive-skills/axi view my-skill --port 0', explanation: 'Omitted --port enables automatic fallback, an explicit port is strict, and port 0 requests an OS-assigned ephemeral port.' } },
+        { type: 'text', text: 'When `--port` is omitted, AXI makes real bind attempts starting at `127.0.0.1:4242` and falls back through a bounded deterministic range if the preferred port is occupied. This applies to both `view` and `dashboard`.' },
+        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi view my-skill\nnpx -y @reactive-skills/axi dashboard\nnpx -y @reactive-skills/axi dashboard --port 0', explanation: 'Omitted --port enables automatic fallback, an explicit port is strict, and port 0 requests an OS-assigned ephemeral port.' } },
         { type: 'text', text: 'The CLI output and telemetry responses report the actual selected port and URL. The browser viewer uses that reported URL and does not scan local ports automatically.' },
       ],
     },

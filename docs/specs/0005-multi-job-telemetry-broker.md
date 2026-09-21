@@ -20,6 +20,10 @@ The new user-facing command is `reactive-skills-axi dashboard`.
 
 The command starts a read-only `TelemetryBroker` that binds to `127.0.0.1` by default and accepts explicit `--host` and `--port` values.
 
+When `--port` is omitted, the broker reuses the runtime port-selection helper and falls back through a bounded range beginning at port `4242` if the preferred port is occupied.
+
+An explicit port remains strict, while `--port 0` requests an OS-assigned ephemeral port.
+
 The broker is a separate runtime class from `TelemetryServer` so the existing single-job HTTP and signal behavior remains compatible.
 
 The broker discovers targets from the current workspace's `.reactive/skills` directory through `JobManager` and reads optional skill metadata from the workspace skill manifest.

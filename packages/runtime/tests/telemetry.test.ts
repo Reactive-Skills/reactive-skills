@@ -410,17 +410,19 @@ states:
     const blocker = http.createServer();
     await new Promise<void>((resolve, reject) => {
       blocker.once('error', reject);
-      blocker.listen(4242, '127.0.0.1', () => resolve());
+      blocker.listen(0, '127.0.0.1', () => resolve());
     });
 
     try {
+      const preferredPort = (blocker.address() as any).port as number;
       server = new TelemetryServer({
         eventStore,
+        preferredPort,
         skillName: 'test-telemetry',
       });
 
       const { port, url } = await server.start();
-      expect(port).toBe(4243);
+      expect(port).toBe(preferredPort + 1);
 
       const health = await (await fetch(`${url}/health`)).json();
       expect(health.port).toBe(port);

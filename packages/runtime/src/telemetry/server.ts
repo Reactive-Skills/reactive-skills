@@ -21,6 +21,7 @@ export class TelemetryServer {
   private eventStore: EventStore;
   private fsmEngine?: FSMEngine;
   private requestedPort?: number;
+  private preferredPort?: number;
   private port?: number;
   private host: string;
   private heartbeatIntervalMs: number;
@@ -40,6 +41,7 @@ export class TelemetryServer {
     this.eventStore = options.eventStore;
     this.fsmEngine = options.fsmEngine;
     this.requestedPort = options.port;
+    this.preferredPort = options.preferredPort;
     this.port = options.port;
     this.host = options.host ?? '127.0.0.1';
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 15000;
@@ -49,12 +51,12 @@ export class TelemetryServer {
   }
 
   public getPort(): number {
-    if (!this.server) return this.port ?? DEFAULT_TELEMETRY_PORT;
+    if (!this.server) return this.port ?? this.preferredPort ?? DEFAULT_TELEMETRY_PORT;
     const addr = this.server.address();
     if (typeof addr === 'object' && addr !== null) {
       return addr.port;
     }
-    return this.port ?? DEFAULT_TELEMETRY_PORT;
+    return this.port ?? this.preferredPort ?? DEFAULT_TELEMETRY_PORT;
   }
 
   public getUrl(): string {
@@ -69,6 +71,7 @@ export class TelemetryServer {
     const bound = await listenWithPortSelection({
       host: this.host,
       requestedPort: this.requestedPort,
+      preferredPort: this.preferredPort,
       createServer: () => this.createServer(),
     });
     this.server = bound.server;
