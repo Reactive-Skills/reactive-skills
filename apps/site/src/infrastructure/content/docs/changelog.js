@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-8-7",
+    "heading": "v0.8.7 (2026-09-21)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "fix(runtime): use direct TypeSafe SDK for Jev judgments",
+          "chore(release): v0.8.6 - add AXI version flag",
+          "fix(axi): add version flag",
+          "chore(release): v0.8.5 - automatic telemetry broker port fallback",
+          "fix(telemetry): reuse automatic broker port selection"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-8-6",
     "heading": "v0.8.6 (2026-09-21)",
     "blocks": [
