@@ -30,6 +30,7 @@ export const axi = {
         { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi <command> [options]', explanation: 'Available commands: invoke, state, emit, jobs, events, inspect, reset, upgrade, init, view, sync, mcp.' } },
         { type: 'list', items: [
           'axi (dashboard) — lists registered skills, current states, and suggested next actions.',
+          'axi --version — prints the installed AXI package version and exits.',
           'axi invoke <skill> [--payload JSON] [--job <id>] — starts a fresh isolated execution run, auto-generating a unique job ID.',
           'axi state <skill> [--job <id>] — outputs active state, hierarchical path, and allowed transitions (auto-rotates if prior job completed).',
           'axi emit <skill> <signal> — dispatches a typed signal to evaluate guards and advance.',

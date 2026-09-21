@@ -23,6 +23,7 @@ npm install -g @reactive-skills/axi
 ```bash
 # Zero-install via npx:
 npx -y @reactive-skills/axi                          # dashboard
+npx -y @reactive-skills/axi --version                # print the installed package version
 npx -y @reactive-skills/axi invoke <skill>           # start fresh run (auto-generates unique job ID)
 npx -y @reactive-skills/axi invoke <skill> --job <id> # start isolated named run
 npx -y @reactive-skills/axi state <skill>            # inspect/resume active run (auto-rotates if terminal)
