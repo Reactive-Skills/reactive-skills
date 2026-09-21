@@ -11,11 +11,36 @@ import {
 import { FSMEngine } from '../src/core/fsm-engine.js';
 import { JudgmentAdapter, JudgmentRequest, JudgmentResult } from '../src/core/types.js';
 
+const sdkMock = vi.hoisted(() => ({
+  systemOne: vi.fn(),
+  noul: vi.fn((instructions: unknown) => ({ type: 'noul', instructions })),
+  choice: vi.fn((instructions: unknown, criteria: unknown) => ({ type: 'choice', instructions, criteria })),
+  score: vi.fn((instructions: unknown, criteria: unknown) => ({ type: 'score', instructions, criteria })),
+}));
+
+vi.mock('@typesafe-ai/sdk', () => ({
+  TypeSafeClient: class {
+    public systemOne(...args: unknown[]) {
+      return sdkMock.systemOne(...args);
+    }
+  },
+  noul: sdkMock.noul,
+  choice: sdkMock.choice,
+  score: sdkMock.score,
+}));
+
 describe('Decoupled Judgment & Snap-On Adapters', () => {
   let tmpDir: string;
+  let originalTypesafeApiKey: string | undefined;
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsa-judgment-test-'));
+    originalTypesafeApiKey = process.env.TYPESAFE_API_KEY;
+    delete process.env.TYPESAFE_API_KEY;
+    sdkMock.systemOne.mockReset();
+    sdkMock.noul.mockClear();
+    sdkMock.choice.mockClear();
+    sdkMock.score.mockClear();
     JudgmentEngine.reset();
   });
 
@@ -25,6 +50,11 @@ describe('Decoupled Judgment & Snap-On Adapters', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     } catch {
       // ignore cleanup error
+    }
+    if (originalTypesafeApiKey === undefined) {
+      delete process.env.TYPESAFE_API_KEY;
+    } else {
+      process.env.TYPESAFE_API_KEY = originalTypesafeApiKey;
     }
   });
 
@@ -205,6 +235,36 @@ describe('Decoupled Judgment & Snap-On Adapters', () => {
       expect(result.passed).toBe(false);
       expect(result.fallbackTarget).toBe('HUMAN_APPROVAL');
     });
+
+    it('should preserve Script fallback when the direct Jev SDK fails', async () => {
+      process.env.TYPESAFE_API_KEY = 'test-key';
+      sdkMock.systemOne.mockRejectedValue(new Error('TypeSafe service unavailable'));
+
+      const result = await JudgmentEngine.evaluate(
+        {
+          type: 'predicate',
+          criterion: 'Build succeeded',
+          adapter_hint: 'jev',
+          fallback_adapter: 'script',
+        },
+        {
+          event: {
+            id: 'evt-jev-fallback',
+            seq: 1,
+            timestamp: new Date().toISOString(),
+            type: 'BUILD',
+            payload: { exit_code: 0 },
+          },
+          context: {},
+          currentState: 'BUILDING',
+        }
+      );
+
+      expect(result.fallbackTriggered).toBe(true);
+      expect(result.adapterName).toBe('script');
+      expect(result.passed).toBe(true);
+      expect(JudgmentEngine.getBreaker('jev')?.getState()).toBe('CLOSED');
+    });
   });
 
   describe('FSMEngine Integration: Model Contracts & Declarative Judgment', () => {
@@ -321,6 +381,130 @@ states:
 
       const isAvail = await jev.isAvailable();
       expect(typeof isAvail).toBe('boolean');
+    });
+  });
+
+  describe('Direct TypeSafe SDK boundary', () => {
+    const evalContext = {
+      event: {
+        id: 'evt-sdk',
+        seq: 7,
+        timestamp: new Date().toISOString(),
+        type: 'CHECK',
+        payload: { clean: true },
+      },
+      context: { branch: 'main' },
+      currentState: 'VERIFYING',
+    };
+
+    beforeEach(() => {
+      process.env.TYPESAFE_API_KEY = 'test-key';
+    });
+
+    it('sends structured state and normalizes a predicate response', async () => {
+      sdkMock.systemOne.mockResolvedValue({
+        model: 'jev-test',
+        answers: { judgment: { type: 'noul', noul: 0.9 } },
+        usage: { input_tokens: 1, output_tokens: 1 },
+      });
+
+      const result = await new JevJudgmentAdapter().evaluate(
+        { type: 'predicate', criterion: 'Is the change clean?', contextSnapshot: {} },
+        evalContext
+      );
+
+      expect(sdkMock.noul).toHaveBeenCalledWith('Is the change clean?');
+      expect(sdkMock.systemOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          state: {
+            event: { clean: true },
+            context: { branch: 'main' },
+            currentState: 'VERIFYING',
+          },
+          questions: { judgment: { type: 'noul', instructions: 'Is the change clean?' } },
+        }),
+        expect.objectContaining({
+          signal: expect.any(AbortSignal),
+          timeout: 3000,
+          retry: { maxRetries: 0 },
+        })
+      );
+      expect(result).toMatchObject({
+        verdict: true,
+        passed: true,
+        confidence: 0.8,
+        adapterName: 'jev',
+        raw: expect.objectContaining({ model: 'jev-test' }),
+      });
+    });
+
+    it('normalizes categorical and score responses using their ordered criteria', async () => {
+      sdkMock.systemOne
+        .mockResolvedValueOnce({
+          model: 'jev-test',
+          answers: { judgment: { type: 'choice', choice: 'feature', confidence: 0.87, probabilities: {} } },
+          usage: { input_tokens: 1, output_tokens: 1 },
+        })
+        .mockResolvedValueOnce({
+          model: 'jev-test',
+          answers: { judgment: { type: 'score', score: 2, confidence: 0.91, legend: {}, probabilities: {} } },
+          usage: { input_tokens: 1, output_tokens: 1 },
+        });
+
+      const adapter = new JevJudgmentAdapter();
+      const categorical = await adapter.evaluate(
+        {
+          type: 'categorical',
+          criterion: 'What kind of change is this?',
+          options: ['bug', 'feature', 'chore'],
+          contextSnapshot: {},
+        },
+        evalContext
+      );
+      const score = await adapter.evaluate(
+        {
+          type: 'evaluation',
+          criterion: 'How strong is the implementation?',
+          rubric: ['weak', 'acceptable', 'strong'],
+          contextSnapshot: {},
+        },
+        evalContext
+      );
+
+      expect(sdkMock.choice).toHaveBeenCalledWith('What kind of change is this?', {
+        bug: null,
+        feature: null,
+        chore: null,
+      });
+      expect(sdkMock.score).toHaveBeenCalledWith('How strong is the implementation?', ['weak', 'acceptable', 'strong']);
+      expect(categorical).toMatchObject({ verdict: 'feature', confidence: 0.87, passed: true, adapterName: 'jev' });
+      expect(score).toMatchObject({ verdict: 2, confidence: 0.91, passed: true, adapterName: 'jev' });
+    });
+
+    it('propagates SDK failures without spawning a process or writing a state file', async () => {
+      sdkMock.systemOne.mockRejectedValue(new Error('service unavailable'));
+
+      await expect(
+        new JevJudgmentAdapter().evaluate(
+          { type: 'predicate', criterion: 'Is the service healthy?', contextSnapshot: {} },
+          evalContext
+        )
+      ).rejects.toThrow('service unavailable');
+    });
+
+    it('aborts a request at the configured timeout', async () => {
+      sdkMock.systemOne.mockImplementation((_request: unknown, options: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          options.signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+        })
+      );
+
+      await expect(
+        new JevJudgmentAdapter().evaluate(
+          { type: 'predicate', criterion: 'Will this time out?', contextSnapshot: {} },
+          { ...evalContext, timeout_ms: 10 }
+        )
+      ).rejects.toThrow('timed out after 10ms');
     });
   });
 });

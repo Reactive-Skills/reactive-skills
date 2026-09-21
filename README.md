@@ -9,7 +9,8 @@
 
 ---
 
-> 🚀 **What's New in v0.8.6:**
+> 🚀 **What's New in v0.8.7:**
+> - Direct `@typesafe-ai/sdk` Jev judgments without shell execution or temporary state files
 > - AXI `--version` support for agent runtime discovery
 > - read-only multi-job, multi-skill telemetry broker and site dashboard
 > - job-targeted live telemetry with SQLite tailing

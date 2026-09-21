@@ -2,7 +2,7 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.8.6: AXI version flag for agent runtime discovery** [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.6) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.8.7: Direct TypeSafe SDK Jev judgments** [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.7) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -15,6 +15,21 @@ npm install @reactive-skills/runtime
 ```ts
 import { FSMEngine, EventStore, JobManager, LegacySkillAdapter, ProjectionEngine } from '@reactive-skills/runtime';
 ```
+
+### Semantic Judgment Adapter
+
+`JevJudgmentAdapter` uses the optional `@typesafe-ai/sdk` package and calls TypeSafe AI's System One API directly.
+It never invokes `jev-axi`, starts a shell, or writes a temporary state file.
+
+Install the optional SDK and configure `TYPESAFE_API_KEY` when semantic judgments are needed:
+
+```bash
+npm install @reactive-skills/runtime @typesafe-ai/sdk
+```
+
+The adapter supports predicate, categorical, and ordered score judgments.
+Score judgments accept an array such as `rubric: ["weak", "acceptable", "strong"]`, or a string separated by `|`.
+If the SDK is absent, the API key is unset, or a request fails, the runtime keeps the existing Script adapter fallback and circuit-breaker behavior.
 
 ## Core Modules
 

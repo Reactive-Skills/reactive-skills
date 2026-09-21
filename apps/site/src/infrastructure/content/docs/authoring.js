@@ -169,7 +169,7 @@ Do NOT attempt to write application logic or make the test pass in this state.`,
         { type: 'text', text: 'Guards prevent subjective completion claims. Transitions require verified facts, code assertions, or semantic verification:' },
         { type: 'list', items: [
           'Inline expressions: Written in standard JavaScript (e.g. payload.exit_code == 0 && payload.coverage >= 80).',
-          'Semantic judgments: Declared via judgment: { type, criterion, min_confidence, fallback_target }. Evaluated via the decoupled Judgment Engine (built-in sandbox or snap-on Jev System One decisions).',
+          'Semantic judgments: Declared via judgment: { type, criterion, min_confidence, fallback_target }. Evaluated via the decoupled Judgment Engine (built-in sandbox or optional @typesafe-ai/sdk-backed Jev System One decisions).',
           'Circuit breaker fallback routing: If a model judgment fails, times out, or trips, the FSM transitions directly to a declared fallback_target state and logs GUARD_FALLBACK_TRIGGERED.',
           'Model capability tiers: Declared via model: { tier: fast | balanced | reasoning | decision } to guide multi-model routing across states.',
           'Custom guard scripts: Placed in guards/<guard_name>.js for complex validation like AST checks or git status verifications.',

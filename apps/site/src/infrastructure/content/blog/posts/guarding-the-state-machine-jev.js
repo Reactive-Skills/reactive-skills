@@ -91,7 +91,7 @@ export const postGuardingTheStateMachineJev = {
         },
         {
           type: 'text',
-          text: 'The integration is completely snap-on: `JevJudgmentAdapter` automatically detects ambient credentials in your environment—checking for `TYPESAFE_API_KEY` or local CLI configurations (`~/.config/jev-axi/config.json`)—with zero package installation required.',
+          text: 'The integration is optional and direct: install `@typesafe-ai/sdk`, configure `TYPESAFE_API_KEY`, and `JevJudgmentAdapter` calls TypeSafe AI System One without invoking `jev-axi`, a shell, or a temporary state file. If the SDK or credentials are unavailable, the runtime preserves its deterministic Script fallback.',
         },
       ],
     },

@@ -176,6 +176,9 @@ importers:
       '@types/node':
         specifier: ^22.13.0
         version: 22.20.2
+      '@typesafe-ai/sdk':
+        specifier: ^0.6.0
+        version: 0.6.0
       tsx:
         specifier: ^4.19.2
         version: 4.23.13
@@ -2400,6 +2403,10 @@ packages:
 
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
+
+  '@typesafe-ai/sdk@0.6.0':
+    resolution: {integrity: sha512-IddX+Q0XM+VagOUZFeP7wZjaO4SHMdvnh2zEBdrZZnXedWI3BNK1lKhMx3ayrkFWvVLbVcUHJy6AVZlY+e6Jaw==}
+    engines: {node: '>=20'}
 
   '@typescript-eslint/project-service@8.70.0':
     resolution: {integrity: sha512-hFHbTNqhU9G+2eKFXCBVb1tjFT/LceiJ4+HfLO4pTpDI0KHi6iajpcFFkaSQ9gXmCh7n82A0PthaayEdN6mspQ==}
@@ -8226,6 +8233,8 @@ snapshots:
 
   '@types/trusted-types@2.0.7':
     optional: true
+
+  '@typesafe-ai/sdk@0.6.0': {}
 
   '@typescript-eslint/project-service@8.70.0(supports-color@7.2.0)(typescript@5.9.3)':
     dependencies:

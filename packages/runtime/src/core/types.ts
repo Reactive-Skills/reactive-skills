@@ -70,7 +70,7 @@ export interface JudgmentDefinition {
   criterion: string;
   min_confidence?: number;
   options?: string[];
-  rubric?: string;
+  rubric?: string | string[];
   adapter_hint?: string;
   fallback_adapter?: string;
   fallback_target?: string;
@@ -82,7 +82,7 @@ export interface JudgmentRequest {
   criterion: string;
   contextSnapshot: Record<string, any>;
   options?: string[];
-  rubric?: string;
+  rubric?: string | string[];
 }
 
 export interface JudgmentResult {
@@ -242,7 +242,7 @@ export const JudgmentDefinitionSchema = z.object({
   criterion: z.string(),
   min_confidence: z.number().min(0).max(1).optional(),
   options: z.array(z.string()).optional(),
-  rubric: z.string().optional(),
+  rubric: z.union([z.string(), z.array(z.string()).min(2)]).optional(),
   adapter_hint: z.string().optional(),
   fallback_adapter: z.string().optional(),
   fallback_target: z.string().optional(),
