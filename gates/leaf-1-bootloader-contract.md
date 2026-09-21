@@ -32,7 +32,15 @@
 ```
 
 ## Verification Gates
-- [ ] G1: `createReactiveBootloader` in `apps/axi/src/bootloader.ts` contains `To start a new task: Run \`reactive-skills-axi invoke`
-- [ ] G2: `createReactiveBootloader` in `packages/runtime/src/core/migration.ts` matches the updated contract
-- [ ] G3: `apps/axi/tests/commands/init.test.ts` passes
-- [ ] G4: `packages/runtime/tests/migration.test.ts` passes
+- [x] G1: `createReactiveBootloader` in `apps/axi/src/bootloader.ts` contains `To start a new task: Run \`reactive-skills-axi invoke`
+  CHECK: git grep "To start a new task: Run" apps/axi/src/bootloader.ts
+  EVIDENCE: passed
+- [x] G2: `createReactiveBootloader` in `packages/runtime/src/core/migration.ts` matches the updated contract
+  CHECK: git grep "To start a new task: Run" packages/runtime/src/core/migration.ts
+  EVIDENCE: passed
+- [x] G3: `apps/axi/tests/commands/init.test.ts` passes
+  CHECK: npx vitest run apps/axi/tests/commands/init.test.ts
+  EVIDENCE: passed (3 passed out of 3 tests)
+- [x] G4: `packages/runtime/tests/migration.test.ts` passes
+  CHECK: npx vitest run packages/runtime/tests/migration.test.ts
+  EVIDENCE: passed (4 passed out of 4 tests)
