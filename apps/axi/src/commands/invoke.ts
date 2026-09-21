@@ -76,7 +76,7 @@ export async function invokeCommand(args: string[]): Promise<string> {
     jobManager.createJob(skillName, {
       id: runId,
       name: runId,
-      setActive: true,
+      setActive: !jobId,
     });
 
     const engine = new FSMEngine({

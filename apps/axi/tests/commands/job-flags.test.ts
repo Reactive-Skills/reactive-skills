@@ -108,6 +108,19 @@ states:
     expect(jobs.length).toBeGreaterThanOrEqual(1);
   });
 
+  it('reset of an explicit isolated job does not change the global active pointer', async () => {
+    const jobManager = new JobManager(tmpDir);
+
+    await emitCommand(['flags-skill', 'ADVANCE']);
+    const activeJobId = jobManager.getActiveJobId('flags-skill');
+    await emitCommand(['flags-skill', 'ADVANCE', '--job', 'isolated-job']);
+
+    const output = await resetCommand(['flags-skill', '--job', 'isolated-job']);
+
+    expect(output).toContain('archived_and_replaced');
+    expect(jobManager.getActiveJobId('flags-skill')).toBe(activeJobId);
+  });
+
   it('resolveWorkspaceDir resolves cwd when skill is outside cwd', () => {
     const externalSkillPath = path.join(os.homedir(), '.agents', 'skills', 'global-skill');
     const resolved = resolveWorkspaceDir(externalSkillPath);

@@ -134,7 +134,7 @@ const engine = new FSMEngine({
 // Deliverables automatically mirror to .docs/my-skill/jobs/sprint-1/ and canonical .docs/
 ```
 
-- **Terminal Auto-Rotation:** Querying `state` or `FSMEngine` without an explicit `jobId` automatically archives completed runs and rotates to a fresh job ID.
+- **Terminal Auto-Rotation:** AXI `state` and MCP `reactive_state` queries without an explicit job ID automatically archive completed runs and rotate to a fresh job ID. Generic `FSMEngine` construction remains side-effect-free unless `autoRotateTerminal: true` is requested.
 - **Environment Isolation (`REACTIVE_JOB_ID`):** Parallel subagents set `process.env.REACTIVE_JOB_ID = 'worker-1'` to run without mutating the shared filesystem active pointer.
 
 ## Performance & Telemetry

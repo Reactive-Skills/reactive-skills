@@ -38,12 +38,26 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     return trimmed;
   }
 
-  function getEngine(skillName: string = defaultSkill, jobId?: string): FSMEngine {
+  function getEngine(
+    skillName: string = defaultSkill,
+    jobId?: string,
+    options: { autoRotateTerminal?: boolean } = {}
+  ): FSMEngine {
     const jobManager = new JobManager(workspaceDir);
     let resolvedJobId = jobId;
     if (!resolvedJobId) {
-      const rotation = jobManager.rotateIfTerminal(skillName);
-      resolvedJobId = rotation.activeJobId;
+      if (options.autoRotateTerminal) {
+        const rotation = jobManager.rotateIfTerminal(skillName);
+        if (rotation.rotated && rotation.previousJobId) {
+          const previousKey = `${skillName}::${rotation.previousJobId}`;
+          const previousEngine = engines.get(previousKey);
+          previousEngine?.close();
+          engines.delete(previousKey);
+        }
+        resolvedJobId = rotation.activeJobId;
+      } else {
+        resolvedJobId = jobManager.getActiveJobId(skillName);
+      }
     }
     const cacheKey = `${skillName}::${resolvedJobId}`;
 
@@ -120,7 +134,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     },
     async ({ skill, job_id }) => {
       try {
-        const engine = getEngine(skill || defaultSkill, job_id);
+        const engine = getEngine(skill || defaultSkill, job_id, { autoRotateTerminal: true });
 
         if (engine.isBypassDetected()) {
           return {

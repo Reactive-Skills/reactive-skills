@@ -44,6 +44,7 @@ export async function stateCommand(args: string[]): Promise<string> {
       skillDir: skillPath,
       workspaceDir,
       jobId,
+      autoRotateTerminal: true,
     });
 
     try {

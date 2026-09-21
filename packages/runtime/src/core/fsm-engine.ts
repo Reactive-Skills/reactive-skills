@@ -84,7 +84,7 @@ export class FSMEngine {
     this.jobManager = new JobManager(this.workspaceDir);
     let activeJobId = this.jobManager.getActiveJobId(this.manifest.name);
 
-    if (!effectiveJobId && options.autoRotateTerminal !== false) {
+    if (!effectiveJobId && options.autoRotateTerminal === true) {
       const rotation = this.jobManager.rotateIfTerminal(this.manifest.name);
       if (rotation.rotated) {
         activeJobId = rotation.activeJobId;

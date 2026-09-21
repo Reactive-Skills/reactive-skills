@@ -54,13 +54,13 @@ states:
     expect(jobManager.getJob('invoke-skill', activeJobId)?.currentState).toBe('INIT');
   });
 
-  it('starts a named active job when --job is supplied', async () => {
+  it('starts a named isolated job without changing the global active pointer', async () => {
     const { invokeCommand } = await import('../../src/commands/invoke.js');
     const output = await invokeCommand(['invoke-skill', '--job', 'mission-alpha']);
     const jobManager = new JobManager(tmpDir);
 
     expect(output).toContain('run_id: mission-alpha');
-    expect(jobManager.getActiveJobId('invoke-skill')).toBe('mission-alpha');
+    expect(jobManager.getActiveJobId('invoke-skill')).toBe('default');
     expect(fs.existsSync(path.join(tmpDir, '.reactive', 'skills', 'invoke-skill', 'jobs', 'mission-alpha', 'events.jsonl'))).toBe(true);
   });
 });

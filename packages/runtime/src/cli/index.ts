@@ -120,7 +120,7 @@ async function main() {
       process.exit(1);
     }
 
-    const engine = new FSMEngine({ skillDir: targetDir });
+    const engine = new FSMEngine({ skillDir: targetDir, autoRotateTerminal: true });
     if (engine.isStrictExecution()) {
       engine.recordTurnStart();
     }

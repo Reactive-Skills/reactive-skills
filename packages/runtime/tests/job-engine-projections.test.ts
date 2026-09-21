@@ -159,6 +159,20 @@ deliverable_projections:
     expect(fs.readFileSync(rootFile, 'utf8')).toContain('Current State: MIDDLE');
   });
 
+  it('generic engine construction does not rotate a terminal active job', async () => {
+    const terminalEngine = createEngine({ jobId: 'terminal-job' });
+    await terminalEngine.handleSignal('ADVANCE');
+    await terminalEngine.handleSignal('FINISH');
+    terminalEngine.close();
+
+    const jobManager = new JobManager(tmpDir);
+    jobManager.setActiveJobId('test-skill', 'terminal-job');
+
+    const readOnlyEngine = createEngine({});
+    expect(readOnlyEngine.getCurrentState()).toBe('DONE');
+    expect(jobManager.getActiveJobId('test-skill')).toBe('terminal-job');
+  });
+
   it('template receives jobId: exposes jobId directly in projection context', async () => {
     fs.writeFileSync(
       path.join(skillDir, 'templates', 'summary.md.hbs'),

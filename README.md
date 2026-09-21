@@ -241,6 +241,9 @@ RSA provides multi-run isolation, allowing teams and autonomous agents to execut
 # Start a fresh execution run (auto-generates sortable job ID)
 npx -y @reactive-skills/axi invoke <skill> [--payload JSON]
 
+# Start an isolated named run (does not change the global active pointer)
+npx -y @reactive-skills/axi invoke <skill> --job <job-id>
+
 # Inspect or resume the active execution run (auto-rotates if prior job is terminal)
 npx -y @reactive-skills/axi state <skill>
 

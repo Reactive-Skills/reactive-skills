@@ -3,6 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import { createReactiveMcpServer } from '../src/mcp/server.js';
+import { JobManager } from '../src/core/job-manager.js';
 
 describe('Reactive MCP Server Integration', () => {
   let tempDir: string;
@@ -174,6 +175,29 @@ describe('Reactive MCP Server Integration', () => {
     const customParsed = JSON.parse(customRes.content[0].text);
     expect(customParsed.job_id).toBe('slice-custom');
     expect(customParsed.activeState).toBe('INIT');
+  });
+
+  it('reactive_state rotates terminal active jobs without making read-only MCP queries rotate them', async () => {
+    const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
+    const tools = (server as any)._registeredTools;
+    const stateHandler = tools['reactive_state'];
+    const queryHandler = tools['reactive_query'];
+
+    await stateHandler.handler({ skill: 'test-fsm' }, {} as any);
+    const jobManager = new JobManager(tempDir);
+    jobManager.updateJob('test-fsm', 'default', {
+      status: 'completed',
+      currentState: 'COMPLETED',
+    });
+
+    await queryHandler.handler({ skill: 'test-fsm', sql: 'SELECT * FROM events' }, {} as any);
+    expect(jobManager.getActiveJobId('test-fsm')).toBe('default');
+
+    const rotated = await stateHandler.handler({ skill: 'test-fsm' }, {} as any);
+    const parsed = JSON.parse(rotated.content[0].text);
+    expect(parsed.activeState).toBe('INIT');
+    expect(parsed.job_id).not.toBe('default');
+    expect(jobManager.getActiveJobId('test-fsm')).toBe(parsed.job_id);
   });
 
   it('reactive_emit_signal targeted job: routes transition to targeted job_id without bleeding', async () => {

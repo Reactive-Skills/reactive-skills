@@ -126,21 +126,22 @@ export async function resetCommand(args: string[]): Promise<string> {
     return renderOutput(lines);
   }
 
-  // Non-destructive reset: archive current active job and rotate to fresh job
+  // Non-destructive reset: archive the target and rotate only when it owns the active pointer
   const activeJobId = jobId || jobManager.getActiveJobId(skillName);
+  const rotatesGlobalPointer = activeJobId === jobManager.getActiveJobId(skillName);
   jobManager.updateJob(skillName, activeJobId, {
     status: 'archived',
     completedAt: new Date().toISOString(),
   });
 
   const freshJob = jobManager.createJob(skillName, {
-    setActive: true,
+    setActive: rotatesGlobalPointer,
   });
 
   const lines: string[] = [];
   lines.push(renderDetail('reset', {
     skill_id: skillName,
-    status: 'archived_and_rotated',
+    status: rotatesGlobalPointer ? 'archived_and_rotated' : 'archived_and_replaced',
     archived_job: activeJobId,
     fresh_job: freshJob.id,
     reactive_dir: reactiveDir,
@@ -154,8 +155,12 @@ export async function resetCommand(args: string[]): Promise<string> {
 
   const helpLines: string[] = [
     `Job '${activeJobId}' has been archived non-destructively.`,
-    `Active job rotated to fresh job '${freshJob.id}'.`,
-    `Run \`reactive-skills-axi state ${skillName}\` to inspect initial state.`,
+    rotatesGlobalPointer
+      ? `Active job rotated to fresh job '${freshJob.id}'.`
+      : `Isolated job replaced with fresh job '${freshJob.id}'.`,
+    rotatesGlobalPointer
+      ? `Run \`reactive-skills-axi state ${skillName}\` to inspect initial state.`
+      : `Run \`reactive-skills-axi state ${skillName} --job ${freshJob.id}\` to inspect initial state.`,
     `Pass \`--purge\` to permanently delete all historical jobs and event data.`,
   ];
   lines.push(renderHelp(helpLines));
