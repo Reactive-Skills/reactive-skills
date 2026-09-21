@@ -14,6 +14,7 @@ const NAV = [
   { title: 'Concepts', href: '/docs/concepts' },
   { title: 'AXI', href: '/docs/axi' },
   { title: 'MCP', href: '/docs/mcp' },
+  { title: 'Telemetry', href: '/telemetry' },
   { title: 'Registry', href: '/registry' },
   { title: 'Blog', href: '/blog' },
 ];

@@ -23,6 +23,7 @@ export function getSuggestions(ctx: SuggestionContext): string[] {
           'Run `reactive-skills-axi init <name>` to scaffold a new reactive skill',
           'Run `reactive-skills-axi inspect <path>` to inspect a skill statechart',
           'Run `reactive-skills-axi events` to tail recent events',
+          'Run `reactive-skills-axi dashboard` to monitor multiple jobs through one broker',
           'Run `reactive-skills-axi reset <skill>` to clear a prior skill run',
         ];
       }
@@ -31,6 +32,7 @@ export function getSuggestions(ctx: SuggestionContext): string[] {
         'Run `reactive-skills-axi upgrade <path>` to convert a legacy SKILL.md',
         'Run `reactive-skills-axi inspect <path>` to view a skill statechart',
         'Run `reactive-skills-axi events [limit]` to tail event ledger',
+        'Run `reactive-skills-axi dashboard` to monitor multiple jobs through one broker',
         'Run `reactive-skills-axi reset <skill>` to clear a prior skill run',
       ];
 

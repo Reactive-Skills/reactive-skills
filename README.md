@@ -5,18 +5,19 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.3)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.4)
 
 ---
 
-> 🚀 **What's New in v0.8.3:**
+> 🚀 **What's New in v0.8.4:**
+> - read-only multi-job, multi-skill telemetry broker and site dashboard
 > - job-targeted live telemetry with SQLite tailing
 > - automatic telemetry viewer port selection with strict explicit port overrides
 > - **Environment-Scoped Isolation (`REACTIVE_JOB_ID`):** Parallel subagent swarms and CI workers run isolated jobs concurrently without mutating or fighting over the shared filesystem pointer.
 > - **Inverted Bootloader Contract:** `invoke` is now the primary task inception command across universal reactive bootloaders, with `state` reserved for resuming active tasks.
 > - **CLI Ergonomics & Flag Synonyms:** Added `--run` and `--run-id` everywhere alongside `--job`.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.3) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.4) · [View Changelog](CHANGELOG.md)
 
 ---
 
@@ -115,6 +116,7 @@ Reactive skills can be driven through two primary integration paths:
 | `reset` | `npx -y @reactive-skills/axi reset <skill>` | Clear execution run state while preserving deliverables |
 | `jobs` | `npx -y @reactive-skills/axi jobs <skill> [list\|switch\|archive]` | Inspect, switch, and archive isolated execution runs and deliverables |
 | `view` | `npx -y @reactive-skills/axi view <skill>` | Launch real-time telemetry server and live visual statechart viewer |
+| `dashboard` | `npx -y @reactive-skills/axi dashboard [--host <host>] [--port <port>]` | Launch one read-only broker for multi-job telemetry |
 | `sync` | `npx -y @reactive-skills/axi sync [skill]` | Synchronize skills across authoring workspaces and agent satellites via zero-drift junctions |
 
 ---
@@ -310,7 +312,7 @@ sqlite3 .reactive/skills/<skill>/events.db "SELECT seq, json_extract(payload, '$
 
 ### Real-Time Telemetry Dashboard
 
-Launch the live telemetry dashboard and SSE event stream:
+Launch the existing single-job viewer and SSE event stream:
 
 ```bash
 npx -y @reactive-skills/axi view <skill-name>                  # prefer 4242, then try the bounded fallback range
@@ -318,6 +320,38 @@ npx -y @reactive-skills/axi view <skill-name> --port 5000     # bind only to 500
 npx -y @reactive-skills/axi view <skill-name> --port 0        # ask the OS for an ephemeral port
 npx -y @reactive-skills/axi view <skill-name> --job sprint-1  # follow one job without changing the active pointer
 ```
+
+Launch the read-only multi-job broker:
+
+```bash
+npx -y @reactive-skills/axi dashboard
+npx -y @reactive-skills/axi dashboard --port 0
+npx -y @reactive-skills/axi dashboard --host 0.0.0.0 --port 4500
+```
+
+The command reports the actual listener URL and bound port.
+
+Open the site `/telemetry` route and enter that broker URL in the connection field.
+
+The broker catalog discovers skills and jobs from the current workspace's `.reactive/skills` directory and returns skill names, job IDs, status, current HSM state, local latest sequence, update time, and active-job metadata.
+
+The dashboard uses `GET /catalog`, job-scoped `GET /state?skillId=<skill-id>&jobId=<job-id>`, and one filtered `GET /events` SSE connection for all tracked targets.
+
+Add two jobs from the catalog, such as `jsm-workflow/review-slice` and `jsm-workflow/test-slice`, to monitor them simultaneously.
+
+Every card verifies both skill ID and job ID before accepting an event, so a signal written to one job cannot update another card.
+
+The broker tails each job's SQLite event store and refreshes the catalog on a bounded interval, so new jobs and cross-process events appear without restarting it.
+
+The broker is read-only telemetry.
+
+It does not dispatch signals, write events, change the active-job pointer, or scan arbitrary browser localhost ports.
+
+The existing `view <skill> --job <job-id>` command remains single-job scoped for explicit isolation and backward compatibility.
+
+The broker keeps the existing CORS and Local Network Access response headers so a site served from another origin can request local telemetry after the browser grants access.
+
+See [the telemetry guide](apps/site/src/infrastructure/content/docs/telemetry.js) for endpoint details and a two-job walkthrough.
 
 When `--port` is omitted, the viewer first attempts `127.0.0.1:4242` and then tries the next available port in a bounded deterministic range.
 

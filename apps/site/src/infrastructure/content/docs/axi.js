@@ -37,6 +37,7 @@ export const axi = {
           'axi inspect <path> — displays complete statechart hierarchy and guard rules.',
           'axi events <skill> [limit] — tails the immutable append-only event ledger.',
           'axi view <skill> [--job <id>] [--port <number>]: launches a job-scoped real-time telemetry server and live visual viewer.',
+          'axi dashboard [--host <host>] [--port <port>]: launches one read-only broker for multiple skills and jobs.',
           'axi init <name> — scaffolds a modular reactive skill directory.',
           'axi reset <skill> — resets active execution run while preserving deliverables.',
           'axi sync [skill] — synchronizes skills across authoring workspaces and agent satellites via zero-drift junctions.',
@@ -86,6 +87,7 @@ export const axi = {
   ],
   relatedPages: [
     { title: 'Quickstart', href: '/docs/quickstart' },
+    { title: 'Multi-job telemetry', href: '/docs/telemetry' },
     { title: 'Syncing & distributing skills', href: '/docs/syncing' },
     { title: 'Model Context Protocol (MCP)', href: '/docs/mcp' },
     { title: 'Troubleshooting guide', href: '/docs/troubleshooting' },

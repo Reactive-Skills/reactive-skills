@@ -43,6 +43,7 @@ export interface EventStoreOptions {
   maxInMemoryEvents?: number;
   maxJsonlBytes?: number;
   acquireLock?: boolean;
+  readOnly?: boolean;
 }
 
 export interface EventQueryOptions {
@@ -59,18 +60,24 @@ export interface EventQueryOptions {
 export class SQLiteStorageDriver {
   private db: DatabaseSync;
   private isClosed = false;
+  private readonly readOnly: boolean;
 
-  constructor(dbPath: string) {
-    if (dbPath !== ':memory:') {
+  constructor(dbPath: string, options: { readOnly?: boolean } = {}) {
+    this.readOnly = options.readOnly === true;
+    if (dbPath !== ':memory:' && !this.readOnly) {
       const dir = path.dirname(dbPath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
     }
-    this.db = new DatabaseSync(dbPath);
+    this.db = this.readOnly
+      ? new DatabaseSync(dbPath, { readOnly: true } as any)
+      : new DatabaseSync(dbPath);
     this.db.exec('PRAGMA busy_timeout = 5000');
-    this.db.exec('PRAGMA journal_mode = WAL');
-    this.initTables();
+    if (!this.readOnly) {
+      this.db.exec('PRAGMA journal_mode = WAL');
+      this.initTables();
+    }
   }
 
   private initTables(): void {
@@ -235,6 +242,18 @@ export class SQLiteStorageDriver {
     const stmt = this.db.prepare('SELECT seq FROM events ORDER BY seq DESC LIMIT 1');
     const row = stmt.get() as { seq: number } | undefined;
     return row ? Number(row.seq) : 0;
+  }
+
+  public getEventCount(): number {
+    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM events');
+    const row = stmt.get() as { count: number } | undefined;
+    return row ? Number(row.count) : 0;
+  }
+
+  public getLatestEvent(): SignalEvent | null {
+    const stmt = this.db.prepare('SELECT * FROM events ORDER BY seq DESC LIMIT 1');
+    const row = stmt.get() as any;
+    return row ? this.rowToEvent(row) : null;
   }
 
   public nextSequence(): number {
@@ -425,12 +444,14 @@ export class EventStore {
   private projectionWatermarks = new Map<string, { eventSeq: number; projectionVersion: string }>();
   private latestSnapshot: { seq: number; state: string; context: Record<string, any> } | null = null;
   private maxJsonlBytes: number;
+  private readonly readOnly: boolean;
   private lockFd: number | null = null;
   private lockPath: string | null = null;
 
   constructor(options: EventStoreOptions = {}) {
     this.maxInMemoryEvents = options.maxInMemoryEvents || 1000;
     this.maxJsonlBytes = options.maxJsonlBytes || 10 * 1024 * 1024;
+    this.readOnly = options.readOnly === true;
     const effectiveJobId = options.jobId || options.runId || options.run_id;
     this.eventContext = {
       skill_id: options.skillId,
@@ -470,7 +491,7 @@ export class EventStore {
       if (options.enableSqlite || options.sqlitePath) {
         const dbPath = options.sqlitePath || path.join(runScopedDir, 'events.db');
         this.sqlitePath = dbPath;
-        this.sqliteDriver = new SQLiteStorageDriver(dbPath);
+        this.sqliteDriver = new SQLiteStorageDriver(dbPath, { readOnly: this.readOnly });
       }
 
       this.initializeStorage();
@@ -547,6 +568,8 @@ private initializeStorage(): void {
         this.seqCounter = sqliteLatestSeq;
         this.events = this.sqliteDriver.getRecentEvents(this.maxInMemoryEvents);
 
+        if (this.readOnly) return;
+
         // Divergence detection: JSONL may have events SQLite never saw (e.g.
         // a prior run with SQLite disabled, or a failed SQLite write). If so,
         // rebuild SQLite from JSONL so the authoritative store matches the
@@ -574,6 +597,8 @@ private initializeStorage(): void {
         }
         return;
       }
+
+      if (this.readOnly) return;
     }
 
     if (!this.storagePath) return;
@@ -875,6 +900,20 @@ private initializeStorage(): void {
       return latest.length > 0 ? Number(latest[0].seq) : 0;
     }
     return this.events.length > 0 ? this.events[this.events.length - 1].seq : 0;
+  }
+
+  public getEventCount(): number {
+    if (this.sqliteDriver) {
+      return this.sqliteDriver.getEventCount();
+    }
+    return this.events.length;
+  }
+
+  public getLatestEvent(): SignalEvent | null {
+    if (this.sqliteDriver) {
+      return this.sqliteDriver.getLatestEvent();
+    }
+    return this.events.length > 0 ? this.events[this.events.length - 1] : null;
   }
 
   public getEventContext(): EventContext {
