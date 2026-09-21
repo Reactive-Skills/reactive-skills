@@ -24,7 +24,7 @@ examples:
   reactive-skills-axi jobs switch my-skill <job-id>
   reactive-skills-axi reset my-skill
   reactive-skills-axi rebuild-sqlite my-skill
-  reactive-skills-axi view my-skill
+  reactive-skills-axi view my-skill [--job <job-id>]
   reactive-skills-axi sync [my-skill]
   reactive-skills-axi mcp
 `;

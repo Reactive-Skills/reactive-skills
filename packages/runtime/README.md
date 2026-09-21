@@ -2,7 +2,7 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.8.1: preserve named job isolation and read-only state semantics  [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.8.2: job-targeted live telemetry with SQLite tailing  [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.2) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -27,6 +27,22 @@ import { FSMEngine, EventStore, JobManager, LegacySkillAdapter, ProjectionEngine
 - `McpServer` - Stdio Model Context Protocol (MCP) server integration
 - `SyncEngine` - Skill synchronization engine managing zero-drift directory junctions and physical mirroring across agent satellites
 - `TelemetryServer` - Real-time Server-Sent Events (SSE) broadcaster and Private Network Access (PNA) HTTP bridge
+
+### Job-Scoped Live Telemetry
+
+Start a viewer for one job without changing the active job pointer:
+
+```bash
+npx -y @reactive-skills/axi view my-skill --job sprint-1
+```
+
+The viewer reports the selected job ID through CLI output, `/health`, `/state`, and the SSE connection metadata.
+
+The telemetry server combines in-process event notifications with a configurable SQLite tailer.
+
+This lets events written by separate CLI, MCP, or worker processes reach the existing SSE stream.
+
+Omit `--job` to preserve existing resolution through `REACTIVE_JOB_ID`, the active pointer, and the default job.
 
 ## Skill Manifest Schema
 

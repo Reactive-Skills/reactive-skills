@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import http from 'node:http';
 import { EventStore } from '../src/core/event-store.js';
 import { FSMEngine } from '../src/core/fsm-engine.js';
@@ -173,6 +174,171 @@ states:
     expect(fullStreamText).toContain('PRIOR_EVENT');
     expect(fullStreamText).toContain('LIVE_SIGNAL');
     expect(fullStreamText).toContain('hello sse');
+  });
+
+  it('should stream events appended by a separate store for the selected job', async () => {
+    const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-telemetry-tail-test-'));
+    const selectedStore = new EventStore({
+      workspaceDir,
+      skillId: 'test-telemetry',
+      jobId: 'job-alpha',
+      enableSqlite: true,
+    });
+    const writerStore = new EventStore({
+      workspaceDir,
+      skillId: 'test-telemetry',
+      jobId: 'job-alpha',
+      enableSqlite: true,
+    });
+
+    try {
+      server = new TelemetryServer({
+        eventStore: selectedStore,
+        jobId: 'job-alpha',
+        port: 0,
+        tailIntervalMs: 10,
+      });
+
+      const { url } = await server.start();
+      const receivedChunks: string[] = [];
+      let sseReq: http.ClientRequest;
+
+      await new Promise<void>((resolve, reject) => {
+        sseReq = http.get(`${url}/events?sinceSeq=0`, (res) => {
+          res.setEncoding('utf8');
+          res.on('data', (chunk) => {
+            receivedChunks.push(chunk.toString());
+            if (receivedChunks.some((value) => value.includes('EXTERNAL_JOB_EVENT'))) {
+              resolve();
+            }
+          });
+        });
+        sseReq.on('error', reject);
+        setTimeout(() => {
+          writerStore.append('EXTERNAL_JOB_EVENT', { job: 'job-alpha' }, { source: 'separate-writer' });
+        }, 25);
+      });
+
+      const health = await (await fetch(`${url}/health`)).json();
+      expect(health.jobId).toBe('job-alpha');
+      expect(receivedChunks.join('')).toContain('job-alpha');
+      sseReq!.destroy();
+    } finally {
+      await server?.stop();
+      server = null;
+      writerStore.close();
+      selectedStore.close();
+      fs.rmSync(workspaceDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should not stream events from a different job', async () => {
+    const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-telemetry-isolation-test-'));
+    const selectedStore = new EventStore({
+      workspaceDir,
+      skillId: 'test-telemetry',
+      jobId: 'job-alpha',
+      enableSqlite: true,
+    });
+    const otherJobStore = new EventStore({
+      workspaceDir,
+      skillId: 'test-telemetry',
+      jobId: 'job-beta',
+      enableSqlite: true,
+    });
+
+    try {
+      server = new TelemetryServer({
+        eventStore: selectedStore,
+        jobId: 'job-alpha',
+        port: 0,
+        tailIntervalMs: 10,
+      });
+
+      const { url } = await server.start();
+      const receivedChunks: string[] = [];
+      let sseReq: http.ClientRequest;
+
+      await new Promise<void>((resolve, reject) => {
+        sseReq = http.get(`${url}/events?sinceSeq=0`, (res) => {
+          res.setEncoding('utf8');
+          res.on('data', (chunk) => receivedChunks.push(chunk.toString()));
+          resolve();
+        });
+        sseReq.on('error', reject);
+      });
+
+      otherJobStore.append('OTHER_JOB_EVENT', { job: 'job-beta' }, { source: 'separate-writer' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(receivedChunks.join('')).not.toContain('OTHER_JOB_EVENT');
+      sseReq!.destroy();
+    } finally {
+      await server?.stop();
+      server = null;
+      otherJobStore.close();
+      selectedStore.close();
+      fs.rmSync(workspaceDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should catch up from Last-Event-ID without duplicate delivery', async () => {
+    const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-telemetry-reconnect-test-'));
+    const selectedStore = new EventStore({
+      workspaceDir,
+      skillId: 'test-telemetry',
+      jobId: 'job-alpha',
+      enableSqlite: true,
+    });
+    const writerStore = new EventStore({
+      workspaceDir,
+      skillId: 'test-telemetry',
+      jobId: 'job-alpha',
+      enableSqlite: true,
+    });
+
+    try {
+      selectedStore.append('RECONNECT_BASE', {}, { source: 'test' });
+      writerStore.append('RECONNECT_EVENT', {}, { source: 'separate-writer' });
+      server = new TelemetryServer({
+        eventStore: selectedStore,
+        jobId: 'job-alpha',
+        port: 0,
+        tailIntervalMs: 10,
+      });
+
+      const { url } = await server.start();
+      const receivedChunks: string[] = [];
+      let sseReq: http.ClientRequest;
+      let catchUpTimeout: ReturnType<typeof setTimeout>;
+
+      await new Promise<void>((resolve, reject) => {
+        sseReq = http.get(`${url}/events`, { headers: { 'Last-Event-ID': '1' } }, (res) => {
+          res.setEncoding('utf8');
+          res.on('data', (chunk) => {
+            receivedChunks.push(chunk.toString());
+            if (receivedChunks.join('').includes('RECONNECT_EVENT')) {
+              clearTimeout(catchUpTimeout);
+              resolve();
+            }
+          });
+        });
+        sseReq.on('error', reject);
+        catchUpTimeout = setTimeout(() => reject(new Error('Timed out waiting for reconnect catch-up')), 1000);
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      const streamText = receivedChunks.join('');
+      expect(streamText.match(/id: 2\r?\n/g)).toHaveLength(1);
+      expect(streamText).toContain('id: 2');
+      sseReq!.destroy();
+    } finally {
+      await server?.stop();
+      server = null;
+      writerStore.close();
+      selectedStore.close();
+      fs.rmSync(workspaceDir, { recursive: true, force: true });
+    }
   });
 
   it('should handle POST /signal and trigger FSM transitions', async () => {

@@ -19,11 +19,17 @@ export class TelemetryServer {
   private port: number;
   private host: string;
   private heartbeatIntervalMs: number;
+  private tailIntervalMs: number;
   private skillName?: string;
+  private jobId?: string;
   private startTime: number = Date.now();
   private activeClients: Set<http.ServerResponse> = new Set();
+  private clientLastSeq: Map<http.ServerResponse, number> = new Map();
   private activeSockets: Set<any> = new Set();
   private unsubscribeEventStore?: () => void;
+  private tailerTimer?: ReturnType<typeof setInterval>;
+  private tailCursor = 0;
+  private tailPollInProgress = false;
 
   constructor(options: TelemetryServerOptions) {
     this.eventStore = options.eventStore;
@@ -31,7 +37,9 @@ export class TelemetryServer {
     this.port = options.port ?? 4242;
     this.host = options.host ?? '127.0.0.1';
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 15000;
+    this.tailIntervalMs = options.tailIntervalMs ?? 250;
     this.skillName = options.skillName ?? (options.fsmEngine ? options.fsmEngine.getManifest().name : undefined);
+    this.jobId = options.jobId ?? options.fsmEngine?.getJobId();
   }
 
   public getPort(): number {
@@ -63,10 +71,14 @@ export class TelemetryServer {
       });
     });
 
-    // Subscribe to EventStore updates to broadcast to all connected SSE clients
-    this.unsubscribeEventStore = this.eventStore.subscribe((event: SignalEvent) => {
-      this.broadcastEvent(event);
+    // Poll from the current sequence so local and external writers share one ordered delivery path.
+    this.tailCursor = this.eventStore.getLatestSequence();
+    this.unsubscribeEventStore = this.eventStore.subscribe(() => {
+      this.pollForNewEvents();
     });
+    this.tailerTimer = setInterval(() => {
+      this.pollForNewEvents();
+    }, this.tailIntervalMs);
 
     return new Promise((resolve, reject) => {
       this.server!.once('error', reject);
@@ -83,6 +95,10 @@ export class TelemetryServer {
       this.unsubscribeEventStore();
       this.unsubscribeEventStore = undefined;
     }
+    if (this.tailerTimer) {
+      clearInterval(this.tailerTimer);
+      this.tailerTimer = undefined;
+    }
 
     for (const client of this.activeClients) {
       try {
@@ -92,6 +108,7 @@ export class TelemetryServer {
       }
     }
     this.activeClients.clear();
+    this.clientLastSeq.clear();
 
     for (const socket of this.activeSockets) {
       try {
@@ -172,6 +189,7 @@ export class TelemetryServer {
   private handleDashboard(req: http.IncomingMessage, res: http.ServerResponse): void {
     const html = renderDashboardHtml({
       skillName: this.skillName,
+      jobId: this.jobId,
       port: this.getPort(),
       host: this.host,
     });
@@ -190,6 +208,7 @@ export class TelemetryServer {
     const payload: TelemetryHealthResponse = {
       status: 'ok',
       skillName: this.skillName,
+      jobId: this.jobId,
       latestSeq: this.eventStore.getLatestSequence(),
       uptimeSeconds: Math.floor((Date.now() - this.startTime) / 1000),
     };
@@ -213,6 +232,7 @@ export class TelemetryServer {
 
     const payload: TelemetryStateResponse = {
       skillName: this.skillName,
+      jobId: this.jobId,
       latestSeq,
       activeState,
       context,
@@ -276,12 +296,13 @@ export class TelemetryServer {
     this.activeClients.add(res);
 
     // Initial greeting / connect event
-    res.write(`event: connected\ndata: ${JSON.stringify({ skillName: this.skillName, connectedAt: new Date().toISOString() })}\n\n`);
+    res.write(`event: connected\ndata: ${JSON.stringify({ skillName: this.skillName, jobId: this.jobId, connectedAt: new Date().toISOString() })}\n\n`);
 
     // Determine initial backlog sequence
     const sinceSeqParam = url.searchParams.get('sinceSeq') || (req.headers['last-event-id'] as string | undefined);
+    const sinceSeq = sinceSeqParam ? parseInt(sinceSeqParam, 10) : NaN;
+    this.clientLastSeq.set(res, !isNaN(sinceSeq) ? sinceSeq : this.eventStore.getLatestSequence());
     if (sinceSeqParam) {
-      const sinceSeq = parseInt(sinceSeqParam, 10);
       if (!isNaN(sinceSeq)) {
         const backlog = this.eventStore.getSince(sinceSeq);
         for (const event of backlog) {
@@ -302,22 +323,46 @@ export class TelemetryServer {
     req.on('close', () => {
       clearInterval(heartbeatTimer);
       this.activeClients.delete(res);
+      this.clientLastSeq.delete(res);
     });
   }
 
   private sendSseEvent(client: http.ServerResponse, event: SignalEvent): void {
     try {
+      const lastSeq = this.clientLastSeq.get(client);
+      if (lastSeq !== undefined && event.seq <= lastSeq) return;
       client.write(`id: ${event.seq}\n`);
       client.write(`event: signal_event\n`);
       client.write(`data: ${JSON.stringify(event)}\n\n`);
+      this.clientLastSeq.set(client, event.seq);
     } catch {
       this.activeClients.delete(client);
+      this.clientLastSeq.delete(client);
     }
   }
 
   private broadcastEvent(event: SignalEvent): void {
     for (const client of this.activeClients) {
       this.sendSseEvent(client, event);
+    }
+  }
+
+  private pollForNewEvents(): void {
+    if (this.tailPollInProgress) return;
+    this.tailPollInProgress = true;
+
+    try {
+      const events = this.eventStore.getSince(this.tailCursor);
+      for (const event of events) {
+        if (event.seq <= this.tailCursor) continue;
+        this.tailCursor = event.seq;
+        this.broadcastEvent(event);
+      }
+    } catch (err) {
+      // Keep cursor unchanged so transient SQLite errors are retried on the next interval.
+      console.warn('Telemetry event tail poll failed; retrying.', err);
+    } finally {
+      this.tailPollInProgress = false;
     }
   }
 

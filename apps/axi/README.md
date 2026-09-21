@@ -2,7 +2,7 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.8.1: preserve named job isolation and read-only state semantics  [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.8.2: job-targeted live telemetry with SQLite tailing  [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.2) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -121,10 +121,12 @@ Launch the real-time telemetry streaming server and live viewer for a skill.
 ```bash
 npx -y @reactive-skills/axi view my-skill             # default port 4242
 npx -y @reactive-skills/axi view my-skill --port 5000 # custom port
+npx -y @reactive-skills/axi view my-skill --job sprint-1 # follow one job
 ```
 
 Output (TOON format):
 - Telemetry listener status
+- Selected job ID
 - Bound port and base URL
 - SSE events endpoint (`/events`)
 - State inspection endpoint (`/state`)

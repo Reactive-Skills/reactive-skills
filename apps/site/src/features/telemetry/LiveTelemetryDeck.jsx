@@ -23,6 +23,7 @@ export function LiveTelemetryDeck({ skill }) {
   const [status, setStatus] = useState('disconnected'); // 'disconnected' | 'connecting' | 'connected' | 'error'
   const [errorMessage, setErrorMessage] = useState('');
   const [activeState, setActiveState] = useState(skill.initialState || '');
+  const [jobId, setJobId] = useState('');
   const [context, setContext] = useState({});
   const [events, setEvents] = useState([]);
   const [scrubIndex, setScrubIndex] = useState(null);
@@ -55,6 +56,9 @@ export function LiveTelemetryDeck({ skill }) {
       if (stateData.context) {
         setContext(stateData.context);
       }
+      if (stateData.jobId) {
+        setJobId(stateData.jobId);
+      }
 
       // Open SSE event stream
       const es = new EventSource(`${bridgeUrl}/events?sinceSeq=0`);
@@ -65,6 +69,10 @@ export function LiveTelemetryDeck({ skill }) {
       };
 
       es.addEventListener('connected', (e) => {
+        try {
+          const connectedData = JSON.parse(e.data);
+          if (connectedData.jobId) setJobId(connectedData.jobId);
+        } catch {}
         setStatus('connected');
       });
 
@@ -197,6 +205,10 @@ export function LiveTelemetryDeck({ skill }) {
               disabled={status === 'connected' || status === 'connecting'}
             />
           </div>
+
+          <span className="rounded-lg border border-phino-border bg-phino-canvas px-2.5 py-1 font-mono text-xs text-phino-text-muted">
+            Job: {jobId || 'unknown'}
+          </span>
         </div>
 
         <div className="flex items-center gap-2">

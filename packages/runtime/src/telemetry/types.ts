@@ -32,17 +32,29 @@ export interface TelemetryServerOptions {
    * Skill identifier for health/metadata reporting
    */
   skillName?: string;
+
+  /**
+   * Job identifier for health/metadata reporting
+   */
+  jobId?: string;
+
+  /**
+   * Interval for polling SQLite events written by another process in ms (default: 250)
+   */
+  tailIntervalMs?: number;
 }
 
 export interface TelemetryHealthResponse {
   status: 'ok';
   skillName?: string;
+  jobId?: string;
   latestSeq: number;
   uptimeSeconds: number;
 }
 
 export interface TelemetryStateResponse {
   skillName?: string;
+  jobId?: string;
   latestSeq: number;
   activeState?: string;
   context?: Record<string, any>;

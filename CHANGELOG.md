@@ -1,4 +1,12 @@
 
+## [0.8.2] - 2026-09-21
+
+- chore(prose): expand prose quality gate to blog and docs, de-slop site content (4bb1a9a)
+- chore(blog): de-slop launch series prose and tighten technical voice (02fc333)
+- feat(blog): integrate Decap CMS, markdown loader, and launch reactive runtime series (690995b)
+- chore(release): v0.8.1 - preserve named job isolation and read-only state semantics (9a107e6)
+- fix(runtime): preserve isolation for named parallel jobs (87d0832)
+
 ## [0.8.1] - 2026-09-21
 
 - fix(runtime): preserve isolation for named parallel jobs (87d0832)

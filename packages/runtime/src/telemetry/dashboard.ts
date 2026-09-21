@@ -1,5 +1,6 @@
 export interface DashboardOptions {
   skillName?: string;
+  jobId?: string;
   port: number;
   host: string;
 }
@@ -529,6 +530,7 @@ export function renderDashboardHtml(options: DashboardOptions): string {
       <span class="brand-logo">⚡</span>
       <span class="brand-title">Reactive Skills</span>
       <span class="brand-skill" id="skillNameBadge">${escapeHtml(titleSkill)}</span>
+      <span class="brand-skill" id="jobIdBadge">job: ${escapeHtml(options.jobId || 'unknown')}</span>
     </div>
 
     <div class="header-metrics">
@@ -659,6 +661,7 @@ export function renderDashboardHtml(options: DashboardOptions): string {
       const emitBtn = document.getElementById('emitBtn');
       const dispatchFeedback = document.getElementById('dispatchFeedback');
       const skillNameBadge = document.getElementById('skillNameBadge');
+      const jobIdBadge = document.getElementById('jobIdBadge');
 
       // Auto-detect scroll position
       eventsList.addEventListener('scroll', () => {
@@ -676,6 +679,9 @@ export function renderDashboardHtml(options: DashboardOptions): string {
           const res = await fetch('/state');
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const data = await res.json();
+          if (data.jobId && jobIdBadge) {
+            jobIdBadge.textContent = 'job: ' + data.jobId;
+          }
           if (data.skillName) {
             skillNameBadge.textContent = data.skillName;
             document.title = '⚡ ' + data.skillName + ' — Reactive Skills Telemetry';

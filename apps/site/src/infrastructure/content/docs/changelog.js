@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-8-2",
+    "heading": "v0.8.2 (2026-09-21)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "chore(prose): expand prose quality gate to blog and docs, de-slop site content",
+          "chore(blog): de-slop launch series prose and tighten technical voice",
+          "feat(blog): integrate Decap CMS, markdown loader, and launch reactive runtime series",
+          "chore(release): v0.8.1 - preserve named job isolation and read-only state semantics",
+          "fix(runtime): preserve isolation for named parallel jobs"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-8-1",
     "heading": "v0.8.1 (2026-09-21)",
     "blocks": [
