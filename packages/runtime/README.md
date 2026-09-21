@@ -2,7 +2,7 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.8.2: job-targeted live telemetry with SQLite tailing  [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.2) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.8.3: automatic telemetry viewer port selection** [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.3) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -43,6 +43,18 @@ The telemetry server combines in-process event notifications with a configurable
 This lets events written by separate CLI, MCP, or worker processes reach the existing SSE stream.
 
 Omit `--job` to preserve existing resolution through `REACTIVE_JOB_ID`, the active pointer, and the default job.
+
+### Automatic Viewer Port Selection
+
+When `--port` is omitted, the standalone viewer makes real HTTP bind attempts starting at `127.0.0.1:4242`.
+
+If the preferred port is occupied, the runtime tries the next available port through a bounded deterministic fallback range.
+
+Use `--port <number>` to bind only to an explicit port, or use `--port 0` to preserve OS-assigned ephemeral port selection.
+
+The selected port and URL are reported by the CLI, `/health`, `/state`, and the SSE `connected` event.
+
+The browser viewer does not scan local ports automatically, so clients should use the URL reported by AXI.
 
 ## Skill Manifest Schema
 

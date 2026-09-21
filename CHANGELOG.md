@@ -1,4 +1,12 @@
 
+## [0.8.3] - 2026-09-21
+
+- fix(site): restore live telemetry updates (0d76add)
+- chore(release): v0.8.2 - add job-targeted live telemetry (4efd2ae)
+- chore(prose): expand prose quality gate to blog and docs, de-slop site content (4bb1a9a)
+- chore(blog): de-slop launch series prose and tighten technical voice (02fc333)
+- feat(blog): integrate Decap CMS, markdown loader, and launch reactive runtime series (690995b)
+
 ## [0.8.2] - 2026-09-21
 
 - chore(prose): expand prose quality gate to blog and docs, de-slop site content (4bb1a9a)

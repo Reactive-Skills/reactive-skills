@@ -2,7 +2,7 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.8.2: job-targeted live telemetry with SQLite tailing  [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.2) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.8.3: automatic telemetry viewer port selection** [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.3) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -119,10 +119,19 @@ Output (TOON format):
 Launch the real-time telemetry streaming server and live viewer for a skill.
 
 ```bash
-npx -y @reactive-skills/axi view my-skill             # default port 4242
-npx -y @reactive-skills/axi view my-skill --port 5000 # custom port
-npx -y @reactive-skills/axi view my-skill --job sprint-1 # follow one job
+npx -y @reactive-skills/axi view my-skill                    # prefer 4242, then use the next available port
+npx -y @reactive-skills/axi view my-skill --port 5000        # bind only to 5000
+npx -y @reactive-skills/axi view my-skill --port 0           # use an OS-assigned ephemeral port
+npx -y @reactive-skills/axi view my-skill --job sprint-1     # follow one job without changing the active pointer
 ```
+
+When `--port` is omitted, AXI uses real bind attempts starting at `127.0.0.1:4242` and falls back through a bounded deterministic range when the preferred port is occupied.
+
+An explicit `--port` is strict and fails clearly if that port is unavailable.
+
+The output reports the actual bound port and URL in the `port`, `url`, `dashboard`, `events_sse`, `state_endpoint`, and `health_endpoint` fields.
+
+The browser viewer uses the URL reported by AXI and does not scan local ports automatically.
 
 Output (TOON format):
 - Telemetry listener status

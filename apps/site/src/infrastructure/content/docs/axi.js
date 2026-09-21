@@ -36,12 +36,21 @@ export const axi = {
           'axi jobs [list|switch|archive] <skill> — manages isolated execution runs, active pointer resolution, and deliverable mirroring.',
           'axi inspect <path> — displays complete statechart hierarchy and guard rules.',
           'axi events <skill> [limit] — tails the immutable append-only event ledger.',
-          'axi view <skill> [--job <id>]: launches a job-scoped real-time telemetry server and live visual viewer.',
+          'axi view <skill> [--job <id>] [--port <number>]: launches a job-scoped real-time telemetry server and live visual viewer.',
           'axi init <name> — scaffolds a modular reactive skill directory.',
           'axi reset <skill> — resets active execution run while preserving deliverables.',
           'axi sync [skill] — synchronizes skills across authoring workspaces and agent satellites via zero-drift junctions.',
           'axi mcp — launches stdio MCP server for GUI IDE host connectivity.',
         ] },
+      ],
+    },
+    {
+      id: 'telemetry-viewer',
+      heading: 'Telemetry viewer ports',
+      blocks: [
+        { type: 'text', text: 'When `--port` is omitted, AXI makes real bind attempts starting at `127.0.0.1:4242` and falls back through a bounded deterministic range if the preferred port is occupied.' },
+        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi view my-skill\nnpx -y @reactive-skills/axi view my-skill --port 5000\nnpx -y @reactive-skills/axi view my-skill --port 0', explanation: 'Omitted --port enables automatic fallback, an explicit port is strict, and port 0 requests an OS-assigned ephemeral port.' } },
+        { type: 'text', text: 'The CLI output and telemetry responses report the actual selected port and URL. The browser viewer uses that reported URL and does not scan local ports automatically.' },
       ],
     },
     {

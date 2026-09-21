@@ -11,12 +11,17 @@ import {
   TelemetryStateResponse,
 } from './types.js';
 import { renderDashboardHtml } from './dashboard.js';
+import {
+  DEFAULT_TELEMETRY_PORT,
+  listenWithPortSelection,
+} from './port-selection.js';
 
 export class TelemetryServer {
   private server: http.Server | null = null;
   private eventStore: EventStore;
   private fsmEngine?: FSMEngine;
-  private port: number;
+  private requestedPort?: number;
+  private port?: number;
   private host: string;
   private heartbeatIntervalMs: number;
   private tailIntervalMs: number;
@@ -34,7 +39,8 @@ export class TelemetryServer {
   constructor(options: TelemetryServerOptions) {
     this.eventStore = options.eventStore;
     this.fsmEngine = options.fsmEngine;
-    this.port = options.port ?? 4242;
+    this.requestedPort = options.port;
+    this.port = options.port;
     this.host = options.host ?? '127.0.0.1';
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 15000;
     this.tailIntervalMs = options.tailIntervalMs ?? 250;
@@ -43,12 +49,12 @@ export class TelemetryServer {
   }
 
   public getPort(): number {
-    if (!this.server) return this.port;
+    if (!this.server) return this.port ?? DEFAULT_TELEMETRY_PORT;
     const addr = this.server.address();
     if (typeof addr === 'object' && addr !== null) {
       return addr.port;
     }
-    return this.port;
+    return this.port ?? DEFAULT_TELEMETRY_PORT;
   }
 
   public getUrl(): string {
@@ -60,34 +66,45 @@ export class TelemetryServer {
       return { port: this.getPort(), url: this.getUrl() };
     }
 
-    this.server = http.createServer((req, res) => {
+    const bound = await listenWithPortSelection({
+      host: this.host,
+      requestedPort: this.requestedPort,
+      createServer: () => this.createServer(),
+    });
+    this.server = bound.server;
+    this.port = bound.port;
+    this.startTime = Date.now();
+
+    try {
+      // Poll from the current sequence so local and external writers share one ordered delivery path.
+      this.tailCursor = this.eventStore.getLatestSequence();
+      this.unsubscribeEventStore = this.eventStore.subscribe(() => {
+        this.pollForNewEvents();
+      });
+      this.tailerTimer = setInterval(() => {
+        this.pollForNewEvents();
+      }, this.tailIntervalMs);
+    } catch (error) {
+      await this.stop();
+      throw error;
+    }
+
+    return { port: bound.port, url: this.getUrl() };
+  }
+
+  private createServer(): http.Server {
+    const server = http.createServer((req, res) => {
       this.handleRequest(req, res);
     });
 
-    this.server.on('connection', (socket) => {
+    server.on('connection', (socket) => {
       this.activeSockets.add(socket);
       socket.on('close', () => {
         this.activeSockets.delete(socket);
       });
     });
 
-    // Poll from the current sequence so local and external writers share one ordered delivery path.
-    this.tailCursor = this.eventStore.getLatestSequence();
-    this.unsubscribeEventStore = this.eventStore.subscribe(() => {
-      this.pollForNewEvents();
-    });
-    this.tailerTimer = setInterval(() => {
-      this.pollForNewEvents();
-    }, this.tailIntervalMs);
-
-    return new Promise((resolve, reject) => {
-      this.server!.once('error', reject);
-      this.server!.listen(this.port, this.host, () => {
-        this.server!.removeListener('error', reject);
-        const actualPort = this.getPort();
-        resolve({ port: actualPort, url: this.getUrl() });
-      });
-    });
+    return server;
   }
 
   public async stop(): Promise<void> {
@@ -147,7 +164,7 @@ export class TelemetryServer {
       return;
     }
 
-    const hostHeader = req.headers.host || `${this.host}:${this.port}`;
+    const hostHeader = req.headers.host || `${this.host}:${this.getPort()}`;
     const parsedUrl = new URL(req.url || '/', `http://${hostHeader}`);
     const pathname = parsedUrl.pathname;
     const isGetOrHead = req.method === 'GET' || req.method === 'HEAD';
@@ -209,6 +226,8 @@ export class TelemetryServer {
       status: 'ok',
       skillName: this.skillName,
       jobId: this.jobId,
+      port: this.getPort(),
+      url: this.getUrl(),
       latestSeq: this.eventStore.getLatestSequence(),
       uptimeSeconds: Math.floor((Date.now() - this.startTime) / 1000),
     };
@@ -233,6 +252,8 @@ export class TelemetryServer {
     const payload: TelemetryStateResponse = {
       skillName: this.skillName,
       jobId: this.jobId,
+      port: this.getPort(),
+      url: this.getUrl(),
       latestSeq,
       activeState,
       context,
@@ -296,7 +317,7 @@ export class TelemetryServer {
     this.activeClients.add(res);
 
     // Initial greeting / connect event
-    res.write(`event: connected\ndata: ${JSON.stringify({ skillName: this.skillName, jobId: this.jobId, connectedAt: new Date().toISOString() })}\n\n`);
+    res.write(`event: connected\ndata: ${JSON.stringify({ skillName: this.skillName, jobId: this.jobId, port: this.getPort(), url: this.getUrl(), connectedAt: new Date().toISOString() })}\n\n`);
 
     // Determine initial backlog sequence
     const sinceSeqParam = url.searchParams.get('sinceSeq') || (req.headers['last-event-id'] as string | undefined);

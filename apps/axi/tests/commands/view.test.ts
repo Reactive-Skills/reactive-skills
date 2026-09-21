@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import http from 'node:http';
 import { viewCommand } from '../../src/commands/view.js';
 import { JobManager } from '@reactive-skills/runtime';
 
@@ -55,6 +56,73 @@ states:
     expect(result).toContain('/events"');
   });
 
+  it('automatically falls back when the preferred port is occupied', async () => {
+    const skillDir = path.join(process.cwd(), 'skills', 'fallback-viewer-skill');
+    fs.mkdirSync(path.join(skillDir, 'states'), { recursive: true });
+    fs.writeFileSync(
+      path.join(skillDir, 'skill.yaml'),
+      `schema_version: "reactive/v1"
+name: fallback-viewer-skill
+version: "1.0.0"
+description: "Fallback viewer skill test"
+initial_state: START
+states:
+  START:
+    description: "Starting state"
+`,
+      'utf8'
+    );
+
+    const blocker = http.createServer();
+    await new Promise<void>((resolve, reject) => {
+      blocker.once('error', reject);
+      blocker.listen(4242, '127.0.0.1', () => resolve());
+    });
+
+    try {
+      const result = await viewCommand(['fallback-viewer-skill', '--once']);
+
+      expect(result).toContain('port: "4243"');
+      expect(result).toContain('url: "http://127.0.0.1:4243"');
+      expect(result).toContain('events_sse: "http://127.0.0.1:4243/events"');
+    } finally {
+      await new Promise<void>((resolve) => blocker.close(() => resolve()));
+    }
+  });
+
+  it('fails clearly when an explicitly requested port is occupied', async () => {
+    const skillDir = path.join(process.cwd(), 'skills', 'explicit-port-viewer-skill');
+    fs.mkdirSync(path.join(skillDir, 'states'), { recursive: true });
+    fs.writeFileSync(
+      path.join(skillDir, 'skill.yaml'),
+      `schema_version: "reactive/v1"
+name: explicit-port-viewer-skill
+version: "1.0.0"
+description: "Explicit port viewer skill test"
+initial_state: START
+states:
+  START:
+    description: "Starting state"
+`,
+      'utf8'
+    );
+
+    const blocker = http.createServer();
+    await new Promise<void>((resolve, reject) => {
+      blocker.once('error', reject);
+      blocker.listen(4264, '127.0.0.1', () => resolve());
+    });
+
+    try {
+      const result = await viewCommand(['explicit-port-viewer-skill', '--port', '4264', '--once']);
+
+      expect(result).toContain('Port 4264 on 127.0.0.1 is already in use.');
+      expect(result).toContain('Failed to launch telemetry viewer');
+    } finally {
+      await new Promise<void>((resolve) => blocker.close(() => resolve()));
+    }
+  });
+
   it('starts a viewer for an explicit job and reports the job ID', async () => {
     const skillDir = path.join(process.cwd(), 'skills', 'job-viewer-skill');
     fs.mkdirSync(path.join(skillDir, 'states'), { recursive: true });
@@ -72,13 +140,22 @@ states:
       'utf8'
     );
 
-    new JobManager(process.cwd()).createJob('job-viewer-skill', {
+    const jobManager = new JobManager(process.cwd());
+    jobManager.createJob('job-viewer-skill', {
+      id: 'active-slice',
+      initialState: 'START',
+      setActive: true,
+    });
+    jobManager.createJob('job-viewer-skill', {
       id: 'review-slice',
       initialState: 'START',
+      setActive: false,
     });
+    expect(jobManager.getActiveJobId('job-viewer-skill')).toBe('active-slice');
 
     const result = await viewCommand(['job-viewer-skill', '--job', 'review-slice', '--port', '0', '--once']);
 
     expect(result).toContain('job_id: review-slice');
+    expect(jobManager.getActiveJobId('job-viewer-skill')).toBe('active-slice');
   });
 });

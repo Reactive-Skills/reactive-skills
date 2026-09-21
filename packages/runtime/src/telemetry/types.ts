@@ -14,7 +14,7 @@ export interface TelemetryServerOptions {
   fsmEngine?: FSMEngine;
 
   /**
-   * Port to listen on (0 for ephemeral port, default: 4242)
+   * Port to listen on (0 for an OS-assigned port, omitted for bounded automatic selection from 4242)
    */
   port?: number;
 
@@ -48,6 +48,8 @@ export interface TelemetryHealthResponse {
   status: 'ok';
   skillName?: string;
   jobId?: string;
+  port: number;
+  url: string;
   latestSeq: number;
   uptimeSeconds: number;
 }
@@ -55,6 +57,8 @@ export interface TelemetryHealthResponse {
 export interface TelemetryStateResponse {
   skillName?: string;
   jobId?: string;
+  port: number;
+  url: string;
   latestSeq: number;
   activeState?: string;
   context?: Record<string, any>;
