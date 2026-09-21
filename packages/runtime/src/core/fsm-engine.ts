@@ -21,7 +21,7 @@ import { EventStore, createSortableId } from './event-store.js';
 import { GuardEvaluator } from './guard-evaluator.js';
 import { LegacySkillAdapter } from './legacy-adapter.js';
 import { ProjectionEngine } from './projection-engine.js';
-import { JobManager } from './job-manager.js';
+import { JobManager, isJobTerminal } from './job-manager.js';
 
 export interface FSMEngineOptions {
   skillDir: string;
@@ -32,6 +32,7 @@ export interface FSMEngineOptions {
   runId?: string;
   initialContext?: Record<string, any>;
   autoRehydrate?: boolean;
+  autoRotateTerminal?: boolean;
   perfThresholds?: {
     maxSliceDurationMs?: number;
     maxTransitionDurationMs?: number;
@@ -81,7 +82,15 @@ export class FSMEngine {
 
     const effectiveJobId = options.jobId || options.runId;
     this.jobManager = new JobManager(this.workspaceDir);
-    const activeJobId = this.jobManager.getActiveJobId(this.manifest.name);
+    let activeJobId = this.jobManager.getActiveJobId(this.manifest.name);
+
+    if (!effectiveJobId && options.autoRotateTerminal !== false) {
+      const rotation = this.jobManager.rotateIfTerminal(this.manifest.name);
+      if (rotation.rotated) {
+        activeJobId = rotation.activeJobId;
+      }
+    }
+
     const resolvedJobId = effectiveJobId || activeJobId;
     const isActiveJob = (resolvedJobId === activeJobId);
 
@@ -824,8 +833,12 @@ export class FSMEngine {
           }
 
           if (this.jobId) {
+            const newState = this.getCurrentState();
+            const isTerminal = isJobTerminal({ currentState: newState, status: 'active' } as any);
             this.jobManager.updateJob(this.manifest.name, this.jobId, {
-              currentState: this.getCurrentState(),
+              currentState: newState,
+              status: isTerminal ? 'completed' : 'active',
+              completedAt: isTerminal ? new Date().toISOString() : undefined,
             });
           }
 

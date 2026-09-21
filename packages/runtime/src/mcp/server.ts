@@ -40,7 +40,11 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
   function getEngine(skillName: string = defaultSkill, jobId?: string): FSMEngine {
     const jobManager = new JobManager(workspaceDir);
-    const resolvedJobId = jobId || jobManager.getActiveJobId(skillName);
+    let resolvedJobId = jobId;
+    if (!resolvedJobId) {
+      const rotation = jobManager.rotateIfTerminal(skillName);
+      resolvedJobId = rotation.activeJobId;
+    }
     const cacheKey = `${skillName}::${resolvedJobId}`;
 
     if (engines.has(cacheKey)) {

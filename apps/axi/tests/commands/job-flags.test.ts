@@ -34,13 +34,20 @@ states:
     transitions:
       ADVANCE:
         target: "PHASE_2"
+      FINISH:
+        target: "DONE"
   PHASE_2:
+    transitions:
+      FINISH:
+        target: "DONE"
+  DONE:
     transitions: {}
 `
     );
 
     fs.writeFileSync(path.join(skillDir, 'states', 'phase_1.md'), '# Phase 1');
     fs.writeFileSync(path.join(skillDir, 'states', 'phase_2.md'), '# Phase 2');
+    fs.writeFileSync(path.join(skillDir, 'states', 'done.md'), '# Done');
   });
 
   afterEach(() => {
@@ -105,5 +112,28 @@ states:
     const externalSkillPath = path.join(os.homedir(), '.agents', 'skills', 'global-skill');
     const resolved = resolveWorkspaceDir(externalSkillPath);
     expect(resolved).toBe(process.cwd());
+  });
+
+  it('stateCommand terminal auto-rotation: auto-rotates to fresh job when active job is terminal, but preserves historical read on explicit --job', async () => {
+    const jobManager = new JobManager(tmpDir);
+
+    // Initial state is PHASE_1
+    const initialOutput = await stateCommand(['flags-skill']);
+    expect(initialOutput).toContain('PHASE_1');
+    const initialJobId = jobManager.getActiveJobId('flags-skill');
+
+    // Advance to terminal state via signal emission
+    await emitCommand(['flags-skill', 'FINISH']);
+
+    // Calling state without --job should auto-rotate and boot into PHASE_1 with a fresh job ID
+    const autoRotatedOutput = await stateCommand(['flags-skill']);
+    expect(autoRotatedOutput).toContain('PHASE_1');
+    const newActiveJobId = jobManager.getActiveJobId('flags-skill');
+    expect(newActiveJobId).not.toBe(initialJobId);
+
+    // Calling state WITH explicit --job on the old job should still inspect the old job without rotating
+    const explicitOldOutput = await stateCommand(['flags-skill', '--job', initialJobId]);
+    expect(explicitOldOutput).toContain('DONE');
+    expect(jobManager.getActiveJobId('flags-skill')).toBe(newActiveJobId);
   });
 });

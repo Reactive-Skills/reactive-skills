@@ -29,6 +29,27 @@ export interface CreateJobOptions {
   setActive?: boolean;
 }
 
+export const TERMINAL_STATES = new Set([
+  'COMPLETED',
+  'DONE',
+  'SUCCESS',
+  'ERROR',
+  'BYPASS_DETECTED',
+  'ABORTED',
+  'TERMINAL',
+]);
+
+/**
+ * Determines whether a job is in a terminal state (either by status or currentState).
+ */
+export function isJobTerminal(job: JobMetadata): boolean {
+  if (job.status === 'completed' || job.status === 'archived' || job.status === 'failed') {
+    return true;
+  }
+  const lastStateSegment = (job.currentState || '').split('.').pop() || job.currentState;
+  return TERMINAL_STATES.has(lastStateSegment.toUpperCase());
+}
+
 /**
  * JobManager handles execution run isolation, active job pointer resolution,
  * and job metadata persistence.
@@ -243,5 +264,35 @@ export class JobManager {
     }
 
     return jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  /**
+   * Rotates the active job pointer to a fresh job if the current active job is in a terminal state.
+   */
+  public rotateIfTerminal(skillId: string): { rotated: boolean; activeJobId: string; previousJobId?: string } {
+    const activeJobId = this.getActiveJobId(skillId);
+    const job = this.getJob(skillId, activeJobId);
+
+    if (job && isJobTerminal(job)) {
+      this.updateJob(skillId, activeJobId, {
+        status: 'archived',
+        completedAt: job.completedAt || new Date().toISOString(),
+      });
+
+      const freshJob = this.createJob(skillId, {
+        setActive: true,
+      });
+
+      return {
+        rotated: true,
+        activeJobId: freshJob.id,
+        previousJobId: activeJobId,
+      };
+    }
+
+    return {
+      rotated: false,
+      activeJobId,
+    };
   }
 }

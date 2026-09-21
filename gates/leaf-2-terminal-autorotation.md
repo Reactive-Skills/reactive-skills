@@ -21,7 +21,15 @@
 3. If `--job <id>` is explicitly passed to `state`, the runtime returns the historical state without auto-rotating.
 
 ## Verification Gates
-- [ ] G1: Calling `isJobTerminal` returns true for `COMPLETED`, `DONE`, etc.
-- [ ] G2: When active job is terminal, `stateCommand` boots into `INIT` with a fresh sortable ID instead of failing with `Current job is terminal`.
-- [ ] G3: Calling `stateCommand` with explicit `--job <completed-id>` still inspects the completed job.
-- [ ] G4: Vitest test suite for terminal auto-rotation passes.
+- [x] G1: Calling `isJobTerminal` returns true for `COMPLETED`, `DONE`, etc.
+  CHECK: npx vitest run packages/runtime/tests/job-domain.test.ts -t "identifies terminal jobs"
+  EVIDENCE: passed (1 test passed)
+- [x] G2: When active job is terminal, `stateCommand` boots into initial state with a fresh sortable ID instead of failing with `Current job is terminal`.
+  CHECK: npx vitest run apps/axi/tests/commands/job-flags.test.ts -t "stateCommand terminal auto-rotation"
+  EVIDENCE: passed (1 test passed)
+- [x] G3: Calling `stateCommand` with explicit `--job <completed-id>` still inspects the completed job.
+  CHECK: npx vitest run apps/axi/tests/commands/job-flags.test.ts -t "stateCommand terminal auto-rotation"
+  EVIDENCE: passed (1 test passed)
+- [x] G4: Vitest test suite for terminal auto-rotation passes.
+  CHECK: npx vitest run packages/runtime/tests/job-domain.test.ts apps/axi/tests/commands/job-flags.test.ts
+  EVIDENCE: passed (17 passed out of 17 tests)

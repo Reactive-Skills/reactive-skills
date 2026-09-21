@@ -7,6 +7,7 @@ import {
   normalizeJobSlug,
   JobManager,
   DEFAULT_JOB_ID,
+  isJobTerminal,
 } from '../src/core/job-manager.js';
 
 describe('Job Domain & Metadata (Leaf 1)', () => {
@@ -145,6 +146,41 @@ describe('Job Domain & Metadata (Leaf 1)', () => {
       const completed = manager.getJob('synthesis', job.id);
       expect(completed?.status).toBe('completed');
       expect(completed?.completedAt).toBeDefined();
+    });
+
+    it('identifies terminal jobs via isJobTerminal', () => {
+      expect(isJobTerminal({ status: 'completed', currentState: 'DONE' } as any)).toBe(true);
+      expect(isJobTerminal({ status: 'active', currentState: 'DONE' } as any)).toBe(true);
+      expect(isJobTerminal({ status: 'active', currentState: 'PHASE_1.COMPLETED' } as any)).toBe(true);
+      expect(isJobTerminal({ status: 'active', currentState: 'BYPASS_DETECTED' } as any)).toBe(true);
+      expect(isJobTerminal({ status: 'active', currentState: 'INIT' } as any)).toBe(false);
+      expect(isJobTerminal({ status: 'active', currentState: 'WORK.IN_PROGRESS' } as any)).toBe(false);
+    });
+
+    it('rotateIfTerminal rotates active job when terminal, leaves alone when active', () => {
+      const manager = new JobManager(tmpDir);
+      const activeJob = manager.createJob('synthesis', { name: 'active-job', initialState: 'INIT', setActive: true });
+
+      // Non-terminal job should not rotate
+      const noRotation = manager.rotateIfTerminal('synthesis');
+      expect(noRotation.rotated).toBe(false);
+      expect(noRotation.activeJobId).toBe(activeJob.id);
+
+      // Transition job to terminal
+      manager.updateJob('synthesis', activeJob.id, {
+        currentState: 'DONE',
+        status: 'completed',
+      });
+
+      // Terminal job must auto-rotate
+      const rotation = manager.rotateIfTerminal('synthesis');
+      expect(rotation.rotated).toBe(true);
+      expect(rotation.activeJobId).not.toBe(activeJob.id);
+      expect(manager.getActiveJobId('synthesis')).toBe(rotation.activeJobId);
+
+      // Previous job must now be archived
+      const prev = manager.getJob('synthesis', activeJob.id);
+      expect(prev?.status).toBe('archived');
     });
   });
 });
