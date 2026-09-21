@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-8-4",
+    "heading": "v0.8.4 (2026-09-21)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "Merge remote-tracking branch 'origin/main' into feature/multi-job-telemetry-broker",
+          "feat(telemetry): add multi-job broker",
+          "chore(release): v0.8.3 - add viewer port fallback",
+          "fix(site): restore live telemetry updates",
+          "chore(release): v0.8.2 - add job-targeted live telemetry"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-8-3",
     "heading": "v0.8.3 (2026-09-21)",
     "blocks": [
