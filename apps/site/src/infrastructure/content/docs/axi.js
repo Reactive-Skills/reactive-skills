@@ -27,11 +27,13 @@ export const axi = {
       heading: 'The public CLI contract',
       blocks: [
         { type: 'text', text: 'The CLI entrypoint is zero-install via npx, or installed globally with npm i -g @reactive-skills/axi.' },
-        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi <command> [options]', explanation: 'Available commands: init, state, emit, events, inspect, reset, upgrade, view, sync, mcp.' } },
+        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi <command> [options]', explanation: 'Available commands: invoke, state, emit, jobs, events, inspect, reset, upgrade, init, view, sync, mcp.' } },
         { type: 'list', items: [
           'axi (dashboard) — lists registered skills, current states, and suggested next actions.',
-          'axi state <skill> — outputs active state, hierarchical path, and allowed transitions.',
+          'axi invoke <skill> [--payload JSON] [--job <id>] — starts a fresh isolated execution run, auto-generating a unique job ID.',
+          'axi state <skill> [--job <id>] — outputs active state, hierarchical path, and allowed transitions (auto-rotates if prior job completed).',
           'axi emit <skill> <signal> — dispatches a typed signal to evaluate guards and advance.',
+          'axi jobs [list|switch|archive] <skill> — manages isolated execution runs, active pointer resolution, and deliverable mirroring.',
           'axi inspect <path> — displays complete statechart hierarchy and guard rules.',
           'axi events <skill> [limit] — tails the immutable append-only event ledger.',
           'axi view <skill> — launches real-time telemetry server and live visual viewer.',

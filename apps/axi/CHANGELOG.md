@@ -1,4 +1,12 @@
 
+## [0.8.0] - 2026-09-21
+
+- feat(axi): support --run and REACTIVE_JOB_ID in events command (9709621)
+- feat(runtime): implement REACTIVE_JOB_ID environment isolation and flag synonyms (Leaf 3) (715ccf3)
+- feat(runtime): implement terminal job auto-rotation on state queries (Leaf 2) (abdc9df)
+- feat(axi): invert reactive bootloader to promote invoke for new tasks (Leaf 1) (4aa92d6)
+- docs(spec): add job lifecycle ergonomics, terminal auto-rotation, and stigmergic gates (a9915a9)
+
 ## [0.7.0] - 2026-09-21
 
 ### Features

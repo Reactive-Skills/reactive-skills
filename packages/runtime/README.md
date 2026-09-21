@@ -2,7 +2,7 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.7.0:** Decoupled Judgment Engine & Snap-on Adapters (Jev/Script), Circuit Breaker Fallback Routing, and Semantic Model Capability Tiers. [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.7.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.8.0:** Job Lifecycle Auto-Rotation, Environment-Scoped Isolation (REACTIVE_JOB_ID), and Inverted Bootloader Contract. [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -133,6 +133,9 @@ const engine = new FSMEngine({
 
 // Deliverables automatically mirror to .docs/my-skill/jobs/sprint-1/ and canonical .docs/
 ```
+
+- **Terminal Auto-Rotation:** Querying `state` or `FSMEngine` without an explicit `jobId` automatically archives completed runs and rotates to a fresh job ID.
+- **Environment Isolation (`REACTIVE_JOB_ID`):** Parallel subagents set `process.env.REACTIVE_JOB_ID = 'worker-1'` to run without mutating the shared filesystem active pointer.
 
 ## Performance & Telemetry
 

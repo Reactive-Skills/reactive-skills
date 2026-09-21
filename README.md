@@ -5,17 +5,17 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.7.0)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.0)
 
 ---
 
-> 🚀 **What's New in v0.7.0:**
-> - **Decoupled Judgment Engine:** Snap-on semantic guard evaluation via `JudgmentPort` with zero hard dependencies. Built-in instant heuristic sandbox and snap-on support for Jev System One decisions (`npx -y jev-axi`).
-> - **Circuit Breaker & Fallback Routing:** Resilient transition evaluation protects against external model timeouts or outages, automatically diverting to declared `fallback_target` states with `GUARD_FALLBACK_TRIGGERED` auditing.
-> - **Model Capability Tiers:** Declare per-state model tiers (`tier: fast | balanced | reasoning | decision`) in `skill.yaml`, injected into prompt slices as `<model_contract>` for intelligent multi-model routing.
-> - **Developer Tooling & Scaffolding:** Updated `skill-manager` with judgment and model tier discovery; added runnable verification demo (`demo:judgment`).
+> 🚀 **What's New in v0.8.0:**
+> - **Job Lifecycle Terminal Auto-Rotation:** Querying `axi state` or `reactive_state` on a completed run automatically archives it and boots into a fresh isolated job (`INIT`), eliminating dead-pointer state traps.
+> - **Environment-Scoped Isolation (`REACTIVE_JOB_ID`):** Parallel subagent swarms and CI workers run isolated jobs concurrently without mutating or fighting over the shared filesystem pointer.
+> - **Inverted Bootloader Contract:** `invoke` is now the primary task inception command across universal reactive bootloaders, with `state` reserved for resuming active tasks.
+> - **CLI Ergonomics & Flag Synonyms:** Added `--run` and `--run-id` everywhere alongside `--job`.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.7.0) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.0) · [View Changelog](CHANGELOG.md)
 
 ---
 
@@ -238,6 +238,15 @@ RSA provides multi-run isolation, allowing teams and autonomous agents to execut
 ### CLI Run Management
 
 ```bash
+# Start a fresh execution run (auto-generates sortable job ID)
+npx -y @reactive-skills/axi invoke <skill> [--payload JSON]
+
+# Inspect or resume the active execution run (auto-rotates if prior job is terminal)
+npx -y @reactive-skills/axi state <skill>
+
+# Run with environment-scoped isolation (parallel subagents)
+REACTIVE_JOB_ID=subagent-1 npx -y @reactive-skills/axi state <skill>
+
 # List all execution runs for a skill (active job highlighted)
 npx -y @reactive-skills/axi jobs <skill> list
 # (or bidirectional syntax: npx -y @reactive-skills/axi jobs list <skill>)

@@ -2,7 +2,7 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.7.0:** Support for Decoupled Semantic Judgments, Circuit Breaker Fallbacks, and Model Capability Tiers in prompt slices. [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.7.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.8.0:** Job Lifecycle Auto-Rotation, Environment-Scoped Isolation (REACTIVE_JOB_ID), and Inverted Bootloader Contract. [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -23,7 +23,8 @@ npm install -g @reactive-skills/axi
 ```bash
 # Zero-install via npx:
 npx -y @reactive-skills/axi                          # dashboard
-npx -y @reactive-skills/axi state <skill>            # active state & prompt
+npx -y @reactive-skills/axi invoke <skill>           # start fresh run (auto-generates unique job ID)
+npx -y @reactive-skills/axi state <skill>            # inspect/resume active run (auto-rotates if terminal)
 npx -y @reactive-skills/axi state <skill> --job <id> # target specific run
 npx -y @reactive-skills/axi emit <skill> <signal>    # advance state machine
 npx -y @reactive-skills/axi jobs <skill> list        # list isolated runs

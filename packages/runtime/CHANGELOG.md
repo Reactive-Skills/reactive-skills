@@ -1,4 +1,31 @@
 
+## [0.8.0] - 2026-09-21
+
+- feat(axi): support --run and REACTIVE_JOB_ID in events command (9709621)
+- feat(runtime): implement REACTIVE_JOB_ID environment isolation and flag synonyms (Leaf 3) (715ccf3)
+- feat(runtime): implement terminal job auto-rotation on state queries (Leaf 2) (abdc9df)
+- feat(axi): invert reactive bootloader to promote invoke for new tasks (Leaf 1) (4aa92d6)
+- docs(spec): add job lifecycle ergonomics, terminal auto-rotation, and stigmergic gates (a9915a9)
+
+## [0.8.0] - 2026-09-21
+
+### Features
+
+- **Job Lifecycle Terminal Auto-Rotation (`isJobTerminal`, `rotateIfTerminal`):**
+  - Querying `axi state <skill>` or `reactive_state` without an explicit `--job` on a completed run automatically archives the completed job and boots into a fresh isolated run (`INIT`) with a newly generated sortable ID.
+  - Eliminates the dead-pointer trap where agents were halted with `Current job is terminal`.
+  - Preserves historical inspection when `--job <completed-id>` is explicitly specified.
+
+- **Environment-Scoped Job Isolation (`process.env.REACTIVE_JOB_ID`):**
+  - Added support for `process.env.REACTIVE_JOB_ID` in `JobManager.getActiveJobId` and `args.ts`.
+  - Parallel subagents and CI workers can run concurrent tasks on the same skill without mutating or colliding on the shared `.reactive/skills/<skill>/active_job` file.
+
+- **Bootloader Contract Inversion:**
+  - Universal reactive bootloader (`<!-- REACTIVE BOOTLOADER -->`) updated to promote `axi invoke <skill>` for starting new tasks and `axi state <skill>` for resuming active tasks.
+
+- **CLI Flag Synonyms & Ergonomics:**
+  - Added `--run` and `--run-id` as first-class synonyms for `--job` across `invoke`, `state`, `emit`, `events`, and `reset`.
+
 ## [0.7.0] - 2026-09-21
 
 ### Features
