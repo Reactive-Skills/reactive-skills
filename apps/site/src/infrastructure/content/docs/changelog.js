@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-8-6",
+    "heading": "v0.8.6 (2026-09-21)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "fix(axi): add version flag",
+          "chore(release): v0.8.5 - automatic telemetry broker port fallback",
+          "fix(telemetry): reuse automatic broker port selection",
+          "feat(telemetry): add multi-job broker (#1)",
+          "chore(release): v0.8.3 - add viewer port fallback"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-8-5",
     "heading": "v0.8.5 (2026-09-21)",
     "blocks": [

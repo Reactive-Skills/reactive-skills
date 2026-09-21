@@ -1,4 +1,12 @@
 
+## [0.8.6] - 2026-09-21
+
+- fix(axi): add version flag (9a43cf0)
+- chore(release): v0.8.5 - automatic telemetry broker port fallback (269c0a9)
+- fix(telemetry): reuse automatic broker port selection (417ecd5)
+- feat(telemetry): add multi-job broker (#1) (d96ee85)
+- chore(release): v0.8.3 - add viewer port fallback (10e686e)
+
 ## [0.8.5] - 2026-09-21
 
 - fix(telemetry): reuse automatic broker port selection (417ecd5)

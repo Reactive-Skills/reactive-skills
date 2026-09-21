@@ -9,8 +9,8 @@
 
 ---
 
-> 🚀 **What's New in v0.8.5:**
-> - automatic telemetry broker port fallback with explicit-port compatibility
+> 🚀 **What's New in v0.8.6:**
+> - AXI `--version` support for agent runtime discovery
 > - read-only multi-job, multi-skill telemetry broker and site dashboard
 > - job-targeted live telemetry with SQLite tailing
 > - automatic telemetry viewer port selection with strict explicit port overrides
