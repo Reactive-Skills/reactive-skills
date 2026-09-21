@@ -1,4 +1,12 @@
 
+## [0.8.8] - 2026-09-21
+
+- fix(runtime): ensure published Jev adapter availability (#6) (f14431c)
+- Fix/direct typesafe jev (#4) (43c7eed)
+- chore(release): v0.8.6 - add AXI version flag (df00297)
+- fix(axi): add version flag (9a43cf0)
+- chore(release): v0.8.5 - automatic telemetry broker port fallback (269c0a9)
+
 ## [0.8.7] - 2026-09-21
 
 - fix(runtime): use direct TypeSafe SDK for Jev judgments (cc74622)
