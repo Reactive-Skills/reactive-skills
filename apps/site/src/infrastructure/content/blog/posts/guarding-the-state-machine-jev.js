@@ -55,7 +55,7 @@ export const postGuardingTheStateMachineJev = {
       blocks: [
         {
           type: 'text',
-          text: 'To solve this without sacrificing runtime neutrality, Reactive Skills implements a decoupled **Ports-and-Adapters Judgment Engine** (`packages/runtime/src/core/judgment-engine.ts`). The core runtime takes zero hard dependencies on external AI SDKs.',
+          text: 'To preserve deterministic execution while supporting semantic judgments, Reactive Skills implements a decoupled **Ports-and-Adapters Judgment Engine** (`packages/runtime/src/core/judgment-engine.ts`). The runtime includes the TypeSafe SDK but makes network calls only when `TYPESAFE_API_KEY` is configured.',
         },
         {
           type: 'text',
@@ -91,7 +91,7 @@ export const postGuardingTheStateMachineJev = {
         },
         {
           type: 'text',
-          text: 'The integration is optional and direct: install `@typesafe-ai/sdk`, configure `TYPESAFE_API_KEY`, and `JevJudgmentAdapter` calls TypeSafe AI System One without invoking `jev-axi`, a shell, or a temporary state file. If the SDK or credentials are unavailable, the runtime preserves its deterministic Script fallback.',
+          text: 'The integration is direct: configure `TYPESAFE_API_KEY`, and `JevJudgmentAdapter` calls TypeSafe AI System One without invoking `jev-axi`, a shell, or a temporary state file. The runtime package includes the SDK, and it preserves its deterministic Script fallback when credentials are unavailable or a request fails.',
         },
       ],
     },

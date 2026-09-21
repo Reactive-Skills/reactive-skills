@@ -142,6 +142,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(supports-color@8.1.1)(zod@3.25.76)
+      '@typesafe-ai/sdk':
+        specifier: ^0.6.0
+        version: 0.6.0
       handlebars:
         specifier: ^4.7.8
         version: 4.7.9
@@ -176,9 +179,6 @@ importers:
       '@types/node':
         specifier: ^22.13.0
         version: 22.20.2
-      '@typesafe-ai/sdk':
-        specifier: ^0.6.0
-        version: 0.6.0
       tsx:
         specifier: ^4.19.2
         version: 4.23.13

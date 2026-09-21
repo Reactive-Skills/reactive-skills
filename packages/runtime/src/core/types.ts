@@ -90,6 +90,7 @@ export interface JudgmentResult {
   confidence: number;
   passed: boolean;
   adapterName: string;
+  adapterSelectionReason?: string;
   latencyMs: number;
   error?: string;
   raw?: unknown;
