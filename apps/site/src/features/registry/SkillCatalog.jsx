@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, X, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { Search, X, Sparkles, SlidersHorizontal, Terminal } from 'lucide-react';
+import { CopyButton } from '@/components/common/CopyButton';
 import { SkillCard } from './SkillCard';
 import { cn } from '@/lib/utils';
 
@@ -116,21 +117,48 @@ export function SkillCatalog({ initialSkills, categories }) {
         </div>
       ) : (
         /* Empty State */
-        <div className="rounded-xl border border-dashed border-phino-border bg-phino-surface/50 p-12 text-center">
+        <div className="rounded-xl border border-dashed border-phino-border bg-phino-surface/50 p-10 sm:p-12 text-center max-w-lg mx-auto">
           <SlidersHorizontal className="mx-auto h-8 w-8 text-phino-text-muted" aria-hidden="true" />
           <h3 className="mt-4 font-display text-base font-semibold text-phino-text">
             No reactive skills matched your filter
           </h3>
-          <p className="mt-1 text-sm text-phino-text-muted max-w-sm mx-auto">
-            Try adjusting your search query or selecting a different category filter.
+          <p className="mt-1.5 text-sm text-phino-text-muted">
+            {search.trim() ? (
+              <span>
+                No published skill matched <strong className="font-mono text-phino-text">&quot;{search.trim()}&quot;</strong>.
+              </span>
+            ) : (
+              'Try adjusting your search query or selecting a different category filter.'
+            )}
           </p>
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-phino-border-strong bg-phino-surface-raised px-4 py-2 text-xs font-semibold text-phino-text hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
-          >
-            Reset all filters
-          </button>
+
+          {search.trim() && (
+            <div className="mt-5 rounded-lg border border-phino-border bg-phino-code-bg p-3 text-left">
+              <div className="mb-2 flex items-center justify-between text-xs text-phino-text-muted">
+                <span className="font-medium flex items-center gap-1.5">
+                  <Terminal className="h-3.5 w-3.5 text-phino-signal" aria-hidden="true" />
+                  Scaffold with axi:
+                </span>
+                <CopyButton
+                  value={`npx -y @reactive-skills/axi init ${search.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`}
+                  size="sm"
+                />
+              </div>
+              <code className="font-mono text-xs text-phino-code-text block overflow-x-auto">
+                npx -y @reactive-skills/axi init {search.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-')}
+              </code>
+            </div>
+          )}
+
+          <div className="mt-5 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="inline-flex items-center gap-1.5 rounded-md border border-phino-border-strong bg-phino-surface-raised px-4 py-2 text-xs font-semibold text-phino-text hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
+            >
+              Reset all filters
+            </button>
+          </div>
         </div>
       )}
     </div>

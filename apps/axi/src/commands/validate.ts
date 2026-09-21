@@ -17,6 +17,87 @@ export interface SkillValidationResult {
   warnings: string[];
 }
 
+const JS_GUARD_GLOBALS = new Set([
+  'Array',
+  'Boolean',
+  'Date',
+  'JSON',
+  'Math',
+  'Number',
+  'Object',
+  'RegExp',
+  'String',
+  'context',
+  'event',
+  'false',
+  'null',
+  'payload',
+  'true',
+  'undefined',
+]);
+
+const COMMON_SIGNAL_FIELD_NAMES = new Set([
+  'ack_id',
+  'approved',
+  'category',
+  'confidence',
+  'error',
+  'exit_code',
+  'nop_pass',
+  'nop_passed',
+  'oracle_pass',
+  'oracle_passed',
+  'status',
+  'subcategory',
+  'task_name',
+]);
+
+function stripGuardStrings(guard: string): string {
+  return guard
+    .replace(/`(?:\\.|[^`])*`/g, ' ')
+    .replace(/"(?:\\.|[^"])*"/g, ' ')
+    .replace(/'(?:\\.|[^'])*'/g, ' ');
+}
+
+function lintGuardExpression(guard: string, contextKeys: string[], stateName: string, signal: string): string[] {
+  const warnings: string[] = [];
+  const stripped = stripGuardStrings(guard);
+
+  if (/\bNone\b|\bis\s+(?:not\s+)?None\b/.test(stripped)) {
+    warnings.push(
+      `State "${stateName}" transition on "${signal}" guard uses Python-style None syntax; use JavaScript null checks such as payload.field != null`
+    );
+  }
+
+  const dataFieldNames = new Set([...contextKeys, ...COMMON_SIGNAL_FIELD_NAMES]);
+  const bareFields = new Set<string>();
+  const identifierPattern = /\b[A-Za-z_$][A-Za-z0-9_$]*\b/g;
+  let match: RegExpExecArray | null;
+  while ((match = identifierPattern.exec(stripped)) !== null) {
+    const identifier = match[0];
+    const previous = stripped[match.index - 1];
+    if (JS_GUARD_GLOBALS.has(identifier) || previous === '.') {
+      continue;
+    }
+    if (dataFieldNames.has(identifier)) {
+      bareFields.add(identifier);
+    }
+  }
+  if (bareFields.size > 0) {
+    warnings.push(
+      `State "${stateName}" transition on "${signal}" guard references bare data field(s) ${Array.from(bareFields).sort().join(', ')}; use payload.*, event.payload.*, or context.* explicitly`
+    );
+  }
+
+  if (/\bcontext\.[A-Za-z_$][A-Za-z0-9_$]*/.test(stripped) && /(?:^|\.)(?:INTAKE|READY|SELECT|START|INITIAL)(?:$|\.)/i.test(stateName)) {
+    warnings.push(
+      `State "${stateName}" transition on "${signal}" uses context.* in an intake-like state; if the value is supplied by this signal, prefer payload.* so the guard does not depend on stale context`
+    );
+  }
+
+  return warnings;
+}
+
 /**
  * Discover skill directories to validate based on target argument or workspace conventions
  */
@@ -241,6 +322,10 @@ export function validateSkill(skillDir: string): SkillValidationResult {
   }
 
   // 4. Transition Targets & Guard Syntax Check
+  const contextKeys = Array.isArray(parsed.context_keys)
+    ? parsed.context_keys.filter((key: unknown): key is string => typeof key === 'string')
+    : [];
+
   function validateTransitions(statesObj: Record<string, any>, prefix = '') {
     if (!statesObj || typeof statesObj !== 'object') return;
 
@@ -263,6 +348,7 @@ export function validateSkill(skillDir: string): SkillValidationResult {
             } catch (guardErr: any) {
               errors.push(`State "${fullName}" transition on "${signal}" has invalid guard syntax: ${guardErr.message}`);
             }
+            warnings.push(...lintGuardExpression(guard, contextKeys, fullName, signal));
           }
         }
       }

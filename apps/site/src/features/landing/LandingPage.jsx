@@ -2,7 +2,6 @@ import { SectionHeading } from '@/components/common/SectionHeading';
 import { Hero } from './Hero';
 import { SkillComparison } from './SkillComparison';
 import { EventFlowDiagram } from './EventFlowDiagram';
-import { StateMachine } from './StateMachine';
 import { ValueAreas } from './ValueAreas';
 import { AgentHosts } from './AgentHosts';
 import { QuickstartCta } from './QuickstartCta';
@@ -38,17 +37,6 @@ export function LandingPage({ machine, flow }) {
         </div>
       </section>
 
-      <section className="container py-16 sm:py-20" aria-labelledby="machine-heading">
-        <SectionHeading
-          eyebrow="interactive"
-          title="Step through a skill’s state machine"
-          description="Simulate execution or step through transitions manually. Each state gates on deterministic guards and appends an immutable event to the ledger."
-        />
-        <h2 id="machine-heading" className="sr-only">Interactive state machine</h2>
-        <div className="mt-8">
-          <StateMachine machine={machine} />
-        </div>
-      </section>
 
       <section className="border-t border-phino-border bg-phino-surface" aria-labelledby="value-heading">
         <div className="container py-16 sm:py-20">

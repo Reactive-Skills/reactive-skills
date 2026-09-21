@@ -79,7 +79,7 @@ export function Hero() {
 
   const activeCommand = cmdMode === 'axi' 
     ? 'npx -y @reactive-skills/axi state incremental-implementation' 
-    : 'npx -y @reactive-skills/mcp-server';
+    : 'npx -y @reactive-skills/axi mcp';
 
   return (
     <section className="relative overflow-hidden border-b border-phino-border bg-phino-canvas">
@@ -196,12 +196,6 @@ export function Hero() {
                 className="inline-flex items-center gap-1.5 rounded-lg border border-phino-border-strong bg-phino-surface-raised px-5 py-2.5 text-sm font-medium text-phino-text transition-colors hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
               >
                 Browse Skill Catalog
-              </Link>
-              <Link
-                href="/docs/concepts"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-phino-border bg-phino-surface px-4 py-2.5 text-sm font-medium text-phino-text-muted transition-colors hover:border-phino-border-strong hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
-              >
-                Architecture &phi;
               </Link>
             </div>
 

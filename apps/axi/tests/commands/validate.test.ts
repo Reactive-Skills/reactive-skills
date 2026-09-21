@@ -145,6 +145,81 @@ states:
     await expect(validateCommand(['skills/non-existent-skill'])).rejects.toThrow(AxiError);
   });
 
+  it('warns about stale guard patterns without invalidating the skill', async () => {
+    const skillDir = path.join(tmpDir, 'skills', 'stale-guard-skill');
+    fs.mkdirSync(path.join(skillDir, 'states'), { recursive: true });
+
+    fs.writeFileSync(
+      path.join(skillDir, 'skill.yaml'),
+      `schema_version: 2.1.0
+name: stale-guard-skill
+version: 1.0.0
+description: Guard lint test skill
+initial_state: INTAKE
+context_keys:
+  - category
+  - target_url
+states:
+  INTAKE:
+    prompt_template: states/intake.md
+    transitions:
+      INGESTED:
+        target: DONE
+        guard: category != null
+      CONFIGURE:
+        target: DONE
+        guard: Boolean(context.target_url)
+  DONE:
+    prompt_template: states/done.md
+`
+    );
+    fs.writeFileSync(path.join(skillDir, 'states', 'intake.md'), '# Intake');
+    fs.writeFileSync(path.join(skillDir, 'states', 'done.md'), '# Done');
+    fs.writeFileSync(path.join(skillDir, 'SKILL.md'), '<!-- REACTIVE BOOTLOADER -->\n# Stale Guard Skill');
+
+    const output = await validateCommand(['skills/stale-guard-skill']);
+    expect(output).toContain('status: valid');
+    expect(output).toContain('warnings: "2"');
+    expect(output).toContain('guard references bare data field(s) category');
+    expect(output).toContain('uses context.* in an intake-like state');
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('warns about Python-style None guard syntax alongside syntax validation', async () => {
+    const skillDir = path.join(tmpDir, 'skills', 'python-guard-skill');
+    fs.mkdirSync(path.join(skillDir, 'states'), { recursive: true });
+
+    fs.writeFileSync(
+      path.join(skillDir, 'skill.yaml'),
+      `schema_version: 2.1.0
+name: python-guard-skill
+description: Python guard syntax test
+initial_state: START
+context_keys:
+  - category
+states:
+  START:
+    prompt_template: states/start.md
+    transitions:
+      NEXT:
+        target: DONE
+        guard: category is not None
+  DONE:
+    prompt_template: states/done.md
+`
+    );
+    fs.writeFileSync(path.join(skillDir, 'states', 'start.md'), '# Start');
+    fs.writeFileSync(path.join(skillDir, 'states', 'done.md'), '# Done');
+    fs.writeFileSync(path.join(skillDir, 'SKILL.md'), '<!-- REACTIVE BOOTLOADER -->\n# Python Guard Skill');
+
+    const output = await validateCommand(['skills/python-guard-skill']);
+    expect(output).toContain('status: invalid');
+    expect(output).toContain('invalid guard syntax');
+    expect(output).toContain('guard uses Python-style None syntax');
+    expect(output).toContain('guard references bare data field(s) category');
+    expect(process.exitCode).toBe(1);
+  });
+
   it('discovers and validates multiple skills in ./skills/', async () => {
     const skillA = path.join(tmpDir, 'skills', 'skill-a');
     const skillB = path.join(tmpDir, 'skills', 'skill-b');
