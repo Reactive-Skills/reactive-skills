@@ -136,4 +136,40 @@ states:
     expect(explicitOldOutput).toContain('DONE');
     expect(jobManager.getActiveJobId('flags-skill')).toBe(newActiveJobId);
   });
+
+  it('supports --run and --run-id as synonyms for --job', async () => {
+    // Advance custom run isolated-run-a using --run
+    await emitCommand(['flags-skill', 'ADVANCE', '--run', 'isolated-run-a']);
+    const runAState = await stateCommand(['flags-skill', '--run', 'isolated-run-a']);
+    expect(runAState).toContain('PHASE_2');
+
+    // Advance custom run isolated-run-b using --run-id
+    await emitCommand(['flags-skill', 'ADVANCE', '--run-id', 'isolated-run-b']);
+    const runBState = await stateCommand(['flags-skill', '--run-id', 'isolated-run-b']);
+    expect(runBState).toContain('PHASE_2');
+  });
+
+  it('prioritizes REACTIVE_JOB_ID environment variable across stateCommand and emitCommand', async () => {
+    const originalEnv = process.env.REACTIVE_JOB_ID;
+    try {
+      process.env.REACTIVE_JOB_ID = 'worker-subagent-99';
+
+      // State without --job flag should pick up REACTIVE_JOB_ID
+      const output = await stateCommand(['flags-skill']);
+      expect(output).toContain('flags-skill');
+      expect(output).toContain('worker-subagent-99');
+
+      // Emit without --job flag should transition worker-subagent-99
+      await emitCommand(['flags-skill', 'ADVANCE']);
+      const transitioned = await stateCommand(['flags-skill']);
+      expect(transitioned).toContain('PHASE_2');
+      expect(transitioned).toContain('worker-subagent-99');
+    } finally {
+      if (originalEnv === undefined) {
+        delete process.env.REACTIVE_JOB_ID;
+      } else {
+        process.env.REACTIVE_JOB_ID = originalEnv;
+      }
+    }
+  });
 });

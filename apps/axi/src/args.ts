@@ -1,5 +1,5 @@
 /**
- * Utility to extract --job <id> or --job=<id> from CLI arguments
+ * Utility to extract --job <id>, -j <id>, --run <id>, or REACTIVE_JOB_ID from CLI arguments
  */
 export function extractJobFlag(args: string[]): { jobId?: string; filteredArgs: string[] } {
   const filteredArgs: string[] = [];
@@ -7,13 +7,21 @@ export function extractJobFlag(args: string[]): { jobId?: string; filteredArgs: 
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === '--job' || arg === '-j') {
+    if (arg === '--job' || arg === '-j' || arg === '--run' || arg === '--run-id') {
       jobId = args[++i];
     } else if (arg.startsWith('--job=')) {
       jobId = arg.slice(6);
+    } else if (arg.startsWith('--run=')) {
+      jobId = arg.slice(6);
+    } else if (arg.startsWith('--run-id=')) {
+      jobId = arg.slice(9);
     } else {
       filteredArgs.push(arg);
     }
+  }
+
+  if (!jobId && process.env.REACTIVE_JOB_ID && process.env.REACTIVE_JOB_ID.trim()) {
+    jobId = process.env.REACTIVE_JOB_ID.trim();
   }
 
   return { jobId, filteredArgs };

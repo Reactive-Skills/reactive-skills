@@ -182,5 +182,28 @@ describe('Job Domain & Metadata (Leaf 1)', () => {
       const prev = manager.getJob('synthesis', activeJob.id);
       expect(prev?.status).toBe('archived');
     });
+
+    it('prioritizes REACTIVE_JOB_ID environment variable over filesystem pointer', () => {
+      const manager = new JobManager(tmpDir);
+      manager.setActiveJobId('synthesis', 'file-job');
+      expect(manager.getActiveJobId('synthesis')).toBe('file-job');
+
+      const originalEnv = process.env.REACTIVE_JOB_ID;
+      try {
+        process.env.REACTIVE_JOB_ID = 'env-scoped-job';
+        expect(manager.getActiveJobId('synthesis')).toBe('env-scoped-job');
+
+        // Setting active job while in env scope does not overwrite pointer on disk
+        manager.setActiveJobId('synthesis', 'should-not-write');
+        const pointerPath = path.join(tmpDir, '.reactive', 'skills', 'synthesis', 'active_job');
+        expect(fs.readFileSync(pointerPath, 'utf8').trim()).toBe('file-job');
+      } finally {
+        if (originalEnv === undefined) {
+          delete process.env.REACTIVE_JOB_ID;
+        } else {
+          process.env.REACTIVE_JOB_ID = originalEnv;
+        }
+      }
+    });
   });
 });

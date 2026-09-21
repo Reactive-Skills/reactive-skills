@@ -79,9 +79,13 @@ export class JobManager {
 
   /**
    * Resolves the current active job ID for a skill.
-   * Falls back to DEFAULT_JOB_ID ('default') if no pointer exists.
+   * Prioritizes process.env.REACTIVE_JOB_ID, then active_job file,
+   * falling back to DEFAULT_JOB_ID ('default') if no pointer exists.
    */
   public getActiveJobId(skillId: string): string {
+    if (process.env.REACTIVE_JOB_ID && process.env.REACTIVE_JOB_ID.trim()) {
+      return process.env.REACTIVE_JOB_ID.trim();
+    }
     const pointerFile = this.getActivePointerPath(skillId);
     if (fs.existsSync(pointerFile)) {
       try {
@@ -96,8 +100,13 @@ export class JobManager {
 
   /**
    * Sets the active job pointer for a skill.
+   * If process.env.REACTIVE_JOB_ID is defined, does not mutate filesystem pointer
+   * to protect concurrent subagent sessions.
    */
   public setActiveJobId(skillId: string, jobId: string): void {
+    if (process.env.REACTIVE_JOB_ID && process.env.REACTIVE_JOB_ID.trim()) {
+      return;
+    }
     const targetDir = this.getSkillDir(skillId);
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });

@@ -20,6 +20,12 @@
    - If `process.env.REACTIVE_JOB_ID` is set, log or no-op so the global pointer file is not mutated by isolated child subagents.
 
 ## Verification Gates
-- [ ] G1: `JobManager.getActiveJobId` returns `process.env.REACTIVE_JOB_ID` when defined.
-- [ ] G2: CLI `state` and `emit` commands pick up `process.env.REACTIVE_JOB_ID` when `--job` flag is omitted.
-- [ ] G3: Parallel subagent isolation test passes without cross-talk on `active_job`.
+- [x] G1: `JobManager.getActiveJobId` returns `process.env.REACTIVE_JOB_ID` when defined.
+  CHECK: npx vitest run packages/runtime/tests/job-domain.test.ts -t "prioritizes REACTIVE_JOB_ID"
+  EVIDENCE: passed (1 test passed)
+- [x] G2: CLI `state` and `emit` commands pick up `process.env.REACTIVE_JOB_ID` when `--job` flag is omitted.
+  CHECK: npx vitest run apps/axi/tests/commands/job-flags.test.ts -t "prioritizes REACTIVE_JOB_ID"
+  EVIDENCE: passed (1 test passed)
+- [x] G3: Parallel subagent isolation test passes without cross-talk on `active_job`.
+  CHECK: npx vitest run packages/runtime/tests/job-domain.test.ts apps/axi/tests/commands/job-flags.test.ts
+  EVIDENCE: passed (20 passed out of 20 tests)
