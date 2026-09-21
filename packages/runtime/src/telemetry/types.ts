@@ -68,6 +68,8 @@ export interface TelemetryBrokerOptions {
 
 export interface TelemetryCatalogJob {
   jobId: string;
+  runId: string;
+  name: string;
   status: string;
   currentState: string;
   latestSeq: number;

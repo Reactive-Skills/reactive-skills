@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-9-0",
+    "heading": "v0.9.0 (2026-09-21)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "docs: update v0.8.8 release banners",
+          "chore(release): v0.8.8",
+          "fix(runtime): ensure published Jev adapter availability (#6)",
+          "Fix/direct typesafe jev (#4)",
+          "chore(release): v0.8.6 - add AXI version flag"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-8-8",
     "heading": "v0.8.8 (2026-09-21)",
     "blocks": [

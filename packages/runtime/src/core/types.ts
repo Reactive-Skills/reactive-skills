@@ -6,7 +6,10 @@ import { z } from 'zod';
 export interface SignalEvent<T = Record<string, any>> {
   id: string;
   event_id?: string;
+  /** Sequence within run_id. */
   seq: number;
+  /** Database-wide append order used by projections and diagnostics. */
+  ledger_seq?: number;
   timestamp: string;
   occurred_at?: string;
   type: string;
@@ -16,6 +19,7 @@ export interface SignalEvent<T = Record<string, any>> {
   causation_id?: string;
   correlation_id?: string;
   request_id?: string;
+  idempotency_key?: string;
   trace_parent?: string;
   skill_id?: string;
   run_id?: string;
@@ -328,6 +332,7 @@ export type JobStatus = z.infer<typeof JobStatusSchema>;
 
 export const JobMetadataSchema = z.object({
   id: z.string(),
+  runId: z.string().optional(),
   name: z.string(),
   skillId: z.string(),
   status: JobStatusSchema,

@@ -1,20 +1,25 @@
 /**
  * Utility to extract --job <id>, -j <id>, --run <id>, or REACTIVE_JOB_ID from CLI arguments
  */
-export function extractJobFlag(args: string[]): { jobId?: string; filteredArgs: string[] } {
+export function extractJobFlag(args: string[]): { jobId?: string; idempotencyKey?: string; filteredArgs: string[] } {
   const filteredArgs: string[] = [];
   let jobId: string | undefined;
+  let idempotencyKey: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--job' || arg === '-j' || arg === '--run' || arg === '--run-id') {
       jobId = args[++i];
+    } else if (arg === '--idempotency-key') {
+      idempotencyKey = args[++i];
     } else if (arg.startsWith('--job=')) {
       jobId = arg.slice(6);
     } else if (arg.startsWith('--run=')) {
       jobId = arg.slice(6);
     } else if (arg.startsWith('--run-id=')) {
       jobId = arg.slice(9);
+    } else if (arg.startsWith('--idempotency-key=')) {
+      idempotencyKey = arg.slice('--idempotency-key='.length);
     } else {
       filteredArgs.push(arg);
     }
@@ -24,7 +29,7 @@ export function extractJobFlag(args: string[]): { jobId?: string; filteredArgs: 
     jobId = process.env.REACTIVE_JOB_ID.trim();
   }
 
-  return { jobId, filteredArgs };
+  return { jobId, idempotencyKey, filteredArgs };
 }
 
 import path from 'node:path';
@@ -84,5 +89,4 @@ export function resolveWorkspaceDir(skillPath?: string): string {
 
   return cwd;
 }
-
 

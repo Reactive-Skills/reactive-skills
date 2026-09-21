@@ -83,7 +83,7 @@ deliverable_projections:
     // Switch to slice-alpha
     const switchOutput = await jobsCommand(['switch', 'test-jobs-skill', 'slice-alpha']);
     expect(switchOutput).toContain('slice-alpha');
-    expect(jobManager.getActiveJobId('test-jobs-skill')).toBe('slice-alpha');
+    expect(jobManager.resolveRunId('test-jobs-skill', 'slice-alpha')).toBe(jobManager.getActiveJobId('test-jobs-skill'));
 
     // Root file should now be re-mirrored from slice-alpha's archive!
     expect(fs.existsSync(rootFile)).toBe(true);

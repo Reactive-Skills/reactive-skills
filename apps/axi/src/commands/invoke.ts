@@ -71,13 +71,16 @@ export async function invokeCommand(args: string[]): Promise<string> {
     }
 
     const workspaceDir = resolveWorkspaceDir(skillPath);
-    const runId = jobId || createSortableId();
     const jobManager = new JobManager(workspaceDir);
-    jobManager.createJob(skillName, {
-      id: runId,
-      name: runId,
-      setActive: !jobId,
-    });
+    const existingRunId = jobId ? jobManager.resolveRunId(skillName, jobId) : null;
+    const runId = existingRunId || createSortableId();
+    if (!existingRunId) {
+      jobManager.createJob(skillName, {
+        runId,
+        name: jobId || runId,
+        setActive: !jobId,
+      });
+    }
 
     const engine = new FSMEngine({
       skillDir: skillPath,

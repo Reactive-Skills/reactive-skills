@@ -3,20 +3,20 @@
 
 This file tracks all SQLite schema changes for the Reactive Skills event store.
 
-## Current Schema Version: 2
+## Current Schema Version: 3
 
 ## How Migrations Work
 
 The `SQLiteStorageDriver` automatically applies pending migrations on initialization:
 
 1. A `schema_version` table tracks which migrations have been applied
-2. On init, `ensureSchemaVersion()` compares the current DB version against `EVENT_STORE_SCHEMA_VERSION`
-3. If the DB is behind, `runMigrations(fromVersion)` applies each missing migration in order
-4. Each migration is idempotent - safe to run multiple times
+2. On init, the driver inspects the current schema against `EVENT_STORE_SCHEMA_VERSION`
+3. If the DB is behind, the legacy tables are copied transactionally into the current schema
+4. Each migration is idempotent and safe to run multiple times
 
 To add a new migration:
 1. Bump `EVENT_STORE_SCHEMA_VERSION` in `event-store.ts`
-2. Add a new `if (fromVersion < N)` block in `runMigrations()`
+2. Add a migration block in the driver initialization path
 3. Document it below
 
 ## Migration History
@@ -46,6 +46,24 @@ Added fields to `events` table to match the full `SignalEvent` interface:
 - `schema_version` - event schema version
 
 Migration method: `ALTER TABLE events ADD COLUMN` for each missing column.
+
+### v3 (skill-scoped ledger and run isolation)
+
+Version 3 stores one database per skill and scopes events, snapshots, projections, and watermarks by `run_id`.
+
+The `events` table enforces `UNIQUE(run_id, seq)` and foreign-key references to `runs`.
+
+`ledger_seq` preserves database-wide append order for projections while `seq` remains per-run.
+
+`idempotency_key` supports duplicate signal submission handling.
+
+SQLite enables foreign keys, WAL mode, a busy timeout, and bounded retry behavior for transient writer contention.
+
+Existing v1 and v2 databases are rebuilt transactionally into the v3 tables.
+
+Existing per-job stores are imported by the runtime into UUID-backed `runs/` directories and the shared skill database.
+
+Legacy files remain in place for operator rollback and audit until explicitly removed.
 
 ## Adding Future Migrations
 

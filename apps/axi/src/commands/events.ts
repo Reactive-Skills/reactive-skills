@@ -52,25 +52,18 @@ function findDefaultSkillFromWorkspace(): string | undefined {
     if (!dirent.isDirectory()) return false;
     const skillDir = path.join(reactiveSkillsDir, dirent.name);
     return fs.existsSync(path.join(skillDir, 'events.jsonl')) ||
-      fs.existsSync(path.join(skillDir, 'jobs'));
+      fs.existsSync(path.join(skillDir, 'events.db')) ||
+      fs.existsSync(path.join(skillDir, 'runs'));
   });
   return found?.name;
 }
 
-function resolveEventsPath(workspaceDir: string, skillName: string, jobId?: string): string {
+function resolveEventsPath(workspaceDir: string, skillName: string): string {
   const skillStoreDir = path.join(workspaceDir, '.reactive', 'skills', skillName);
-  const jobManager = new JobManager(workspaceDir);
-  const activeJobId = jobId || jobManager.getActiveJobId(skillName);
-  const jobEventsPath = path.join(skillStoreDir, 'jobs', activeJobId, 'events.jsonl');
-  if (fs.existsSync(jobEventsPath)) return jobEventsPath;
-
-  const legacyEventsPath = path.join(skillStoreDir, 'events.jsonl');
-  if (!jobId && fs.existsSync(legacyEventsPath)) return legacyEventsPath;
-
-  return jobEventsPath;
+  return path.join(skillStoreDir, 'events.jsonl');
 }
 
-function readEventsJsonl(eventsPath: string, limit: number): EventEntry[] {
+function readEventsJsonl(eventsPath: string, limit: number, runId?: string): EventEntry[] {
   if (!fs.existsSync(eventsPath)) return [];
 
   const content = fs.readFileSync(eventsPath, 'utf8');
@@ -80,6 +73,7 @@ function readEventsJsonl(eventsPath: string, limit: number): EventEntry[] {
   for (const line of lines) {
     try {
       const parsed = JSON.parse(line);
+      if (runId && parsed.run_id && parsed.run_id !== runId) continue;
       events.push({
         seq: parsed.seq || 0,
         timestamp: parsed.timestamp || '',
@@ -123,8 +117,11 @@ export async function eventsCommand(args: string[]): Promise<string> {
   }
 
   const workspaceDir = resolveWorkspaceDir(targetPath);
-  const eventsPath = resolveEventsPath(workspaceDir, targetSkill, parsed.jobId);
-  const events = readEventsJsonl(eventsPath, parsed.limit);
+  const jobManager = new JobManager(workspaceDir);
+  const requestedRunId = parsed.jobId || jobManager.getActiveJobId(targetSkill);
+  const runId = jobManager.resolveRunId(targetSkill, requestedRunId) || requestedRunId;
+  const eventsPath = resolveEventsPath(workspaceDir, targetSkill);
+  const events = readEventsJsonl(eventsPath, parsed.limit, runId);
 
   if (events.length === 0) {
     const error = new AxiError(

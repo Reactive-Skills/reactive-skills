@@ -22,14 +22,14 @@ examples:
   reactive-skills-axi inspect skills/my-skill
   reactive-skills-axi validate skills/my-skill
   reactive-skills-axi events 50
-  reactive-skills-axi invoke my-skill [--job <job-id>]
-  reactive-skills-axi state my-skill [--job <job-id>]
-  reactive-skills-axi emit my-skill <signal> [--payload '{"key":"value"}'] [--job <job-id>]
+  reactive-skills-axi invoke my-skill [--job <alias>]
+  reactive-skills-axi state my-skill [--job <alias>]
+  reactive-skills-axi emit my-skill <signal> [--payload '{"key":"value"}'] [--job <alias>] [--idempotency-key <key>]
   reactive-skills-axi jobs my-skill
-  reactive-skills-axi jobs switch my-skill <job-id>
+  reactive-skills-axi jobs switch my-skill <alias-or-run-id>
   reactive-skills-axi reset my-skill
   reactive-skills-axi rebuild-sqlite my-skill
-  reactive-skills-axi view my-skill [--job <job-id>]
+  reactive-skills-axi view my-skill [--job <alias-or-run-id>]
   reactive-skills-axi dashboard [--host 127.0.0.1] [--port <number>]
   reactive-skills-axi sync [my-skill]
   reactive-skills-axi mcp

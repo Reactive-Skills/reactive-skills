@@ -104,7 +104,7 @@ describe('Job Domain & Metadata (Leaf 1)', () => {
       expect(job.currentState).toBe('INIT');
       expect(manager.getActiveJobId('synthesis')).toBe(job.id);
 
-      const jobDir = path.join(tmpDir, '.reactive', 'skills', 'synthesis', 'jobs', job.id);
+      const jobDir = path.join(tmpDir, '.reactive', 'skills', 'synthesis', 'runs', job.id);
       expect(fs.existsSync(path.join(jobDir, 'job.json'))).toBe(true);
 
       const fetched = manager.getJob('synthesis', job.id);

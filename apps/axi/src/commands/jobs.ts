@@ -65,7 +65,8 @@ export async function jobsCommand(args: string[]): Promise<string> {
         return renderOutput([renderError(error.message, error.code, error.suggestions)]);
       }
 
-      const job = jobManager.getJob(skillName, targetJobId);
+      const resolvedRunId = jobManager.resolveRunId(skillName, targetJobId) || targetJobId;
+      const job = jobManager.getJob(skillName, resolvedRunId);
       if (!job) {
         const error = new AxiError(
           `Job '${targetJobId}' not found for skill '${skillName}'`,
@@ -75,11 +76,11 @@ export async function jobsCommand(args: string[]): Promise<string> {
         return renderOutput([renderError(error.message, error.code, error.suggestions)]);
       }
 
-      jobManager.setActiveJobId(skillName, targetJobId);
+      jobManager.setActiveJobId(skillName, resolvedRunId);
 
       // Re-mirror deliverables: copy archive deliverables to root if they exist
       const docsDir = path.join(workspaceDir, '.docs', skillName);
-      const archiveDir = path.join(docsDir, 'jobs', targetJobId);
+      const archiveDir = path.join(docsDir, 'jobs', job.name || targetJobId);
       let mirroredCount = 0;
 
       if (fs.existsSync(archiveDir)) {
@@ -116,7 +117,8 @@ export async function jobsCommand(args: string[]): Promise<string> {
     }
 
     case 'archive': {
-      const archiveJobId = targetJobId || jobManager.getActiveJobId(skillName);
+      const archiveReference = targetJobId || jobManager.getActiveJobId(skillName);
+      const archiveJobId = jobManager.resolveRunId(skillName, archiveReference) || archiveReference;
       const job = jobManager.getJob(skillName, archiveJobId);
       if (!job) {
         const error = new AxiError(
@@ -140,19 +142,24 @@ export async function jobsCommand(args: string[]): Promise<string> {
         freshJobId = freshJob.id;
       }
 
+      const activeJob = freshJobId ? jobManager.getJob(skillName, freshJobId) : undefined;
       const lines: string[] = [];
       lines.push(renderDetail('jobs_archive', {
         skill_id: skillName,
-        archived_job: archiveJobId,
-        active_job: freshJobId,
+        archived_job: job.name || archiveReference,
+        archived_run_id: archiveJobId,
+        active_job: activeJob?.name || freshJobId,
+        active_run_id: freshJobId,
       }, [
         { type: 'field', key: 'skill_id' },
         { type: 'field', key: 'archived_job' },
+        { type: 'field', key: 'archived_run_id' },
         { type: 'field', key: 'active_job' },
+        { type: 'field', key: 'active_run_id' },
       ]));
       lines.push(renderHelp([
-        `Job '${archiveJobId}' archived successfully.`,
-        `Current active job is '${freshJobId}'.`,
+        `Job '${job.name || archiveReference}' archived successfully.`,
+        `Current active job is '${activeJob?.name || freshJobId}'.`,
       ]));
       return renderOutput(lines);
     }
@@ -160,7 +167,7 @@ export async function jobsCommand(args: string[]): Promise<string> {
     case 'list':
     default: {
       const jobs = jobManager.listJobs(skillName);
-      const activeJobId = jobManager.getActiveJobId(skillName);
+      const activeJobId = jobManager.resolveRunId(skillName, jobManager.getActiveJobId(skillName)) || jobManager.getActiveJobId(skillName);
 
       if (jobs.length === 0) {
         const lines: string[] = [];

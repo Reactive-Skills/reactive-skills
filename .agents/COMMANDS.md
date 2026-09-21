@@ -12,7 +12,7 @@
 - `npx -y @reactive-skills/axi <command>` (or `reactive-skills-axi <command>`):
   - `state <skill>` — Display active state slice, prompt instructions, and allowed tools.
   - `emit <skill> <signal> [payload]` — Dispatch a signal to evaluate guards and transition.
-  - `events [limit]` — Tail `.reactive/skills/<skill>/events.jsonl`.
+  - `events [limit]` — Read the selected run from the skill-scoped ledger and JSONL projection.
   - `inspect <path>` — Print statechart, transitions, and guards.
   - `validate <path>` — Lint and validate a `skill.yaml` manifest.
   - `invoke <skill>` — Invoke a skill, bootstrapping its FSM engine.
@@ -21,6 +21,6 @@
   - `setup` — Configure workspace and install MCP server config.
   - `reset <skill>` — Clear active execution run while preserving deliverables.
   - `jobs <skill>` — List, switch, and manage job isolation for a skill.
-  - `rebuild-sqlite <skill>` — Replay `events.jsonl` → `events.db` (repair SQLite).
+  - `rebuild-sqlite <skill>` — Explicitly import or reconcile JSONL with canonical SQLite.
   - `view <skill>` — Launch real-time telemetry viewer and SSE event stream.
   - `sync [skill]` — Synchronize workspace skill registry.

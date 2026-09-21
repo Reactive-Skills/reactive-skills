@@ -59,8 +59,11 @@ states:
     const output = await invokeCommand(['invoke-skill', '--job', 'mission-alpha']);
     const jobManager = new JobManager(tmpDir);
 
-    expect(output).toContain('run_id: mission-alpha');
+    const runId = jobManager.resolveRunId('invoke-skill', 'mission-alpha');
+    expect(runId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7/i);
+    expect(output).toContain(`run_id: ${runId}`);
     expect(jobManager.getActiveJobId('invoke-skill')).toBe('default');
-    expect(fs.existsSync(path.join(tmpDir, '.reactive', 'skills', 'invoke-skill', 'jobs', 'mission-alpha', 'events.jsonl'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.reactive', 'skills', 'invoke-skill', 'runs', runId!, 'artifacts'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.reactive', 'skills', 'invoke-skill', 'events.jsonl'))).toBe(true);
   });
 });

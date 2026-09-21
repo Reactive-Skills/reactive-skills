@@ -107,17 +107,9 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       throw new Error(`Skill '${skillName}' not found in workspace or global registry.`);
     }
 
-    const eventStore = new EventStore({
-      workspaceDir,
-      skillId: skillName,
-      jobId: resolvedJobId,
-      runId: resolvedJobId,
-      enableSqlite: true,
-    });
     const engine = new FSMEngine({
       skillDir,
       workspaceDir,
-      eventStore,
       jobId: resolvedJobId,
     });
     engines.set(cacheKey, engine);
@@ -171,7 +163,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
               text: JSON.stringify(
                 {
                    skill: engine.getManifest().name,
-                   job_id: engine.getJobId(),
+                   job_id: engine.getJobName() || engine.getJobId(),
+                   run_id: engine.getJobId(),
                    activeState,
                    isWaitingForHuman: isWaiting,
                    allowedTools: slice.allowedTools,
@@ -214,11 +207,12 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       payload: z.record(z.any()).optional().describe('Signal payload data (e.g. exit_code, file_path)'),
       skill: z.string().optional().describe('Target skill name'),
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
+      idempotency_key: z.string().optional().describe('Optional key that makes duplicate signal submission a no-op'),
     },
-    async ({ signal, payload = {}, skill, job_id }) => {
+    async ({ signal, payload = {}, skill, job_id, idempotency_key }) => {
       try {
         const engine = getEngine(skill || defaultSkill, job_id);
-        const result = await engine.handleSignal(signal, payload);
+        const result = await engine.handleSignal(signal, payload, { idempotencyKey: idempotency_key, source: 'mcp' });
 
         return {
           content: [
@@ -227,7 +221,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
               text: JSON.stringify(
                 {
                   skill: engine.getManifest().name,
-                  job_id: engine.getJobId(),
+                  job_id: engine.getJobName() || engine.getJobId(),
+                  run_id: engine.getJobId(),
                   transitioned: result.transitioned,
                   previousState: result.previousState,
                   newState: result.newState,
@@ -576,6 +571,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
         const activeJobId = jobManager.getActiveJobId(targetSkill);
         const jobs = jobManager.listJobs(targetSkill).map(j => ({
           ...j,
+          id: j.name,
+          run_id: j.id,
           isActive: j.id === activeJobId,
         }));
 

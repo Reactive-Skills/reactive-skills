@@ -1,8 +1,19 @@
 # Event Sourcing
 
-Never mutate execution history. All signals, guard checks, and state transitions must append to skill-scoped `EventStore` files:
+Never mutate execution history.
 
-- `.reactive/skills/<skill>/events.jsonl` (JSON Lines)
-- `.reactive/skills/<skill>/events.db` (SQLite)
+All signals, guard checks, and state transitions append to one skill-scoped SQLite ledger:
 
-This ensures complete replayability and auditability of every skill execution.
+- `.reactive/skills/<skill>/events.db`
+
+Every event carries an immutable UUID-backed `run_id` and a sequence ordered within that run.
+
+The runtime writes per-run filesystem state under `.reactive/skills/<skill>/runs/<run_id>/`.
+
+The JSONL file is a recoverable projection of SQLite:
+
+- `.reactive/skills/<skill>/events.jsonl` (JSON Lines export)
+
+SQLite is the canonical event ledger.
+
+If JSONL projection fails, the next runtime open or explicit reconciliation repairs it from SQLite.

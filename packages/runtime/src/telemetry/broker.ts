@@ -468,6 +468,8 @@ export class TelemetryBroker {
 
     return {
       jobId: target.jobId,
+      runId: target.job.runId || target.job.id,
+      name: target.job.name,
       status: target.job.status,
       currentState: this.readActiveState(target),
       latestSeq,
@@ -517,29 +519,13 @@ export class TelemetryBroker {
   }
 
   private hasSqliteStore(skillId: string, jobId: string): boolean {
-    const jobDir = this.jobManager.getJobDir(skillId, jobId);
-    if (fs.existsSync(path.join(jobDir, 'events.db'))) {
-      return true;
-    }
-
-    if (jobId === 'default') {
-      const skillDir = this.jobManager.getSkillDir(skillId);
-      return fs.existsSync(path.join(skillDir, 'events.db'));
-    }
-
-    return false;
+    const skillDir = this.jobManager.getSkillDir(skillId);
+    return fs.existsSync(path.join(skillDir, 'events.db'));
   }
 
   private hasJsonlStore(skillId: string, jobId: string): boolean {
-    const jobDir = this.jobManager.getJobDir(skillId, jobId);
-    if (fs.existsSync(path.join(jobDir, 'events.jsonl'))) return true;
-
-    if (jobId === 'default') {
-      const skillDir = this.jobManager.getSkillDir(skillId);
-      return fs.existsSync(path.join(skillDir, 'events.jsonl'));
-    }
-
-    return false;
+    const skillDir = this.jobManager.getSkillDir(skillId);
+    return fs.existsSync(path.join(skillDir, 'events.jsonl'));
   }
 
   private targetKey(skillId: string, jobId: string): string {

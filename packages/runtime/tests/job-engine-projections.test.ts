@@ -170,7 +170,8 @@ deliverable_projections:
 
     const readOnlyEngine = createEngine({});
     expect(readOnlyEngine.getCurrentState()).toBe('DONE');
-    expect(jobManager.getActiveJobId('test-skill')).toBe('terminal-job');
+      expect(jobManager.resolveRunId('test-skill', 'terminal-job'))
+        .toBe(jobManager.getActiveJobId('test-skill'));
   });
 
   it('template receives jobId: exposes jobId directly in projection context', async () => {

@@ -45,19 +45,22 @@ function openStore(workspace: string, skillId: string, jobId: string): EventStor
   return new EventStore({ workspaceDir: workspace, skillId, jobId, enableSqlite: true });
 }
 
-async function appendEventFromChildProcess(dbPath: string): Promise<void> {
+async function appendEventFromChildProcess(dbPath: string, runId: string): Promise<void> {
   const script = `
     const { DatabaseSync } = require('node:sqlite');
     const db = new DatabaseSync(process.argv[1]);
-    const row = db.prepare('SELECT COALESCE(MAX(seq), 0) AS seq FROM events').get();
+    const runId = process.argv[2];
+    const row = db.prepare('SELECT COALESCE(MAX(seq), 0) AS seq FROM events WHERE run_id = ?').get(runId);
     const seq = Number(row.seq) + 1;
+    const ledger = db.prepare('SELECT COALESCE(MAX(ledger_seq), 0) AS seq FROM events').get();
+    const ledgerSeq = Number(ledger.seq) + 1;
     const timestamp = new Date().toISOString();
-    db.prepare('INSERT INTO events (id, event_id, seq, timestamp, occurred_at, type, event_type, state, source, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run('child-process-event', 'child-process-event', seq, timestamp, timestamp, 'CHILD_PROCESS_EVENT', 'CHILD_PROCESS_EVENT', null, 'worker-process', JSON.stringify({ writer: 'separate-process' }));
+    db.prepare('INSERT INTO events (id, event_id, ledger_seq, seq, timestamp, occurred_at, type, event_type, state, source, run_id, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run('child-process-event', 'child-process-event', ledgerSeq, seq, timestamp, timestamp, 'CHILD_PROCESS_EVENT', 'CHILD_PROCESS_EVENT', null, 'worker-process', runId, JSON.stringify({ writer: 'separate-process' }));
     db.close();
   `;
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(process.execPath, ['-e', script, dbPath], { stdio: ['ignore', 'ignore', 'pipe'] });
+    const child = spawn(process.execPath, ['-e', script, dbPath, runId], { stdio: ['ignore', 'ignore', 'pipe'] });
     let stderr = '';
     child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
     child.once('error', reject);
@@ -257,12 +260,12 @@ describe('TelemetryBroker', () => {
     createJob(workspace, 'skill-alpha', 'job-one');
     const selectedStore = openStore(workspace, 'skill-alpha', 'job-one');
     selectedStore.close();
-    const dbPath = path.join(workspace, '.reactive', 'skills', 'skill-alpha', 'jobs', 'job-one', 'events.db');
+    const dbPath = path.join(workspace, '.reactive', 'skills', 'skill-alpha', 'events.db');
     const { url } = await startBroker(workspace);
     const firstClient = await openSse(`${url}/events?target=skill-alpha%2Fjob-one&sinceSeq=0`);
     const secondClient = await openSse(`${url}/events?target=skill-alpha%2Fjob-one&sinceSeq=0`);
 
-    await appendEventFromChildProcess(dbPath);
+    await appendEventFromChildProcess(dbPath, 'job-one');
     await Promise.all([
       firstClient.waitFor((value) => value.includes('CHILD_PROCESS_EVENT')),
       secondClient.waitFor((value) => value.includes('CHILD_PROCESS_EVENT')),

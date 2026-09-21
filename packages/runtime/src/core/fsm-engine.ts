@@ -42,6 +42,17 @@ export interface FSMEngineOptions {
 /** Maximum lifecycle-signal drain steps per top-level handleSignal call.
  *  Prevents cyclic on_enter/on_exit emissions from overflowing the call stack (REL-02). */
 const MAX_QUEUE_DRAIN_DEPTH = 50;
+const signalSerialByRun = new Map<string, Promise<void>>();
+
+type SignalHandlingResult = {
+  transitioned: boolean;
+  previousState: string;
+  newState: string;
+  event: SignalEvent;
+  handledAtDepth?: number;
+  deliverablesWritten: string[];
+  metrics?: ExecutionMetrics;
+};
 
 export class FSMEngine {
   private skillDir: string;
@@ -58,6 +69,7 @@ export class FSMEngine {
   private inBypassState: boolean;
   private readonly strictExecution: boolean;
   private jobId?: string;
+  private jobName?: string;
   private isActiveJob: boolean;
   private jobManager: JobManager;
   private templateCache = new Map<string, HandlebarsTemplateDelegate>();
@@ -80,9 +92,11 @@ export class FSMEngine {
       this.maxTransitionDurationMs = options.perfThresholds.maxTransitionDurationMs;
     }
 
-    const effectiveJobId = options.jobId || options.runId;
+    const effectiveJobId = options.jobId || options.runId || options.eventStore?.getEventContext().run_id;
     this.jobManager = new JobManager(this.workspaceDir);
-    let activeJobId = this.jobManager.getActiveJobId(this.manifest.name);
+    this.jobManager.migrateLegacyRuns(this.manifest.name);
+    const activeJobReference = this.jobManager.getActiveJobId(this.manifest.name);
+    let activeJobId = activeJobReference;
 
     if (!effectiveJobId && options.autoRotateTerminal === true) {
       const rotation = this.jobManager.rotateIfTerminal(this.manifest.name);
@@ -91,8 +105,17 @@ export class FSMEngine {
       }
     }
 
-    const resolvedJobId = effectiveJobId || activeJobId;
-    const isActiveJob = (resolvedJobId === activeJobId);
+    activeJobId = this.jobManager.resolveRunId(this.manifest.name, activeJobId) || activeJobId;
+
+    let resolvedJobId = effectiveJobId
+      ? (this.jobManager.resolveRunId(this.manifest.name, effectiveJobId) || (/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(effectiveJobId) ? effectiveJobId : createSortableId()))
+      : activeJobId;
+    if (!effectiveJobId && resolvedJobId === 'default' && !this.jobManager.getJob(this.manifest.name, resolvedJobId)) {
+      resolvedJobId = createSortableId();
+      activeJobId = resolvedJobId;
+    }
+    const isActiveJob = resolvedJobId === activeJobId
+      || Boolean(effectiveJobId && effectiveJobId === activeJobReference);
 
     this.jobId = resolvedJobId;
     this.isActiveJob = isActiveJob;
@@ -101,21 +124,23 @@ export class FSMEngine {
       const existingJob = this.jobManager.getJob(this.manifest.name, this.jobId);
       if (!existingJob) {
         this.jobManager.createJob(this.manifest.name, {
-          id: this.jobId,
-          name: this.jobId,
+          runId: this.jobId,
+          name: effectiveJobId || this.jobId,
           initialState: this.manifest.initial_state,
           setActive: this.isActiveJob,
         });
       }
+      this.jobName = this.jobManager.getJob(this.manifest.name, this.jobId)?.name;
     }
 
     this.eventStore = options.eventStore || new EventStore({
+      ...options.eventContext,
       skillId: this.manifest.name,
       workspaceDir: this.workspaceDir,
       jobId: this.jobId,
       runId: this.jobId,
+      runName: effectiveJobId || undefined,
       enableSqlite: true,
-      ...options.eventContext,
     });
     this.context = {
       ...(this.manifest.default_context || {}),
@@ -125,7 +150,7 @@ export class FSMEngine {
       this.skillDir,
       this.manifest.deliverable_projections || [],
       options.workspaceDir || process.cwd(),
-      this.jobId,
+      this.jobName || this.jobId,
       this.isActiveJob
     );
 
@@ -657,28 +682,60 @@ export class FSMEngine {
   /**
    * Process an incoming signal event, evaluating transitions with HSM bubbling and draining queued signals
    */
-  public async handleSignal(
+  public handleSignal(
     signalName: string,
     payload: Record<string, any> = {},
-    metadata: { source?: string; causationId?: string } = {}
-  ): Promise<{
-    transitioned: boolean;
-    previousState: string;
-    newState: string;
-    event: SignalEvent;
-    handledAtDepth?: number;
-    deliverablesWritten: string[];
-    metrics?: ExecutionMetrics;
-  }> {
+    metadata: { source?: string; causationId?: string; requestId?: string; idempotencyKey?: string } = {}
+  ): Promise<SignalHandlingResult> {
+    const key = `${this.workspaceDir}\u0000${this.manifest.name}\u0000${this.jobId || 'default'}`;
+    const previous = signalSerialByRun.get(key) || Promise.resolve();
+    const operation = previous.then(() => this.processSignal(signalName, payload, metadata));
+    const settled = operation.then(() => undefined, () => undefined);
+    signalSerialByRun.set(key, settled);
+    void settled.then(() => {
+      if (signalSerialByRun.get(key) === settled) signalSerialByRun.delete(key);
+    });
+    return operation;
+  }
+
+  private async processSignal(
+    signalName: string,
+    payload: Record<string, any> = {},
+    metadata: { source?: string; causationId?: string; requestId?: string; idempotencyKey?: string } = {}
+  ): Promise<SignalHandlingResult> {
     const startTime = performance.now();
     const previousState = this.getCurrentState();
     const prevPath = [...this.activeStatePath];
 
-    const event =     this.eventStore.append(
+    if (metadata.idempotencyKey) {
+      const existing = this.eventStore.getEventByIdempotencyKey(metadata.idempotencyKey);
+      if (existing) {
+        return {
+          transitioned: false,
+          previousState,
+          newState: previousState,
+          event: existing,
+          deliverablesWritten: [],
+        };
+      }
+    }
+    const expectedRunVersion = this.eventStore.getRunVersion();
+
+    const event = this.eventStore.append(
       'SIGNAL_EMITTED',
       { signal: signalName, ...payload },
-      { source: metadata.source, causationId: metadata.causationId, state: previousState }
+      {
+        source: metadata.source,
+        causationId: metadata.causationId,
+        requestId: metadata.requestId,
+        idempotencyKey: metadata.idempotencyKey,
+        state: previousState,
+      }
     );
+    const signalRunVersion = this.eventStore.getRunVersion();
+    if (signalRunVersion < expectedRunVersion) {
+      this.eventStore.assertRunVersion(expectedRunVersion);
+    }
 
     this.turnsSinceLastSignal = 0;
 
@@ -725,6 +782,8 @@ export class FSMEngine {
           },
           transDef.judgment
         );
+
+        this.eventStore.assertRunVersion(signalRunVersion);
 
         this.eventStore.append(
           'GUARD_EVALUATED',
@@ -824,7 +883,7 @@ export class FSMEngine {
                   throw cycleError;
                 }
                 const next = this.signalQueue.shift()!;
-                await this.handleSignal(next.signal, next.payload || {}, next.metadata || {});
+                await this.processSignal(next.signal, next.payload || {}, next.metadata || {});
               }
             } finally {
               this.isProcessingQueue = false;
@@ -1012,6 +1071,10 @@ export class FSMEngine {
 
   public getJobId(): string | undefined {
     return this.jobId;
+  }
+
+  public getJobName(): string | undefined {
+    return this.jobName;
   }
 
   public isJobActive(): boolean {

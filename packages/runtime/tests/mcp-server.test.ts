@@ -191,7 +191,8 @@ describe('Reactive MCP Server Integration', () => {
     });
 
     await queryHandler.handler({ skill: 'test-fsm', sql: 'SELECT * FROM events' }, {} as any);
-    expect(jobManager.getActiveJobId('test-fsm')).toBe('default');
+    expect(jobManager.getActiveJobId('test-fsm'))
+      .toBe(jobManager.resolveRunId('test-fsm', 'default'));
 
     const rotated = await stateHandler.handler({ skill: 'test-fsm' }, {} as any);
     const parsed = JSON.parse(rotated.content[0].text);

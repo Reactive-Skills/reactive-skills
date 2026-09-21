@@ -23,6 +23,8 @@ export function normalizeJobSlug(name: string): string {
 
 export interface CreateJobOptions {
   id?: string;
+  runId?: string;
+  alias?: string;
   name?: string;
   initialState?: string;
   parentRunId?: string;
@@ -70,11 +72,19 @@ export class JobManager {
   }
 
   public getJobsDir(skillId: string): string {
-    return path.join(this.getSkillDir(skillId), 'jobs');
+    return path.join(this.getSkillDir(skillId), 'runs');
   }
 
   public getJobDir(skillId: string, jobId: string): string {
     return path.join(this.getJobsDir(skillId), jobId);
+  }
+
+  public getLegacyJobsDir(skillId: string): string {
+    return path.join(this.getSkillDir(skillId), 'jobs');
+  }
+
+  public getLegacyJobDir(skillId: string, jobId: string): string {
+    return path.join(this.getLegacyJobsDir(skillId), jobId);
   }
 
   /**
@@ -112,19 +122,21 @@ export class JobManager {
       fs.mkdirSync(targetDir, { recursive: true });
     }
     const pointerFile = this.getActivePointerPath(skillId);
-    fs.writeFileSync(pointerFile, jobId.trim(), 'utf8');
+    const resolved = this.resolveRunId(skillId, jobId.trim()) || jobId.trim();
+    fs.writeFileSync(pointerFile, resolved, 'utf8');
   }
 
   /**
    * Creates a new isolated job and persists its job.json metadata.
    */
   public createJob(skillId: string, options: CreateJobOptions = {}): JobMetadata {
-    const id = options.id || createSortableId();
-    const name = options.name ? normalizeJobSlug(options.name) : normalizeJobSlug(id);
+    const id = options.runId || options.id || createSortableId();
+    const name = options.alias || options.name ? normalizeJobSlug(options.alias || options.name || id) : normalizeJobSlug(id);
     const now = new Date().toISOString();
 
     const metadata: JobMetadata = {
       id,
+      runId: id,
       name,
       skillId,
       status: 'active',
@@ -138,6 +150,8 @@ export class JobManager {
     if (!fs.existsSync(jobDir)) {
       fs.mkdirSync(jobDir, { recursive: true });
     }
+    fs.mkdirSync(path.join(jobDir, 'artifacts'), { recursive: true });
+    fs.mkdirSync(path.join(jobDir, 'logs'), { recursive: true });
 
     const metadataPath = path.join(jobDir, 'job.json');
     fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
@@ -153,12 +167,13 @@ export class JobManager {
    * Retrieves a job's metadata by ID.
    */
   public getJob(skillId: string, jobId: string): JobMetadata | null {
-    const jobDir = this.getJobDir(skillId, jobId);
+    const resolvedId = this.resolveRunId(skillId, jobId) || jobId;
+    const jobDir = this.getJobDir(skillId, resolvedId);
     const metadataPath = path.join(jobDir, 'job.json');
     if (fs.existsSync(metadataPath)) {
       try {
         const raw = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
-        return JobMetadataSchema.parse(raw);
+        return JobMetadataSchema.parse({ ...raw, id: raw.runId || raw.id, runId: raw.runId || raw.id });
       } catch {
         return null;
       }
@@ -168,8 +183,9 @@ export class JobManager {
     if (fs.existsSync(jobDir)) {
       const stat = fs.statSync(jobDir);
       return {
-        id: jobId,
-        name: normalizeJobSlug(jobId),
+        id: resolvedId,
+        runId: resolvedId,
+        name: normalizeJobSlug(resolvedId),
         skillId,
         status: 'active',
         currentState: 'INIT',
@@ -178,14 +194,26 @@ export class JobManager {
       };
     }
 
+    const legacyJobDir = this.getLegacyJobDir(skillId, resolvedId);
+    const legacyMetadataPath = path.join(legacyJobDir, 'job.json');
+    if (fs.existsSync(legacyMetadataPath)) {
+      try {
+        const raw = JSON.parse(fs.readFileSync(legacyMetadataPath, 'utf8'));
+        return JobMetadataSchema.parse({ ...raw, id: raw.runId || raw.id, runId: raw.runId || raw.id });
+      } catch {
+        return null;
+      }
+    }
+
     // Check if it's the active job pointer
     if (jobId === this.getActiveJobId(skillId)) {
       const pointerFile = this.getActivePointerPath(skillId);
       if (fs.existsSync(pointerFile)) {
         const stat = fs.statSync(pointerFile);
         return {
-          id: jobId,
-          name: normalizeJobSlug(jobId),
+          id: resolvedId,
+          runId: resolvedId,
+          name: normalizeJobSlug(resolvedId),
           skillId,
           status: 'active',
           currentState: 'INIT',
@@ -218,18 +246,24 @@ export class JobManager {
    * Updates a job's metadata (e.g. status, currentState, completedAt).
    */
   public updateJob(skillId: string, jobId: string, updates: Partial<JobMetadata>): JobMetadata {
-    const existing = this.getJob(skillId, jobId) || this.createJob(skillId, { id: jobId, name: jobId });
+    const resolvedId = this.resolveRunId(skillId, jobId) || jobId;
+    const existing = this.getJob(skillId, resolvedId) || this.createJob(skillId, { runId: resolvedId, name: resolvedId });
     const updated: JobMetadata = {
       ...existing,
       ...updates,
+      id: existing.runId || existing.id,
+      runId: existing.runId || existing.id,
+      name: updates.name ? normalizeJobSlug(updates.name) : existing.name,
       updatedAt: new Date().toISOString(),
     };
 
     const validated = JobMetadataSchema.parse(updated);
-    const jobDir = this.getJobDir(skillId, jobId);
+    const jobDir = this.getJobDir(skillId, updated.runId || updated.id);
     if (!fs.existsSync(jobDir)) {
       fs.mkdirSync(jobDir, { recursive: true });
     }
+    fs.mkdirSync(path.join(jobDir, 'artifacts'), { recursive: true });
+    fs.mkdirSync(path.join(jobDir, 'logs'), { recursive: true });
 
     const metadataPath = path.join(jobDir, 'job.json');
     fs.writeFileSync(metadataPath, JSON.stringify(validated, null, 2), 'utf8');
@@ -255,6 +289,17 @@ export class JobManager {
       }
     }
 
+    const legacyJobsDir = this.getLegacyJobsDir(skillId);
+    if (fs.existsSync(legacyJobsDir)) {
+      const entries = fs.readdirSync(legacyJobsDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const job = this.getJob(skillId, entry.name);
+          if (job && !jobs.some(existing => existing.id === job.id)) jobs.push(job);
+        }
+      }
+    }
+
     const activeJobId = this.getActiveJobId(skillId);
     if (!jobs.some(j => j.id === activeJobId)) {
       const activeJob = this.getJob(skillId, activeJobId);
@@ -273,6 +318,108 @@ export class JobManager {
     }
 
     return jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  /** Resolve either an immutable run ID or a mutable human-readable alias. */
+  public resolveRunId(skillId: string, reference: string): string | null {
+    const mappingPath = path.join(this.getSkillDir(skillId), '.legacy-run-migrations.json');
+    if (fs.existsSync(mappingPath)) {
+      try {
+        const mapping = JSON.parse(fs.readFileSync(mappingPath, 'utf8')) as Record<string, string>;
+        if (mapping[reference]) return mapping[reference];
+      } catch {
+        // Fall through to direct and alias lookup.
+      }
+    }
+    const direct = this.getJobMetadataAt(this.getJobDir(skillId, reference));
+    if (direct) return direct.runId || direct.id;
+    const legacy = this.getJobMetadataAt(this.getLegacyJobDir(skillId, reference));
+    if (legacy) return legacy.runId || legacy.id;
+
+    for (const directory of [this.getJobsDir(skillId), this.getLegacyJobsDir(skillId)]) {
+      if (!fs.existsSync(directory)) continue;
+      for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const metadata = this.getJobMetadataAt(path.join(directory, entry.name));
+        if (metadata && normalizeJobSlug(metadata.name) === normalizeJobSlug(reference)) {
+          return metadata.runId || metadata.id;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Copy legacy per-job filesystem state into UUID-backed run directories.
+   * Legacy directories remain intact until an operator explicitly removes them.
+   */
+  public migrateLegacyRuns(skillId: string): Record<string, string> {
+    const legacyDir = this.getLegacyJobsDir(skillId);
+    if (!fs.existsSync(legacyDir)) return {};
+    const mappingPath = path.join(this.getSkillDir(skillId), '.legacy-run-migrations.json');
+    let mapping: Record<string, string> = {};
+    if (fs.existsSync(mappingPath)) {
+      try { mapping = JSON.parse(fs.readFileSync(mappingPath, 'utf8')); } catch { mapping = {}; }
+    }
+    let changed = false;
+    for (const entry of fs.readdirSync(legacyDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const oldId = entry.name;
+      const newId = mapping[oldId] || createSortableId();
+      if (!mapping[oldId]) {
+        mapping[oldId] = newId;
+        changed = true;
+      }
+      const oldPath = path.join(legacyDir, oldId);
+      const newPath = this.getJobDir(skillId, newId);
+      fs.mkdirSync(path.join(newPath, 'artifacts'), { recursive: true });
+      fs.mkdirSync(path.join(newPath, 'logs'), { recursive: true });
+      for (const directory of ['artifacts', 'logs']) {
+        const source = path.join(oldPath, directory);
+        const target = path.join(newPath, directory);
+        if (fs.existsSync(source) && fs.readdirSync(source).length > 0 && fs.readdirSync(target).length === 0) {
+          fs.cpSync(source, target, { recursive: true });
+        }
+      }
+      const oldMetadataPath = path.join(oldPath, 'job.json');
+      const newMetadataPath = path.join(newPath, 'job.json');
+      if (!fs.existsSync(newMetadataPath)) {
+        let raw: any = {};
+        if (fs.existsSync(oldMetadataPath)) {
+          try { raw = JSON.parse(fs.readFileSync(oldMetadataPath, 'utf8')); } catch { raw = {}; }
+        }
+        const now = new Date().toISOString();
+        const metadata = {
+          id: newId,
+          runId: newId,
+          name: raw.name || normalizeJobSlug(oldId),
+          skillId,
+          status: raw.status || 'active',
+          currentState: raw.currentState || 'INIT',
+          parentRunId: raw.parentRunId,
+          createdAt: raw.createdAt || now,
+          updatedAt: raw.updatedAt || now,
+          completedAt: raw.completedAt,
+        };
+        fs.writeFileSync(newMetadataPath, JSON.stringify(metadata, null, 2), 'utf8');
+      }
+    }
+    if (changed) {
+      fs.mkdirSync(path.dirname(mappingPath), { recursive: true });
+      fs.writeFileSync(mappingPath, JSON.stringify(mapping, null, 2), 'utf8');
+    }
+    return mapping;
+  }
+
+  private getJobMetadataAt(jobDir: string): JobMetadata | null {
+    const metadataPath = path.join(jobDir, 'job.json');
+    if (!fs.existsSync(metadataPath)) return null;
+    try {
+      const raw = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+      return JobMetadataSchema.parse({ ...raw, id: raw.runId || raw.id, runId: raw.runId || raw.id });
+    } catch {
+      return null;
+    }
   }
 
   /**

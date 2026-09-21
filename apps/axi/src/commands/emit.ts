@@ -7,7 +7,7 @@ import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.j
 
 
 export async function emitCommand(args: string[]): Promise<string> {
-  const { jobId, filteredArgs } = extractJobFlag(args);
+  const { jobId, idempotencyKey, filteredArgs } = extractJobFlag(args);
   const skillName = filteredArgs[0];
 
   if (!skillName || filteredArgs.length < 2) {
@@ -103,10 +103,11 @@ export async function emitCommand(args: string[]): Promise<string> {
         }
       }
 
-      const result = await engine.handleSignal(signalName, payload, { source: 'cli', causationId: eventId });
+      const result = await engine.handleSignal(signalName, payload, { source: 'cli', causationId: eventId, idempotencyKey });
 
       const lines: string[] = [];
       const effectiveJobId = (typeof engine.getJobId === 'function' ? engine.getJobId() : jobId) || 'default';
+      const effectiveAlias = (typeof engine.getJobName === 'function' ? engine.getJobName() : undefined) || effectiveJobId;
       lines.push(renderDetail('emit', {
         skill_id: skillName,
         signal: signalName,
@@ -144,7 +145,7 @@ export async function emitCommand(args: string[]): Promise<string> {
         domain: 'emit',
         action: 'signal',
         skillName,
-        jobId: effectiveJobId,
+        jobId: effectiveAlias,
         currentState: result.newState,
       });
       lines.push(renderHelp(suggestions));

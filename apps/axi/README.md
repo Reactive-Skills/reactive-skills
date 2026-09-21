@@ -2,7 +2,7 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.8.8: Published Jev adapter availability** [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.8) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.9.0: Skill-scoped SQLite event ledger with UUID-backed runs** [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.9.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -169,7 +169,7 @@ The broker exposes `GET /catalog`, `GET /state?skillId=<skill-id>&jobId=<job-id>
 
 Use repeated `target=<skill-id>/<job-id>` parameters to restrict one SSE connection to selected jobs.
 
-Sequence numbers remain local to each job and every streamed event includes its skill ID and job ID.
+Sequence numbers remain local to each UUID-backed run and every streamed event includes its skill ID and run ID.
 
 The broker polls SQLite so events written by separate CLI, MCP, and worker processes become visible without a restart.
 

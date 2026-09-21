@@ -127,8 +127,10 @@ export async function resetCommand(args: string[]): Promise<string> {
   }
 
   // Non-destructive reset: archive the target and rotate only when it owns the active pointer
-  const activeJobId = jobId || jobManager.getActiveJobId(skillName);
-  const rotatesGlobalPointer = activeJobId === jobManager.getActiveJobId(skillName);
+  const activeReference = jobId || jobManager.getActiveJobId(skillName);
+  const activeJobId = jobManager.resolveRunId(skillName, activeReference) || activeReference;
+  const currentActiveId = jobManager.resolveRunId(skillName, jobManager.getActiveJobId(skillName)) || jobManager.getActiveJobId(skillName);
+  const rotatesGlobalPointer = activeJobId === currentActiveId;
   jobManager.updateJob(skillName, activeJobId, {
     status: 'archived',
     completedAt: new Date().toISOString(),

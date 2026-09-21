@@ -60,18 +60,19 @@ describe('eventsCommand', () => {
     expect(result).toContain('NO_EVENT_STORE');
   });
 
-  it('reads events from a job-scoped event log', async () => {
+  it('reads events from the skill-scoped event log by run alias', async () => {
     const skillDir = path.join(process.cwd(), 'skills', 'test-events-skill');
     fs.mkdirSync(skillDir, { recursive: true });
     fs.writeFileSync(path.join(skillDir, 'skill.yaml'), 'name: test-events-skill\n', 'utf8');
 
     const jobManager = new JobManager(process.cwd());
     jobManager.createJob('test-events-skill', { id: 'slice-alpha', name: 'slice-alpha', setActive: true });
-    const jobDir = path.join(process.cwd(), '.reactive', 'skills', 'test-events-skill', 'jobs', 'slice-alpha');
-    fs.mkdirSync(jobDir, { recursive: true });
+    const runId = jobManager.getJob('test-events-skill', 'slice-alpha')!.id;
+    const skillStateDir = path.join(process.cwd(), '.reactive', 'skills', 'test-events-skill');
+    fs.mkdirSync(skillStateDir, { recursive: true });
     fs.writeFileSync(
-      path.join(jobDir, 'events.jsonl'),
-      '{"id":"event-1","seq":1,"timestamp":"2026-01-01T00:00:00.000Z","type":"SKILL_INITIALIZED","state":"INIT","payload":{}}\n',
+      path.join(skillStateDir, 'events.jsonl'),
+      `{"id":"event-1","seq":1,"run_id":"${runId}","timestamp":"2026-01-01T00:00:00.000Z","type":"SKILL_INITIALIZED","state":"INIT","payload":{}}\n`,
       'utf8'
     );
 

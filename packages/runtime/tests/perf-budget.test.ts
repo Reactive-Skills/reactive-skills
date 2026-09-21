@@ -41,12 +41,7 @@ describe('Performance Budget & Metrics Telemetry', () => {
   afterEach(() => {
     engine.close();
     try {
-      if (fs.existsSync(tempDbPath)) fs.unlinkSync(tempDbPath);
-      if (fs.existsSync(`${tempDbPath}-wal`)) fs.unlinkSync(`${tempDbPath}-wal`);
-      if (fs.existsSync(`${tempDbPath}-shm`)) fs.unlinkSync(`${tempDbPath}-shm`);
-      if (fs.existsSync(tempDbDir) && fs.readdirSync(tempDbDir).length === 0) {
-        fs.rmdirSync(tempDbDir);
-      }
+      fs.rmSync(tempDbDir, { recursive: true, force: true });
     } catch {
       // Best-effort cleanup
     }

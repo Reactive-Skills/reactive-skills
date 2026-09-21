@@ -2,7 +2,7 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.8.8: Published Jev adapter availability** [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.8.8) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.9.0: Skill-scoped SQLite event ledger with UUID-backed runs** [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.9.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -62,11 +62,11 @@ Omit `--job` to preserve existing resolution through `REACTIVE_JOB_ID`, the acti
 
 ### Multi-Job Telemetry Broker
 
-`TelemetryBroker` reads the current workspace's `.reactive/skills` catalog and opens SQLite-backed readers for discovered jobs.
+`TelemetryBroker` reads the current workspace's `.reactive/skills` catalog and opens run-scoped readers over each skill's shared SQLite ledger.
 
 It exposes `GET /catalog`, job-scoped `GET /state`, and one filtered `GET /events` SSE stream.
 
-The broker preserves each job's local sequence numbers and includes skill and job identity in every event envelope.
+The broker preserves each run's local sequence numbers and includes skill and run identity in every event envelope.
 
 It refreshes the catalog on a bounded interval so new jobs appear without a process restart.
 
@@ -169,10 +169,20 @@ The runtime has no dependency on any specific integration mode:
 
 ## Event Store
 
-Dual-mode event sourcing:
+Skill-scoped event sourcing:
 
-1. **JSONL** (`.reactive/skills/<skill>/events.jsonl`) - Human-readable append-only log
-2. **SQLite** (`.reactive/skills/<skill>/events.db`) - Indexed relational database
+1. **SQLite** (`.reactive/skills/<skill>/events.db`) - Canonical indexed relational event ledger
+2. **JSONL** (`.reactive/skills/<skill>/events.jsonl`) - Recoverable human-readable export
+
+Run metadata and filesystem isolation:
+
+- `.reactive/skills/<skill>/runs/<run-id>/job.json`
+- `.reactive/skills/<skill>/runs/<run-id>/artifacts/`
+- `.reactive/skills/<skill>/runs/<run-id>/logs/`
+
+Run names are mutable display aliases.
+
+`run_id` is an immutable generated UUIDv7-style identifier.
 
 ## Job & Run Management
 

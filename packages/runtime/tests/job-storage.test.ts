@@ -17,7 +17,7 @@ describe('Job Storage & Concurrency Locks (Leaf 2)', () => {
     }
   });
 
-  it('job-scoped paths: resolves to .reactive/skills/<skill>/jobs/<jobId>/ when jobId is provided', () => {
+  it('run-scoped paths: resolves to .reactive/skills/<skill>/runs/<runId>/', () => {
     const store = new EventStore({
       workspaceDir: tmpDir,
       skillId: 'synthesis',
@@ -28,9 +28,12 @@ describe('Job Storage & Concurrency Locks (Leaf 2)', () => {
     store.append('TEST_SIGNAL', { value: 42 });
     store.close();
 
-    const expectedJobDir = path.join(tmpDir, '.reactive', 'skills', 'synthesis', 'jobs', 'auth-slice-1');
-    expect(fs.existsSync(path.join(expectedJobDir, 'events.jsonl'))).toBe(true);
-    expect(fs.existsSync(path.join(expectedJobDir, 'events.db'))).toBe(true);
+    const skillDir = path.join(tmpDir, '.reactive', 'skills', 'synthesis');
+    const expectedRunDir = path.join(skillDir, 'runs', 'auth-slice-1');
+    expect(fs.existsSync(path.join(skillDir, 'events.jsonl'))).toBe(true);
+    expect(fs.existsSync(path.join(skillDir, 'events.db'))).toBe(true);
+    expect(fs.existsSync(path.join(expectedRunDir, 'artifacts'))).toBe(true);
+    expect(fs.existsSync(path.join(expectedRunDir, 'logs'))).toBe(true);
   });
 
   it('legacy store fallback: uses skill root when legacy events.jsonl exists without jobs/ directory', () => {

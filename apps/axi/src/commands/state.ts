@@ -1,7 +1,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs';
-import { FSMEngine, createSortableId } from '@reactive-skills/runtime';
+import { FSMEngine } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
@@ -53,6 +53,7 @@ export async function stateCommand(args: string[]): Promise<string> {
       const events = engine.getEventStore().getAll();
       const latestEvent = events.length > 0 ? events[events.length - 1] : undefined;
       const effectiveJobId = (typeof engine.getJobId === 'function' ? engine.getJobId() : jobId) || 'default';
+      const effectiveAlias = (typeof engine.getJobName === 'function' ? engine.getJobName() : undefined) || effectiveJobId;
 
       const lines: string[] = [];
       lines.push(renderDetail('state', {
@@ -81,7 +82,7 @@ export async function stateCommand(args: string[]): Promise<string> {
         domain: 'state',
         action: 'get',
         skillName,
-        jobId: effectiveJobId,
+        jobId: effectiveAlias,
         currentState,
       });
       lines.push(renderHelp(suggestions));
