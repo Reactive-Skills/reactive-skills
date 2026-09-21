@@ -154,5 +154,39 @@
 
 export const STATE_NAMES = ['EXPLORE', 'PLAN', 'EXECUTE', 'VERIFY', 'DONE'];
 
+/**
+ * @typedef {Object} BlogAuthor
+ * @property {string} name
+ * @property {string} role
+ * @property {string} [handle]
+ * @property {string} [avatar]
+ */
+
+/**
+ * @typedef {Object} BlogSeries
+ * @property {string} id
+ * @property {string} title
+ * @property {number} part
+ * @property {number} total
+ * @property {string} [nextSlug]
+ * @property {string} [prevSlug]
+ */
+
+/**
+ * @typedef {Object} BlogPost
+ * @property {string} slug
+ * @property {string} title
+ * @property {string} subtitle
+ * @property {string} summary
+ * @property {string} publishedAt
+ * @property {string} readTime
+ * @property {string} category
+ * @property {string[]} tags
+ * @property {BlogAuthor} author
+ * @property {BlogSeries} [series]
+ * @property {boolean} [featured]
+ * @property {DocSection[]} sections
+ */
+
 export {};
 

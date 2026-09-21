@@ -1,0 +1,8 @@
+# Global repository owners
+* @brand
+
+# Blog authoring and CMS configuration permissions
+# Any changes or community PRs to blog content require owner review
+/content/blog/                               @brand
+/apps/site/public/admin/                     @brand
+/apps/site/src/infrastructure/content/blog/  @brand

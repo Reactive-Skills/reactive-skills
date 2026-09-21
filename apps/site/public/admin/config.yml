@@ -1,0 +1,51 @@
+backend:
+  name: github
+  repo: Reactive-Skills/reactive-skills
+  branch: main
+
+# Enable local file editing when running: npx decap-server
+local_backend: true
+
+media_folder: "apps/site/public/images/blog"
+public_folder: "/images/blog"
+
+collections:
+  - name: "blog"
+    label: "Blog Posts"
+    folder: "content/blog"
+    create: true
+    slug: "{{slug}}"
+    extension: "md"
+    format: "yaml-frontmatter"
+    editor:
+      preview: true
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Subtitle", name: "subtitle", widget: "string", required: false }
+      - { label: "Slug", name: "slug", widget: "string" }
+      - { label: "Publish Date", name: "publishedAt", widget: "datetime", date_format: "YYYY-MM-DD", time_format: false, format: "YYYY-MM-DD" }
+      - { label: "Read Time", name: "readTime", widget: "string", default: "6 min read" }
+      - { label: "Category", name: "category", widget: "select", options: ["Architecture", "Deep Dive", "Tutorial", "Release", "Ecosystem"], default: "Architecture" }
+      - { label: "Tags", name: "tags", widget: "list", default: ["Runtime", "Architecture"] }
+      - { label: "Featured Post", name: "featured", widget: "boolean", default: false, required: false }
+      - { label: "Summary", name: "summary", widget: "text" }
+      - label: "Author"
+        name: "author"
+        widget: "object"
+        fields:
+          - { label: "Name", name: "name", widget: "string", default: "Reactive Skills Core Team" }
+          - { label: "Role", name: "role", widget: "string", default: "Runtime Architecture" }
+          - { label: "Handle", name: "handle", widget: "string", default: "@reactiveskills", required: false }
+          - { label: "Avatar / Emoji", name: "avatar", widget: "string", default: "⚡", required: false }
+      - label: "Series (Optional)"
+        name: "series"
+        widget: "object"
+        required: false
+        fields:
+          - { label: "Series ID", name: "id", widget: "string" }
+          - { label: "Series Title", name: "title", widget: "string" }
+          - { label: "Part Number", name: "part", widget: "number", value_type: "int" }
+          - { label: "Total Parts", name: "total", widget: "number", value_type: "int" }
+          - { label: "Previous Post Slug", name: "prevSlug", widget: "string", required: false }
+          - { label: "Next Post Slug", name: "nextSlug", widget: "string", required: false }
+      - { label: "Body", name: "body", widget: "markdown" }

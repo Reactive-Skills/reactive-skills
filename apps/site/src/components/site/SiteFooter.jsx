@@ -29,6 +29,7 @@ export function SiteFooter() {
           </a>
         </div>
         <nav aria-label="Footer" className="grid grid-cols-2 gap-x-10 gap-y-2 text-sm">
+          <Link href="/blog" className="text-phino-text-muted transition-colors hover:text-phino-text">Blog</Link>
           <Link href="/registry" className="text-phino-text-muted transition-colors hover:text-phino-text">Skill Registry</Link>
           <Link href="/docs/quickstart" className="text-phino-text-muted transition-colors hover:text-phino-text">Quickstart</Link>
           <Link href="/docs/concepts" className="text-phino-text-muted transition-colors hover:text-phino-text">Concepts</Link>

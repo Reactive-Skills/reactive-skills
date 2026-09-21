@@ -10,6 +10,8 @@ import { DOCS_CONTENT_SOURCE } from '@/contracts/DocsContentSource';
 import { InMemoryDocsContentSource } from '@/infrastructure/InMemoryDocsContentSource';
 import { REGISTRY_CONTENT_SOURCE } from '@/contracts/RegistryContentSource';
 import { InMemoryRegistryContentSource } from '@/infrastructure/InMemoryRegistryContentSource';
+import { BLOG_CONTENT_SOURCE } from '@/contracts/BlogContentSource';
+import { InMemoryBlogContentSource } from '@/infrastructure/InMemoryBlogContentSource';
 
 class Container {
   constructor() {
@@ -41,6 +43,7 @@ export function getContainer() {
     _container = new Container();
     _container.registerSingleton(DOCS_CONTENT_SOURCE, () => new InMemoryDocsContentSource());
     _container.registerSingleton(REGISTRY_CONTENT_SOURCE, () => new InMemoryRegistryContentSource());
+    _container.registerSingleton(BLOG_CONTENT_SOURCE, () => new InMemoryBlogContentSource());
   }
   return _container;
 }
@@ -53,5 +56,10 @@ export function getDocsContentSource() {
 /** @returns {import('@/contracts/RegistryContentSource').IRegistryContentSource} */
 export function getRegistryContentSource() {
   return getContainer().resolve(REGISTRY_CONTENT_SOURCE);
+}
+
+/** @returns {import('@/contracts/BlogContentSource').IBlogContentSource} */
+export function getBlogContentSource() {
+  return getContainer().resolve(BLOG_CONTENT_SOURCE);
 }
 
