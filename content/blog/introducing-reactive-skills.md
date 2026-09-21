@@ -1,6 +1,6 @@
 ---
-title: "Introducing Reactive Skills: The Death of the Monolithic Prompt"
-subtitle: "Why Agent Skills Must Become Hierarchical State Machines with Scoped Prompt Slices and Deterministic Guards"
+title: "Introducing Reactive Skills: Why Agent Skills Need Formal Statecharts"
+subtitle: "Replacing Flat Prompts with Hierarchical State Machines and Scoped Context Slices"
 slug: "introducing-reactive-skills"
 publishedAt: "2026-03-20"
 readTime: "6 min read"
@@ -12,7 +12,7 @@ tags:
   - State Machines
   - Event Sourcing
 featured: true
-summary: "Conventional agent skills dump thousands of lines of instructions into an LLM context and pray for adherence. Reactive Skills transforms passive markdown into event-driven Hierarchical State Machines with append-only event sourcing and deterministic guards."
+summary: "Flat prompt files force agents to manage complex engineering tasks in an unstructured context loop. Reactive Skills introduces a statechart runtime with scoped prompt slices, ancestor event bubbling, and deterministic guards."
 author:
   name: "Reactive Skills Core Team"
   role: "Runtime Architecture"
@@ -26,65 +26,67 @@ series:
   nextSlug: "guarding-the-state-machine-jev"
 ---
 
-## The Passive Skill Trap
+## Context as an Execution Bottleneck
 
-Over the past two years, the AI engineering ecosystem standardized on markdown instruction files (`SKILL.md`) to guide autonomous agents. You write down the objectives, list the tools, enumerate edge cases, and hand the file to an LLM.
+Most agent frameworks package procedures as flat markdown documents (`SKILL.md`). When an agent starts a task, the harness injects the entire file into prompt context, leaving the model to navigate multi-step execution on its own.
 
-For single-turn queries or brief scripts, this works well enough. But as agent tasks grow into multi-phase engineering workflows—scaffolding features, migrating database schemas, executing surgical refactors, running integration test suites—the monolithic prompt model breaks down catastrophically.
+On short queries, this works. On multi-turn engineering tasks—refactoring a module, running database migrations, reconciling APIs—it degrades quickly:
 
-> **The Failure Modes of Monolithic Prompts**
-> Attention drift from bloated context windows, token consumption wasted on dormant phases, and hallucinated completion claims where the model claims tests passed without ever verifying execution.
+- Inactive procedures compete for attention. Instructions for post-implementation verification or rollback occupy valuable prompt tokens while the agent is still analyzing files.
+- Context decay weakens constraint adherence. As turn history grows, instructions in the middle of a 2,000-line prompt lose influence over model decisions.
+- Verification collapses into self-reporting. Without an external runtime enforcing phase completion, agents declare work finished based on generated text rather than machine evidence.
 
-- Context Window Bloat: Dumping instructions for Explore, Plan, Execute, and Verify simultaneously burns 70%+ of the token budget on phases that are completely irrelevant to the current turn.
-- Attention Drift: As conversation turns accumulate, instructions in the middle of a 1,500-line markdown file get suppressed or forgotten.
-- Vibe-Based Progression: Without a runtime boundary, the agent decides when a task is "done" based purely on its own generated prose ("Everything looks great, all tests pass!") rather than verified system state.
+## Statecharts Over Flat Documents
 
-## The Reactive Shift: From Documents to Statecharts
+Reactive Skills Architecture (RSA) structures workflows as formal Hierarchical State Machines (HSMs).
 
-Reactive Skills Architecture (RSA) fundamentally inverts this paradigm. Instead of treating a skill as a passive document for the agent to memorize, RSA treats the skill as a formal **Hierarchical State Machine (HSM)** executed by a strict TypeScript runtime.
-
-At any point in time, the agent is in exactly one state (e.g. `PLAN`, `EXECUTE`, or `VERIFY`). Rather than receiving the entire repository handbook, the agent is presented with a **Just-In-Time Prompt Slice** containing only:
-
-- The prompt slice for the active state (`states/<state>.md`).
-- The explicit tool whitelist enabled for that state.
-- The current context variables bound to that state (`context_keys`).
-- The declared transitions and acceptable runtime signals.
+The agent occupies one state at a time. Entering `PLAN` loads only the prompt slice for planning, restricting the active tool whitelist to read-only discovery tools. Instructions for `EXECUTE` and `VERIFY` remain out of context until the machine advances.
 
 ```bash
 npx -y @reactive-skills/axi state refactor-workflow
 ```
 
-## Hierarchical State Machines & Ancestor Bubbling
-
-Real-world workflows are rarely flat sequences. A refactoring session might comprise substates like `ANALYZE_AST` → `TRANSFORM_CODE` → `VALIDATE_TYPES`. If every substate had to implement handlers for global timeouts, security aborts, or human interventions, skills would drown in boilerplate.
-
-RSA implements formal **Hierarchical State Machine (HSM) Ancestor Bubbling**. When an incoming signal has no matching transition in a leaf substate, the event bubbles up the ancestor tree until an ancestor handles it.
-
-> **Cross-Cutting Resilience**
-> Global recovery policies—such as EMERGENCY_ABORT, TIMEOUT, or ROLLBACK—are declared once on composite parent states, protecting all nested substates automatically.
-
-## Deterministic Guard Gates: No More Vibe Checks
-
-In Reactive Skills, an agent cannot simply declare that a phase is complete. Transitions are defended by **deterministic guard expressions** evaluated in a sandboxed runtime environment.
-
-A guard inspects concrete context facts: exit codes, payload properties, schema validations, or file existence. If a guard evaluates to `false`, the state machine refuses to transition, forcing the agent to remediate the underlying issue.
+This inspection command returns the active state, its bound context variables, and permitted signals:
 
 ```yaml
-# skill.yaml transition specification
+state:
+  skill_id: refactor-workflow
+  current_state: PLAN
+prompt:
+  raw_prompt: "# State: PLAN\nAnalyze target files and generate an implementation plan..."
+  allowed_tools: "view_file,grep_search"
+transitions:
+  - signal: PLAN_APPROVED -> EXECUTE
+  - signal: ABORT -> CANCELLED
+```
+
+## Nesting and Ancestor Event Bubbling
+
+Flat state machines fail on non-trivial workflows because error handling duplicates across every step. If an execution phase contains separate steps for AST parsing, code modification, and typecheck passes, wiring timeout or cancellation handlers into each individual state creates unnecessary surface area.
+
+RSA handles this through hierarchical state nesting. When a signal arrives without a transition match in a leaf state, the runtime bubbles the event up the ancestor tree. Global aborts, recovery routines, and execution timeouts live on composite parent states and handle unhandled events from any child.
+
+## Mechanically Enforced Progress
+
+Transitioning between states requires more than an agent asserting that work is done. Transitions are protected by deterministic guard expressions evaluated against context facts.
+
+A guard tests machine properties: process exit codes, schema checks, payload flags, or file system paths. If the condition evaluates to `false`, the runtime rejects the transition and keeps the agent in its current state.
+
+```yaml
 transitions:
   TESTS_PASSED:
     target: "DELIVER"
     guard: "event.payload.exit_code === 0 && context.coverage >= 85"
 ```
 
-## Append-Only Event Sourcing & Live Deliverables
+## Immutable Ledgers and Projected Deliverables
 
-Every signal received, guard evaluated, and state entered is appended to an immutable event ledger (`events.jsonl` + SQLite `events.db`). The active state and system deliverables are never stored as mutable blobs—they are **read-model projections** folded from the event stream.
+State changes, signals, and guard evaluations write to an append-only event store (`events.jsonl` and an SQLite database). 
 
-Whenever an event occurs, RSA automatically re-evaluates projection templates (using Handlebars), generating live PR summaries, verification reports, and architecture decision records directly into the workspace.
+Workspace artifacts—pull request summaries, verification tables, delivery logs—are not regenerated from conversation memory. Instead, the runtime computes them as read-model projections folded directly from the event log using Handlebars templates. If a run aborts or needs replay, the event ledger reproduces the exact sequence of state changes.
 
-## What's Next: Bridging into Semantic Judgment
+## Where Deterministic Checks Fall Short
 
-Deterministic guards (`exit_code === 0`, schema checks) cover most programmatic operations. But modern software engineering also demands **semantic judgment**: *"Did the security scan report zero critical vulnerabilities?", "Is the PR description aligned with the original specification?"*
+Process exit codes and schema checks handle binary invariants cleanly. However, many production boundaries depend on semantic evaluation: confirming an audit identified zero unredacted keys, or checking that generated documentation aligns with actual code changes.
 
-How do we evaluate nuanced semantic criteria at transition boundaries without introducing 5-second frontier LLM latency or hard SDK dependencies? In **Part 2 of this series**, we examine the **Decoupled Hexagonal Judgment Engine** and its zero-dependency snap-on integration with **TypeSafe Jev**.
+Running these checks through general-purpose conversational LLMs adds multi-second latency and uncalibrated variance. In Part 2, we look at the runtime's decoupled Hexagonal Judgment Engine and its integration with TypeSafe Jev for sub-second micro-decisions.

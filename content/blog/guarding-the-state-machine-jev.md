@@ -1,6 +1,6 @@
 ---
 title: "Guarding the State Machine: Hexagonal Judgment and Sub-Second Micro-Decisions with TypeSafe Jev"
-subtitle: "How Reactive Skills Combines Ports-and-Adapters with TypeSafe’s System One Decision Engine for Fast, Resilient Semantic Guarding"
+subtitle: "Decoupled Ports-and-Adapters Architecture and TypeSafe Jev for Fast, Resilient Transition Guards"
 slug: "guarding-the-state-machine-jev"
 publishedAt: "2026-03-22"
 readTime: "8 min read"
@@ -12,7 +12,7 @@ tags:
   - Circuit Breakers
   - Semantic Guards
 featured: false
-summary: "Deterministic boolean checks verify exit codes, but state transitions often require semantic nuance. Learn how Reactive Skills integrates a decoupled Hexagonal Judgment Engine with TypeSafe Jev for ~400ms micro-decisions and production circuit breaking."
+summary: "Deterministic boolean checks verify tool exit codes, but state transitions often require semantic evaluation. Reactive Skills integrates a decoupled Ports-and-Adapters Judgment Engine with TypeSafe Jev to evaluate semantic criteria in ~400ms with circuit breaker fallbacks."
 author:
   name: "Reactive Skills Core Team"
   role: "Runtime Architecture"
@@ -26,51 +26,50 @@ series:
   prevSlug: "introducing-reactive-skills"
 ---
 
-## The Semantic Guard Problem
+## The Limits of Boolean Guarding
 
-In Part 1 of this series, we explored how Hierarchical State Machines and deterministic guards (`exit_code === 0`, schema checks) eliminate the vibe-based progression that plagues monolithic agent prompts.
+Deterministic guard expressions (such as `exit_code === 0` or schema validation) guarantee that programmatic operations succeed before a state machine advances.
 
-However, software engineering frequently confronts questions that cannot be collapsed into a binary regex or exit code check:
+However, state boundaries often involve semantic questions:
 
-- "Did the security scan identify zero critical CVEs and zero unredacted secrets?"
-- "Does this refactoring proposal satisfy architectural invariants without introducing circular dependencies?"
-- "Is this pull request description accurate with respect to the staged git diff?"
+- "Did the security audit surface zero unredacted secrets or credentials?"
+- "Does this proposed refactoring preserve public module boundaries without introducing circular dependencies?"
+- "Does the generated pull request summary match the staged git diff?"
 
-The naive solution is to invoke a flagship frontier model (Claude Opus, GPT-4o) at every transition. But doing so introduces severe friction: 3 to 6 seconds of latency per check, costly API token billing, non-deterministic outputs, and hard vendor coupling.
+Routing these evaluations to frontier conversational models introduces 3 to 6 seconds of latency per transition, high per-turn token costs, variable formatting, and hard API dependencies in the runtime core.
 
-## Hexagonal Architecture: Ports & Adapters for Judgment
+## Decoupled Ports and Adapters
 
-To solve this without sacrificing runtime neutrality, Reactive Skills implements a decoupled **Ports-and-Adapters Judgment Engine** (`packages/runtime/src/core/judgment-engine.ts`). The core runtime takes zero hard dependencies on external AI SDKs.
+Reactive Skills Architecture uses a Ports-and-Adapters design for semantic evaluation (`packages/runtime/src/core/judgment-engine.ts`). The core runtime contains no direct AI vendor SDKs.
 
-Transitions define high-level semantic contracts across three standardized judgment types:
+Transitions declare high-level semantic contracts across three standardized judgment types:
 
-- predicate: A binary query evaluating to true or false with a calibrated confidence score (p_yes).
-- categorical: Structured classification that routes execution to one of several discrete declared transition paths.
+- predicate: A binary query evaluating to true or false with a calibrated confidence score (`p_yes`).
+- categorical: Structured classification that routes execution to one of several declared transition targets.
 - evaluation: Rubric-based numerical scoring for multi-criteria quality gates.
 
-> **The JudgmentAdapter Interface**
-> Any evaluation mechanism can implement the JudgmentAdapter port: from local V8 sandbox scripts, to internal fine-tuned classifiers, to external decision APIs.
+The `JudgmentAdapter` interface abstracts the underlying evaluator, supporting local V8 sandboxes, custom internal classifiers, or specialized external micro-decision services.
 
-## TypeSafe Jev: Sub-Second System One Intelligence
+## Sub-Second Evaluation with TypeSafe Jev
 
-For semantic evaluation, RSA includes the built-in **`JevJudgmentAdapter`**, which connects to **TypeSafe AI’s System One decision model** (Jev).
+For semantic evaluation, the runtime provides the built-in `JevJudgmentAdapter`, which connects to TypeSafe AI's System One decision model (Jev).
 
-Unlike general-purpose conversational LLMs that spend seconds generating chain-of-thought tokens, Jev is trained specifically for calibrated, structured micro-decisions. It returns typed judgments and probabilities in ~300–500ms.
+Instead of generating freeform chain-of-thought tokens, TypeSafe Jev evaluates structured decision contracts directly. Calls through `JevJudgmentAdapter` resolve in ~300–500ms with calibrated probabilities.
 
-The integration is completely snap-on: `JevJudgmentAdapter` automatically detects ambient credentials in your environment—checking for `TYPESAFE_API_KEY` or local CLI configurations (`~/.config/jev-axi/config.json`)—with zero package installation required.
+The adapter discovers credentials from ambient environment variables (`TYPESAFE_API_KEY`) or local user configuration (`~/.config/jev-axi/config.json`). If no credentials exist, the adapter reports unavailable without failing engine initialization.
 
-## Production Resilience: Circuit Breakers & Cascades
+## Circuit Breakers and Fallback Cascades
 
-In production agent swarms, relying on external APIs for transition guards can risk cascading timeouts if the network drops or third-party rate limits hit. RSA builds an industrial safety net directly into the Judgment Engine:
+In production workflows, relying on external network services for transition gates introduces latency and outage risk. RSA implements a protective cascade directly in the Judgment Engine:
 
-1. Circuit Breaker Isolation: Each adapter is wrapped in a stateful CircuitBreaker (CLOSED -> OPEN -> HALF_OPEN). If an external decision provider records consecutive failures, the breaker trips to OPEN, immediately bypassing subsequent calls without blocking the agent.
-2. Calibrated Confidence Gates: Transitions specify a `min_confidence` threshold (e.g. 0.85). If Jev returns a verdict with confidence below the threshold, the runtime treats it as unverified.
-3. Dynamic Fallback Cascade: If the primary adapter trips, times out, or fails the confidence threshold, the engine cascades to a fallback adapter (such as ScriptJudgmentAdapter) or safely diverts the FSM directly to a declared `fallback_target` (e.g. MANUAL_REVIEW or BLOCKED).
-4. Immutable Audit Logging: Every fallback or breaker trip automatically appends a GUARD_FALLBACK_TRIGGERED event into the append-only SQLite ledger, guaranteeing 100% post-incident forensic replayability.
+1. Circuit breaker isolation: Each adapter maintains a state machine (`CLOSED` -> `OPEN` -> `HALF_OPEN`). If consecutive evaluation failures reach the configured threshold (default: 2), the breaker trips to `OPEN`, bypassing subsequent calls to protect agent turnaround time.
+2. Calibrated confidence gates: Transitions specify a `min_confidence` threshold (such as 0.85). If an evaluation returns a verdict below this threshold, the transition is rejected.
+3. Fallback cascade: When a primary adapter times out or trips, the engine delegates to a declared fallback adapter (such as `ScriptJudgmentAdapter`) or routes directly to an explicit `fallback_target` state (such as `MANUAL_REVIEW` or `SECURITY_BLOCKED`).
+4. Audit logging: Every breaker trip or fallback invocation appends a `GUARD_FALLBACK_TRIGGERED` event into the append-only SQLite store.
 
-## Guarded Transition in Action
+## Transition Contract Specification
 
-Here is what a complete guarded transition looks like in `skill.yaml`:
+Here is a complete guarded transition contract in `skill.yaml`:
 
 ```yaml
 # skill.yaml transition contract
@@ -87,10 +86,6 @@ transitions:
       timeout_ms: 2500
 ```
 
-## Conclusion: Building Predictable Agent Swarms
+## Operational Invariants
 
-Autonomous coding agents cannot scale if their execution boundaries are based on conversational vibes or sluggish, monolithic prompts. By pairing **Hierarchical State Machines** with a **Hexagonal Judgment Engine**, Reactive Skills delivers the best of both worlds:
-
-- Deterministic, zero-overhead execution for programmatic tools and exit codes.
-- Sub-second, calibrated semantic guard gates via TypeSafe Jev for high-level quality criteria.
-- Production-grade circuit breaking, fallback cascades, and append-only event sourcing.
+Because transition guards sit on the critical execution path of each turn, primary evaluation timeouts should remain under 2.5 seconds. Configuring a circuit breaker with a two-failure threshold and a 60-second recovery timeout ensures that downstream API degradation diverts to deterministic local fallbacks without hanging the agent.
