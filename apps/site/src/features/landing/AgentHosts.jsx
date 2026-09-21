@@ -8,7 +8,7 @@ const HOSTS = [
     tag: 'AXI',
     badge: 'Preferred for agents',
     preferred: true,
-    title: 'Agent Experience Interface (AXI)',
+    title: 'Agent eXperience Interface (AXI)',
     text: 'Direct CLI execution designed specifically for autonomous agents. TOON-encoded output (~40% fewer tokens than JSON), deterministic exit codes, and inline recovery actions on every turn — with zero daemon overhead.',
     href: '/docs/axi',
     cta: 'Explore the AXI contract',

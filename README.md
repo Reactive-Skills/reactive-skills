@@ -37,7 +37,7 @@ Conventional agent skills are static markdown instruction files (`SKILL.md`). An
 This repository is a monorepo containing:
 
 - **`@reactive-skills/runtime`**: The core TypeScript statechart engine, SQLite event store driver, guard evaluator, and stdio MCP server.
-- **`@reactive-skills/axi`**: The Agent Experience Interface (AXI) CLI (`reactive-skills-axi`) providing human- and agent-ergonomic state inspection and signal dispatch in TOON format.
+- **`@reactive-skills/axi`**: The [Agent eXperience Interface (AXI)](http://axi.md) CLI (`reactive-skills-axi`) providing human- and agent-ergonomic state inspection and signal dispatch in TOON format.
 
 ---
 

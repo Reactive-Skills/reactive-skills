@@ -11,7 +11,7 @@ const isJson = args.includes('--json');
 
 function printHelp() {
   console.log(`
-⚡ reactive-skills: Agent Experience Interface for Reactive Skills
+⚡ reactive-skills: Agent eXperience Interface for Reactive Skills
 
 Usage:
   reactive-skills mcp                 Run the stdio Model Context Protocol (MCP) server

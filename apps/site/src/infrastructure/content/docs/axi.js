@@ -1,11 +1,19 @@
 /** @type {import('@/contracts/types').DocPage} */
 export const axi = {
   slug: 'axi',
-  title: 'Agent Experience Interface (AXI)',
+  title: 'Agent eXperience Interface (AXI)',
   summary: 'The primary and preferred interface for Reactive Skills: zero daemon overhead, compact TOON formatting (~40% fewer tokens than JSON), deterministic exit codes, and actionable recovery hints on every turn.',
   category: 'Integrate',
   href: '/docs/axi',
   sections: [
+    {
+      id: 'origin',
+      heading: 'Origin & Specification',
+      blocks: [
+        { type: 'callout', variant: 'signal', title: 'Specification Attribution', text: 'The Agent eXperience Interface (AXI) standard was conceived and specified at [axi.md](http://axi.md). Reactive Skills implements the AXI specification to provide an agent-native, token-efficient command-line interface for reactive workflows.' },
+        { type: 'text', text: 'AXI was created to solve a fundamental architectural mismatch: while human developers and IDE extensions often communicate through long-running daemon servers (such as MCP), autonomous agents in production operate with maximum speed and reliability via direct CLI execution with minimal token overhead and strict exit codes. Explore the full specification, tenets, and community standards at [http://axi.md](http://axi.md).' },
+      ],
+    },
     {
       id: 'why-preferred',
       heading: 'Why AXI is preferred over MCP for agents',

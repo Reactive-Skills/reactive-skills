@@ -2,8 +2,67 @@ import { CodeBlock } from '@/components/common/CodeBlock';
 import { Callout } from '@/components/common/Callout';
 import { TableOfContents } from './TableOfContents';
 
+function renderDocText(text) {
+  if (typeof text !== 'string') return text;
+  const tokenRegex = /(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s]+|`[^`]+`)/g;
+  const parts = text.split(tokenRegex);
+
+  return parts.map((part, i) => {
+    if (!part) return null;
+
+    const mdMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+    if (mdMatch) {
+      return (
+        <a
+          key={i}
+          href={mdMatch[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-phino-signal underline decoration-phino-signal/40 underline-offset-2 hover:decoration-phino-signal"
+        >
+          {mdMatch[1]}
+        </a>
+      );
+    }
+
+    if (part.startsWith('http://') || part.startsWith('https://')) {
+      let url = part;
+      let trailing = '';
+      const punctMatch = url.match(/[.,;:)]+$/);
+      if (punctMatch) {
+        trailing = punctMatch[0];
+        url = url.slice(0, -trailing.length);
+      }
+      return (
+        <span key={i}>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-phino-signal underline decoration-phino-signal/40 underline-offset-2 hover:decoration-phino-signal break-all"
+          >
+            {url}
+          </a>
+          {trailing}
+        </span>
+      );
+    }
+
+    const codeMatch = part.match(/^`([^`]+)`$/);
+    if (codeMatch) {
+      return (
+        <code key={i} className="rounded bg-phino-surface-raised px-1.5 py-0.5 font-mono text-xs text-phino-text border border-phino-border">
+          {codeMatch[1]}
+        </code>
+      );
+    }
+
+    return part;
+  });
+}
+
 function TextBlock({ text }) {
-  return <p className="my-4 text-[15px] leading-7 text-phino-text-muted">{text}</p>;
+  return <p className="my-4 text-[15px] leading-7 text-phino-text-muted">{renderDocText(text)}</p>;
 }
 
 function ListBlock({ items }) {
@@ -12,7 +71,7 @@ function ListBlock({ items }) {
       {items.map((item, i) => (
         <li key={i} className="flex gap-2.5 text-[15px] leading-7 text-phino-text-muted">
           <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-phino-signal" aria-hidden="true" />
-          <span>{item}</span>
+          <span>{renderDocText(item)}</span>
         </li>
       ))}
     </ul>
@@ -27,7 +86,7 @@ function StepsBlock({ steps }) {
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-phino-border bg-phino-surface-raised font-mono text-xs text-phino-text">{i + 1}</span>
           <div>
             <p className="font-display text-sm font-semibold text-phino-text">{s.title}</p>
-            <p className="mt-0.5 text-sm leading-relaxed text-phino-text-muted">{s.text}</p>
+            <p className="mt-0.5 text-sm leading-relaxed text-phino-text-muted">{renderDocText(s.text)}</p>
           </div>
         </li>
       ))}
@@ -72,7 +131,7 @@ function Block({ block }) {
     case 'code':
       return <CodeBlock example={block.example} />;
     case 'callout':
-      return <Callout variant={block.variant} title={block.title} text={block.text} />;
+      return <Callout variant={block.variant} title={block.title} text={renderDocText(block.text)} />;
     case 'table':
       return <TableBlock columns={block.columns} rows={block.rows} caption={block.caption} />;
     default:
@@ -110,7 +169,7 @@ export function DocPageView({ page }) {
       <article className="min-w-0 max-w-2xl">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-phino-signal-text">{page.category}</p>
         <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-phino-text sm:text-4xl">{page.title}</h1>
-        <p className="mt-3 text-lg leading-relaxed text-phino-text-muted">{page.summary}</p>
+        <p className="mt-3 text-lg leading-relaxed text-phino-text-muted">{renderDocText(page.summary)}</p>
         <hr className="my-8 border-phino-border" />
         <DocSections sections={page.sections} />
       </article>
