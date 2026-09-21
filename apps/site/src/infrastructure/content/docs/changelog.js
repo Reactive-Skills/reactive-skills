@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-8-1",
+    "heading": "v0.8.1 (2026-09-21)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "fix(runtime): preserve isolation for named parallel jobs",
+          "chore(release): bump version to v0.8.0 and update documentation",
+          "feat(axi): support --run and REACTIVE_JOB_ID in events command",
+          "feat(runtime): implement REACTIVE_JOB_ID environment isolation and flag synonyms (Leaf 3)",
+          "feat(runtime): implement terminal job auto-rotation on state queries (Leaf 2)"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-8-0",
     "heading": "v0.8.0 (2026-09-21)",
     "blocks": [
