@@ -18,6 +18,17 @@ import {
 import { MermaidViewer } from '@/components/common/MermaidViewer';
 import { cn } from '@/lib/utils';
 
+const getBridgeJobId = (payload) =>
+  payload?.jobId || payload?.job_id || payload?.runId || payload?.run_id || '';
+
+const getBridgeErrorMessage = (error) => {
+  const message = error?.message || 'Connection failed';
+  if (message === 'Failed to fetch') {
+    return 'Local Network access was blocked. Allow this site to access your local network, then reconnect.';
+  }
+  return message;
+};
+
 export function LiveTelemetryDeck({ skill }) {
   const [bridgeUrl, setBridgeUrl] = useState('http://127.0.0.1:4242');
   const [status, setStatus] = useState('disconnected'); // 'disconnected' | 'connecting' | 'connected' | 'error'
@@ -43,6 +54,7 @@ export function LiveTelemetryDeck({ skill }) {
       const stateRes = await fetch(`${bridgeUrl}/state`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
+        targetAddressSpace: 'loopback',
       });
 
       if (!stateRes.ok) {
@@ -56,8 +68,9 @@ export function LiveTelemetryDeck({ skill }) {
       if (stateData.context) {
         setContext(stateData.context);
       }
-      if (stateData.jobId) {
-        setJobId(stateData.jobId);
+      const stateJobId = getBridgeJobId(stateData);
+      if (stateJobId) {
+        setJobId(stateJobId);
       }
 
       // Open SSE event stream
@@ -71,7 +84,8 @@ export function LiveTelemetryDeck({ skill }) {
       es.addEventListener('connected', (e) => {
         try {
           const connectedData = JSON.parse(e.data);
-          if (connectedData.jobId) setJobId(connectedData.jobId);
+          const connectedJobId = getBridgeJobId(connectedData);
+          if (connectedJobId) setJobId(connectedJobId);
         } catch {}
         setStatus('connected');
       });
@@ -80,6 +94,13 @@ export function LiveTelemetryDeck({ skill }) {
         try {
           const parsed = JSON.parse(e.data);
           setEvents((prev) => {
+            const eventKey = parsed.id ?? parsed.seq;
+            if (
+              eventKey !== undefined &&
+              prev.some((event) => String(event.id ?? event.seq) === String(eventKey))
+            ) {
+              return prev;
+            }
             const next = [...prev, parsed];
             return next.sort((a, b) => (a.seq || 0) - (b.seq || 0));
           });
@@ -102,17 +123,13 @@ export function LiveTelemetryDeck({ skill }) {
       });
 
       es.onerror = () => {
-        if (status === 'connected') {
-          setStatus('error');
-          setErrorMessage('Event stream disconnected. Retrying...');
-        } else {
-          setStatus('error');
-          setErrorMessage('Could not connect to telemetry bridge on ' + bridgeUrl);
-        }
+        if (eventSourceRef.current !== es) return;
+        setStatus('error');
+        setErrorMessage('Event stream disconnected. Retrying...');
       };
     } catch (err) {
       setStatus('error');
-      setErrorMessage(err.message || 'Connection failed');
+      setErrorMessage(getBridgeErrorMessage(err));
     }
   };
 
@@ -143,6 +160,7 @@ export function LiveTelemetryDeck({ skill }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ signal: signalInput.trim() }),
+        targetAddressSpace: 'loopback',
       });
       if (res.ok) {
         setSignalInput('');
@@ -151,7 +169,7 @@ export function LiveTelemetryDeck({ skill }) {
         alert(`Signal failed: ${json.error || 'Unknown error'}`);
       }
     } catch (err) {
-      alert(`Signal dispatch error: ${err.message}`);
+      alert(`Signal dispatch error: ${getBridgeErrorMessage(err)}`);
     } finally {
       setSignalSending(false);
     }
@@ -238,7 +256,7 @@ export function LiveTelemetryDeck({ skill }) {
         <div className="rounded-lg border border-rose-500/30 bg-rose-950/20 p-3 text-xs text-rose-300 flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
           <span>{errorMessage}</span>
-          <span className="text-phino-text-muted ml-auto">Run `reactive-skills-axi view {skill.slug}` locally to start daemon.</span>
+          <span className="text-phino-text-muted ml-auto">If needed, run `reactive-skills-axi view {skill.slug}` locally.</span>
         </div>
       )}
 
