@@ -34,6 +34,7 @@ npx -y @reactive-skills/axi upgrade <path>           # upgrade legacy SKILL.md
 npx -y @reactive-skills/axi inspect <path>           # inspect statechart
 npx -y @reactive-skills/axi events [limit]           # tail event ledger
 npx -y @reactive-skills/axi view <skill>             # launch telemetry viewer
+npx -y @reactive-skills/axi dashboard                # launch multi-job read-only broker
 
 # Or if installed globally:
 reactive-skills-axi state <skill>
@@ -131,6 +132,36 @@ Output (TOON format):
 - SSE events endpoint (`/events`)
 - State inspection endpoint (`/state`)
 - Health check endpoint (`/health`)
+
+### dashboard
+
+Launch one local read-only telemetry broker for multiple skills and jobs.
+
+```bash
+npx -y @reactive-skills/axi dashboard
+npx -y @reactive-skills/axi dashboard --port 0
+npx -y @reactive-skills/axi dashboard --host 0.0.0.0 --port 4500
+```
+
+The broker binds to `127.0.0.1` by default and reports the actual URL and port after binding.
+
+Use the reported URL in the site's `/telemetry` dashboard.
+
+The dashboard discovers skill and job metadata from the broker catalog instead of reading local files in the browser.
+
+The broker exposes `GET /catalog`, `GET /state?skillId=<skill-id>&jobId=<job-id>`, and filtered `GET /events` SSE.
+
+Use repeated `target=<skill-id>/<job-id>` parameters to restrict one SSE connection to selected jobs.
+
+Sequence numbers remain local to each job and every streamed event includes its skill ID and job ID.
+
+The broker polls SQLite so events written by separate CLI, MCP, and worker processes become visible without a restart.
+
+The broker is read-only and has no signal dispatch route.
+
+It does not change active-job pointers or scan arbitrary localhost ports from the browser.
+
+Use `view <skill> [--job <job-id>]` when you need the existing single-job viewer and its current bridge workflow.
 
 ### jobs
 

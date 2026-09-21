@@ -114,6 +114,7 @@ Reactive skills can be driven through two primary integration paths:
 | `reset` | `npx -y @reactive-skills/axi reset <skill>` | Clear execution run state while preserving deliverables |
 | `jobs` | `npx -y @reactive-skills/axi jobs <skill> [list\|switch\|archive]` | Inspect, switch, and archive isolated execution runs and deliverables |
 | `view` | `npx -y @reactive-skills/axi view <skill>` | Launch real-time telemetry server and live visual statechart viewer |
+| `dashboard` | `npx -y @reactive-skills/axi dashboard [--host <host>] [--port <port>]` | Launch one read-only broker for multi-job telemetry |
 | `sync` | `npx -y @reactive-skills/axi sync [skill]` | Synchronize skills across authoring workspaces and agent satellites via zero-drift junctions |
 
 ---
@@ -309,11 +310,43 @@ sqlite3 .reactive/skills/<skill>/events.db "SELECT seq, json_extract(payload, '$
 
 ### Real-Time Telemetry Dashboard
 
-Launch the live telemetry dashboard and SSE event stream:
+Launch the existing single-job viewer and SSE event stream:
 
 ```bash
 npx -y @reactive-skills/axi view <skill-name>
 ```
+
+Launch the read-only multi-job broker:
+
+```bash
+npx -y @reactive-skills/axi dashboard
+npx -y @reactive-skills/axi dashboard --port 0
+npx -y @reactive-skills/axi dashboard --host 0.0.0.0 --port 4500
+```
+
+The command reports the actual listener URL and bound port.
+
+Open the site `/telemetry` route and enter that broker URL in the connection field.
+
+The broker catalog discovers skills and jobs from the current workspace's `.reactive/skills` directory and returns skill names, job IDs, status, current HSM state, local latest sequence, update time, and active-job metadata.
+
+The dashboard uses `GET /catalog`, job-scoped `GET /state?skillId=<skill-id>&jobId=<job-id>`, and one filtered `GET /events` SSE connection for all tracked targets.
+
+Add two jobs from the catalog, such as `jsm-workflow/review-slice` and `jsm-workflow/test-slice`, to monitor them simultaneously.
+
+Every card verifies both skill ID and job ID before accepting an event, so a signal written to one job cannot update another card.
+
+The broker tails each job's SQLite event store and refreshes the catalog on a bounded interval, so new jobs and cross-process events appear without restarting it.
+
+The broker is read-only telemetry.
+
+It does not dispatch signals, write events, change the active-job pointer, or scan arbitrary browser localhost ports.
+
+The existing `view <skill> --job <job-id>` command remains single-job scoped for explicit isolation and backward compatibility.
+
+The broker keeps the existing CORS and Local Network Access response headers so a site served from another origin can request local telemetry after the browser grants access.
+
+See [the telemetry guide](apps/site/src/infrastructure/content/docs/telemetry.js) for endpoint details and a two-job walkthrough.
 
 For performance tiers, algorithmic budgets, and caching standards, see [PERFORMANCE-STANDARDS.md](PERFORMANCE-STANDARDS.md).
 

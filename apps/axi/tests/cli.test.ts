@@ -21,6 +21,9 @@ vi.mock('../src/commands/events.js', () => ({
 vi.mock('../src/commands/setup.js', () => ({
   setupCommand: vi.fn().mockResolvedValue('setup output'),
 }));
+vi.mock('../src/commands/dashboard.js', () => ({
+  dashboardCommand: vi.fn().mockResolvedValue('dashboard output'),
+}));
 
 import { main } from '../src/cli/index.js';
 
@@ -74,6 +77,13 @@ describe('CLI entry point', () => {
     await main();
     expect(exitSpy).not.toHaveBeenCalled();
     expect(stdoutSpy).toHaveBeenCalledWith('setup output\n');
+  });
+
+  it('dispatches dashboard command without error', async () => {
+    process.argv = ['node', 'reactive-skills-axi', 'dashboard', '--port', '0'];
+    await main();
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(stdoutSpy).toHaveBeenCalledWith('dashboard output\n');
   });
 
   it('fails with exit code 2 on unknown command', async () => {

@@ -27,6 +27,7 @@ import { FSMEngine, EventStore, JobManager, LegacySkillAdapter, ProjectionEngine
 - `McpServer` - Stdio Model Context Protocol (MCP) server integration
 - `SyncEngine` - Skill synchronization engine managing zero-drift directory junctions and physical mirroring across agent satellites
 - `TelemetryServer` - Real-time Server-Sent Events (SSE) broadcaster and Private Network Access (PNA) HTTP bridge
+- `TelemetryBroker` - Read-only multi-skill, multi-job catalog, state, and multiplexed SSE broker
 
 ### Job-Scoped Live Telemetry
 
@@ -43,6 +44,22 @@ The telemetry server combines in-process event notifications with a configurable
 This lets events written by separate CLI, MCP, or worker processes reach the existing SSE stream.
 
 Omit `--job` to preserve existing resolution through `REACTIVE_JOB_ID`, the active pointer, and the default job.
+
+### Multi-Job Telemetry Broker
+
+`TelemetryBroker` reads the current workspace's `.reactive/skills` catalog and opens SQLite-backed readers for discovered jobs.
+
+It exposes `GET /catalog`, job-scoped `GET /state`, and one filtered `GET /events` SSE stream.
+
+The broker preserves each job's local sequence numbers and includes skill and job identity in every event envelope.
+
+It refreshes the catalog on a bounded interval so new jobs appear without a process restart.
+
+It polls SQLite so events written by separate CLI, MCP, and worker processes reach connected clients.
+
+The broker is intentionally read-only and does not dispatch signals or mutate the active-job pointer.
+
+The existing `TelemetryServer` remains the compatibility path for `view` and its single-job `/health`, `/state`, `/events`, `/events/history`, and `/signal` behavior.
 
 ## Skill Manifest Schema
 

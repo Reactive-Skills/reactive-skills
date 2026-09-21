@@ -44,6 +44,61 @@ export interface TelemetryServerOptions {
   tailIntervalMs?: number;
 }
 
+export interface TelemetryBrokerOptions {
+  workspaceDir?: string;
+  port?: number;
+  host?: string;
+  heartbeatIntervalMs?: number;
+  tailIntervalMs?: number;
+  catalogRefreshIntervalMs?: number;
+}
+
+export interface TelemetryCatalogJob {
+  jobId: string;
+  status: string;
+  currentState: string;
+  latestSeq: number;
+  updatedAt: string;
+  isActive: boolean;
+}
+
+export interface TelemetryCatalogSkill {
+  skillId: string;
+  skillName: string;
+  jobs: TelemetryCatalogJob[];
+}
+
+export interface TelemetryCatalogResponse {
+  skills: TelemetryCatalogSkill[];
+}
+
+export interface TelemetryBrokerStateResponse {
+  skillId: string;
+  skillName: string;
+  jobId: string;
+  latestSeq: number;
+  activeState: string;
+  context?: Record<string, any>;
+  snapshot?: {
+    seq: number;
+    state: string;
+    context: Record<string, any>;
+  } | null;
+  eventCount: number;
+  latestSignal?: string;
+}
+
+export interface TelemetryBrokerEventEnvelope {
+  skillId: string;
+  skillName: string;
+  jobId: string;
+  seq: number;
+  type: string;
+  timestamp: string;
+  payload: Record<string, any>;
+  event: SignalEvent;
+}
+
 export interface TelemetryHealthResponse {
   status: 'ok';
   skillName?: string;

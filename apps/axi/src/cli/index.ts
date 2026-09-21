@@ -5,8 +5,8 @@ import { renderError } from '../toon.js';
 const DESCRIPTION = 'AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format';
 
 export const TOP_HELP = `usage: reactive-skills-axi [command] [args] [flags]
-commands[17]:
-  (none)=dashboard, init, upgrade, inspect, validate, events, invoke, state, emit, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync
+commands[18]:
+  (none)=home, init, upgrade, inspect, validate, events, invoke, state, emit, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard
 flags[1]:
   --help
 examples:
@@ -25,6 +25,7 @@ examples:
   reactive-skills-axi reset my-skill
   reactive-skills-axi rebuild-sqlite my-skill
   reactive-skills-axi view my-skill [--job <job-id>]
+  reactive-skills-axi dashboard [--host 127.0.0.1] [--port 4242]
   reactive-skills-axi sync [my-skill]
   reactive-skills-axi mcp
 `;
@@ -43,6 +44,11 @@ export async function main() {
   try {
     let output: string;
     switch (command) {
+      case 'dashboard': {
+        const { dashboardCommand } = await import('../commands/dashboard.js');
+        output = await dashboardCommand(args.slice(1));
+        break;
+      }
       case 'init': {
         const { initCommand } = await import('../commands/init.js');
         output = await initCommand(args.slice(1));
