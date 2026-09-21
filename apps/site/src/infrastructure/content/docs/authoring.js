@@ -207,7 +207,7 @@ states:
           command: 'npx -y @reactive-skills/axi sync tdd-flow',
           explanation: 'Links the newly authored skill into ~/.agents/skills/ and all detected satellites without copying files.',
         } },
-        { type: 'callout', variant: 'signal', title: 'Zero-drift linking', text: 'Directory junctions allow you to continue refining states and prompts in your authoring repository while every agent tool immediately sees the live changes. See the Syncing Skills guide for full options.' },
+        { type: 'callout', variant: 'signal', title: 'Zero-drift linking', text: 'Directory junctions link ~/.agents/skills/ directly to the authoring repository, ensuring external tools access updated prompt slices without physical file copies.' },
       ],
     },
   ],

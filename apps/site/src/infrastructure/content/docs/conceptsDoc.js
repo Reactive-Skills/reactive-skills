@@ -113,9 +113,9 @@ transitions:
     },
     {
       id: 'interactive-simulator',
-      heading: 'Live State Machine & Event Ledger Laboratory',
+      heading: 'Interactive State Machine Simulator',
       blocks: [
-        { type: 'text', text: 'Step through an interactive simulation to experience hierarchical state bubbling, deterministic guard gating, and real-time event ledger streaming in action.' },
+        { type: 'text', text: 'Simulate state transitions, ancestor signal bubbling, guard evaluations, and event stream persistence directly in the browser.' },
       ],
     },
   ],
