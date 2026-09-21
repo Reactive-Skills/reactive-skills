@@ -1,4 +1,12 @@
 
+## [0.8.5] - 2026-09-21
+
+- fix(telemetry): reuse automatic broker port selection (417ecd5)
+- feat(telemetry): add multi-job broker (#1) (d96ee85)
+- chore(release): v0.8.3 - add viewer port fallback (10e686e)
+- fix(site): restore live telemetry updates (0d76add)
+- chore(release): v0.8.2 - add job-targeted live telemetry (4efd2ae)
+
 ## [0.8.4] - 2026-09-21
 
 - Merge remote-tracking branch 'origin/main' into feature/multi-job-telemetry-broker (e55530b)
