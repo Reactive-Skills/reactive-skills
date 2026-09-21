@@ -1,14 +1,19 @@
 #!/usr/bin/env node
+import { createRequire } from 'node:module';
 import { AxiError, mapRuntimeError, exitCodeForError } from '../errors.js';
 import { renderError } from '../toon.js';
+
+const require = createRequire(import.meta.url);
+const packageMetadata = require('../../package.json') as { version?: string };
+const VERSION = packageMetadata.version ?? 'unknown';
 
 const DESCRIPTION = 'AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format';
 
 export const TOP_HELP = `usage: reactive-skills-axi [command] [args] [flags]
 commands[18]:
   (none)=home, init, upgrade, inspect, validate, events, invoke, state, emit, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard
-flags[1]:
-  --help
+flags[2]:
+  --help, --version
 examples:
   reactive-skills-axi
   reactive-skills-axi setup
@@ -33,6 +38,11 @@ examples:
 export async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
+
+  if (command === '--version' || command === '-v') {
+    process.stdout.write(`${VERSION}\n`);
+    return;
+  }
 
   if (!command || command === '--help' || command === 'help') {
     const { homeCommand } = await import('../commands/home.js');

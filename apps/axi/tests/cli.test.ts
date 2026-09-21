@@ -72,6 +72,14 @@ describe('CLI entry point', () => {
     expect(stderrSpy).not.toHaveBeenCalled();
   });
 
+  it('prints the package version before command dispatch', async () => {
+    process.argv = ['node', 'reactive-skills-axi', '--version'];
+    await main();
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(stdoutSpy).toHaveBeenCalledWith(expect.stringMatching(/^\d+\.\d+\.\d+\n$/));
+    expect(stderrSpy).not.toHaveBeenCalled();
+  });
+
   it('dispatches setup command without error', async () => {
     process.argv = ['node', 'reactive-skills-axi', 'setup'];
     await main();
