@@ -1,4 +1,12 @@
 
+## [0.10.1] - 2026-09-22
+
+- fix(docs): update telemetry links to remove 'docs' prefix (5adc732)
+- chore: publish docs and SEO metadata (7be1cbc)
+- Delete gates directory (37258c2)
+- feat(site): add adoption guide (a27496a)
+- chore(release): v0.10.0 - parent run continuation (6942488)
+
 ## [0.10.0] - 2026-09-22
 
 - feat(continuation): preserve parent run context (b8d4748)

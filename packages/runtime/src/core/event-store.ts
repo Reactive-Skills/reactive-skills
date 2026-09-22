@@ -211,9 +211,17 @@ export class SQLiteStorageDriver {
   private initTables(): void {
     this.db.exec('CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)');
     const eventColumns = this.tableColumns('events');
+    const snapshotColumns = this.tableColumns('state_snapshots');
+    const projectionColumns = this.tableColumns('projections');
+    const watermarkColumns = this.tableColumns('projection_watermarks');
     const versionRow = this.db.prepare('SELECT MAX(version) AS v FROM schema_version').get() as { v: number | null };
     const currentVersion = Number(versionRow?.v || 0);
-    const isCurrent = eventColumns.has('ledger_seq') && eventColumns.has('idempotency_key') && eventColumns.has('run_id');
+    const isCurrent = eventColumns.has('ledger_seq')
+      && eventColumns.has('idempotency_key')
+      && eventColumns.has('run_id')
+      && (!this.tableExists('state_snapshots') || snapshotColumns.has('run_id'))
+      && (!this.tableExists('projections') || projectionColumns.has('run_id'))
+      && (!this.tableExists('projection_watermarks') || watermarkColumns.has('run_id'));
 
     if (this.tableExists('events') && (!isCurrent || currentVersion < EVENT_STORE_SCHEMA_VERSION)) {
       this.migrateLegacySchema();
@@ -510,7 +518,11 @@ export class SQLiteStorageDriver {
   }
 
   public getLatestSnapshot(runId = this.defaultRunId): { seq: number; state: string; context: Record<string, any> } | null {
-    const row = this.db.prepare('SELECT * FROM state_snapshots WHERE run_id = ? ORDER BY seq DESC LIMIT 1').get(runId) as any;
+    if (!this.tableExists('state_snapshots')) return null;
+    const snapshotColumns = this.tableColumns('state_snapshots');
+    const row = snapshotColumns.has('run_id')
+      ? this.db.prepare('SELECT * FROM state_snapshots WHERE run_id = ? ORDER BY seq DESC LIMIT 1').get(runId) as any
+      : this.db.prepare('SELECT * FROM state_snapshots ORDER BY seq DESC LIMIT 1').get() as any;
     return row ? { seq: Number(row.seq), state: row.state, context: JSON.parse(row.context) } : null;
   }
 

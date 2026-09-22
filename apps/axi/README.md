@@ -2,7 +2,7 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.10.0: Explicit parent-run context continuation with isolated child projections** [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.10.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.10.1: fix legacy read-only snapshots  [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.10.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
