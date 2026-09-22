@@ -40,14 +40,14 @@ function parsePayload(args: string[]): Record<string, any> | AxiError {
 }
 
 export async function invokeCommand(args: string[]): Promise<string> {
-  const { jobId, filteredArgs } = extractJobFlag(args);
+  const { jobId, parentJobId, filteredArgs } = extractJobFlag(args);
   const skillName = filteredArgs[0];
 
   if (!skillName) {
     const error = new AxiError(
       'Missing skill name',
       'VALIDATION_ERROR',
-      ['Usage: reactive-skills-axi invoke <skill-name> [--job <job-id>] [--payload JSON]', 'Example: reactive-skills-axi invoke resume-customizer --job worksoft --payload \'{"company_name":"Worksoft"}\'']
+      ['Usage: reactive-skills-axi invoke <skill-name> [--job <job-id>] [--parent <job-id>] [--payload JSON]', 'Example: reactive-skills-axi invoke resume-customizer --job worksoft --parent baseline --payload \'{"company_name":"Worksoft"}\'']
     );
     return renderOutput([
       renderError(error.message, error.code, error.suggestions),
@@ -72,22 +72,40 @@ export async function invokeCommand(args: string[]): Promise<string> {
 
     const workspaceDir = resolveWorkspaceDir(skillPath);
     const jobManager = new JobManager(workspaceDir);
-    const existingRunId = jobId ? jobManager.resolveRunId(skillName, jobId) : null;
-    const runId = existingRunId || createSortableId();
-    if (!existingRunId) {
-      jobManager.createJob(skillName, {
-        runId,
-        name: jobId || runId,
-        setActive: !jobId,
-      });
+    const parentRunId: string | undefined = parentJobId
+      ? (jobManager.resolveRunId(skillName, parentJobId) || undefined)
+      : undefined;
+    if (parentJobId && !parentRunId) {
+      const error = new AxiError(
+        `Parent job '${parentJobId}' not found for skill '${skillName}'`,
+        'VALIDATION_ERROR',
+        [`Run \`reactive-skills-axi jobs ${skillName}\` to list available jobs.`]
+      );
+      return renderOutput([renderError(error.message, error.code, error.suggestions)]);
     }
+    const existingRunId = jobId ? jobManager.resolveRunId(skillName, jobId) : null;
+    if (existingRunId && parentRunId) {
+      const existingJob = jobManager.getJob(skillName, existingRunId);
+      if (existingJob?.parentRunId !== parentRunId) {
+        const error = new AxiError(
+          `Existing job '${jobId}' already has a different parent`,
+          'VALIDATION_ERROR',
+          ['Start a new child job when changing the parent run.']
+        );
+        return renderOutput([renderError(error.message, error.code, error.suggestions)]);
+      }
+    }
+    const runId = existingRunId || createSortableId();
 
     const engine = new FSMEngine({
       skillDir: skillPath,
       workspaceDir,
       jobId: runId,
+      jobName: jobId || runId,
+      setActive: !jobId,
+      parentRunId,
       initialContext: parsedPayload,
-      eventContext: { run_id: runId },
+      eventContext: { run_id: runId, parent_run_id: parentRunId },
     });
 
     try {

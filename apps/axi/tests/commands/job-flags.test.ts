@@ -5,7 +5,7 @@ import os from 'node:os';
 import { stateCommand } from '../../src/commands/state.js';
 import { emitCommand } from '../../src/commands/emit.js';
 import { resetCommand } from '../../src/commands/reset.js';
-import { resolveWorkspaceDir } from '../../src/args.js';
+import { extractJobFlag, resolveWorkspaceDir } from '../../src/args.js';
 import { JobManager } from '@reactive-skills/runtime';
 
 
@@ -160,6 +160,21 @@ states:
     await emitCommand(['flags-skill', 'ADVANCE', '--run-id', 'isolated-run-b']);
     const runBState = await stateCommand(['flags-skill', '--run-id', 'isolated-run-b']);
     expect(runBState).toContain('PHASE_2');
+  });
+
+  it('extracts an explicit parent job without passing it into the skill payload', () => {
+    expect(extractJobFlag([
+      'flags-skill',
+      '--job',
+      'child-run',
+      '--parent=parent-run',
+      '--payload',
+      '{"mission":"delta"}',
+    ])).toMatchObject({
+      jobId: 'child-run',
+      parentJobId: 'parent-run',
+      filteredArgs: ['flags-skill', '--payload', '{"mission":"delta"}'],
+    });
   });
 
   it('prioritizes REACTIVE_JOB_ID environment variable across stateCommand and emitCommand', async () => {

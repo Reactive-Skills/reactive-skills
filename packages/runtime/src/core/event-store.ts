@@ -679,7 +679,11 @@ export class EventStore {
         || (options.sqlitePath ? `${options.sqlitePath}.jsonl` : path.join(scopeDir, 'events.jsonl'));
     if (options.enableSqlite || options.sqlitePath) {
       this.sqlitePath = options.sqlitePath || path.join(scopeDir, 'events.db');
-      this.sqliteDriver = new SQLiteStorageDriver(this.sqlitePath, { runId, skillId: options.skillId });
+      this.sqliteDriver = new SQLiteStorageDriver(this.sqlitePath, {
+        runId,
+        skillId: options.skillId,
+        readOnly: this.readOnly,
+      });
       this.sqliteDriver.ensureRun(runId, { name: options.runName || options.run_name, skillId: options.skillId, parentRunId: options.parentRunId || options.parent_run_id });
       if (options.skillId) this.importLegacyRunStores(scopeDir, options.skillId);
     }

@@ -30,6 +30,9 @@ export interface FSMEngineOptions {
   eventContext?: EventContext;
   jobId?: string;
   runId?: string;
+  jobName?: string;
+  setActive?: boolean;
+  parentRunId?: string;
   initialContext?: Record<string, any>;
   autoRehydrate?: boolean;
   autoRotateTerminal?: boolean;
@@ -70,6 +73,7 @@ export class FSMEngine {
   private readonly strictExecution: boolean;
   private jobId?: string;
   private jobName?: string;
+  private parentRunId?: string;
   private isActiveJob: boolean;
   private jobManager: JobManager;
   private templateCache = new Map<string, HandlebarsTemplateDelegate>();
@@ -120,14 +124,31 @@ export class FSMEngine {
     this.jobId = resolvedJobId;
     this.isActiveJob = isActiveJob;
 
+    const existingJob = this.jobManager.getJob(this.manifest.name, this.jobId);
+    const requestedParentRunId = options.parentRunId
+      || options.eventContext?.parentRunId
+      || options.eventContext?.parent_run_id;
+    const resolvedParentRunId = requestedParentRunId
+      ? (this.jobManager.resolveRunId(this.manifest.name, requestedParentRunId) || requestedParentRunId)
+      : existingJob?.parentRunId;
+
+    if (requestedParentRunId && existingJob?.parentRunId && existingJob.parentRunId !== resolvedParentRunId) {
+      throw new Error(`Parent run for existing job '${this.jobId}' does not match requested parent '${requestedParentRunId}'.`);
+    }
+
+    const inheritedContext = !existingJob && resolvedParentRunId
+      ? this.loadParentContext(resolvedParentRunId)
+      : {};
+    this.parentRunId = resolvedParentRunId;
+
     if (this.jobId) {
-      const existingJob = this.jobManager.getJob(this.manifest.name, this.jobId);
       if (!existingJob) {
         this.jobManager.createJob(this.manifest.name, {
           runId: this.jobId,
-          name: effectiveJobId || this.jobId,
+          name: options.jobName || effectiveJobId || this.jobId,
           initialState: this.manifest.initial_state,
-          setActive: this.isActiveJob,
+          setActive: options.setActive ?? this.isActiveJob,
+          parentRunId: resolvedParentRunId,
         });
       }
       this.jobName = this.jobManager.getJob(this.manifest.name, this.jobId)?.name;
@@ -140,10 +161,13 @@ export class FSMEngine {
       jobId: this.jobId,
       runId: this.jobId,
       runName: effectiveJobId || undefined,
+      parentRunId: resolvedParentRunId,
+      parent_run_id: resolvedParentRunId,
       enableSqlite: true,
     });
     this.context = {
       ...(this.manifest.default_context || {}),
+      ...inheritedContext,
       ...(options.initialContext || {}),
     };
     this.projectionEngine = new ProjectionEngine(
@@ -696,6 +720,31 @@ export class FSMEngine {
       if (signalSerialByRun.get(key) === settled) signalSerialByRun.delete(key);
     });
     return operation;
+  }
+
+  private loadParentContext(parentRunId: string): Record<string, any> {
+    const parentJob = this.jobManager.getJob(this.manifest.name, parentRunId);
+    if (!parentJob) {
+      throw new Error(`Parent run '${parentRunId}' was not found for skill '${this.manifest.name}'.`);
+    }
+
+    const parentStore = new EventStore({
+      workspaceDir: this.workspaceDir,
+      skillId: this.manifest.name,
+      jobId: parentJob.runId || parentJob.id,
+      enableSqlite: true,
+      readOnly: true,
+    });
+
+    try {
+      const snapshot = parentStore.getLatestSnapshot();
+      if (!snapshot) {
+        throw new Error(`Parent run '${parentJob.name}' has no persisted context snapshot.`);
+      }
+      return { ...snapshot.context };
+    } finally {
+      parentStore.close();
+    }
   }
 
   private async processSignal(
