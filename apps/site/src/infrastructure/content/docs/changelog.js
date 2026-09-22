@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-10-0",
+    "heading": "v0.10.0 (2026-09-22)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "feat(continuation): preserve parent run context",
+          "chore(release): v0.9.0 - skill-scoped SQLite event ledger",
+          "docs: update v0.8.8 release banners",
+          "chore(release): v0.8.8",
+          "fix(runtime): ensure published Jev adapter availability (#6)"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-9-0",
     "heading": "v0.9.0 (2026-09-21)",
     "blocks": [

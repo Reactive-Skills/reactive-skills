@@ -1,6 +1,6 @@
 {
   "name": "@reactive-skills/workspace",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Reactive Skills Architecture (RSA) — monorepo workspace",
   "private": true,
   "type": "module",

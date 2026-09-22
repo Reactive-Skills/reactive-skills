@@ -1,4 +1,12 @@
 
+## [0.10.0] - 2026-09-22
+
+- feat(continuation): preserve parent run context (b8d4748)
+- chore(release): v0.9.0 - skill-scoped SQLite event ledger (c8b51d6)
+- docs: update v0.8.8 release banners (9ecd76e)
+- chore(release): v0.8.8 (b6434e1)
+- fix(runtime): ensure published Jev adapter availability (#6) (f14431c)
+
 ## [0.9.0] - 2026-09-21
 
 - docs: update v0.8.8 release banners (9ecd76e)

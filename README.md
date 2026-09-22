@@ -9,8 +9,8 @@
 
 ---
 
-> 🚀 **What's New in v0.9.0:**
-> - Skill-scoped SQLite event ledger with UUID-backed runs and recoverable JSONL projection
+> 🚀 **What's New in v0.10.0:**
+> - Explicit parent-run context continuation with isolated child projections
 > - Direct `@typesafe-ai/sdk` Jev judgments without shell execution or temporary state files
 > - AXI `--version` support for agent runtime discovery
 > - read-only multi-job, multi-skill telemetry broker and site dashboard
