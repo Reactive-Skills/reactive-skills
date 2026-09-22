@@ -29,6 +29,22 @@ describe('Reactive MCP Server Integration', () => {
     expect(server).toBeDefined();
   });
 
+  it('should expose local runtime capabilities for INIT negotiation', async () => {
+    const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
+    const tools = (server as any)._registeredTools;
+
+    expect(tools['reactive_capabilities']).toBeDefined();
+
+    const result = await tools['reactive_capabilities'].handler({}, {} as any);
+    const parsed = JSON.parse(result.content[0].text);
+
+    expect(parsed.transport).toBe('mcp');
+    expect(parsed.launcher).toBe('persistent');
+    expect(parsed.scope).toBe('local');
+    expect(parsed.runtime_version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(parsed.capabilities).toContain('runtime.transport_handshake');
+  });
+
   it('should handle reactive_state tool call', async () => {
     const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
     const tools = (server as any)._registeredTools;

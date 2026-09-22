@@ -105,10 +105,10 @@ transitions:
     },
     {
       id: 'interfaces',
-      heading: 'Agent interfaces: AXI (Preferred) & MCP',
+      heading: 'Agent interfaces: AXI & MCP',
       blocks: [
-        { type: 'text', text: 'Reactive skills expose two host interfaces: the AXI CLI (preferred for token efficiency and direct shell execution) and the MCP stdio server (for GUI client panels like Cursor and Claude Desktop).' },
-        { type: 'callout', variant: 'signal', title: 'Interface selection', text: 'Use AXI whenever the host has terminal/shell access: ~40% fewer tokens, zero daemon process management, and instant recovery diagnostics. Use MCP when connecting to GUI client panels.' },
+        { type: 'text', text: 'Reactive skills expose two host interfaces. During INIT, the runtime checks local capabilities and versions, selects a compatible AXI or MCP transport, and persists that choice for the run.' },
+        { type: 'callout', variant: 'signal', title: 'Local-first interface selection', text: 'Use the selected transport for the full run. AXI provides direct shell execution and token-lean output, while MCP provides host-integrated tools. npx launches AXI without changing the selected runtime interface.' },
       ],
     },
     {
@@ -121,7 +121,7 @@ transitions:
   ],
   relatedPages: [
     { title: 'Authoring & customizing skills', href: '/docs/authoring' },
-    { title: 'AXI CLI reference (Preferred)', href: '/docs/axi' },
+    { title: 'AXI CLI reference', href: '/docs/axi' },
     { title: 'Quickstart', href: '/docs/quickstart' },
     { title: 'Model Context Protocol (MCP)', href: '/docs/mcp' },
   ],

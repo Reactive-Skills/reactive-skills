@@ -10,7 +10,7 @@ Version 0.8.7 was published from `fix/direct-typesafe-jev` before that branch wa
 
 The direct TypeSafe SDK adapter was present in the published runtime, but the SDK was only an optional peer and development dependency.
 
-An AXI `npx` installation therefore lacked the SDK and selected the script adapter for a resume-manager fit judgment.
+A zero-install AXI launch therefore lacked the SDK and selected the script adapter for a resume-manager fit judgment.
 
 The successful workflow masked the missing semantic call because script fallback was valid and uninstrumented at selection time.
 
@@ -33,7 +33,7 @@ After the corrected tag is merged to `main` and published, a real judgment-beari
 
 ### Keep the SDK optional
 
-Rejected because the default AXI installation would continue to omit the dependency and silently skip semantic judgments.
+Rejected because a zero-install AXI launch would continue to omit the dependency and silently skip semantic judgments.
 
 ### Add the SDK only to the AXI package
 

@@ -20,7 +20,7 @@ export const navigation = {
     {
       title: 'Integrate',
       links: [
-        { title: 'AXI (Preferred)', href: '/docs/axi' },
+        { title: 'AXI', href: '/docs/axi' },
         { title: 'MCP', href: '/docs/mcp' },
       ],
     },

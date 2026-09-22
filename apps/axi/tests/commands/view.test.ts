@@ -76,15 +76,25 @@ states:
     const blocker = http.createServer();
     await new Promise<void>((resolve, reject) => {
       blocker.once('error', reject);
-      blocker.listen(4242, '127.0.0.1', () => resolve());
+      blocker.listen(0, '127.0.0.1', () => resolve());
     });
 
     try {
-      const result = await viewCommand(['fallback-viewer-skill', '--once']);
+      const blockerAddress = blocker.address();
+      if (!blockerAddress || typeof blockerAddress === 'string') {
+        throw new Error('Test blocker did not expose a bound port');
+      }
+      const preferredPort = blockerAddress.port;
+      const result = await viewCommand([
+        'fallback-viewer-skill',
+        '--preferred-port',
+        String(preferredPort),
+        '--once',
+      ]);
 
-      expect(result).toContain('port: "4243"');
-      expect(result).toContain('url: "http://127.0.0.1:4243"');
-      expect(result).toContain('events_sse: "http://127.0.0.1:4243/events"');
+      expect(result).toContain(`port: "${preferredPort + 1}"`);
+      expect(result).toContain(`url: "http://127.0.0.1:${preferredPort + 1}"`);
+      expect(result).toContain(`events_sse: "http://127.0.0.1:${preferredPort + 1}/events"`);
     } finally {
       await new Promise<void>((resolve) => blocker.close(() => resolve()));
     }

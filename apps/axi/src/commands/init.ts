@@ -97,7 +97,7 @@ type: reactive
 
 # ${name} - SETUP_MCP
 
-Configure host harness with the \`@reactive-skills/axi\` MCP server only when AXI CLI is unavailable.
+Configure host harness with the \`@reactive-skills/axi\` MCP server when no compatible local runtime is available.
 
 ## Instructions
 1. Run shell command via \`run_command\`:

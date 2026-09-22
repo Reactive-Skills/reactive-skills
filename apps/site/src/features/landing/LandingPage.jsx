@@ -52,7 +52,7 @@ export function LandingPage({ machine, flow }) {
         <SectionHeading
           eyebrow="agent interfaces"
           title="Reach it through AXI and MCP"
-          description="Drive skills directly via the lightweight AXI CLI (preferred for token efficiency and speed), or bridge into IDE panels through MCP."
+          description="Drive skills through a compatible local AXI or MCP transport. AXI offers token-lean shell output, while MCP connects host tool panels."
         />
         <h2 id="hosts-heading" className="sr-only">Built for agent hosts</h2>
         <div className="mt-8">

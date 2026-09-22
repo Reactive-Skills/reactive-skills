@@ -10,13 +10,15 @@ const VERSION = packageMetadata.version ?? 'unknown';
 const DESCRIPTION = 'AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format';
 
 export const TOP_HELP = `usage: reactive-skills-axi [command] [args] [flags]
-commands[18]:
-  (none)=home, init, upgrade, inspect, validate, events, invoke, state, emit, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard
+commands[20]:
+  (none)=home, init, upgrade, inspect, validate, preflight, capabilities, events, invoke, state, emit, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard
 flags[2]:
   --help, --version
 examples:
   reactive-skills-axi
   reactive-skills-axi setup
+  reactive-skills-axi capabilities
+  reactive-skills-axi preflight skills/my-skill
   reactive-skills-axi init my-skill
   reactive-skills-axi upgrade skills/my-legacy-skill
   reactive-skills-axi inspect skills/my-skill
@@ -77,6 +79,16 @@ export async function main() {
       case 'validate': {
         const { validateCommand } = await import('../commands/validate.js');
         output = await validateCommand(args.slice(1));
+        break;
+      }
+      case 'capabilities': {
+        const { capabilitiesCommand } = await import('../commands/capabilities.js');
+        output = await capabilitiesCommand(args.slice(1));
+        break;
+      }
+      case 'preflight': {
+        const { preflightCommand } = await import('../commands/preflight.js');
+        output = await preflightCommand(args.slice(1));
         break;
       }
       case 'events': {

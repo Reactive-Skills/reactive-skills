@@ -2,7 +2,7 @@
 export const quickstart = {
   slug: 'quickstart',
   title: 'Quickstart',
-  summary: 'Scaffold, inspect, and advance a reactive skill in five minutes via the AXI CLI (preferred), with optional MCP daemon configuration for GUI hosts.',
+  summary: 'Scaffold, inspect, and advance a reactive skill in five minutes with local-first AXI or MCP runtime selection.',
   category: 'Get started',
   href: '/docs/quickstart',
   sections: [
@@ -15,10 +15,10 @@ export const quickstart = {
       ],
     },
     {
-      id: 'axi-first',
-      heading: '1. Drive directly with AXI (Preferred)',
+      id: 'runtime-selection',
+      heading: '1. Select a compatible local runtime',
       blocks: [
-        { type: 'text', text: 'The AXI CLI is the primary, token-efficient interface for agents. It runs directly in the shell without background daemon processes, returns structured TOON output, and includes deterministic exit codes and inline recovery guidance.' },
+        { type: 'text', text: 'During INIT, Reactive Skills checks local MCP and AXI capabilities and versions, selects one compatible runtime, and reuses it for the run. AXI remains the runtime interface, and npx is its zero-install launcher when a direct command is not installed.' },
         { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi', explanation: 'Launches the AXI dashboard to inspect registered skills, active states, and recommended actions.', expectedOutput: 'bin: reactive-skills-axi\ndescription: AXI-compliant CLI for Reactive Skills Architecture\ncount: 1 skill total\nskills:\n  tdd-refactor: state RED_SPEC (path: [RED_SPEC])\nsuggestions:\n  emit: npx -y @reactive-skills/axi emit tdd-refactor TEST_RAN' } },
       ],
     },
@@ -58,17 +58,17 @@ export const quickstart = {
     },
     {
       id: 'mcp-bridge',
-      heading: 'Optional: Attach MCP server for GUI hosts',
+      heading: '2. Connect MCP for host-integrated workflows',
       blocks: [
-        { type: 'text', text: 'When embedding into GUI agent environments that lack shell access (such as Claude Desktop or Cursor’s MCP panel), run the stdio MCP server from the same package.' },
+        { type: 'text', text: 'When the host uses MCP tool integration, run the stdio server from the same package. The MCP transport exposes the same reactive runtime through host-managed tools.' },
         { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi mcp', explanation: 'Starts the stdio MCP server, exposing 9 tools and 3 resources to MCP clients.', expectedOutput: 'reactive-skills-axi mcp · listening on stdio\nregistered 9 tools · 3 resources\nready' } },
-        { type: 'callout', variant: 'signal', title: 'AXI vs MCP', text: 'Prefer AXI whenever your agent has shell access: ~40% fewer tokens, zero daemon process overhead, and instant exit code branching. Use MCP when connecting to GUI client panels.' },
+        { type: 'callout', variant: 'signal', title: 'Runtime selection', text: 'INIT selects a compatible local transport and persists it for the run. AXI provides token-lean shell output, while MCP provides host-integrated tools. The npx command launches AXI without a separate installation.' },
       ],
     },
   ],
   relatedPages: [
     { title: 'Authoring & customizing skills', href: '/docs/authoring' },
-    { title: 'AXI CLI reference (Preferred)', href: '/docs/axi' },
+    { title: 'AXI CLI reference', href: '/docs/axi' },
     { title: 'Connect a client with MCP', href: '/docs/mcp' },
     { title: 'Understand the concepts', href: '/docs/concepts' },
   ],

@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-11-0",
+    "heading": "v0.11.0 (2026-09-22)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "chore(release): v0.10.1 - fix legacy read-only snapshots",
+          "fix(docs): update telemetry links to remove 'docs' prefix",
+          "chore: publish docs and SEO metadata",
+          "Delete gates directory",
+          "feat(site): add adoption guide"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-10-1",
     "heading": "v0.10.1 (2026-09-22)",
     "blocks": [

@@ -150,7 +150,7 @@ export function Hero() {
                   </button>
                 </div>
                 <span className="hidden font-mono text-[11px] uppercase tracking-wider text-phino-text-subtle sm:inline">
-                  {cmdMode === 'axi' ? 'shell preferred' : 'json-rpc 2.0'}
+                  {cmdMode === 'axi' ? 'shell interface' : 'json-rpc 2.0'}
                 </span>
               </div>
 

@@ -2,16 +2,16 @@
 export const mcp = {
   slug: 'mcp',
   title: 'Model Context Protocol (MCP)',
-  summary: 'Connect Reactive Skills as a stdio tool server for GUI agent environments (Cursor, Claude Desktop, VS Code) when direct shell execution is unavailable.',
+  summary: 'Connect Reactive Skills as a stdio tool server for GUI agent environments and host-integrated tool workflows.',
   category: 'Integrate',
   href: '/docs/mcp',
   sections: [
     {
       id: 'what',
-      heading: 'When to use MCP vs AXI',
+      heading: 'MCP as a host-integrated transport',
       blocks: [
-        { type: 'text', text: 'The Model Context Protocol (MCP) enables GUI agent hosts to interact with external tools over JSON-RPC. Use MCP when embedding Reactive Skills into desktop editors and GUI clients that require an stdio tool bridge.' },
-        { type: 'callout', variant: 'signal', title: 'Prefer AXI for CLI agents', text: 'If your agent runs with shell execution privileges, prefer the AXI CLI (/docs/axi). AXI eliminates background daemon processes and reduces token consumption by up to 80% via TOON output.' },
+        { type: 'text', text: 'The Model Context Protocol (MCP) enables GUI agent hosts to interact with external tools over JSON-RPC. Use it when the host provides MCP tool integration or when a persistent stdio bridge fits the workflow.' },
+        { type: 'callout', variant: 'signal', title: 'Local-first runtime selection', text: 'During INIT, Reactive Skills checks MCP and AXI capabilities and versions, then selects one compatible local transport for the run. AXI remains available through a direct command or its npx zero-install launcher.' },
         { type: 'text', text: 'When attached, the Reactive Skills MCP server exposes 10 tools for state inspection, signal emission, query execution, sync distribution, and migration, alongside append-only event resources.' },
       ],
     },
@@ -66,7 +66,7 @@ export const mcp = {
     },
   ],
   relatedPages: [
-    { title: 'AXI CLI reference (Preferred)', href: '/docs/axi' },
+    { title: 'AXI CLI reference', href: '/docs/axi' },
     { title: 'Syncing & distributing skills', href: '/docs/syncing' },
     { title: 'Back to the quickstart', href: '/docs/quickstart' },
     { title: 'Troubleshooting guide', href: '/docs/troubleshooting' },

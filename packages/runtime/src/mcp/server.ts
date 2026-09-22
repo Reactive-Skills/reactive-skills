@@ -9,6 +9,10 @@ import { FSMEngine } from '../core/fsm-engine.js';
 import { EventStore } from '../core/event-store.js';
 import { JobManager } from '../core/job-manager.js';
 import { SkillManifestSchema } from '../core/types.js';
+import {
+  getRuntimeCapabilities,
+  RUNTIME_VERSION,
+} from '../core/runtime-capabilities.js';
 
 export interface ReactiveMcpServerOptions {
   workspaceDir?: string;
@@ -21,7 +25,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
   const server = new McpServer({
     name: 'reactive-skills-server',
-    version: '1.0.0',
+    version: RUNTIME_VERSION,
   });
 
   // Cached active engine instance per skill and job
@@ -115,6 +119,29 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     engines.set(cacheKey, engine);
     return engine;
   }
+
+  server.tool(
+    'reactive_capabilities',
+    'Get runtime version and capabilities for one-time INIT transport negotiation',
+    {},
+    async () => {
+      const capabilities = await getRuntimeCapabilities({
+        transport: 'mcp',
+        launcher: 'persistent',
+        scope: 'local',
+        workspace: workspaceDir,
+      });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(capabilities, null, 2),
+          },
+        ],
+      };
+    }
+  );
 
   // 1. TOOL: reactive_state
   server.tool(

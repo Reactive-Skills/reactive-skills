@@ -49,17 +49,16 @@ describe('initCommand', () => {
     const skillMdContent = fs.readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8');
     expect(skillMdContent).toContain('REACTIVE BOOTLOADER');
     expect(skillMdContent).toContain('reactive-skills-axi state');
-    expect(skillMdContent).toContain('AXI is the default runtime path');
-    expect(skillMdContent).toContain('only when shell access to AXI is unavailable');
-    expect(skillMdContent).not.toContain('If the `reactive_state` MCP tool is present');
+    expect(skillMdContent).toContain('LOCAL-FIRST RUNTIME SELECTION');
+    expect(skillMdContent).toContain('reactive_capabilities');
+    expect(skillMdContent).toContain('npx` is only its zero-install launcher');
 
     const initContent = fs.readFileSync(path.join(skillDir, 'states', 'init.md'), 'utf8');
-    expect(initContent).toContain('Prefer AXI CLI');
-    expect(initContent).not.toContain('Check if `reactive_state` MCP tool is available');
+    expect(initContent).toContain('reactive_capabilities');
+    expect(initContent).toContain('runtime_requirements');
 
     const bypassContent = fs.readFileSync(path.join(skillDir, 'states', 'bypass_detected.md'), 'utf8');
-    expect(bypassContent).toContain('Use AXI `state`');
-    expect(bypassContent).not.toContain('Use ONLY `reactive_state`');
+    expect(bypassContent).toContain('selected runtime `state`');
 
     const yamlContent = fs.readFileSync(path.join(skillDir, 'skill.yaml'), 'utf8');
     expect(yamlContent).toMatch(/schema_version:\s*['"]?2\.1\.0['"]?/);

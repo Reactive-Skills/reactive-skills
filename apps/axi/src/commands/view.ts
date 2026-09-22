@@ -33,6 +33,7 @@ export async function viewCommand(args: string[]): Promise<string> {
   const { jobId, filteredArgs } = extractJobFlag(args);
   let skillName: string | undefined;
   let port: number | undefined;
+  let preferredPort: number | undefined;
   let host = '127.0.0.1';
   let once = false;
 
@@ -41,6 +42,10 @@ export async function viewCommand(args: string[]): Promise<string> {
     if (arg === '--port' && i + 1 < filteredArgs.length) {
       const parsed = parseInt(filteredArgs[i + 1], 10);
       if (!isNaN(parsed)) port = parsed;
+      i++;
+    } else if (arg === '--preferred-port' && i + 1 < filteredArgs.length) {
+      const parsed = parseInt(filteredArgs[i + 1], 10);
+      if (!isNaN(parsed)) preferredPort = parsed;
       i++;
     } else if (arg === '--host' && i + 1 < filteredArgs.length) {
       host = filteredArgs[i + 1];
@@ -119,6 +124,7 @@ export async function viewCommand(args: string[]): Promise<string> {
       fsmEngine: engine,
       jobId: engine?.getJobId() ?? jobId,
       port,
+      preferredPort,
       host,
       skillName,
     });

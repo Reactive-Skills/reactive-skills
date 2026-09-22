@@ -81,6 +81,11 @@ export interface JudgmentDefinition {
   timeout_ms?: number;
 }
 
+export interface RuntimeRequirements {
+  min_runtime_version?: string;
+  required_capabilities?: string[];
+}
+
 export interface JudgmentRequest {
   type: JudgmentType;
   criterion: string;
@@ -191,6 +196,7 @@ export interface SkillManifest {
   version?: string;
   description: string;
   initial_state: string;
+  runtime_requirements?: RuntimeRequirements;
   strict_execution?: boolean;
   context_keys?: string[];
   default_context?: Record<string, any>;
@@ -252,6 +258,14 @@ export const JudgmentDefinitionSchema = z.object({
   fallback_adapter: z.string().optional(),
   fallback_target: z.string().optional(),
   timeout_ms: z.number().positive().optional(),
+});
+
+export const RuntimeRequirementsSchema = z.object({
+  min_runtime_version: z.string().trim().min(1).optional(),
+  required_capabilities: z.array(z.string().trim().min(1)).min(1).refine(
+    (capabilities) => new Set(capabilities).size === capabilities.length,
+    { message: 'required_capabilities must contain unique values' }
+  ).optional(),
 });
 
 export const TransitionSchema = z.union([
@@ -316,6 +330,7 @@ export const SkillManifestSchema = z.object({
   version: z.string().optional(),
   description: z.string(),
   initial_state: z.string(),
+  runtime_requirements: RuntimeRequirementsSchema.optional(),
   strict_execution: z.boolean().optional(),
   context_keys: z.array(z.string()).optional(),
   default_context: z.record(z.any()).optional(),

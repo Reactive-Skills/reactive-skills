@@ -7,6 +7,7 @@ export * from './core/fsm-engine.js';
 export * from './core/legacy-adapter.js';
 export * from './core/migration.js';
 export * from './core/job-manager.js';
+export * from './core/runtime-capabilities.js';
 export * from './mcp/server.js';
 export * from './sync/types.js';
 export { runSync } from './sync/engine.js';

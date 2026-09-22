@@ -31,9 +31,9 @@ export const syncing = {
     },
     {
       id: 'axi-sync-cli',
-      heading: '1. Synchronizing via AXI CLI (Preferred)',
+      heading: '1. Synchronizing via AXI CLI',
       blocks: [
-        { type: 'text', text: 'The AXI CLI provides the primary synchronization entrypoint via axi sync (or npx -y @reactive-skills/axi sync). It can sync an entire workspace or a single target skill.' },
+        { type: 'text', text: 'The AXI CLI provides a synchronization entrypoint via axi sync (or npx -y @reactive-skills/axi sync). It can sync an entire workspace or a single target skill.' },
         { type: 'code', example: {
           language: 'bash',
           command: 'npx -y @reactive-skills/axi sync tdd-flow',

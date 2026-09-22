@@ -5,12 +5,12 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.10.1)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.11.0)
 
 ---
 
-> 🚀 **What's New in v0.10.1:**
-> - fix legacy read-only snapshots
+> 🚀 **What's New in v0.11.0:**
+> - --
 > - Direct `@typesafe-ai/sdk` Jev judgments without shell execution or temporary state files
 > - AXI `--version` support for agent runtime discovery
 > - read-only multi-job, multi-skill telemetry broker and site dashboard
@@ -20,7 +20,7 @@
 > - **Inverted Bootloader Contract:** `invoke` is now the primary task inception command across universal reactive bootloaders, with `state` reserved for resuming active tasks.
 > - **CLI Ergonomics & Flag Synonyms:** Added `--run` and `--run-id` everywhere alongside `--job`.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.10.1) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.11.0) · [View Changelog](CHANGELOG.md)
 
 ---
 
@@ -56,6 +56,8 @@ You can execute commands on-demand via **`npx`** (zero installation required) or
 # Zero install — works immediately for any agent or shell:
 npx -y @reactive-skills/axi state <skill-name>
 npx -y @reactive-skills/axi emit <skill-name> <signal-name>
+npx -y @reactive-skills/axi capabilities --json
+npx -y @reactive-skills/axi preflight <skill-name> --json
 
 # Optional: Install globally for instant local commands (`reactive-skills-axi` or `axi`):
 npm install -g @reactive-skills/axi
@@ -121,6 +123,8 @@ Reactive skills can be driven through two primary integration paths:
 | `view` | `npx -y @reactive-skills/axi view <skill>` | Launch real-time telemetry server and live visual statechart viewer |
 | `dashboard` | `npx -y @reactive-skills/axi dashboard [--host <host>] [--port <port>]` | Launch one read-only broker for multi-job telemetry |
 | `sync` | `npx -y @reactive-skills/axi sync [skill]` | Synchronize skills across authoring workspaces and agent satellites via zero-drift junctions |
+| `capabilities` | `npx -y @reactive-skills/axi capabilities --json` | Report runtime version and capabilities for INIT negotiation |
+| `preflight` | `npx -y @reactive-skills/axi preflight <skill>` | Check skill runtime requirements without creating a job |
 
 ---
 

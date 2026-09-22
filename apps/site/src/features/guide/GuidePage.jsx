@@ -34,7 +34,7 @@ const PATHS = [
   {
     number: '03',
     title: 'Connect a host',
-    description: 'Use AXI when your agent has shell access. Add MCP when a GUI client needs the bridge.',
+    description: 'Select a compatible local AXI or MCP transport during startup. AXI uses shell commands, while MCP connects host tool panels.',
     command: 'npx -y @reactive-skills/axi mcp',
     href: '/docs/axi',
     linkLabel: 'Compare AXI and MCP',

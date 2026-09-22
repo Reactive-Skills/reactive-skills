@@ -2,7 +2,7 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.10.1: fix legacy read-only snapshots  [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.10.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.11.0: --   [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.11.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -24,6 +24,8 @@ npm install -g @reactive-skills/axi
 # Zero-install via npx:
 npx -y @reactive-skills/axi                          # dashboard
 npx -y @reactive-skills/axi --version                # print the installed package version
+npx -y @reactive-skills/axi capabilities --json      # report runtime capabilities
+npx -y @reactive-skills/axi preflight <skill> --json # check skill runtime requirements
 npx -y @reactive-skills/axi invoke <skill>           # start fresh run (auto-generates unique job ID)
 npx -y @reactive-skills/axi invoke <skill> --job <id> # start isolated named run
 npx -y @reactive-skills/axi state <skill>            # inspect/resume active run (auto-rotates if terminal)
@@ -57,6 +59,22 @@ Creates:
 - `skills/my-skill/SKILL.md` — skill documentation
 - `skills/my-skill/states/start.md` — initial state prompt
 - `skills/my-skill/states/done.md` — terminal state prompt
+
+### capabilities
+
+Report AXI and runtime versions plus available capabilities for one-time INIT negotiation.
+
+```bash
+npx -y @reactive-skills/axi capabilities --json
+```
+
+### preflight
+
+Check a skill's declared runtime requirements without creating or changing a job.
+
+```bash
+npx -y @reactive-skills/axi preflight skills/my-skill --json
+```
 
 ### upgrade
 
