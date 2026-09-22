@@ -88,7 +88,7 @@ export const axi = {
   ],
   relatedPages: [
     { title: 'Quickstart', href: '/docs/quickstart' },
-    { title: 'Multi-job telemetry', href: '/docs/telemetry' },
+    { title: 'Multi-job telemetry', href: '/telemetry' },
     { title: 'Syncing & distributing skills', href: '/docs/syncing' },
     { title: 'Model Context Protocol (MCP)', href: '/docs/mcp' },
     { title: 'Troubleshooting guide', href: '/docs/troubleshooting' },

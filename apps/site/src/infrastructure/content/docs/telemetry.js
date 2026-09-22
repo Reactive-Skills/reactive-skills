@@ -4,7 +4,7 @@ export const telemetry = {
   title: 'Multi-Job Telemetry',
   summary: 'Run one local read-only broker and monitor multiple skill jobs through one browser connection.',
   category: 'Integrate',
-  href: '/docs/telemetry',
+  href: '/telemetry',
   sections: [
     {
       id: 'start-broker',
