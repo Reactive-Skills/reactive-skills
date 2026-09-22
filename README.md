@@ -10,7 +10,7 @@
 ---
 
 > 🚀 **What's New in v0.11.0:**
-> - --
+> - Local-first runtime negotiation with one-time version and capability checks
 > - Direct `@typesafe-ai/sdk` Jev judgments without shell execution or temporary state files
 > - AXI `--version` support for agent runtime discovery
 > - read-only multi-job, multi-skill telemetry broker and site dashboard
