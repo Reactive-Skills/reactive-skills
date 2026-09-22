@@ -46,6 +46,7 @@ jobs:
 
       - name: Build documentation site
         env:
+          NEXT_PUBLIC_SITE_URL: https://reactive-skills.github.io
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
           GITHUB_PAGES: "true"
         run: pnpm --filter @reactive-skills/site build

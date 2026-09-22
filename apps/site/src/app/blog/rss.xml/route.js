@@ -1,4 +1,5 @@
 import { getBlogContentSource } from '@/infrastructure/container';
+import { absoluteUrl } from '@/infrastructure/siteMetadata';
 
 export const dynamic = 'force-static';
 
@@ -6,7 +7,7 @@ export async function GET() {
   const content = getBlogContentSource();
   const posts = content.listPosts();
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://reactive-skills.dev';
+  const siteUrl = absoluteUrl('/');
 
   const rssItems = posts
     .map(

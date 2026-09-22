@@ -3,6 +3,10 @@ import { MultiJobTelemetryDashboard } from '@/features/telemetry/MultiJobTelemet
 export const metadata = {
   title: 'Telemetry Dashboard',
   description: 'Monitor multiple Reactive Skills jobs through one local telemetry broker.',
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function TelemetryPage() {

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getBlogContentSource } from '@/infrastructure/container';
 import { BlogPostView } from '@/features/blog/BlogPostView';
+import { absoluteUrl } from '@/infrastructure/siteMetadata';
 
 export async function generateStaticParams() {
   const content = getBlogContentSource();
@@ -22,16 +23,30 @@ export async function generateMetadata({ params }) {
     };
   }
 
+  const postUrl = absoluteUrl(`/blog/${post.slug}`);
+
   return {
     title: `${post.title} · Blog`,
     description: post.summary,
+    alternates: {
+      canonical: postUrl,
+    },
     openGraph: {
+      url: postUrl,
+      siteName: 'Reactive Skills',
       title: post.title,
       description: post.summary,
       type: 'article',
       publishedTime: post.publishedAt,
       authors: [post.author.name],
       tags: post.tags,
+      images: [absoluteUrl('/opengraph-image')],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description: post.summary,
+      images: [absoluteUrl('/opengraph-image')],
     },
   };
 }
