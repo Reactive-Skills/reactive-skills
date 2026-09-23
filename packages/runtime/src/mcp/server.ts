@@ -9,6 +9,7 @@ import { FSMEngine } from '../core/fsm-engine.js';
 import { EventStore } from '../core/event-store.js';
 import { JobManager } from '../core/job-manager.js';
 import { SkillManifestSchema } from '../core/types.js';
+import { ContextRouter, type ContextRouteCandidate } from '../core/context-router.js';
 import {
   getRuntimeCapabilities,
   RUNTIME_VERSION,
@@ -27,6 +28,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     name: 'reactive-skills-server',
     version: RUNTIME_VERSION,
   });
+
+  const contextRouter = new ContextRouter();
 
   // Cached active engine instance per skill and job
   const engines = new Map<string, FSMEngine>();
@@ -120,6 +123,53 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     return engine;
   }
 
+  function discoverContextCandidates(userMessage: string): ContextRouteCandidate[] {
+    const searchDirs = [
+      path.resolve(workspaceDir, 'skills'),
+      path.join(os.homedir(), '.agents', 'skills'),
+      path.join(os.homedir(), '.gemini', 'config', 'skills'),
+      path.join(os.homedir(), '.kilocode', 'skills'),
+    ];
+    const messageTokens = new Set(userMessage.toLowerCase().split(/[^a-z0-9]+/).filter((token) => token.length > 2));
+    const candidates: Array<ContextRouteCandidate & { score: number }> = [];
+    const seen = new Set<string>();
+
+    for (const dir of searchDirs) {
+      if (!fs.existsSync(dir)) continue;
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const skillDir = path.join(dir, entry.name);
+        const manifestPath = ['skill.yaml', 'skill.yml']
+          .map((fileName) => path.join(skillDir, fileName))
+          .find((candidatePath) => fs.existsSync(candidatePath));
+        if (!manifestPath) continue;
+
+        try {
+          const manifest = yaml.load(fs.readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
+          const skill = typeof manifest?.name === 'string' ? manifest.name.trim() : '';
+          const summary = typeof manifest?.description === 'string' ? manifest.description.trim() : '';
+          if (!skill || !summary || seen.has(skill)) continue;
+          seen.add(skill);
+          const candidateTokens = new Set(`${skill} ${summary}`.toLowerCase().split(/[^a-z0-9]+/).filter((token) => token.length > 2));
+          const score = [...messageTokens].reduce((total, token) => total + (candidateTokens.has(token) ? 1 : 0), 0);
+          candidates.push({
+            id: skill,
+            skill,
+            summary: summary.slice(0, 1_000),
+            score,
+          });
+        } catch {
+          // Ignore invalid manifests during local candidate discovery.
+        }
+      }
+    }
+
+    return candidates
+      .sort((left, right) => right.score - left.score || left.skill.localeCompare(right.skill))
+      .slice(0, 12)
+      .map(({ score: _score, ...candidate }) => candidate);
+  }
+
   server.tool(
     'reactive_capabilities',
     'Get runtime version and capabilities for one-time INIT transport negotiation',
@@ -140,6 +190,38 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
           },
         ],
       };
+    }
+  );
+
+  server.tool(
+    'reactive_context_route',
+    'Use Jev to select the smallest useful skill and context slice before prompt assembly',
+    {
+      user_message: z.string().min(1).describe('Current user task or message'),
+      candidates: z.array(z.object({
+        id: z.string().min(1),
+        skill: z.string().min(1),
+        summary: z.string().min(1),
+        keywords: z.array(z.string()).optional(),
+      })).max(12).optional().describe('Optional bounded skill metadata; omit to use local manifest discovery'),
+      token_budget: z.number().int().min(128).max(32768).optional().describe('Maximum context tokens for selected route'),
+      state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Small bounded state hints'),
+    },
+    async ({ user_message, candidates, token_budget, state_hints }) => {
+      try {
+        const decision = await contextRouter.route({
+          userMessage: user_message,
+          candidates: candidates || discoverContextCandidates(user_message),
+          tokenBudget: token_budget,
+          stateHints: state_hints,
+        });
+        return { content: [{ type: 'text', text: JSON.stringify(decision, null, 2) }] };
+      } catch (err: any) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
+          isError: true,
+        };
+      }
     }
   );
 

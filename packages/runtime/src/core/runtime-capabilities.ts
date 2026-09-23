@@ -12,6 +12,7 @@ export const STATIC_RUNTIME_CAPABILITIES = [
   'judgment',
   'judgment.script',
   'judgment.adapter_evidence',
+  'context.routing',
 ] as const;
 
 export type RuntimeTransport = 'axi' | 'mcp';

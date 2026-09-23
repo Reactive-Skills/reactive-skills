@@ -68,6 +68,18 @@ Report AXI and runtime versions plus available capabilities for one-time INIT ne
 npx -y @reactive-skills/axi capabilities --json
 ```
 
+### context-route
+
+Use Jev to select one skill and the smallest useful context slice before prompt assembly.
+
+Pass bounded candidate metadata only.
+
+```bash
+npx -y @reactive-skills/axi context-route --message "Review this policy decision" --candidates '[{"id":"policy","skill":"policy-review","summary":"Review decisions against policy","keywords":["policy","approval"]}]' --json
+```
+
+The command fails closed to `route: none` when Jev is unavailable or confidence is too low.
+
 ### preflight
 
 Check a skill's declared runtime requirements without creating or changing a job.

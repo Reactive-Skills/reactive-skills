@@ -45,6 +45,35 @@ describe('Reactive MCP Server Integration', () => {
     expect(parsed.capabilities).toContain('runtime.transport_handshake');
   });
 
+  it('should expose reactive_context_route for bounded pre-prompt routing', async () => {
+    const originalApiKey = process.env.TYPESAFE_API_KEY;
+    delete process.env.TYPESAFE_API_KEY;
+    const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
+    try {
+      const tools = (server as any)._registeredTools;
+      expect(tools['reactive_context_route']).toBeDefined();
+
+      const result = await tools['reactive_context_route'].handler({
+        user_message: 'Choose the correct skill',
+        candidates: [{ id: 'test', skill: 'test-fsm', summary: 'Run a state machine test' }],
+      }, {} as any);
+      const parsed = JSON.parse(result.content[0].text);
+
+      expect(parsed.route).toBe('none');
+      expect(parsed.adapter).toBe('script');
+
+      const discoveredResult = await tools['reactive_context_route'].handler({
+        user_message: 'Choose the correct skill',
+      }, {} as any);
+      const discoveredParsed = JSON.parse(discoveredResult.content[0].text);
+      expect(discoveredParsed.route).toBe('none');
+      expect(discoveredParsed.adapter).toBe('script');
+    } finally {
+      if (originalApiKey === undefined) delete process.env.TYPESAFE_API_KEY;
+      else process.env.TYPESAFE_API_KEY = originalApiKey;
+    }
+  });
+
   it('should handle reactive_state tool call', async () => {
     const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
     const tools = (server as any)._registeredTools;

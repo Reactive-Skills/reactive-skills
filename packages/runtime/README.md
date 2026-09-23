@@ -37,6 +37,7 @@ If the API key is unset or a request fails, the runtime keeps the existing Scrip
 - `JobManager` - Run isolation, active pointer resolution, metadata management, and safe directory pathing
 - `EventStore` - Immutable append-only event ledger (JSONL + SQLite)
 - `GuardEvaluator` - Sandbox evaluator for transition guard expressions
+- `ContextRouter` - Bounded Jev-backed skill and context selection before prompt assembly
 - `ProjectionEngine` - Handlebars deliverable generator for read-model projections with dual-write archiving
 - `LegacySkillAdapter` - Backward compatibility wrapper and converter for SKILL.md
 - `McpServer` - Stdio Model Context Protocol (MCP) server integration

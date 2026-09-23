@@ -33,6 +33,10 @@ describe('runtime capability contracts', () => {
     ]);
   });
 
+  it('advertises bounded context routing', () => {
+    expect(STATIC_RUNTIME_CAPABILITIES).toContain('context.routing');
+  });
+
   it('does not treat an unknown runtime version as compatible with a minimum version', () => {
     const result = evaluateRuntimeRequirements(
       { min_runtime_version: '0.10.0' },
