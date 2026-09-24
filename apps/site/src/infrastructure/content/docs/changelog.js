@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-12-0",
+    "heading": "v0.12.0 (2026-09-24)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "docs(site): add deployment runbook",
+          "feat(site): add root Pages deployment path",
+          "test(runtime): make projection regression portable",
+          "chore(release): v0.11.1 - --",
+          "fix(runtime): render dynamic projection paths"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-11-1",
     "heading": "v0.11.1 (2026-09-24)",
     "blocks": [

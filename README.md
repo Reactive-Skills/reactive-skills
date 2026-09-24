@@ -5,11 +5,11 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.11.1)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.12.0)
 
 ---
 
-> 🚀 **What's New in v0.11.1:**
+> 🚀 **What's New in v0.12.0:**
 > - --
 > - Direct `@typesafe-ai/sdk` Jev judgments without shell execution or temporary state files
 > - AXI `--version` support for agent runtime discovery
@@ -20,7 +20,7 @@
 > - **Inverted Bootloader Contract:** `invoke` is now the primary task inception command across universal reactive bootloaders, with `state` reserved for resuming active tasks.
 > - **CLI Ergonomics & Flag Synonyms:** Added `--run` and `--run-id` everywhere alongside `--job`.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.11.1) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.12.0) · [View Changelog](CHANGELOG.md)
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "name": "@reactive-skills/runtime",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "description": "Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, MCP server",
   "type": "module",
   "main": "dist/index.js",
