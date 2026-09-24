@@ -1,4 +1,12 @@
 
+## [0.11.1] - 2026-09-24
+
+- fix(runtime): render dynamic projection paths (c78778b)
+- feat(runtime): add Jev context router (0bc504b)
+- chore(site): add Google Search Console verification (788fc35)
+- docs(release): correct v0.11.0 release banners (765f1b9)
+- chore(release): v0.11.0 - -- (0d7af09)
+
 ## [0.11.0] - 2026-09-22
 
 - chore(release): v0.10.1 - fix legacy read-only snapshots (26963c2)

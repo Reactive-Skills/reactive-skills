@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-11-1",
+    "heading": "v0.11.1 (2026-09-24)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "fix(runtime): render dynamic projection paths",
+          "feat(runtime): add Jev context router",
+          "chore(site): add Google Search Console verification",
+          "docs(release): correct v0.11.0 release banners",
+          "chore(release): v0.11.0 - --"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-11-0",
     "heading": "v0.11.0 (2026-09-22)",
     "blocks": [
