@@ -1,0 +1,55 @@
+name: Notify root Pages deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/site/**"
+      - "content/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/notify-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check deployment token
+        id: token
+        shell: bash
+        env:
+          PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+        run: |
+          if [ -n "$PAGES_DEPLOY_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "PAGES_DEPLOY_TOKEN is not configured; root deployment remains manual."
+          fi
+
+      - name: Trigger root Pages workflow
+        if: steps.token.outputs.configured == 'true'
+        uses: actions/github-script@v7
+        env:
+          PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+        with:
+          github-token: ${{ env.PAGES_DEPLOY_TOKEN }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: 'Reactive-Skills',
+              repo: 'Reactive-Skills.github.io',
+              event_type: 'source-updated',
+              client_payload: {
+                source_ref: context.sha,
+              },
+            });
+
+      - name: Report manual fallback
+        if: steps.token.outputs.configured != 'true'
+        run: echo "Run the Reactive-Skills.github.io deploy workflow manually after configuring PAGES_DEPLOY_TOKEN."

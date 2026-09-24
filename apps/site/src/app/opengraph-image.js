@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { siteBaseUrl } from '@/infrastructure/siteMetadata';
 
 export const dynamic = 'force-static';
 export const alt = 'Reactive Skills: resumable workflows for coding agents';
@@ -7,6 +8,7 @@ export const size = {
   height: 630,
 };
 export const contentType = 'image/png';
+const siteLabel = siteBaseUrl.toString().replace(/^https?:\/\//, '').replace(/\/$/, '');
 
 export default function OpenGraphImage() {
   return new ImageResponse(
@@ -35,7 +37,7 @@ export default function OpenGraphImage() {
           </div>
         </div>
         <div style={{ color: '#71808c', display: 'flex', fontFamily: 'monospace', fontSize: 22 }}>
-          reactive-skills.github.io/reactive-skills
+          {siteLabel}
         </div>
       </div>
     ),
