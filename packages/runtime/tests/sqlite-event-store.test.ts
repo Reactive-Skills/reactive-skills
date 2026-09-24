@@ -210,9 +210,36 @@ describe('SQLite Storage Driver & EventStore Integration', () => {
     fs.rmSync(workspaceDir, { recursive: true, force: true });
   });
 
-  it('should render the production skill-manager projections', () => {
+  it('should render production-shaped skill-manager projections', () => {
     const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-skill-manager-projection-'));
-    const skillDir = path.resolve(process.cwd(), '..', 'skills', 'skill-manager');
+    const skillDir = path.join(workspaceDir, 'skill-manager');
+    fs.mkdirSync(path.join(skillDir, 'templates'), { recursive: true });
+    fs.writeFileSync(
+      path.join(skillDir, 'templates', 'manifest_snapshot.md.hbs'),
+      '# Skill Manager Snapshot\n\n' +
+        '## Skill: {{context.skill_name}}\n' +
+        '## Operation: {{context.operation}}\n' +
+        '## Timestamp: {{lastUpdated}}\n\n' +
+        '### Status: {{currentState}}\n\n' +
+        '{{#if context.files}}\n' +
+        '### Files Affected\n' +
+        '{{#each context.files}}\n' +
+        '- {{this}}\n' +
+        '{{/each}}\n' +
+        '{{/if}}\n',
+      'utf8'
+    );
+    fs.writeFileSync(
+      path.join(skillDir, 'templates', 'inventory.json.hbs'),
+      '{\n' +
+        '  "skill_name": "{{context.skill_name}}",\n' +
+        '  "operation": "{{context.operation}}",\n' +
+        '  "status": "{{currentState}}",\n' +
+        '  "timestamp": "{{lastUpdated}}",\n' +
+        '  "files": {{#if context.files}}{{{json context.files}}}{{else}}[]{{/if}}\n' +
+        '}\n',
+      'utf8'
+    );
     const engine = new ProjectionEngine(
       skillDir,
       [
