@@ -26,6 +26,10 @@ Thank you for your interest in contributing to the Reactive Skills Architecture!
    pnpm test:axi
    ```
 
+## Site and CMS maintenance
+
+See the [site and CMS maintenance runbook](docs/operations/site-deployment.md) for deployment ownership, Pages automation, secret configuration, CMS authoring, and rollback guidance.
+
 ## Architecture Invariants
 
 1. **State Independence:** Each state's prompt slice in `states/*.md` must be self-contained.
