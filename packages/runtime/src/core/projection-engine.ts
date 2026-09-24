@@ -83,6 +83,10 @@ export class ProjectionEngine {
     return outputPath;
   }
 
+  private renderOutputPath(output: string, context: ProjectionContext): string {
+    return Handlebars.compile(output, { noEscape: true })(context);
+  }
+
   private getProjectionEvents(eventStore: EventStore): SignalEvent[] {
     const latestSeq = eventStore.getLatestSequence();
     const cached = this.eventCaches.get(eventStore);
@@ -191,7 +195,8 @@ export class ProjectionEngine {
 
         if (templateFn) {
           const outputContent = templateFn(projContext);
-          const canonicalOutputPath = this.resolveOutputPath(proj.output);
+          const renderedOutputPath = this.renderOutputPath(proj.output, projContext);
+          const canonicalOutputPath = this.resolveOutputPath(renderedOutputPath);
           const canonicalDir = path.dirname(canonicalOutputPath);
           const fileName = path.basename(canonicalOutputPath);
 

@@ -161,6 +161,101 @@ describe('SQLite Storage Driver & EventStore Integration', () => {
     expect(fs.existsSync(path.join(path.dirname(workspaceDir), 'outside.md'))).toBe(false);
   });
 
+  it('should render projection output paths from the nested projection context', () => {
+    const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-projection-template-'));
+    const skillDir = path.join(workspaceDir, 'skill');
+    fs.mkdirSync(path.join(skillDir, 'templates'), { recursive: true });
+    fs.writeFileSync(
+      path.join(skillDir, 'templates', 'snapshot.hbs'),
+      'Skill: {{context.skill_name}}\nOperation: {{context.operation}}\nState: {{currentState}}',
+      'utf8'
+    );
+
+    const engine = new ProjectionEngine(
+      skillDir,
+      [{
+        template: 'templates/snapshot.hbs',
+        output: '.docs/skill-manager/{{context.skill_name}}-snapshot.md',
+      }],
+      workspaceDir,
+      'job-1'
+    );
+    const store = new EventStore({ inMemory: true, skillId: 'skill-manager' });
+
+    const writtenFiles = engine.project(store, 'SUCCESS', 'skill-manager', {
+      skill_name: 'ameliorate',
+      operation: 'UPDATE',
+    });
+
+    const archiveFile = path.join(
+      workspaceDir,
+      '.docs',
+      'skill-manager',
+      'jobs',
+      'job-1',
+      'ameliorate-snapshot.md'
+    );
+    const rootFile = path.join(workspaceDir, '.docs', 'skill-manager', 'ameliorate-snapshot.md');
+
+    expect(writtenFiles).toContain(archiveFile);
+    expect(writtenFiles).toContain(rootFile);
+    expect(fs.existsSync(archiveFile)).toBe(true);
+    expect(fs.existsSync(rootFile)).toBe(true);
+    expect(fs.readFileSync(rootFile, 'utf8')).toContain('Skill: ameliorate');
+    expect(fs.readFileSync(rootFile, 'utf8')).toContain('Operation: UPDATE');
+    expect(fs.readFileSync(rootFile, 'utf8')).toContain('State: SUCCESS');
+    expect(fs.existsSync(path.join(workspaceDir, '.docs', 'skill-manager', '{{context.skill_name}}-snapshot.md'))).toBe(false);
+
+    store.close();
+    fs.rmSync(workspaceDir, { recursive: true, force: true });
+  });
+
+  it('should render the production skill-manager projections', () => {
+    const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-skill-manager-projection-'));
+    const skillDir = path.resolve(process.cwd(), '..', 'skills', 'skill-manager');
+    const engine = new ProjectionEngine(
+      skillDir,
+      [
+        {
+          template: 'templates/manifest_snapshot.md.hbs',
+          output: '.docs/skill-manager/{{context.skill_name}}-snapshot.md',
+        },
+        {
+          template: 'templates/inventory.json.hbs',
+          output: '.docs/skill-manager/inventory.json',
+        },
+      ],
+      workspaceDir,
+      'job-1'
+    );
+    const store = new EventStore({ inMemory: true, skillId: 'skill-manager' });
+
+    engine.project(store, 'SUCCESS', 'skill-manager', {
+      skill_name: 'ameliorate',
+      operation: 'UPDATE',
+      files: ['skill.yaml', 'templates/manifest_snapshot.md.hbs'],
+    });
+
+    const snapshotPath = path.join(workspaceDir, '.docs', 'skill-manager', 'ameliorate-snapshot.md');
+    const inventoryPath = path.join(workspaceDir, '.docs', 'skill-manager', 'inventory.json');
+    const inventory = JSON.parse(fs.readFileSync(inventoryPath, 'utf8'));
+
+    expect(fs.existsSync(snapshotPath)).toBe(true);
+    expect(fs.existsSync(path.join(workspaceDir, '.docs', 'skill-manager', '{{context.skill_name}}-snapshot.md'))).toBe(false);
+    expect(fs.readFileSync(snapshotPath, 'utf8')).toContain('## Skill: ameliorate');
+    expect(fs.readFileSync(snapshotPath, 'utf8')).toContain('## Operation: UPDATE');
+    expect(fs.readFileSync(snapshotPath, 'utf8')).toContain('### Status: SUCCESS');
+    expect(inventory).toMatchObject({
+      skill_name: 'ameliorate',
+      operation: 'UPDATE',
+      status: 'SUCCESS',
+      files: ['skill.yaml', 'templates/manifest_snapshot.md.hbs'],
+    });
+
+    store.close();
+    fs.rmSync(workspaceDir, { recursive: true, force: true });
+  });
+
   it('should place durable events inside the workspace skill lane', () => {
     const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-store-'));
     const store = new EventStore({ workspaceDir, skillId: 'test-skill' });
