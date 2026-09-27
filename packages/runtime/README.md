@@ -2,7 +2,13 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.13.0: Serve authoritative bootloader and context preparation     [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.13.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> 🚀 **What's New in v0.13.0:**
+> - `getReactiveBootloader(skillName)` returns versioned, authoritative bootloader instructions.
+> - MCP `reactive_bootloader` serves the same instructions to connected clients, and `reactive_context_prepare` loads bounded context for the selected skill.
+> - Migrations replace copied bootloader text with a stable runtime pointer that AXI can validate.
+> - Runtime capabilities report bootloader and context-preparation support.
+>
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.13.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

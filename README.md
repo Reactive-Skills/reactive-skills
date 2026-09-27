@@ -10,15 +10,10 @@
 ---
 
 > 🚀 **What's New in v0.13.0:**
-> - Serve authoritative bootloader and context preparation
-> - Direct `@typesafe-ai/sdk` Jev judgments without shell execution or temporary state files
-> - AXI `--version` support for agent runtime discovery
-> - read-only multi-job, multi-skill telemetry broker and site dashboard
-> - job-targeted live telemetry with SQLite tailing
-> - automatic telemetry viewer port selection with strict explicit port overrides
-> - **Environment-Scoped Isolation (`REACTIVE_JOB_ID`):** Parallel subagent swarms and CI workers run isolated jobs concurrently without mutating or fighting over the shared filesystem pointer.
-> - **Inverted Bootloader Contract:** `invoke` is now the primary task inception command across universal reactive bootloaders, with `state` reserved for resuming active tasks.
-> - **CLI Ergonomics & Flag Synonyms:** Added `--run` and `--run-id` everywhere alongside `--job`.
+> - **Runtime-served bootloader:** The runtime returns the same versioned instructions through its API, MCP `reactive_bootloader`, and AXI `bootloader <skill> --json`.
+> - **Canonical skill pointers:** New and migrated `SKILL.md` files point to runtime instructions, and `axi validate` rejects missing, duplicate, or stale pointers.
+> - **MCP context preparation:** `reactive_context_prepare` routes a request, then loads only the selected skill's metadata, active-state prompt, or bounded instructions.
+> - Runtime capability discovery reports bootloader and context-preparation support.
 >
 > [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.13.0) · [View Changelog](CHANGELOG.md)
 
