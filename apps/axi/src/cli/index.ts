@@ -35,7 +35,7 @@ examples:
   reactive-skills-axi rebuild-sqlite my-skill
   reactive-skills-axi view my-skill [--job <alias-or-run-id>]
   reactive-skills-axi dashboard [--host 127.0.0.1] [--port <number>]
-  reactive-skills-axi sync [my-skill]
+  reactive-skills-axi sync [my-skill | --skill <name> [--skill <name> ...]]
   reactive-skills-axi mcp
 `;
 
@@ -156,8 +156,10 @@ export async function main() {
       }
       case 'sync': {
         const { syncCommand } = await import('../commands/sync.js');
-        output = await syncCommand(args.slice(1));
-        break;
+        const result = await syncCommand(args.slice(1));
+        process.stdout.write(result.output + '\n');
+        if (result.exitCode !== 0) process.exitCode = result.exitCode;
+        return;
       }
       default: {
         process.stderr.write(renderError('Unknown command: ' + command, 'UNKNOWN_COMMAND', ['Run `reactive-skills-axi` with no args for dashboard', 'Run `reactive-skills-axi --help` for command reference']) + '\n');

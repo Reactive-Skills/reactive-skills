@@ -2,7 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { runSync } from './engine.js';
-import { SyncReport } from './types.js';
+import { SyncCommandResult, SyncReport } from './types.js';
+
+class MissingSkillNameError extends Error {}
 
 function expandPath(p: string): string {
   if (p === '~' || p.startsWith('~/') || p.startsWith('~\\')) {
@@ -15,7 +17,7 @@ function parseArgs(args: string[]): {
   sourceDir?: string;
   sourceDirs: string[];
   targetDirs: string[];
-  targetSkill?: string;
+  targetSkills?: string[];
   dryRun: boolean;
   noBackup: boolean;
   link?: boolean;
@@ -27,7 +29,7 @@ function parseArgs(args: string[]): {
     sourceDir?: string;
     sourceDirs: string[];
     targetDirs: string[];
-    targetSkill?: string;
+    targetSkills?: string[];
     dryRun: boolean;
     noBackup: boolean;
     link?: boolean;
@@ -86,11 +88,16 @@ function parseArgs(args: string[]): {
           result.targetDirs.push(expandPath(args[++i]));
         }
         break;
-      case '--skill':
-        if (i + 1 < args.length) {
-          result.targetSkill = args[++i];
+      case '--skill': {
+        const skillName = args[i + 1];
+        if (!skillName || skillName.startsWith('-')) {
+          throw new MissingSkillNameError('--skill requires a skill name');
         }
+        result.targetSkills ??= [];
+        result.targetSkills.push(skillName);
+        i++;
         break;
+      }
       default:
         if (arg.startsWith('-')) {
           throw new Error(`Unknown flag: ${arg}`);
@@ -123,7 +130,7 @@ Arguments:
 Flags:
   --source, -s <dir>    Source skills directory
   --target, -t <dir>    Add a target directory (repeatable)
-  --skill <name>        Sync a specific skill only
+  --skill <name>        Select a skill to sync (repeatable; default: all skills)
   --dry-run             Preview changes without writing
   --link                Use symlinks/junctions instead of physical file copy (preferred)
   --copy                Force physical file copy (opposite of --link)
@@ -213,17 +220,21 @@ function formatReport(report: SyncReport, json: boolean): string {
   return lines.join('\n');
 }
 
-export async function syncEngineCommand(args: string[]): Promise<string> {
+export async function executeSyncEngineCommand(args: string[]): Promise<SyncCommandResult> {
   let opts: ReturnType<typeof parseArgs>;
   try {
     opts = parseArgs(args);
   } catch (err: any) {
-    return `ERROR: ${err.message}\n\nUse --help for usage.`;
+    const message = err instanceof Error ? err.message : String(err);
+    const output = args.includes('--json')
+      ? JSON.stringify({ errors: [message] }, null, 2)
+      : `ERROR: ${message}\n\nUse --help for usage.`;
+    return { output, exitCode: err instanceof MissingSkillNameError ? 1 : 0 };
   }
 
   if (opts.help) {
     printHelp();
-    return '';
+    return { output: '', exitCode: 0 };
   }
 
   let sourceDirs: string[] = [...opts.sourceDirs];
@@ -262,13 +273,22 @@ export async function syncEngineCommand(args: string[]): Promise<string> {
     sourceDirs,
     sourceDir: sourceDirs[0],
     targetDirs,
-    targetSkill: opts.targetSkill,
+    targetSkills: opts.targetSkills,
     dryRun: opts.dryRun,
     backup: !opts.noBackup,
     link: opts.link,
   });
 
-  return formatReport(report, opts.json);
+  return {
+    output: formatReport(report, opts.json),
+    exitCode: (report.selectionErrors?.length ?? 0) > 0 ? 1 : 0,
+  };
+}
+
+/** Backward-compatible text-only wrapper for existing runtime and MCP callers. */
+export async function syncEngineCommand(args: string[]): Promise<string> {
+  const result = await executeSyncEngineCommand(args);
+  return result.output;
 }
 
 const isDirectRun =
@@ -278,9 +298,10 @@ const isDirectRun =
    process.argv[1].endsWith('sync/cli.ts'));
 
 if (isDirectRun) {
-  syncEngineCommand(process.argv.slice(2))
-    .then((output) => {
+  executeSyncEngineCommand(process.argv.slice(2))
+    .then(({ output, exitCode }) => {
       if (output) console.log(output);
+      if (exitCode !== 0) process.exitCode = exitCode;
     })
     .catch((err) => {
       console.error(err.message);

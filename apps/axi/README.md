@@ -262,12 +262,19 @@ npx -y @reactive-skills/axi sync
 # Sync a specific skill:
 npx -y @reactive-skills/axi sync my-skill
 
+# Sync multiple selected skills:
+npx -y @reactive-skills/axi sync --skill skill-one --skill skill-two
+
 # Preview sync operations without touching disk:
 npx -y @reactive-skills/axi sync --dry-run
 
 # Force physical file copy instead of junctions:
 npx -y @reactive-skills/axi sync my-skill --copy
 ```
+
+Use either one positional skill name or one or more `--skill` flags in a command.
+Do not combine the positional skill form with `--skill` flags.
+Unknown selected names stop the full request before any target directory changes.
 
 ## Design Principles
 

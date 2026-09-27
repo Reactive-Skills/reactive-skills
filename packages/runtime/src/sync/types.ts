@@ -10,7 +10,9 @@ export interface SyncOptions {
   sourceDir?: string;
   sourceDirs?: string[];
   targetDirs: string[];
+  /** Legacy single-name option retained for existing callers. */
   targetSkill?: string;
+  targetSkills?: string[];
   dryRun?: boolean;
   backup?: boolean;
   link?: boolean;
@@ -35,4 +37,11 @@ export interface SyncReport {
   results: SyncResult[];
   orphans: { target: string; names: string[] }[];
   errors: string[];
+  /** Selection preflight errors that require a nonzero CLI exit status. */
+  selectionErrors?: string[];
+}
+
+export interface SyncCommandResult {
+  output: string;
+  exitCode: number;
 }

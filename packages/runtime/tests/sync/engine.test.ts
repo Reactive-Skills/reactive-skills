@@ -151,6 +151,157 @@ describe('runSync', () => {
     expect(fs.existsSync(path.join(dest, 'beta'))).toBe(false);
   });
 
+  it('syncs a deduplicated set of selected skills', () => {
+    createSkill(src, 'alpha');
+    createSkill(src, 'beta');
+    createSkill(src, 'gamma');
+
+    const report = runSync({
+      sourceDir: src,
+      targetDirs: [dest],
+      targetSkills: ['beta', 'alpha', 'beta'],
+    });
+
+    expect(report.skillsFound).toBe(2);
+    expect(report.skillsValid).toBe(2);
+    expect(report.results.map(result => result.skill).sort()).toEqual(['alpha', 'beta']);
+    expect(fs.existsSync(path.join(dest, 'alpha', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(dest, 'beta', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(dest, 'gamma'))).toBe(false);
+  });
+
+  it('rejects an unknown skill before syncing any selected skills', () => {
+    createSkill(src, 'alpha');
+    fs.writeFileSync(path.join(dest, 'keep.txt'), 'unchanged');
+
+    const report = runSync({
+      sourceDir: src,
+      targetDirs: [dest],
+      targetSkills: ['alpha', 'misspelled'],
+    });
+
+    expect(report.errors.join('\n')).toContain('misspelled');
+    expect(report.results).toEqual([]);
+    expect(fs.readdirSync(dest).sort()).toEqual(['keep.txt']);
+  });
+
+  it('compares destination orphans against all source skills during filtered sync', () => {
+    createSkill(src, 'selected');
+    createSkill(src, 'unselected');
+    createSkill(dest, 'unselected');
+    createSkill(dest, 'orphan');
+
+    const report = runSync({
+      sourceDir: src,
+      targetDirs: [dest],
+      targetSkills: ['selected'],
+    });
+
+    expect(report.orphans).toHaveLength(1);
+    expect(report.orphans[0].names).toContain('orphan');
+    expect(report.orphans[0].names).not.toContain('unselected');
+  });
+
+  it('keeps a discovered invalid skill selectable', () => {
+    createNonSkill(src, 'broken');
+
+    const report = runSync({
+      sourceDir: src,
+      targetDirs: [dest],
+      targetSkills: ['broken'],
+    });
+
+    expect(report.skillsFound).toBe(1);
+    expect(report.skillsInvalid).toBe(1);
+    expect(report.results[0].action).toBe('skipped_invalid');
+  });
+
+  it('selects skills across source directories and keeps first-source precedence', () => {
+    const secondSource = makeTmpDir();
+    try {
+      createSkill(src, 'alpha');
+      fs.writeFileSync(path.join(src, 'alpha', 'SKILL.md'), '# alpha from first source\n');
+      createSkill(secondSource, 'alpha');
+      fs.writeFileSync(path.join(secondSource, 'alpha', 'SKILL.md'), '# alpha from second source\n');
+      createSkill(secondSource, 'beta');
+
+      const report = runSync({
+        sourceDirs: [src, secondSource],
+        targetDirs: [dest],
+        targetSkills: ['alpha', 'beta'],
+      });
+
+      expect(report.skillsFound).toBe(2);
+      expect(fs.readFileSync(path.join(dest, 'alpha', 'SKILL.md'), 'utf8')).toContain('first source');
+      expect(fs.existsSync(path.join(dest, 'beta', 'SKILL.md'))).toBe(true);
+    } finally {
+      fs.rmSync(secondSource, { recursive: true, force: true });
+    }
+  });
+
+  it('syncs every selected skill to every target in link mode', () => {
+    const secondTarget = makeTmpDir();
+    try {
+      createSkill(src, 'alpha');
+      createSkill(src, 'beta');
+      createSkill(src, 'gamma');
+
+      const report = runSync({
+        sourceDir: src,
+        targetDirs: [dest, secondTarget],
+        targetSkills: ['alpha', 'beta'],
+        link: true,
+      });
+
+      expect(report.results.filter(result => result.action === 'linked')).toHaveLength(4);
+      for (const target of [dest, secondTarget]) {
+        for (const name of ['alpha', 'beta']) {
+          expect(fs.lstatSync(path.join(target, name)).isSymbolicLink()).toBe(true);
+        }
+        expect(fs.existsSync(path.join(target, 'gamma'))).toBe(false);
+      }
+    } finally {
+      fs.rmSync(secondTarget, { recursive: true, force: true });
+    }
+  });
+
+  it('preserves separate backup and sync results for each selected skill', () => {
+    createSkill(src, 'alpha');
+    createSkill(src, 'beta');
+    createSkill(dest, 'alpha');
+    createSkill(dest, 'beta');
+    fs.writeFileSync(path.join(dest, 'alpha', 'SKILL.md'), '# old alpha\n');
+    fs.writeFileSync(path.join(dest, 'beta', 'SKILL.md'), '# old beta\n');
+
+    const report = runSync({
+      sourceDir: src,
+      targetDirs: [dest],
+      targetSkills: ['alpha', 'beta'],
+      backup: true,
+    });
+
+    expect(report.results.filter(result => result.action === 'backed_up').map(result => result.skill).sort())
+      .toEqual(['alpha', 'beta']);
+    expect(report.results.filter(result => result.action === 'mirrored').map(result => result.skill).sort())
+      .toEqual(['alpha', 'beta']);
+  });
+
+  it('dry-runs multiple selected skills without writing to any target', () => {
+    createSkill(src, 'alpha');
+    createSkill(src, 'beta');
+
+    const report = runSync({
+      sourceDir: src,
+      targetDirs: [dest],
+      targetSkills: ['alpha', 'beta'],
+      dryRun: true,
+    });
+
+    expect(report.results.map(result => result.skill).sort()).toEqual(['alpha', 'beta']);
+    expect(fs.existsSync(path.join(dest, 'alpha'))).toBe(false);
+    expect(fs.existsSync(path.join(dest, 'beta'))).toBe(false);
+  });
+
   it('removes stale files and directories from destination (mirror semantics)', () => {
     createSkill(src, 'alpha');
     // Create extra files in destination that don't exist in source

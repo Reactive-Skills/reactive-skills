@@ -110,9 +110,10 @@ async function main() {
 
   // SYNC (delegated to canonical sync engine)
   if (command === 'sync') {
-    const { syncEngineCommand } = await import('../sync/cli.js');
-    const output = await syncEngineCommand(args.slice(1));
-    console.log(output);
+    const { executeSyncEngineCommand } = await import('../sync/cli.js');
+    const result = await executeSyncEngineCommand(args.slice(1));
+    console.log(result.output);
+    if (result.exitCode !== 0) process.exitCode = result.exitCode;
     return;
   }
 

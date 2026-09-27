@@ -1,21 +1,38 @@
-import { syncEngineCommand } from '@reactive-skills/runtime';
+import { executeSyncEngineCommand } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderOutput } from '../toon.js';
 
-export async function syncCommand(args: string[]): Promise<string> {
+export interface SyncCommandResponse {
+  output: string;
+  exitCode: number;
+}
+
+export async function syncCommand(args: string[]): Promise<SyncCommandResponse> {
+  const hasPositionalSkill = Boolean(args[0] && !args[0].startsWith('-'));
+  const hasSkillFlag = args.includes('--skill');
+
+  if (hasPositionalSkill && hasSkillFlag) {
+    throw new AxiError(
+      'Cannot combine a positional skill name with --skill',
+      'VALIDATION_ERROR',
+      [
+        'Usage: reactive-skills-axi sync [skill-name] [--link|--copy] [--dry-run]',
+        'Usage: reactive-skills-axi sync --skill <name> [--skill <name> ...] [--link|--copy] [--dry-run]',
+        'Example: reactive-skills-axi sync --skill synthesis --skill onboarding-map',
+      ],
+    );
+  }
+
   const processedArgs: string[] = [];
-  let skillSpecified = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--skill') {
-      skillSpecified = true;
       processedArgs.push(arg);
       if (i + 1 < args.length) {
         processedArgs.push(args[++i]);
       }
-    } else if (!arg.startsWith('-') && !skillSpecified && i === 0) {
-      skillSpecified = true;
+    } else if (hasPositionalSkill && i === 0) {
       processedArgs.push('--skill', arg);
     } else {
       processedArgs.push(arg);
@@ -28,18 +45,22 @@ export async function syncCommand(args: string[]): Promise<string> {
   }
 
   try {
-    const output = await syncEngineCommand(processedArgs);
-    return output;
+    return await executeSyncEngineCommand(processedArgs);
   } catch (err: any) {
     const error = new AxiError(
       err.message || 'Sync failed',
       'RUNTIME_ERROR',
       [
         'Usage: reactive-skills-axi sync [skill-name] [--link|--copy] [--dry-run]',
+        'Usage: reactive-skills-axi sync --skill <name> [--skill <name> ...] [--link|--copy] [--dry-run]',
         'Example: reactive-skills-axi sync synthesis',
+        'Example: reactive-skills-axi sync --skill synthesis --skill onboarding-map',
         'Example: reactive-skills-axi sync --dry-run',
       ]
     );
-    return renderOutput([renderError(error.message, error.code, error.suggestions)]);
+    return {
+      output: renderOutput([renderError(error.message, error.code, error.suggestions)]),
+      exitCode: 1,
+    };
   }
 }

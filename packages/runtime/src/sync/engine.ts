@@ -19,7 +19,7 @@ const EXCLUDE_FROM_SKILL = new Set([
   'tests', 'scripts', 'node_modules', 'dist',
 ]);
 
-function discoverSkills(sourceDir: string, targetSkill?: string): SkillEntry[] {
+function discoverSkills(sourceDir: string): SkillEntry[] {
   if (!fs.existsSync(sourceDir)) return [];
   const entries = fs.readdirSync(sourceDir, { withFileTypes: true });
   const skills: SkillEntry[] = [];
@@ -27,8 +27,6 @@ function discoverSkills(sourceDir: string, targetSkill?: string): SkillEntry[] {
   for (const e of entries) {
     if (!e.isDirectory()) continue;
     if (NEVER_SKILLS.has(e.name)) continue;
-    if (targetSkill && e.name !== targetSkill) continue;
-
     const dirPath = path.join(sourceDir, e.name);
     const hasSkillMd =
       fs.existsSync(path.join(dirPath, 'SKILL.md')) ||
@@ -251,6 +249,7 @@ export function runSync(options: SyncOptions): SyncReport {
     sourceDirs,
     targetDirs,
     targetSkill,
+    targetSkills,
     dryRun = false,
     backup = true,
     link = false,
@@ -273,6 +272,7 @@ export function runSync(options: SyncOptions): SyncReport {
     results: [],
     orphans: [],
     errors: [],
+    selectionErrors: [],
   };
 
   if (sources.length === 0) {
@@ -286,7 +286,7 @@ export function runSync(options: SyncOptions): SyncReport {
       report.errors.push(`Source directory not found: ${src}`);
       continue;
     }
-    const found = discoverSkills(src, targetSkill);
+    const found = discoverSkills(src);
     for (const skill of found) {
       if (!skillsMap.has(skill.name)) {
         skillsMap.set(skill.name, skill);
@@ -294,7 +294,24 @@ export function runSync(options: SyncOptions): SyncReport {
     }
   }
 
-  const skills = Array.from(skillsMap.values());
+  const allSkills = Array.from(skillsMap.values());
+  const requestedSkills = targetSkills?.length
+    ? [...new Set(targetSkills)]
+    : targetSkill
+      ? [targetSkill]
+      : undefined;
+  const unknownSkills = requestedSkills?.filter(name => !skillsMap.has(name)) ?? [];
+
+  if (unknownSkills.length > 0) {
+    const error = `Unknown skill${unknownSkills.length === 1 ? '' : 's'}: ${unknownSkills.join(', ')}`;
+    report.errors.push(error);
+    report.selectionErrors?.push(error);
+    return report;
+  }
+
+  const skills = requestedSkills
+    ? requestedSkills.map(name => skillsMap.get(name)!)
+    : allSkills;
   report.skillsFound = skills.length;
   report.skillsValid = skills.filter(s => s.isValid).length;
   report.skillsInvalid = skills.filter(s => !s.isValid).length;
@@ -509,7 +526,7 @@ export function runSync(options: SyncOptions): SyncReport {
           e.name !== '.sync-backups',
         )
         .map(e => e.name);
-      const sourceNames = new Set(skills.map(s => s.name));
+      const sourceNames = new Set(allSkills.map(s => s.name));
       const orphans = destNames.filter(n => !sourceNames.has(n));
       if (orphans.length > 0) {
         report.orphans.push({ target: targetDir, names: orphans });
