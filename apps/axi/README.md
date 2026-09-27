@@ -80,6 +80,20 @@ npx -y @reactive-skills/axi context-route --message "Review this policy decision
 
 The command fails closed to `route: none` when Jev is unavailable or confidence is too low.
 
+The MCP equivalent is `reactive_context_prepare`.
+It routes the current user message and loads only the selected local context before prompt assembly.
+If Jev is unavailable, it returns `route: none` without loading skill context.
+
+### bootloader
+
+Retrieve the authoritative, versioned runtime instructions for a reactive skill.
+
+```bash
+npx -y @reactive-skills/axi bootloader my-skill --json
+```
+
+Reactive skill `SKILL.md` files contain a stable pointer to this command and its MCP equivalent, so runtime guidance can be updated centrally.
+
 ### preflight
 
 Check a skill's declared runtime requirements without creating or changing a job.

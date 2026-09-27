@@ -29,6 +29,7 @@ describe('runtime capability commands', () => {
     expect(result.runtime_version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(result.axi_version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(result.capabilities).toContain('runtime.preflight');
+    expect(result.capabilities).toContain('runtime.bootloader');
   });
 
   it('preflights declared runtime requirements without creating a job', async () => {

@@ -33,6 +33,14 @@ See `.agents/COMMANDS.md`
 
 See `.agents/references/integration-modes.md`
 
+## Context Routing
+
+Before loading full skill instructions or assembling prompt context, call `reactive_context_prepare` when MCP is available.
+Pass the current user message and only bounded candidate metadata when candidates are known.
+Load only the selected skill and honor returned `context_mode` and `context_budget_tokens`.
+If the route is `none`, Jev is unavailable, or the wrapper fails, continue the directly requested runtime path without preloading unrelated skills.
+Use `reactive-skills-axi context-route` with bounded candidates shaped as `[{"id":"...","skill":"...","summary":"..."}]` when MCP is unavailable.
+
 ---
 
 ## Repository Map

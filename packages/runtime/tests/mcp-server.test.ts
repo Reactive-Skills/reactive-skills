@@ -43,6 +43,21 @@ describe('Reactive MCP Server Integration', () => {
     expect(parsed.scope).toBe('local');
     expect(parsed.runtime_version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(parsed.capabilities).toContain('runtime.transport_handshake');
+    expect(parsed.capabilities).toContain('context.preparation');
+    expect(parsed.capabilities).toContain('runtime.bootloader');
+  });
+
+  it('should expose the centralized reactive bootloader', async () => {
+    const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
+    const tools = (server as any)._registeredTools;
+    expect(tools['reactive_bootloader']).toBeDefined();
+
+    const result = await tools['reactive_bootloader'].handler({ skill_name: 'test-fsm' }, {} as any);
+    const parsed = JSON.parse(result.content[0].text);
+
+    expect(parsed.skill).toBe('test-fsm');
+    expect(parsed.bootloader_version).toBe('1.0.0');
+    expect(parsed.instructions).toContain('reactive_context_prepare');
   });
 
   it('should expose reactive_context_route for bounded pre-prompt routing', async () => {
@@ -68,6 +83,29 @@ describe('Reactive MCP Server Integration', () => {
       const discoveredParsed = JSON.parse(discoveredResult.content[0].text);
       expect(discoveredParsed.route).toBe('none');
       expect(discoveredParsed.adapter).toBe('script');
+    } finally {
+      if (originalApiKey === undefined) delete process.env.TYPESAFE_API_KEY;
+      else process.env.TYPESAFE_API_KEY = originalApiKey;
+    }
+  });
+
+  it('should expose reactive_context_prepare and fail closed without Jev', async () => {
+    const originalApiKey = process.env.TYPESAFE_API_KEY;
+    delete process.env.TYPESAFE_API_KEY;
+    const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
+    try {
+      const tools = (server as any)._registeredTools;
+      expect(tools['reactive_context_prepare']).toBeDefined();
+
+      const result = await tools['reactive_context_prepare'].handler({
+        user_message: 'Run the state machine test',
+        candidates: [{ id: 'test', skill: 'test-fsm', summary: 'Run a state machine test' }],
+      }, {} as any);
+      const parsed = JSON.parse(result.content[0].text);
+
+      expect(parsed.context_route.route).toBe('none');
+      expect(parsed.context_route.adapter).toBe('script');
+      expect(parsed.context).toBeNull();
     } finally {
       if (originalApiKey === undefined) delete process.env.TYPESAFE_API_KEY;
       else process.env.TYPESAFE_API_KEY = originalApiKey;

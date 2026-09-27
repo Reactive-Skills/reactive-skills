@@ -48,10 +48,8 @@ describe('initCommand', () => {
 
     const skillMdContent = fs.readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8');
     expect(skillMdContent).toContain('REACTIVE BOOTLOADER');
-    expect(skillMdContent).toContain('reactive-skills-axi state');
-    expect(skillMdContent).toContain('LOCAL-FIRST RUNTIME SELECTION');
-    expect(skillMdContent).toContain('reactive_capabilities');
-    expect(skillMdContent).toContain('npx` is only its zero-install launcher');
+    expect(skillMdContent).toContain('reactive_bootloader');
+    expect(skillMdContent).toContain('reactive-skills-axi bootloader test-skill --json');
 
     const initContent = fs.readFileSync(path.join(skillDir, 'states', 'init.md'), 'utf8');
     expect(initContent).toContain('reactive_capabilities');

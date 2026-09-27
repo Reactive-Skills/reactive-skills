@@ -14,6 +14,7 @@ import {
   getRuntimeCapabilities,
   RUNTIME_VERSION,
 } from '../core/runtime-capabilities.js';
+import { getReactiveBootloader } from '../core/bootloader.js';
 
 export interface ReactiveMcpServerOptions {
   workspaceDir?: string;
@@ -30,6 +31,12 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   });
 
   const contextRouter = new ContextRouter();
+  const contextCandidateSchema = z.object({
+    id: z.string().min(1),
+    skill: z.string().min(1),
+    summary: z.string().min(1),
+    keywords: z.array(z.string()).optional(),
+  });
 
   // Cached active engine instance per skill and job
   const engines = new Map<string, FSMEngine>();
@@ -43,6 +50,83 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       return null;
     }
     return trimmed;
+  }
+
+  function findSkillDir(skillName: string): string | undefined {
+    if (!/^[A-Za-z0-9._-]+$/.test(skillName)) return undefined;
+
+    const candidatePaths = [
+      path.resolve(workspaceDir, 'skills', skillName),
+      path.resolve(workspaceDir, 'skills', `_${skillName}_skill`),
+      path.resolve(workspaceDir, skillName),
+      path.resolve(workspaceDir, '..', 'skills', skillName),
+      path.join(os.homedir(), '.agents', 'skills', skillName),
+      path.join(os.homedir(), '.gemini', 'config', 'skills', skillName),
+      path.join(os.homedir(), '.kilocode', 'skills', skillName),
+      path.join(os.homedir(), '.codex', 'skills', skillName),
+    ];
+
+    const directPath = candidatePaths.find((candidatePath) => fs.existsSync(candidatePath));
+    if (directPath) return directPath;
+
+    const skillsRoot = path.resolve(workspaceDir, 'skills');
+    if (!fs.existsSync(skillsRoot)) return undefined;
+
+    for (const entry of fs.readdirSync(skillsRoot, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const candidateDir = path.join(skillsRoot, entry.name);
+      for (const fileName of ['skill.yaml', 'skill.yml']) {
+        const manifestPath = path.join(candidateDir, fileName);
+        if (!fs.existsSync(manifestPath)) continue;
+        try {
+          const parsed = yaml.load(fs.readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
+          if (parsed?.name === skillName) return candidateDir;
+        } catch {
+          // Ignore invalid manifests during local skill lookup.
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  function readSkillMetadata(skillDir: string, fallbackName: string): { skill: string; summary: string } {
+    let skill = fallbackName;
+    let summary = '';
+
+    for (const fileName of ['skill.yaml', 'skill.yml']) {
+      const manifestPath = path.join(skillDir, fileName);
+      if (!fs.existsSync(manifestPath)) continue;
+      try {
+        const manifest = yaml.load(fs.readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
+        if (typeof manifest?.name === 'string') skill = manifest.name.trim() || skill;
+        if (typeof manifest?.description === 'string') summary = manifest.description.trim();
+      } catch {
+        // Fall through to SKILL.md metadata.
+      }
+      if (summary) return { skill, summary: summary.slice(0, 1_000) };
+    }
+
+    const skillMdPath = path.join(skillDir, 'SKILL.md');
+    if (fs.existsSync(skillMdPath)) {
+      try {
+        const raw = fs.readFileSync(skillMdPath, 'utf8').slice(0, 12_000);
+        const frontmatter = raw.match(/^---\s*\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+        if (frontmatter) {
+          const parsed = yaml.load(frontmatter[1]) as Record<string, unknown>;
+          if (typeof parsed?.name === 'string') skill = parsed.name.trim() || skill;
+          if (typeof parsed?.description === 'string') summary = parsed.description.trim();
+        }
+        if (!summary) {
+          const heading = raw.match(/^#\s+(.+)$/m)?.[1]?.trim();
+          summary = heading ? `Instructions for ${heading}` : `Instructions for ${skill}`;
+        }
+      } catch {
+        summary = `Instructions for ${skill}`;
+      }
+    }
+
+    return { skill, summary: summary.slice(0, 1_000) || `Instructions for ${skill}` };
   }
 
   function getEngine(
@@ -76,39 +160,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       engines.delete(cacheKey);
     }
 
-    const candidatePaths = [
-      path.resolve(workspaceDir, 'skills', skillName),
-      path.resolve(workspaceDir, 'skills', `_${skillName}_skill`),
-      path.resolve(workspaceDir, skillName),
-      path.resolve(workspaceDir, '..', 'skills', skillName),
-      path.join(os.homedir(), '.agents', 'skills', skillName),
-      path.join(os.homedir(), '.gemini', 'config', 'skills', skillName),
-      path.join(os.homedir(), '.kilocode', 'skills', skillName),
-    ];
-
-    let skillDir = candidatePaths.find(p => fs.existsSync(p));
-    if (!skillDir) {
-      const skillsRoot = path.resolve(workspaceDir, 'skills');
-      if (fs.existsSync(skillsRoot)) {
-        for (const entry of fs.readdirSync(skillsRoot, { withFileTypes: true })) {
-          if (entry.isDirectory()) {
-            const cand = path.join(skillsRoot, entry.name);
-            const yamlFile = path.join(cand, 'skill.yaml');
-            if (fs.existsSync(yamlFile)) {
-              try {
-                const parsed = yaml.load(fs.readFileSync(yamlFile, 'utf8')) as any;
-                if (parsed?.name === skillName) {
-                  skillDir = cand;
-                  break;
-                }
-              } catch {
-                // ignore
-              }
-            }
-          }
-        }
-      }
-    }
+    const skillDir = findSkillDir(skillName);
 
     if (!skillDir) {
       throw new Error(`Skill '${skillName}' not found in workspace or global registry.`);
@@ -129,6 +181,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       path.join(os.homedir(), '.agents', 'skills'),
       path.join(os.homedir(), '.gemini', 'config', 'skills'),
       path.join(os.homedir(), '.kilocode', 'skills'),
+      path.join(os.homedir(), '.codex', 'skills'),
     ];
     const messageTokens = new Set(userMessage.toLowerCase().split(/[^a-z0-9]+/).filter((token) => token.length > 2));
     const candidates: Array<ContextRouteCandidate & { score: number }> = [];
@@ -139,15 +192,10 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue;
         const skillDir = path.join(dir, entry.name);
-        const manifestPath = ['skill.yaml', 'skill.yml']
-          .map((fileName) => path.join(skillDir, fileName))
-          .find((candidatePath) => fs.existsSync(candidatePath));
-        if (!manifestPath) continue;
-
         try {
-          const manifest = yaml.load(fs.readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
-          const skill = typeof manifest?.name === 'string' ? manifest.name.trim() : '';
-          const summary = typeof manifest?.description === 'string' ? manifest.description.trim() : '';
+          const metadata = readSkillMetadata(skillDir, entry.name);
+          const skill = metadata.skill;
+          const summary = metadata.summary;
           if (!skill || !summary || seen.has(skill)) continue;
           seen.add(skill);
           const candidateTokens = new Set(`${skill} ${summary}`.toLowerCase().split(/[^a-z0-9]+/).filter((token) => token.length > 2));
@@ -194,16 +242,31 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   );
 
   server.tool(
+    'reactive_bootloader',
+    'Get the authoritative runtime bootloader for a reactive skill',
+    {
+      skill_name: z.string().min(1).regex(/^[A-Za-z0-9._-]+$/).describe('Reactive skill name'),
+    },
+    async ({ skill_name }) => {
+      try {
+        return {
+          content: [{ type: 'text', text: JSON.stringify(getReactiveBootloader(skill_name), null, 2) }],
+        };
+      } catch (err: any) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  server.tool(
     'reactive_context_route',
     'Use Jev to select the smallest useful skill and context slice before prompt assembly',
     {
       user_message: z.string().min(1).describe('Current user task or message'),
-      candidates: z.array(z.object({
-        id: z.string().min(1),
-        skill: z.string().min(1),
-        summary: z.string().min(1),
-        keywords: z.array(z.string()).optional(),
-      })).max(12).optional().describe('Optional bounded skill metadata; omit to use local manifest discovery'),
+      candidates: z.array(contextCandidateSchema).max(12).optional().describe('Optional bounded skill metadata; omit to use local manifest discovery'),
       token_budget: z.number().int().min(128).max(32768).optional().describe('Maximum context tokens for selected route'),
       state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Small bounded state hints'),
     },
@@ -216,6 +279,147 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
           stateHints: state_hints,
         });
         return { content: [{ type: 'text', text: JSON.stringify(decision, null, 2) }] };
+      } catch (err: any) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  server.tool(
+    'reactive_context_prepare',
+    'Route with Jev, then load only the selected skill context before prompt assembly',
+    {
+      user_message: z.string().min(1).describe('Current user task or message'),
+      candidates: z.array(contextCandidateSchema).max(12).optional().describe('Optional bounded skill metadata; omit to use local skill discovery'),
+      token_budget: z.number().int().min(128).max(32768).optional().describe('Maximum context tokens for selected route'),
+      state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Small bounded state hints'),
+      job_id: z.string().optional().describe('Optional job/run ID for a selected reactive skill'),
+    },
+    async ({ user_message, candidates, token_budget, state_hints, job_id }) => {
+      try {
+        const decision = await contextRouter.route({
+          userMessage: user_message,
+          candidates: candidates || discoverContextCandidates(user_message),
+          tokenBudget: token_budget,
+          stateHints: state_hints,
+        });
+
+        if (decision.route !== 'skill' || !decision.skill) {
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({ context_route: decision, context: null }, null, 2),
+            }],
+          };
+        }
+
+        const skillDir = findSkillDir(decision.skill);
+        if (!skillDir) {
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({
+                context_route: decision,
+                context: { status: 'unavailable', reason: 'skill_not_found' },
+              }, null, 2),
+            }],
+          };
+        }
+
+        const metadata = readSkillMetadata(skillDir, decision.skill);
+        if (decision.context_mode === 'metadata') {
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({
+                context_route: decision,
+                context: {
+                  status: 'ready',
+                  source: 'skill_metadata',
+                  skill: metadata.skill,
+                  summary: metadata.summary,
+                },
+              }, null, 2),
+            }],
+          };
+        }
+
+        try {
+          const hasReactiveManifest = ['skill.yaml', 'skill.yml']
+            .some((fileName) => fs.existsSync(path.join(skillDir, fileName)));
+          if (!hasReactiveManifest) throw new Error('No reactive skill manifest');
+
+          const engine = getEngine(decision.skill, job_id, { autoRotateTerminal: true });
+          if (engine.isBypassDetected()) {
+            return {
+              content: [{
+                type: 'text',
+                text: JSON.stringify({
+                  context_route: decision,
+                  context: {
+                    status: 'unavailable',
+                    source: 'reactive_state',
+                    reason: 'bypass_detected',
+                    recovery: `Run reactive-skills-axi reset ${engine.getManifest().name} then re-invoke.`,
+                  },
+                }, null, 2),
+              }],
+              isError: true,
+            };
+          }
+
+          if (engine.isStrictExecution()) engine.recordTurnStart();
+          const slice = engine.generatePromptSlice();
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({
+                context_route: decision,
+                context: {
+                  status: 'ready',
+                  source: 'reactive_state',
+                  skill: engine.getManifest().name,
+                  job_id: engine.getJobName() || engine.getJobId(),
+                  run_id: engine.getJobId(),
+                  activeState: engine.getCurrentState(),
+                  promptSlice: slice.rawPrompt,
+                  formattedXml: slice.formattedXml,
+                  allowedTools: slice.allowedTools,
+                  scopedContext: slice.scopedContext,
+                  contextDelta: slice.contextDelta,
+                },
+              }, null, 2),
+            }],
+          };
+        } catch (reactiveError) {
+          const skillMdPath = path.join(skillDir, 'SKILL.md');
+          if (!fs.existsSync(skillMdPath)) throw reactiveError;
+
+          const maxChars = Math.max(512, decision.context_budget_tokens * 4);
+          const raw = fs.readFileSync(skillMdPath, 'utf8');
+          const truncated = raw.length > maxChars;
+          const content = truncated
+            ? `${raw.slice(0, maxChars)}\n[context truncated at routed budget]`
+            : raw;
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({
+                context_route: decision,
+                context: {
+                  status: 'ready',
+                  source: 'skill_markdown',
+                  skill: metadata.skill,
+                  content,
+                  truncated,
+                },
+              }, null, 2),
+            }],
+          };
+        }
       } catch (err: any) {
         return {
           content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],

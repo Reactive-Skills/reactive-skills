@@ -58,12 +58,17 @@ export async function contextRouteCommand(args: string[] = []): Promise<string> 
       ]),
     ]);
   } catch (err) {
+    const message = err instanceof Error ? err.message : 'Context routing failed';
+    const invalidCandidateMetadata = message.startsWith('Each context route candidate needs');
     const error = err instanceof AxiError
       ? err
-      : new AxiError(err instanceof Error ? err.message : 'Context routing failed', 'RUNTIME_ERROR', [
-          'Provide bounded candidate metadata and a non-empty message',
-        ]);
+      : new AxiError(
+          message,
+          invalidCandidateMetadata ? 'VALIDATION_ERROR' : 'RUNTIME_ERROR',
+          invalidCandidateMetadata
+            ? ['Use candidate entries shaped like {"id":"...","skill":"...","summary":"..."}']
+            : ['Provide bounded candidate metadata and a non-empty message']
+        );
     return renderOutput([renderError(error.message, error.code, error.suggestions)]);
   }
 }
-

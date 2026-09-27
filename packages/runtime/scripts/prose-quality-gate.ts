@@ -48,7 +48,7 @@ export function assessTextQuality(text: string): ProseQualityResult {
     return { ok: false, issues: ['Text is empty.'] };
   }
 
-  const markdownish = /^\s*(#|[-*+]\s|```|\d+\.\s|\||\[\]|\*\*\*|---)/m.test(normalized);
+  const markdownish = /^\s*(#|[-*+]\s|```|\d+\.\s|\||>|\[\]|\*\*\*|---)/m.test(normalized);
   if (markdownish) {
     return { ok: true, issues: [] };
   }

@@ -23,5 +23,16 @@ describe('context-route command', () => {
     expect(result.route).toBe('none');
     expect(result.adapter).toBe('script');
   });
-});
 
+  it('explains the required fields when candidate metadata is malformed', async () => {
+    const result = await contextRouteCommand([
+      '--message', 'Help me choose a next step',
+      '--candidates', '[{"name":"synthesis","description":"Turn ambiguity into a decision"}]',
+      '--json',
+    ]);
+
+    expect(result).toContain('code: VALIDATION_ERROR');
+    expect(result).toContain('Each context route candidate needs id, skill, and summary');
+    expect(result).toContain('Use candidate entries shaped like {"id":"...","skill":"...","summary":"..."}');
+  });
+});

@@ -13,6 +13,8 @@ export const STATIC_RUNTIME_CAPABILITIES = [
   'judgment.script',
   'judgment.adapter_evidence',
   'context.routing',
+  'context.preparation',
+  'runtime.bootloader',
 ] as const;
 
 export type RuntimeTransport = 'axi' | 'mcp';

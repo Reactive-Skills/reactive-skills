@@ -4,7 +4,11 @@ import yaml from 'js-yaml';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderOutput } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
-import { createAxiFirstBypassState, createAxiFirstInitState, createReactiveBootloader } from '../bootloader.js';
+import {
+  createAxiFirstBypassState,
+  createAxiFirstInitState,
+  createReactiveBootloaderReference,
+} from '../bootloader.js';
 
 const SKILLS_DIR = path.resolve(process.cwd(), 'skills');
 
@@ -62,7 +66,7 @@ description: Skill: ${name}
 type: reactive
 ---
 
-${createReactiveBootloader(name)}
+${createReactiveBootloaderReference(name)}
 
 # ${name}
 

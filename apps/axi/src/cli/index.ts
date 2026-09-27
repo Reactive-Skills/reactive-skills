@@ -10,8 +10,8 @@ const VERSION = packageMetadata.version ?? 'unknown';
 const DESCRIPTION = 'AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format';
 
 export const TOP_HELP = `usage: reactive-skills-axi [command] [args] [flags]
-commands[21]:
-  (none)=home, init, upgrade, inspect, validate, preflight, capabilities, context-route, events, invoke, state, emit, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard
+commands[22]:
+  (none)=home, init, upgrade, inspect, validate, preflight, capabilities, context-route, bootloader, events, invoke, state, emit, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard
 flags[2]:
   --help, --version
 examples:
@@ -19,6 +19,7 @@ examples:
   reactive-skills-axi setup
   reactive-skills-axi capabilities
   reactive-skills-axi context-route --message "..." --candidates '[{"id":"...","skill":"...","summary":"..."}]' --json
+  reactive-skills-axi bootloader my-skill --json
   reactive-skills-axi preflight skills/my-skill
   reactive-skills-axi init my-skill
   reactive-skills-axi upgrade skills/my-legacy-skill
@@ -95,6 +96,11 @@ export async function main() {
       case 'context-route': {
         const { contextRouteCommand } = await import('../commands/context-route.js');
         output = await contextRouteCommand(args.slice(1));
+        break;
+      }
+      case 'bootloader': {
+        const { bootloaderCommand } = await import('../commands/bootloader.js');
+        output = await bootloaderCommand(args.slice(1));
         break;
       }
       case 'events': {

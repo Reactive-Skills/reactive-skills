@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import { SkillManifestSchema, SkillManifest } from '@reactive-skills/runtime';
+import { createReactiveBootloaderReference, SkillManifestSchema, SkillManifest } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderDetail, renderList, renderHelp, renderOutput } from '../toon.js';
 
@@ -385,8 +385,32 @@ export function validateSkill(skillDir: string): SkillValidationResult {
   } else {
     try {
       const skillMdContent = fs.readFileSync(skillMdPath, 'utf8');
-      if (!skillMdContent.includes('<!-- REACTIVE BOOTLOADER -->')) {
-        errors.push('SKILL.md is missing the universal reactive bootloader marker: <!-- REACTIVE BOOTLOADER -->');
+      const startMarker = '<!-- REACTIVE BOOTLOADER -->';
+      const endMarker = '<!-- END REACTIVE BOOTLOADER -->';
+      const startCount = skillMdContent.split(startMarker).length - 1;
+      const endCount = skillMdContent.split(endMarker).length - 1;
+      const start = skillMdContent.indexOf(startMarker);
+      const end = start < 0 ? -1 : skillMdContent.indexOf(endMarker, start + startMarker.length);
+
+      if (startCount !== 1 || endCount !== 1 || end < 0) {
+        errors.push('SKILL.md must contain exactly one complete runtime bootloader pointer block');
+      } else {
+        const actualBlock = skillMdContent
+          .slice(start, end + endMarker.length)
+          .replace(/\r\n/g, '\n')
+          .trim();
+
+        try {
+          const expectedBlock = createReactiveBootloaderReference(skillName)
+            .replace(/\r\n/g, '\n')
+            .trim();
+
+          if (actualBlock !== expectedBlock) {
+            errors.push('SKILL.md bootloader block does not match the runtime-served pointer');
+          }
+        } catch (err: any) {
+          errors.push(`Could not render the runtime bootloader pointer: ${err.message}`);
+        }
       }
     } catch (err: any) {
       warnings.push(`Could not read SKILL.md: ${err.message}`);

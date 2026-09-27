@@ -35,6 +35,8 @@ describe('runtime capability contracts', () => {
 
   it('advertises bounded context routing', () => {
     expect(STATIC_RUNTIME_CAPABILITIES).toContain('context.routing');
+    expect(STATIC_RUNTIME_CAPABILITIES).toContain('context.preparation');
+    expect(STATIC_RUNTIME_CAPABILITIES).toContain('runtime.bootloader');
   });
 
   it('does not treat an unknown runtime version as compatible with a minimum version', () => {

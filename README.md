@@ -98,10 +98,14 @@ The state machine evaluates transition guards, appends to the immutable event le
 Reactive skills can be driven through two primary integration paths:
 
 1. **AXI CLI (Universal Shell Mode):** Any agent capable of running terminal commands can drive the skill using `npx -y @reactive-skills/axi state <skill>` (or `reactive-skills-axi state <skill>`) and `npx -y @reactive-skills/axi emit <skill> <signal>`.
-2. **MCP Server (Model Context Protocol):** Exposes `reactive_state` and `reactive_emit_signal` tools over stdio for Claude Desktop, Antigravity, Cursor, and any MCP-compatible harness:
+2. **MCP Server (Model Context Protocol):** Exposes `reactive_context_prepare`, `reactive_state`, and `reactive_emit_signal` tools over stdio for Claude Desktop, Antigravity, Cursor, and any MCP-compatible harness:
    ```bash
    npx -y @reactive-skills/axi mcp
    ```
+
+Call `reactive_context_prepare` with the current user message before loading full skill instructions.
+The tool uses Jev to select one skill and returns only its metadata, active state, or bounded instructions.
+If Jev is unavailable, it returns `route: none` and the agent can continue its directly requested runtime path.
 
 ---
 
@@ -124,6 +128,7 @@ Reactive skills can be driven through two primary integration paths:
 | `dashboard` | `npx -y @reactive-skills/axi dashboard [--host <host>] [--port <port>]` | Launch one read-only broker for multi-job telemetry |
 | `sync` | `npx -y @reactive-skills/axi sync [skill]` | Synchronize skills across authoring workspaces and agent satellites via zero-drift junctions |
 | `capabilities` | `npx -y @reactive-skills/axi capabilities --json` | Report runtime version and capabilities for INIT negotiation |
+| `bootloader` | `npx -y @reactive-skills/axi bootloader <skill> --json` | Retrieve the versioned authoritative runtime bootloader |
 | `preflight` | `npx -y @reactive-skills/axi preflight <skill>` | Check skill runtime requirements without creating a job |
 
 ---
@@ -278,6 +283,7 @@ npx -y @reactive-skills/axi emit <skill> <signal> --job <job-id>
 ### Model Context Protocol (MCP) Tools
 
 When interacting with agents over MCP, job operations are exposed as native tools:
+- `reactive_bootloader`: Retrieves the versioned authoritative bootloader for a reactive skill.
 - `reactive_list_jobs`: Lists all runs for a skill with state and active indicators.
 - `reactive_switch_job`: Switches the active job pointer.
 - `reactive_archive_job`: Marks a job run as archived.

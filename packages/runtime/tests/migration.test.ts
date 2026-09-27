@@ -65,10 +65,9 @@ describe('ProjectMigrator (Retroactive Project Upgrader)', () => {
     // SKILL.md has bootloader
     const updatedMd = fs.readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8');
     expect(updatedMd).toContain('REACTIVE BOOTLOADER');
-    expect(updatedMd).toContain('STRICT RUNTIME EXECUTION');
-    expect(updatedMd).toContain('LOCAL-FIRST RUNTIME SELECTION');
-    expect(updatedMd).toContain('reactive_capabilities');
-    expect(updatedMd).toContain('reactive_state');
+    expect(updatedMd).toContain('reactive_bootloader');
+    expect(updatedMd).toContain('reactive-skills-axi bootloader my-skill --json');
+    expect(updatedMd).toContain('reactive_context_prepare');
     expect(updatedMd).not.toContain('If the `reactive_state` MCP tool is present');
 
     // skill.yaml has INIT and SETUP_MCP and schema_version 2.1.0
@@ -83,6 +82,7 @@ describe('ProjectMigrator (Retroactive Project Upgrader)', () => {
     expect(fs.existsSync(path.join(skillDir, 'states', 'setup_mcp.md'))).toBe(true);
     const initMd = fs.readFileSync(path.join(skillDir, 'states', 'init.md'), 'utf8');
     expect(initMd).toContain('reactive_capabilities');
+    expect(initMd).toContain('reactive_context_prepare');
     expect(initMd).toContain('runtime_requirements');
     const bypassMd = fs.readFileSync(path.join(skillDir, 'states', 'bypass_detected.md'), 'utf8');
     expect(bypassMd).toContain('selected runtime `state`');
