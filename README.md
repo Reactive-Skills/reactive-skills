@@ -5,14 +5,14 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.13.1)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.14.0)
 
 ---
 
-> 🚀 **What's New in v0.13.1:**
-> - Context routing accepts valid skill choices at confidence 0.40; Jev errors, timeouts, invalid choices, and missing candidates still fail closed.
+> 🚀 **What's New in v0.14.0:**
+> - Sync several skills in one command with repeatable `--skill` flags; unknown names stop before target directories change.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.13.1) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.14.0) · [View Changelog](CHANGELOG.md)
 
 ---
 
