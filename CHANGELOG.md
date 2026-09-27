@@ -1,4 +1,12 @@
 
+## [0.13.0] - 2026-09-27
+
+- feat(runtime): serve the reactive bootloader at runtime (d2342bc)
+- chore(release): v0.12.0 (1cbb862)
+- docs(site): add deployment runbook (a2d2cfc)
+- feat(site): add root Pages deployment path (09517c1)
+- test(runtime): make projection regression portable (1993c09)
+
 ## [0.12.0] - 2026-09-24
 
 - docs(site): add deployment runbook (a2d2cfc)

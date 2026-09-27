@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-13-0",
+    "heading": "v0.13.0 (2026-09-27)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "feat(runtime): serve the reactive bootloader at runtime",
+          "chore(release): v0.12.0",
+          "docs(site): add deployment runbook",
+          "feat(site): add root Pages deployment path",
+          "test(runtime): make projection regression portable"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-12-0",
     "heading": "v0.12.0 (2026-09-24)",
     "blocks": [
