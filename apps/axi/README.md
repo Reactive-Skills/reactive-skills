@@ -2,13 +2,10 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.13.0:**
-> - `reactive-skills-axi bootloader <skill> --json` retrieves versioned instructions from the runtime.
-> - New and migrated `SKILL.md` files use the runtime pointer; `axi validate` checks that it appears exactly once and matches the current format.
-> - MCP `reactive_context_prepare` routes a request and loads only the selected skill's bounded local context.
-> - Runtime capabilities report bootloader and context-preparation support.
+> 🚀 **What's New in v0.13.1:**
+> - `context-route` accepts valid skill choices at confidence 0.40 and keeps Jev failures, timeouts, invalid choices, and missing candidates fail-closed.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.13.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.13.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

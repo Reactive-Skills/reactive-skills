@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-13-1",
+    "heading": "v0.13.1 (2026-09-27)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "fix(runtime): accept relevant context routes at 0.40 confidence",
+          "docs(release): clarify v0.13.0 notes",
+          "fix(axi): update validator fixtures for runtime pointers",
+          "chore(release): v0.13.0 - Serve authoritative bootloader and context preparation",
+          "feat(runtime): serve the reactive bootloader at runtime"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-13-0",
     "heading": "v0.13.0 (2026-09-27)",
     "blocks": [

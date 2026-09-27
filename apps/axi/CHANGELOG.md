@@ -1,4 +1,12 @@
 
+## [0.13.1] - 2026-09-27
+
+- fix(runtime): accept relevant context routes at 0.40 confidence (b0688d2)
+- docs(release): clarify v0.13.0 notes (01c6882)
+- fix(axi): update validator fixtures for runtime pointers (29cd64c)
+- chore(release): v0.13.0 - Serve authoritative bootloader and context preparation (fde6b8b)
+- feat(runtime): serve the reactive bootloader at runtime (d2342bc)
+
 ## [0.13.0] - 2026-09-27
 
 - feat(runtime): serve the reactive bootloader at runtime (d2342bc)
