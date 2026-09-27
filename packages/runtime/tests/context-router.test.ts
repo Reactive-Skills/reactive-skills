@@ -28,6 +28,7 @@ describe('ContextRouter', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     if (originalApiKey === undefined) delete process.env.TYPESAFE_API_KEY;
     else process.env.TYPESAFE_API_KEY = originalApiKey;
   });
@@ -73,6 +74,109 @@ describe('ContextRouter', () => {
     expect(result.adapter).toBe('jev');
     expect(result.usage).toEqual({ input_tokens: 42, output_tokens: 0 });
     expect(sdkMock.systemOne).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { confidence: 0.46, expectedRoute: 'skill' },
+    { confidence: 0.40, expectedRoute: 'skill' },
+    { confidence: 0.39, expectedRoute: 'none' },
+  ])('applies the context route floor at confidence $confidence', async ({ confidence, expectedRoute }) => {
+    process.env.TYPESAFE_API_KEY = 'test-key';
+    sdkMock.systemOne.mockResolvedValue({
+      model: 'jev-test',
+      answers: { judgment: { type: 'choice', choice: 'route_0_active_state_standard', confidence } },
+    });
+
+    const result = await new ContextRouter().route({
+      userMessage: 'Use interface-craft to build a polished React marketing page',
+      candidates: [{
+        id: 'interface-craft',
+        skill: 'interface-craft',
+        summary: 'Universal UI/UX and frontend engineering',
+        keywords: ['UI', 'frontend', 'design'],
+      }],
+    });
+
+    expect(result.route).toBe(expectedRoute);
+    expect(result.confidence).toBe(confidence);
+    if (expectedRoute === 'skill') {
+      expect(result.skill).toBe('interface-craft');
+      expect(result.context_mode).toBe('active_state');
+      expect(result.context_budget_tokens).toBe(4_096);
+    } else {
+      expect(result.context_budget_tokens).toBe(0);
+    }
+  });
+
+  it('fails closed when Jev evaluation errors and Script fallback selects route_none', async () => {
+    process.env.TYPESAFE_API_KEY = 'test-key';
+    sdkMock.systemOne.mockRejectedValue(new Error('TypeSafe service unavailable'));
+
+    const result = await new ContextRouter().route({
+      userMessage: 'Use interface-craft to build a polished React marketing page',
+      candidates: [{ id: 'interface-craft', skill: 'interface-craft', summary: 'Frontend design and engineering' }],
+    });
+
+    expect(result.route).toBe('none');
+    expect(result.adapter).toBe('script');
+    expect(result.fallback_triggered).toBe(true);
+    expect(result.context_budget_tokens).toBe(0);
+  });
+
+  it('fails closed when Jev evaluation times out and Script fallback selects route_none', async () => {
+    process.env.TYPESAFE_API_KEY = 'test-key';
+    vi.useFakeTimers();
+    let markRequestStarted!: () => void;
+    const requestStarted = new Promise<void>((resolve) => {
+      markRequestStarted = resolve;
+    });
+    sdkMock.systemOne.mockImplementation((_request: unknown, options: { signal: AbortSignal }) => {
+      markRequestStarted();
+      return new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+      });
+    });
+
+    const routePromise = new ContextRouter().route({
+      userMessage: 'Use interface-craft to build a polished React marketing page',
+      candidates: [{ id: 'interface-craft', skill: 'interface-craft', summary: 'Frontend design and engineering' }],
+    });
+    await requestStarted;
+    await vi.advanceTimersByTimeAsync(3_000);
+    const result = await routePromise;
+
+    expect(result.route).toBe('none');
+    expect(result.adapter).toBe('script');
+    expect(result.fallback_triggered).toBe(true);
+    expect(result.context_budget_tokens).toBe(0);
+  });
+
+  it('returns none without calling Jev when there are no candidates', async () => {
+    const result = await new ContextRouter().route({
+      userMessage: 'Help me choose a next step',
+      candidates: [],
+    });
+
+    expect(result.route).toBe('none');
+    expect(result.adapter_selection_reason).toBe('no_candidates');
+    expect(result.context_budget_tokens).toBe(0);
+    expect(sdkMock.systemOne).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when Jev returns an invalid route choice', async () => {
+    process.env.TYPESAFE_API_KEY = 'test-key';
+    sdkMock.systemOne.mockResolvedValue({
+      model: 'jev-test',
+      answers: { judgment: { type: 'choice', choice: 'not-a-route-key', confidence: 0.99 } },
+    });
+
+    const result = await new ContextRouter().route({
+      userMessage: 'Use interface-craft to build a polished React marketing page',
+      candidates: [{ id: 'interface-craft', skill: 'interface-craft', summary: 'Frontend design and engineering' }],
+    });
+
+    expect(result.route).toBe('none');
+    expect(result.context_budget_tokens).toBe(0);
   });
 
   it('rejects duplicate candidate ids before calling Jev', async () => {

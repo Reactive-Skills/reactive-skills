@@ -84,7 +84,7 @@ Pass bounded candidate metadata only.
 npx -y @reactive-skills/axi context-route --message "Review this policy decision" --candidates '[{"id":"policy","skill":"policy-review","summary":"Review decisions against policy","keywords":["policy","approval"]}]' --json
 ```
 
-The command fails closed to `route: none` when Jev is unavailable or confidence is too low.
+The command fails closed to `route: none` when Jev is unavailable, an evaluation fails or times out, a choice is invalid, no candidate directly helps, or confidence is below `0.40`.
 
 The MCP equivalent is `reactive_context_prepare`.
 It routes the current user message and loads only the selected local context before prompt assembly.

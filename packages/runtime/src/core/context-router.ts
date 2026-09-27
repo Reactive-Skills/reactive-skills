@@ -50,6 +50,7 @@ const ROUTE_RISKS: ContextRouteRisk[] = ['standard', 'deep_reasoning', 'human_re
 const MAX_CANDIDATES = 12;
 const DEFAULT_TOKEN_BUDGET = 12_000;
 const MAX_TOKEN_BUDGET = 32_768;
+const CONTEXT_ROUTE_MIN_CONFIDENCE = 0.40;
 const CONTEXT_BUDGETS: Record<ContextRouteMode, number> = {
   metadata: 1_024,
   active_state: 4_096,
@@ -167,7 +168,7 @@ export class ContextRouter {
           'Return only one route key, never invent a key.',
         ].join(' '),
         options: [NONE_OPTION, ...options.map((option) => option.key)],
-        min_confidence: 0.75,
+        min_confidence: CONTEXT_ROUTE_MIN_CONFIDENCE,
         timeout_ms: 3_000,
         fallback_adapter: 'script',
       },
@@ -222,4 +223,3 @@ export class ContextRouter {
     };
   }
 }
-

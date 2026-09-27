@@ -162,6 +162,43 @@ describe('Decoupled Judgment & Snap-On Adapters', () => {
   });
 
   describe('JudgmentEngine Fallback Cascade', () => {
+    it.each([
+      { confidence: 0.74, expectedPassed: false },
+      { confidence: 0.75, expectedPassed: true },
+    ])('keeps the generic confidence default at 0.75 for $confidence', async ({ confidence, expectedPassed }) => {
+      const fixedConfidenceAdapter: JudgmentAdapter = {
+        id: 'fixed_confidence',
+        supports: () => true,
+        isAvailable: async () => true,
+        evaluate: async () => ({
+          verdict: 'accepted',
+          confidence,
+          passed: true,
+          adapterName: 'fixed_confidence',
+          latencyMs: 0,
+        }),
+      };
+
+      JudgmentEngine.registerAdapter(fixedConfidenceAdapter);
+
+      const result = await JudgmentEngine.evaluate(
+        {
+          type: 'categorical',
+          criterion: 'Should this candidate pass?',
+          options: ['accepted'],
+          adapter_hint: 'fixed_confidence',
+        },
+        {
+          event: { id: 'evt-generic-confidence-default', seq: 1, timestamp: new Date().toISOString(), type: 'REVIEW', payload: {} },
+          context: {},
+          currentState: 'REVIEW',
+        }
+      );
+
+      expect(result.confidence).toBe(confidence);
+      expect(result.passed).toBe(expectedPassed);
+    });
+
     it('automatically prefers Jev when the SDK and API key are available', async () => {
       process.env.TYPESAFE_API_KEY = 'test-key';
       sdkMock.systemOne.mockResolvedValue({
