@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { validateCommand, validateSkill, discoverSkillDirs } from '../../src/commands/validate.js';
 import { AxiError } from '../../src/errors.js';
+import { createReactiveBootloaderReference } from '@reactive-skills/runtime';
 
 describe('validateCommand', () => {
   let tmpDir: string;
@@ -54,7 +55,7 @@ states:
     fs.writeFileSync(path.join(skillDir, 'states', 'done.md'), '# Done prompt');
     fs.writeFileSync(
       path.join(skillDir, 'SKILL.md'),
-      '<!-- REACTIVE BOOTLOADER -->\n# Good Skill Documentation'
+      `${createReactiveBootloaderReference('good-skill')}\n\n# Good Skill Documentation`
     );
 
     const output = await validateCommand(['skills/good-skill']);
@@ -85,7 +86,7 @@ states:
 
     fs.writeFileSync(
       path.join(skillDir, 'SKILL.md'),
-      '<!-- REACTIVE BOOTLOADER -->\n# Broken Skill'
+      `${createReactiveBootloaderReference('broken-skill')}\n\n# Broken Skill`
     );
 
     const output = await validateCommand(['skills/broken-skill']);
@@ -115,7 +116,7 @@ states:
 
     const output = await validateCommand(['skills/no-bootloader-skill']);
     expect(output).toContain('status: invalid');
-    expect(output).toContain('SKILL.md is missing the universal reactive bootloader marker');
+    expect(output).toContain('SKILL.md must contain exactly one complete runtime bootloader pointer block');
     expect(process.exitCode).toBe(1);
   });
 
@@ -175,7 +176,10 @@ states:
     );
     fs.writeFileSync(path.join(skillDir, 'states', 'intake.md'), '# Intake');
     fs.writeFileSync(path.join(skillDir, 'states', 'done.md'), '# Done');
-    fs.writeFileSync(path.join(skillDir, 'SKILL.md'), '<!-- REACTIVE BOOTLOADER -->\n# Stale Guard Skill');
+    fs.writeFileSync(
+      path.join(skillDir, 'SKILL.md'),
+      `${createReactiveBootloaderReference('stale-guard-skill')}\n\n# Stale Guard Skill`
+    );
 
     const output = await validateCommand(['skills/stale-guard-skill']);
     expect(output).toContain('status: valid');
@@ -210,7 +214,10 @@ states:
     );
     fs.writeFileSync(path.join(skillDir, 'states', 'start.md'), '# Start');
     fs.writeFileSync(path.join(skillDir, 'states', 'done.md'), '# Done');
-    fs.writeFileSync(path.join(skillDir, 'SKILL.md'), '<!-- REACTIVE BOOTLOADER -->\n# Python Guard Skill');
+    fs.writeFileSync(
+      path.join(skillDir, 'SKILL.md'),
+      `${createReactiveBootloaderReference('python-guard-skill')}\n\n# Python Guard Skill`
+    );
 
     const output = await validateCommand(['skills/python-guard-skill']);
     expect(output).toContain('status: invalid');
@@ -236,7 +243,10 @@ states:
   START: {}
 `
     );
-    fs.writeFileSync(path.join(skillA, 'SKILL.md'), '<!-- REACTIVE BOOTLOADER -->\n# Skill A');
+    fs.writeFileSync(
+      path.join(skillA, 'SKILL.md'),
+      `${createReactiveBootloaderReference('skill-a')}\n\n# Skill A`
+    );
 
     fs.writeFileSync(
       path.join(skillB, 'skill.yaml'),
@@ -248,7 +258,10 @@ states:
   START: {}
 `
     );
-    fs.writeFileSync(path.join(skillB, 'SKILL.md'), '<!-- REACTIVE BOOTLOADER -->\n# Skill B');
+    fs.writeFileSync(
+      path.join(skillB, 'SKILL.md'),
+      `${createReactiveBootloaderReference('skill-b')}\n\n# Skill B`
+    );
 
     const output = await validateCommand([]);
     expect(output).toContain('skill-a');
