@@ -8,6 +8,18 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-14-0",
+    "heading": "v0.14.0 (2026-09-27)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "feat(sync): support bulk skill selection"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-13-1",
     "heading": "v0.13.1 (2026-09-27)",
     "blocks": [

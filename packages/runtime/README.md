@@ -2,10 +2,10 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.13.1:**
-> - `ContextRouter` accepts valid skill choices at confidence 0.40; Jev errors, timeouts, invalid choices, and missing candidates still fail closed.
+> 🚀 **What's New in v0.14.0:**
+> - Sync several skills in one command with repeatable `--skill` flags; unknown names stop before target directories change.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.13.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.14.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

@@ -1,4 +1,8 @@
 
+## [0.14.0] - 2026-09-27
+
+- feat(sync): support bulk skill selection (97cbf1c)
+
 ## [0.13.1] - 2026-09-27
 
 - fix(runtime): accept relevant context routes at 0.40 confidence (b0688d2)
