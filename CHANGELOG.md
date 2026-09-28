@@ -1,4 +1,8 @@
 
+## [0.15.0] - 2026-09-28
+
+- feat(axi): discover context-route skill candidates (f106ae7)
+
 ## [0.14.0] - 2026-09-27
 
 - feat(sync): support bulk skill selection (97cbf1c)

@@ -2,10 +2,10 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.14.0:**
-> - `sync --skill <name> --skill <name>` selects several skills; unknown names stop before target directories change.
+> 🚀 **What's New in v0.15.0:**
+> - `context-route` discovers skill metadata by default; `--candidates` takes a JSON array of skill records with `id`, `skill`, and `summary` to limit routing choices.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.14.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.15.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
