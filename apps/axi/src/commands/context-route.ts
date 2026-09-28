@@ -1,7 +1,27 @@
 import fs from 'node:fs';
-import { ContextRouter, type ContextRouteCandidate } from '@reactive-skills/runtime';
+import { ContextRouter, discoverContextCandidates, type ContextRouteCandidate } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderDetail, renderError, renderOutput } from '../toon.js';
+
+const CONTEXT_ROUTE_USAGE = 'Usage: reactive-skills-axi context-route --message "..." [--candidates <JSON|@file>] [--token-budget <number>] [--json]';
+const CONTEXT_CANDIDATES_GUIDANCE = 'Candidates must be a JSON array of skill metadata records shaped like {"id":"...","skill":"...","summary":"...","keywords":["..."]}, not arbitrary task labels or data. Each record describes one skill available to the agent. Use at most 12 records.';
+const CONTEXT_ROUTE_HELP = `${CONTEXT_ROUTE_USAGE}
+
+Route the current task to one relevant skill and context slice.
+
+--message <text>              Current user task or message.
+--candidates <JSON|@file>     Optional skill choices. Omit to discover workspace and agent skill metadata.
+                              Pass a JSON array of skill metadata records, not arbitrary task labels.
+                              Each record requires id, skill, and summary; keywords are optional.
+                              Pass [] to route with no candidates. Maximum 12 records.
+--token-budget <number>       Maximum context tokens for selected route.
+--json                        Print machine-readable JSON.
+
+Example with automatic discovery:
+  reactive-skills-axi context-route --message "Review this policy decision" --json
+
+Example with an explicit skill list:
+  reactive-skills-axi context-route --message "Review this policy decision" --candidates '[{"id":"policy-review","skill":"policy-review","summary":"Review decisions against policy","keywords":["policy"]}]' --json`;
 
 function flagValue(args: string[], flag: string): string | undefined {
   const index = args.indexOf(flag);
@@ -9,33 +29,83 @@ function flagValue(args: string[], flag: string): string | undefined {
 }
 
 function parseJson(value: string | undefined, label: string): unknown {
-  if (!value) return undefined;
-  const source = value.startsWith('@') ? fs.readFileSync(value.slice(1), 'utf8') : value;
+  if (value === undefined) return undefined;
+  let source = value;
   try {
+    if (value.startsWith('@')) source = fs.readFileSync(value.slice(1), 'utf8');
     return JSON.parse(source);
   } catch {
     throw new AxiError(`Invalid JSON ${label}`, 'VALIDATION_ERROR', [
-      `Usage: reactive-skills-axi context-route --message "..." --candidates '[{"id":"skill","skill":"skill","summary":"..."}]' --json`,
+      CONTEXT_ROUTE_USAGE,
+      CONTEXT_CANDIDATES_GUIDANCE,
     ]);
   }
 }
 
+function isSkillCandidate(value: unknown): value is ContextRouteCandidate {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.id === 'string'
+    && candidate.id.trim().length > 0
+    && typeof candidate.skill === 'string'
+    && candidate.skill.trim().length > 0
+    && typeof candidate.summary === 'string'
+    && candidate.summary.trim().length > 0
+    && (candidate.keywords === undefined
+      || (Array.isArray(candidate.keywords) && candidate.keywords.every((keyword) => typeof keyword === 'string')));
+}
+
 export async function contextRouteCommand(args: string[] = []): Promise<string> {
+  if (args.includes('--help') || args.includes('-h')) return CONTEXT_ROUTE_HELP;
+
   const message = flagValue(args, '--message');
-  const candidates = parseJson(flagValue(args, '--candidates'), 'candidates') as ContextRouteCandidate[] | undefined;
-  const stateHints = parseJson(flagValue(args, '--state-hints'), 'state hints') as Record<string, string | number | boolean> | undefined;
+  if (!message) {
+    return renderOutput([renderError('Missing message', 'VALIDATION_ERROR', [CONTEXT_ROUTE_USAGE])]);
+  }
+
+  const candidatesWereProvided = args.includes('--candidates');
+  const candidatesValue = flagValue(args, '--candidates');
+  let candidates: ContextRouteCandidate[];
+  let stateHints: Record<string, string | number | boolean> | undefined;
+  try {
+    if (candidatesWereProvided) {
+      if (!candidatesValue || candidatesValue.startsWith('--')) {
+        return renderOutput([renderError('Missing --candidates value', 'VALIDATION_ERROR', [
+          CONTEXT_ROUTE_USAGE,
+          CONTEXT_CANDIDATES_GUIDANCE,
+        ])]);
+      }
+      const parsedCandidates = parseJson(candidatesValue, 'candidates');
+      if (!Array.isArray(parsedCandidates)) {
+        return renderOutput([renderError('Candidates must be a JSON array of skill metadata records', 'VALIDATION_ERROR', [
+          CONTEXT_CANDIDATES_GUIDANCE,
+        ])]);
+      }
+      if (parsedCandidates.length > 12) {
+        return renderOutput([renderError('Candidates accepts at most 12 skill records', 'VALIDATION_ERROR', [
+          CONTEXT_CANDIDATES_GUIDANCE,
+        ])]);
+      }
+      const skillCandidates = parsedCandidates.filter(isSkillCandidate);
+      if (skillCandidates.length !== parsedCandidates.length) {
+        return renderOutput([renderError('Each candidate must describe one skill and include id, skill, and summary', 'VALIDATION_ERROR', [
+          CONTEXT_CANDIDATES_GUIDANCE,
+        ])]);
+      }
+      candidates = skillCandidates;
+    } else {
+      candidates = discoverContextCandidates(message, process.cwd());
+    }
+    stateHints = parseJson(flagValue(args, '--state-hints'), 'state hints') as Record<string, string | number | boolean> | undefined;
+  } catch (err) {
+    const error = err instanceof AxiError
+      ? err
+      : new AxiError(err instanceof Error ? err.message : 'Context routing input is invalid', 'VALIDATION_ERROR');
+    return renderOutput([renderError(error.message, error.code, error.suggestions)]);
+  }
+
   const tokenBudgetRaw = flagValue(args, '--token-budget');
   const tokenBudget = tokenBudgetRaw ? Number(tokenBudgetRaw) : undefined;
-
-  if (!message || !Array.isArray(candidates)) {
-    return renderOutput([
-      renderError(
-        'Missing message or candidates',
-        'VALIDATION_ERROR',
-        ['Usage: reactive-skills-axi context-route --message "..." --candidates <JSON|@file> [--token-budget <number>] [--json]']
-      ),
-    ]);
-  }
 
   try {
     const decision = await new ContextRouter().route({
@@ -59,15 +129,17 @@ export async function contextRouteCommand(args: string[] = []): Promise<string> 
     ]);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Context routing failed';
-    const invalidCandidateMetadata = message.startsWith('Each context route candidate needs');
+    const invalidCandidateMetadata = message.startsWith('Each context route candidate needs')
+      || message.startsWith('Duplicate context route candidate id:')
+      || message.startsWith('Context routing accepts at most');
     const error = err instanceof AxiError
       ? err
       : new AxiError(
           message,
           invalidCandidateMetadata ? 'VALIDATION_ERROR' : 'RUNTIME_ERROR',
           invalidCandidateMetadata
-            ? ['Use candidate entries shaped like {"id":"...","skill":"...","summary":"..."}']
-            : ['Provide bounded candidate metadata and a non-empty message']
+            ? [CONTEXT_CANDIDATES_GUIDANCE]
+            : ['Provide a non-empty message and bounded skill candidate metadata']
         );
     return renderOutput([renderError(error.message, error.code, error.suggestions)]);
   }

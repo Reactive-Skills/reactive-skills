@@ -39,7 +39,8 @@ Before loading full skill instructions or assembling prompt context, call `react
 Pass the current user message and only bounded candidate metadata when candidates are known.
 Load only the selected skill and honor returned `context_mode` and `context_budget_tokens`.
 If the route is `none`, Jev is unavailable, or the wrapper fails, continue the directly requested runtime path without preloading unrelated skills.
-Use `reactive-skills-axi context-route` with bounded candidates shaped as `[{"id":"...","skill":"...","summary":"..."}]` when MCP is unavailable.
+Use `reactive-skills-axi context-route --message "..." --json` when MCP is unavailable; the CLI discovers local skill metadata when `--candidates` is omitted.
+Pass `--candidates <JSON|@file>` only to restrict choices, using a JSON array of skill metadata records shaped as `[{"id":"...","skill":"...","summary":"..."}]`.
 
 ---
 

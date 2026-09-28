@@ -18,7 +18,9 @@ examples:
   reactive-skills-axi
   reactive-skills-axi setup
   reactive-skills-axi capabilities
-  reactive-skills-axi context-route --message "..." --candidates '[{"id":"...","skill":"...","summary":"..."}]' --json
+  reactive-skills-axi context-route --message "..." --json
+  reactive-skills-axi context-route --message "..." --candidates '[{"id":"policy-review","skill":"policy-review","summary":"Review decisions against policy"}]' --json
+  reactive-skills-axi context-route --help
   reactive-skills-axi bootloader my-skill --json
   reactive-skills-axi preflight skills/my-skill
   reactive-skills-axi init my-skill

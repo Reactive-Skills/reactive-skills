@@ -48,7 +48,9 @@ export function createReactiveBootloader(skillName: string): string {
 > **CONTEXT ROUTING**
 > Before loading full skill instructions or assembling prompt context, call \`reactive_context_prepare\` with the current user message when MCP is available.
 > The wrapper asks Jev to select one skill and returns only the selected metadata, active state, or bounded skill instructions.
-> If MCP is unavailable, run \`reactive-skills-axi context-route --message "..." --candidates '[{"id":"...","skill":"...","summary":"..."}]' --json\` before loading skill context.
+> If MCP is unavailable, run \`reactive-skills-axi context-route --message "..." --json\` before loading skill context.
+> The CLI discovers local skill metadata when \`--candidates\` is omitted.
+> To restrict the choices, pass \`--candidates <JSON|@file>\` with an array of skill metadata records shaped like \`[{"id":"...","skill":"...","summary":"..."}]\`.
 > Load only the selected skill and honor \`context_mode\` and \`context_budget_tokens\`.
 > If the route is \`none\`, Jev is unavailable, or the wrapper fails, continue the directly requested runtime path without preloading unrelated skills.
 >
@@ -130,9 +132,11 @@ Verify reactive runtime compatibility and select lowest-latency local access.
 4. Check reported \`runtime_version\` and \`capabilities\` against this skill's \`runtime_requirements\`, when declared.
 5. Select compatible MCP or direct AXI before zero-install AXI. Use \`npx\` only when no compatible direct path exists.
 6. Before loading full skill context, call MCP \`reactive_context_prepare\` with the current user message when available.
-7. If MCP is unavailable, run AXI \`context-route\` with candidates shaped as \`[{"id":"...","skill":"...","summary":"..."}]\` before loading skill context.
-8. Emit \`RUNTIME_READY\` with selected transport, launcher, versions, capabilities, \`compatible: true\`, and \`contextUpdates\` for reuse.
-9. If no compatible runtime exists, emit \`SETUP_REQUIRED\` with \`compatible: false\` and diagnostic details.
+7. If MCP is unavailable, run AXI \`context-route --message "<current user message>" --json\` before loading skill context.
+8. The CLI discovers local skill metadata when \`--candidates\` is omitted.
+9. To restrict route choices, pass \`--candidates\` with a JSON array of skill metadata records.
+10. Emit \`RUNTIME_READY\` with selected transport, launcher, versions, capabilities, \`compatible: true\`, and \`contextUpdates\` for reuse.
+11. If no compatible runtime exists, emit \`SETUP_REQUIRED\` with \`compatible: false\` and diagnostic details.
 `;
 }
 
