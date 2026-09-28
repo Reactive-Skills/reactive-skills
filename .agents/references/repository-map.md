@@ -6,6 +6,7 @@
 - `packages/runtime/src/core/guard-evaluator.ts`: Sandbox evaluator for transition conditions.
 - `packages/runtime/src/core/judgment-engine.ts`: Decoupled Ports-and-Adapters judgment engine with snap-on adapters and circuit breaking.
 - `packages/runtime/src/core/context-router.ts`: Bounded Jev-backed skill and context routing before prompt assembly.
+- `packages/runtime/src/core/context-candidate-discovery.ts`: Bounded local skill metadata discovery for automatic context routing.
 - `packages/runtime/src/core/bootloader.ts`: Versioned authoritative runtime bootloader and stable skill reference helpers.
 - `packages/runtime/src/core/runtime-capabilities.ts`: Runtime version, capability, compatibility, and transport selection contracts.
 - `packages/runtime/src/core/projection-engine.ts`: Handlebars deliverable generator.

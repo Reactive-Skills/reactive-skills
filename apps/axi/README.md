@@ -2,10 +2,10 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.14.0:**
-> - `sync --skill <name> --skill <name>` selects several skills; unknown names stop before target directories change.
+> 🚀 **What's New in v0.15.0:**
+> - `context-route` discovers skill metadata by default; `--candidates` takes a JSON array of skill records with `id`, `skill`, and `summary` to limit routing choices.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.14.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.15.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -75,10 +75,17 @@ npx -y @reactive-skills/axi capabilities --json
 
 Use Jev to select one skill and the smallest useful context slice before prompt assembly.
 
-Pass bounded candidate metadata only.
+Omit `--candidates` to discover skill metadata from the workspace and supported agent skill directories.
+
+Pass `--candidates <JSON|@file>` only to restrict choices.
+The value must be a JSON array of skill metadata records, not arbitrary task labels or data.
+Each record requires `id`, `skill`, and `summary`, with optional `keywords`.
+Use at most 12 records.
+Pass `[]` to route with no candidates.
 
 ```bash
-npx -y @reactive-skills/axi context-route --message "Review this policy decision" --candidates '[{"id":"policy","skill":"policy-review","summary":"Review decisions against policy","keywords":["policy","approval"]}]' --json
+npx -y @reactive-skills/axi context-route --message "Review this policy decision" --json
+npx -y @reactive-skills/axi context-route --message "Review this policy decision" --candidates '[{"id":"policy-review","skill":"policy-review","summary":"Review decisions against policy","keywords":["policy","approval"]}]' --json
 ```
 
 The command fails closed to `route: none` when Jev is unavailable, an evaluation fails or times out, a choice is invalid, no candidate directly helps, or confidence is below `0.40`.

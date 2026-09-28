@@ -8,6 +8,18 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-15-0",
+    "heading": "v0.15.0 (2026-09-28)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "feat(axi): discover context-route skill candidates"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-14-0",
     "heading": "v0.14.0 (2026-09-27)",
     "blocks": [
