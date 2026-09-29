@@ -4,6 +4,18 @@ import Handlebars from 'handlebars';
 import { DeliverableProjection, SignalEvent } from './types.js';
 import { EventStore } from './event-store.js';
 
+function resolveWithExistingAncestor(candidate: string): string {
+  let existing = path.resolve(candidate);
+  const missing: string[] = [];
+  while (!fs.existsSync(existing)) {
+    const parent = path.dirname(existing);
+    if (parent === existing) break;
+    missing.unshift(path.basename(existing));
+    existing = parent;
+  }
+  return path.resolve(fs.realpathSync.native(existing), ...missing);
+}
+
 export interface ProjectionContext {
   skillName: string;
   currentState: string;
@@ -65,8 +77,8 @@ export class ProjectionEngine {
     }
 
     const outputDir = path.dirname(outputPath);
-    const existingDir = fs.existsSync(outputDir) ? fs.realpathSync(outputDir) : outputDir;
-    const realWorkspace = fs.realpathSync(this.workspaceDir);
+    const existingDir = resolveWithExistingAncestor(outputDir);
+    const realWorkspace = resolveWithExistingAncestor(this.workspaceDir);
     const realRelativePath = path.relative(realWorkspace, existingDir);
     if (realRelativePath.startsWith('..') || path.isAbsolute(realRelativePath)) {
       throw new Error('Projection output resolves outside the workspace.');

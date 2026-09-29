@@ -1,6 +1,6 @@
 # Specification: Bulk Skill Sync Selection
 
-Status: Implemented.
+Status: In Progress.
 
 Target: `@reactive-skills/runtime` and `reactive-skills-axi`.
 
@@ -12,9 +12,9 @@ ADR needed: No.
 
 ## 1. Intent
 
-Allow one sync invocation to select several named skills and synchronize them to each configured or default target.
+Allow one sync invocation to select several named skills with concise comma-separated `--skill` values or repeated `--skill` flags, then synchronize them to each configured or default target.
 
-Retain the existing all-skills default and the AXI single-skill positional alias.
+Retain the existing all-skills default, repeated-flag syntax, and AXI single-skill positional alias.
 
 ## 2. Current Behavior
 
@@ -22,13 +22,13 @@ Retain the existing all-skills default and the AXI single-skill positional alias
 
 The AXI command adapts one positional skill name to `--skill`.
 
-The runtime parser stores only one `targetSkill`, so repeated `--skill` flags overwrite prior selections.
+The runtime parser and engine already support repeated `--skill` flags and multi-skill selection.
 
-The engine filters source discovery to that one name.
+The parser currently treats each `--skill` value as one literal skill name, so a comma-separated value is not expanded into multiple selections.
 
-Filtered discovery also limits the source names used for orphan reporting, which can incorrectly report unselected source skills as destination orphans.
+The engine already filters synchronization to the requested names, validates unknown names before writes, and uses the complete discovered source set for orphan reporting.
 
-An unknown skill selection currently produces no selected entries and does not clearly identify the invalid name.
+A comma-separated `--skill` value currently reaches the engine as one literal name and therefore fails as unknown unless a source skill has that exact name.
 
 ## 3. Command Contract
 
@@ -36,25 +36,43 @@ An unknown skill selection currently produces no selected entries and does not c
 
 2. `reactive-skills-axi sync <skill-name>` remains the backward-compatible single-skill form.
 
-3. `reactive-skills-axi sync --skill <name> --skill <name>` selects each named skill in one invocation.
+3. `reactive-skills-axi sync --skill <name>,<name>` selects each comma-separated skill in one invocation.
 
-4. The positional skill alias and one or more `--skill` flags are mutually exclusive.
+4. `reactive-skills-axi sync --skill <name> --skill <name>` remains supported.
 
-5. Mixing the positional skill alias with `--skill` returns a validation error, exits nonzero, and stops before target operations begin.
+5. Comma-separated and repeated values may be combined, for example `--skill alpha,beta --skill gamma`.
 
-6. A `--skill` flag without a following skill name returns a usage error, exits nonzero, and does not fall back to all-skills sync.
+6. Whitespace around comma-separated names is trimmed; an empty name in a list is a usage error and exits nonzero before target operations.
 
-7. Any unknown selected name is included in the error report, exits nonzero, and prevents all target writes for that invocation.
+7. The positional skill alias and one or more `--skill` flags are mutually exclusive.
 
-8. Repeating the same `--skill` name does not cause duplicate sync results for that skill.
+8. Mixing the positional skill alias with `--skill` returns a validation error, exits nonzero, and stops before target operations begin.
 
-9. Runtime source and target positional arguments keep their existing meaning.
+9. A `--skill` flag without a following skill name returns a usage error, exits nonzero, and does not fall back to all-skills sync.
 
-10. `--source`, `--target`, `--all-sources`, `--dry-run`, `--link`, `--copy`, `--no-backup`, and `--json` keep their existing behavior with selected skills.
+10. Any unknown selected name is included in the error report, exits nonzero, and prevents all target writes for that invocation.
+
+11. Repeating a skill name does not cause duplicate sync results for that skill.
+
+12. Runtime source and target positional arguments keep their existing meaning.
+
+13. `--source`, `--target`, `--all-sources`, `--dry-run`, `--link`, `--copy`, `--no-backup`, and `--json` keep their existing behavior with selected skills.
+
+14. `--source`, `--target`, and `--physical-target` accept comma-separated directory paths and repeated flags.
+
+15. Whitespace around comma-separated directory paths is trimmed, and empty path entries return a usage error before filesystem writes.
+
+16. Explicit `--source` values replace configured sources unless `--all-sources` is supplied; explicit `--target` values replace configured satellites.
+
+17. `--physical-target` adds satellite directories that receive physical copies, while other selected satellites keep the configured link behavior.
+
+18. `--central` accepts one directory path and overrides the configured central path for that invocation.
 
 ## 4. Selection and Validation
 
-The parser collects every value supplied to a repeated `--skill` flag.
+The parser collects every value supplied to `--skill`, splits each value on commas, trims surrounding whitespace from each name, and combines the resulting names.
+
+Any empty name produced by a missing value or comma-separated list is a usage error; the command must not interpret it as an unfiltered all-skills request.
 
 The source of selectable names is the set of skill directory names returned by the existing discovery rules across the selected source directories.
 
@@ -69,6 +87,22 @@ Unknown-name validation applies to the full requested set, so one unknown name p
 Duplicate requested names collapse to one selected skill.
 
 When the same skill name exists in multiple source directories, retain the existing first-source-wins behavior.
+
+### Directory List Parsing
+
+Each `--source`, `--target`, and `--physical-target` value may contain comma-separated directory paths.
+
+Repeated flags append paths in the order supplied.
+
+Trim whitespace around each path and reject any empty member before creating or changing filesystem paths.
+
+`--source` values replace the configured source list unless `--all-sources` is present.
+
+`--target` values replace the configured satellite list.
+
+`--physical-target` adds directories to the physical-copy satellite list.
+
+`--central` remains a single path value and overrides only the central directory for that invocation.
 
 ## 5. Orphan Reporting
 
@@ -100,33 +134,43 @@ The command does not add rollback across separate skills or targets.
 
 ## 7. Acceptance Criteria
 
-1. Repeated `--skill` flags select every requested discovered skill, with each skill synchronized once per target even when its flag repeats.
+1. `--skill alpha,beta` selects both requested discovered skills, with each skill synchronized once per target.
 
-2. The no-selector form still selects all discovered skills.
+2. Repeated flags and mixed comma-separated/repeated values select every requested discovered skill once per target.
 
-3. The AXI positional single-skill form still selects the named skill.
+3. The no-selector form still selects all discovered skills.
 
-4. A positional skill selector combined with `--skill` returns a validation error and exits nonzero before target operations.
+4. The AXI positional single-skill form still selects the named skill.
 
-5. Any unknown requested name is reported before target directories are created or changed, known requested names are not partially synchronized, and the CLI exits nonzero.
+5. Whitespace surrounding CSV names is ignored, and empty CSV members fail with nonzero status before target operations.
 
-6. A missing `--skill` value exits nonzero and never falls back to all-skills sync.
+6. A positional skill selector combined with `--skill` returns a validation error and exits nonzero before target operations.
 
-7. A discovered but invalid skill continues to produce the existing invalid-skill result rather than being treated as unknown.
+7. Any unknown requested name is reported before target directories are created or changed, known requested names are not partially synchronized, and the CLI exits nonzero.
 
-8. A filtered run does not report unselected source skills as destination orphans.
+8. A missing `--skill` value exits nonzero and never falls back to all-skills sync.
 
-9. Dry-run, link mode, copy mode, source selection, target selection, backups, and JSON reporting remain compatible with repeated skill selection.
+9. A discovered but invalid skill continues to produce the existing invalid-skill result rather than being treated as unknown.
 
-10. Runtime parser and engine tests cover batch selection, de-duplication, unknown-name preflight, orphan reporting, and existing all and single selection behavior.
+10. A filtered run does not report unselected source skills as destination orphans.
 
-11. Runtime and AXI CLI tests verify nonzero status for unknown and missing selections while retaining useful error or JSON output.
+11. Dry-run, link mode, copy mode, source selection, target selection, backups, and JSON reporting remain compatible with CSV, repeated, and mixed selectors.
 
-12. AXI tests cover repeated flags, mixed-selector rejection, and the positional compatibility form.
+12. Runtime parser and engine tests cover CSV expansion, whitespace trimming, empty-member rejection, batch selection, de-duplication, unknown-name preflight, orphan reporting, and existing all and single selection behavior.
 
-13. Runtime help and AXI documentation show the repeated `--skill` syntax and explain selector compatibility.
+13. Runtime and AXI CLI tests verify nonzero status for unknown, empty, and missing selections while retaining useful error or JSON output.
 
-14. The workspace build, required runtime suite, and AXI suite pass.
+14. AXI tests cover CSV and repeated flags, mixed-selector rejection, and the positional compatibility form.
+
+15. Runtime help and customer documentation show the CSV and repeated `--skill` syntax and explain selector compatibility.
+
+16. Runtime and customer documentation show comma-separated and repeated `--source`, `--target`, and `--physical-target` paths.
+
+17. Tests cover path whitespace trimming, repeated path options, and empty path-member rejection before writes.
+
+18. Customer documentation explains the configured `central` path and the one-run `--central` override.
+
+19. The workspace build, required runtime suite, and AXI suite pass.
 
 ## 8. Non-Requirements
 
@@ -140,49 +184,51 @@ Do not change skill registry release or versioning behavior.
 
 ## 9. Ordered Build Plan
 
-1. Extend `packages/runtime/src/sync/cli.ts` and `packages/runtime/src/sync/types.ts` to collect repeated skill names and reject a missing `--skill` value.
+1. Extend `packages/runtime/src/sync/cli.ts` to split comma-separated skill names and source, target, and physical-target paths, trim values, and reject missing or empty entries.
 
-2. Refactor `packages/runtime/src/sync/engine.ts` so discovery retains the full available-name set while synchronization uses only the requested skills.
+2. Add runtime CLI tests for CSV, repeated, mixed, whitespace, empty-member, and existing missing-value behavior.
 
-3. Validate the full selection before target directory creation, then return a clear report and nonzero CLI status for unknown names.
+3. Update runtime help in `packages/runtime/src/sync/cli.ts`, AXI usage help in `apps/axi/src/cli/index.ts`, examples in `apps/axi/README.md`, and this specification's verification notes.
 
-4. Calculate destination orphans against all discovered source names.
-
-5. Update `apps/axi/src/commands/sync.ts` to preserve the legacy positional alias, pass repeated flags through, and reject mixed selectors.
-
-6. Add runtime tests in `packages/runtime/tests/sync/cli.test.ts` and `packages/runtime/tests/sync/engine.test.ts`, plus AXI tests in `apps/axi/tests/commands/sync.test.ts`.
-
-7. Update runtime help in `packages/runtime/src/sync/cli.ts`, AXI usage help in `apps/axi/src/cli/index.ts`, and examples in `apps/axi/README.md`.
-
-8. Propagate usage and selection failures through the runtime and AXI executable exit status while preserving report output.
-
-9. Run the documented build and test commands, then perform independent review and documentation checks.
+4. Run the documented build and test commands, then perform independent review and documentation checks.
 
 ## 10. Value Sources
 
-Requested skill names come from the repeated CLI `--skill` values or the legacy AXI positional alias.
+Requested skill names come from comma-separated or repeated CLI `--skill` values or the legacy AXI positional alias.
 
 Available skill names and validity come from `discoverSkills` in `packages/runtime/src/sync/engine.ts` using the selected source directories.
 
-Source directories come from the existing `--source`, `--all-sources`, source configuration, and default resolution in `packages/runtime/src/sync/cli.ts`.
+Source directories come from comma-separated or repeated `--source` flags, `--all-sources`, source configuration, and default resolution in `packages/runtime/src/sync/cli.ts`.
 
-Target directories come from repeated `--target` flags or the existing `defaultTargets` function.
+Linked satellite directories come from comma-separated or repeated `--target` flags, configured satellites, or the existing `defaultTargets` function.
+
+Physical-copy satellite directories come from comma-separated or repeated `--physical-target` flags and the configured `physicalSatellites` list.
 
 Per-skill and per-target outcomes come from the existing `SyncReport` structure in `packages/runtime/src/sync/types.ts`.
 
-CLI syntax and legacy positional behavior come from `apps/axi/src/commands/sync.ts` and `apps/axi/README.md`.
+CLI syntax and legacy positional behavior come from `apps/axi/src/commands/sync.ts` and `apps/axi/README.md`; CSV values are split in the runtime parser.
 
 ## 11. Design Decisions
 
 ### Skill Selector
 
-Decision: use repeatable `--skill <name>` flags, as confirmed by the user.
+Decision: add concise comma-separated values such as `--skill alpha,beta`, while retaining repeatable `--skill <name>` flags and the existing one-name AXI positional alias. This follows the user's stated preference to avoid extra typing for consumers.
 
-Runner-up: a comma-separated `--skills` value, which is less composable with normal command-line parsing and shell usage.
+Runner-up: require one repeated `--skill` flag per name, which is more verbose for consumers.
+
+Split each flag value on commas, trim surrounding whitespace, and reject empty members to avoid silently changing the requested selection.
 
 Do not accept multiple positional skill names because runtime positionals already identify source and target directories.
 
 Keep the existing one-name AXI positional alias and reject using it with explicit `--skill` flags.
+
+### Path Lists
+
+Decision: accept comma-separated and repeated `--source`, `--target`, and `--physical-target` values to reduce typing while preserving path order.
+
+Trim whitespace around each path and reject empty members before filesystem writes.
+
+Keep `--central` as a single path because it identifies one physical registry directory.
 
 ### Unknown Names
 
@@ -200,4 +246,4 @@ This preserves the meaning of an orphan as a destination entry with no correspon
 
 Use this feature specification as the decision record.
 
-A separate ADR is unnecessary because this change adds no new architecture, dependency, or persistent data model.
+A separate ADR is unnecessary because this CLI syntax change adds no new architecture, dependency, or persistent data model.

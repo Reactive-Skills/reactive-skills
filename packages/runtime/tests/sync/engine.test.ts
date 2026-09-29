@@ -84,6 +84,18 @@ describe('runSync', () => {
     expect(report2.results.filter(r => r.action === 'unchanged')).toHaveLength(1);
   });
 
+  it('replaces a linked destination with a physical copy without changing the source', () => {
+    createSkill(src, 'alpha');
+    fs.symlinkSync(path.join(src, 'alpha'), path.join(dest, 'alpha'), 'dir');
+
+    const report = runSync({ sourceDir: src, targetDirs: [dest] });
+
+    expect(report.errors).toEqual([]);
+    expect(fs.lstatSync(path.join(dest, 'alpha')).isSymbolicLink()).toBe(false);
+    expect(fs.readFileSync(path.join(dest, 'alpha', 'SKILL.md'), 'utf8')).toBe('# alpha\n');
+    expect(fs.readFileSync(path.join(src, 'alpha', 'SKILL.md'), 'utf8')).toBe('# alpha\n');
+  });
+
   it('creates timestamped backup outside destination before overwriting', () => {
     createSkill(src, 'alpha');
     runSync({ sourceDir: src, targetDirs: [dest] });

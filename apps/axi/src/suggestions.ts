@@ -152,9 +152,10 @@ export function getSuggestions(ctx: SuggestionContext): string[] {
 
     case 'sync':
       return [
-        'Run `reactive-skills-axi sync <skill>` to link a specific skill via junctions',
+        'Run `reactive-skills-axi sync --show-config` to view sources, central directory, and satellites',
+        'Run `reactive-skills-axi sync <skill>` to copy a skill into the central directory and update satellites',
         'Run `reactive-skills-axi sync --dry-run` to preview sync operations without writing',
-        'Run `reactive-skills-axi sync --copy` to perform a physical file copy instead of junctions',
+        'Run `reactive-skills-axi sync --copy` to use physical copies for all satellites on this run',
         'Run `reactive-skills-axi` to return to the dashboard',
       ];
 

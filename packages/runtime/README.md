@@ -2,10 +2,11 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.15.1:**
-> - `ContextRouter` considers all unique discovered candidates and stages large lists within Jev request limits.
+> 🚀 **What's New in v0.16.0:**
+> - Skill sync now distributes ordered sources through a physical central directory before updating linked or physical-copy satellites.
+> - Sync configuration supports comma-separated path lists and a configurable central directory.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.15.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -44,7 +45,7 @@ If the API key is unset or a request fails, the runtime keeps the existing Scrip
 - `ProjectionEngine` - Handlebars deliverable generator for read-model projections with dual-write archiving
 - `LegacySkillAdapter` - Backward compatibility wrapper and converter for SKILL.md
 - `McpServer` - Stdio Model Context Protocol (MCP) server integration
-- `SyncEngine` - Skill synchronization engine managing zero-drift directory junctions and physical mirroring across agent satellites
+- `SyncEngine` - Copies ordered skill sources into a physical central directory, then updates linked or physical agent satellites
 - `TelemetryServer` - Real-time Server-Sent Events (SSE) broadcaster and Private Network Access (PNA) HTTP bridge
 - `TelemetryBroker` - Read-only multi-skill, multi-job catalog, state, and multiplexed SSE broker
 
@@ -232,5 +233,3 @@ See [PERFORMANCE-STANDARDS.md](../../PERFORMANCE-STANDARDS.md) for full latency 
 ## License
 
 MIT
-
-

@@ -8,6 +8,19 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-16-0",
+    "heading": "v0.16.0 (2026-09-29)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "fix(runtime): resolve projection paths on symlinked workspaces",
+          "feat(sync): add central skill distribution and CSV paths"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-15-1",
     "heading": "v0.15.1 (2026-09-29)",
     "blocks": [

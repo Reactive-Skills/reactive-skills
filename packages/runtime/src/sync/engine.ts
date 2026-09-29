@@ -11,15 +11,17 @@ import {
 const NEVER_SKILLS = new Set([
   '.git', '.docs', '.reactive', '.playwright-mcp', '.backup', '.sync-backups',
   'tests', 'scripts', 'node_modules', 'dist', 'axi',
-  '.cache', '.tmp', '.idea', '.vscode',
+  '.cache', '.tmp', '.idea', '.vscode', '.github', 'docs', 'tmp', 'coverage',
 ]);
 
 const EXCLUDE_FROM_SKILL = new Set([
   '.git', '.docs', '.reactive', '.playwright-mcp', '.backup', '.sync-backups',
-  'tests', 'scripts', 'node_modules', 'dist',
+  'tests', 'scripts', 'node_modules', 'dist', '.DS_Store', '.cache', '.tmp',
+  '.idea', '.vscode', '.pytest_cache', '.venv', '__pycache__', 'coverage',
+  '.turbo', 'tmp',
 ]);
 
-function discoverSkills(sourceDir: string): SkillEntry[] {
+export function discoverSkills(sourceDir: string): SkillEntry[] {
   if (!fs.existsSync(sourceDir)) return [];
   const entries = fs.readdirSync(sourceDir, { withFileTypes: true });
   const skills: SkillEntry[] = [];
@@ -81,6 +83,7 @@ function hasExcludedEntryAnywhere(dirPath: string): boolean {
   const entries = fs.readdirSync(dirPath, { withFileTypes: true });
   for (const e of entries) {
     if (EXCLUDE_FROM_SKILL.has(e.name)) return true;
+    if (e.isSymbolicLink()) return true;
     if (e.isDirectory()) {
       const full = path.join(dirPath, e.name);
       if (hasExcludedEntryAnywhere(full)) return true;
@@ -116,7 +119,7 @@ function getDistributableEntries(skillPath: string): string[] {
   return entries;
 }
 
-function directoriesEqual(srcPath: string, destPath: string): boolean {
+export function directoriesEqual(srcPath: string, destPath: string): boolean {
   const srcEntries = getDistributableEntries(srcPath);
   const destEntries = getDistributableEntries(destPath);
 
@@ -183,8 +186,22 @@ function createExternalBackup(targetDir: string, skillName: string): string {
   return backupPath;
 }
 
+function lstatIfExists(entryPath: string): fs.Stats | undefined {
+  try {
+    return fs.lstatSync(entryPath);
+  } catch (err: any) {
+    if (err.code === 'ENOENT') return undefined;
+    throw err;
+  }
+}
+
 function removeDirectoryRecursive(dirPath: string): void {
-  if (!fs.existsSync(dirPath)) return;
+  const stat = lstatIfExists(dirPath);
+  if (!stat) return;
+  if (!stat.isDirectory() || stat.isSymbolicLink()) {
+    fs.unlinkSync(dirPath);
+    return;
+  }
   const entries = fs.readdirSync(dirPath, { withFileTypes: true });
   for (const e of entries) {
     const full = path.join(dirPath, e.name);
@@ -203,7 +220,7 @@ function atomicSwap(stagingPath: string, destPath: string): void {
   let oldPath: string | undefined;
 
   try {
-    if (fs.existsSync(destPath)) {
+    if (lstatIfExists(destPath)) {
       oldPath = path.join(
         destParent,
         `.old-${destName}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
@@ -211,12 +228,12 @@ function atomicSwap(stagingPath: string, destPath: string): void {
       fs.renameSync(destPath, oldPath);
     }
     fs.renameSync(stagingPath, destPath);
-    if (oldPath && fs.existsSync(oldPath)) {
+    if (oldPath && lstatIfExists(oldPath)) {
       removeDirectoryRecursive(oldPath);
       oldPath = undefined;
     }
   } catch (err) {
-    if (oldPath && fs.existsSync(oldPath)) {
+    if (oldPath && lstatIfExists(oldPath)) {
       try {
         fs.renameSync(oldPath, destPath);
       } catch {
@@ -435,7 +452,8 @@ export function runSync(options: SyncOptions): SyncReport {
         continue;
       }
 
-      const alreadyIdentical = fs.existsSync(destPath) && directoriesEqual(skill.path, destPath);
+      const destStat = lstatIfExists(destPath);
+      const alreadyIdentical = destStat?.isDirectory() && !destStat.isSymbolicLink() && directoriesEqual(skill.path, destPath);
 
       if (alreadyIdentical) {
         report.results.push({
@@ -460,7 +478,7 @@ export function runSync(options: SyncOptions): SyncReport {
       let stagingPath: string | undefined;
 
       try {
-        if (backup && fs.existsSync(destPath)) {
+        if (backup && destStat && !destStat.isSymbolicLink()) {
           backupPath = createExternalBackup(targetDir, skill.name);
           report.results.push({
             skill: skill.name,

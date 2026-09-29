@@ -38,6 +38,23 @@ describe('syncCommand', () => {
     expect(output).toContain('SYNCED: --skill alpha --skill beta --link');
   });
 
+  it('passes comma-separated --skill values through to the runtime', async () => {
+    const { output } = await syncCommand(['--skill', 'alpha,beta']);
+    expect(output).toContain('SYNCED: --skill alpha,beta --link');
+  });
+
+  it('passes comma-separated path options through to the runtime', async () => {
+    const { output } = await syncCommand([
+      '--source', 'source-one,source-two',
+      '--target', 'target-one,target-two',
+      '--physical-target', 'physical-one,physical-two',
+    ]);
+
+    expect(output).toContain(
+      'SYNCED: --source source-one,source-two --target target-one,target-two --physical-target physical-one,physical-two --link',
+    );
+  });
+
   it('preserves output and nonzero status for rejected selections', async () => {
     vi.mocked(executeSyncEngineCommand).mockResolvedValueOnce({
       output: '{"errors":["Unknown skill: missing"]}',
