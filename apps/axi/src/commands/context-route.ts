@@ -4,7 +4,7 @@ import { AxiError } from '../errors.js';
 import { renderDetail, renderError, renderOutput } from '../toon.js';
 
 const CONTEXT_ROUTE_USAGE = 'Usage: reactive-skills-axi context-route --message "..." [--candidates <JSON|@file>] [--token-budget <number>] [--json]';
-const CONTEXT_CANDIDATES_GUIDANCE = 'Candidates must be a JSON array of skill metadata records shaped like {"id":"...","skill":"...","summary":"...","keywords":["..."]}, not arbitrary task labels or data. Each record describes one skill available to the agent. Use at most 12 records.';
+const CONTEXT_CANDIDATES_GUIDANCE = 'Candidates must be a JSON array of skill metadata records shaped like {"id":"...","skill":"...","summary":"...","keywords":["..."]}, not arbitrary task labels or data. Each record describes one skill available to the agent.';
 const CONTEXT_ROUTE_HELP = `${CONTEXT_ROUTE_USAGE}
 
 Route the current task to one relevant skill and context slice.
@@ -13,7 +13,8 @@ Route the current task to one relevant skill and context slice.
 --candidates <JSON|@file>     Optional skill choices. Omit to discover workspace and agent skill metadata.
                               Pass a JSON array of skill metadata records, not arbitrary task labels.
                               Each record requires id, skill, and summary; keywords are optional.
-                              Pass [] to route with no candidates. Maximum 12 records.
+                              Pass [] to route with no candidates. All supplied skills are considered.
+                              Large lists may require multiple Jev decisions.
 --token-budget <number>       Maximum context tokens for selected route.
 --json                        Print machine-readable JSON.
 
@@ -81,11 +82,6 @@ export async function contextRouteCommand(args: string[] = []): Promise<string> 
           CONTEXT_CANDIDATES_GUIDANCE,
         ])]);
       }
-      if (parsedCandidates.length > 12) {
-        return renderOutput([renderError('Candidates accepts at most 12 skill records', 'VALIDATION_ERROR', [
-          CONTEXT_CANDIDATES_GUIDANCE,
-        ])]);
-      }
       const skillCandidates = parsedCandidates.filter(isSkillCandidate);
       if (skillCandidates.length !== parsedCandidates.length) {
         return renderOutput([renderError('Each candidate must describe one skill and include id, skill, and summary', 'VALIDATION_ERROR', [
@@ -130,8 +126,7 @@ export async function contextRouteCommand(args: string[] = []): Promise<string> 
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Context routing failed';
     const invalidCandidateMetadata = message.startsWith('Each context route candidate needs')
-      || message.startsWith('Duplicate context route candidate id:')
-      || message.startsWith('Context routing accepts at most');
+      || message.startsWith('Duplicate context route candidate id:');
     const error = err instanceof AxiError
       ? err
       : new AxiError(

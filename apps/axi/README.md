@@ -80,7 +80,8 @@ Omit `--candidates` to discover skill metadata from the workspace and supported 
 Pass `--candidates <JSON|@file>` only to restrict choices.
 The value must be a JSON array of skill metadata records, not arbitrary task labels or data.
 Each record requires `id`, `skill`, and `summary`, with optional `keywords`.
-Use at most 12 records.
+All supplied skill records are considered.
+Large lists may require multiple Jev decisions to stay within provider request limits.
 Pass `[]` to route with no candidates.
 
 ```bash
