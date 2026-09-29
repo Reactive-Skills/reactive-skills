@@ -2,10 +2,10 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.15.0:**
-> - MCP context routing shares bounded skill metadata discovery with the AXI CLI; explicit candidates restrict routing to supplied skill records.
+> 🚀 **What's New in v0.15.1:**
+> - `ContextRouter` considers all unique discovered candidates and stages large lists within Jev request limits.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.15.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.15.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -40,7 +40,7 @@ If the API key is unset or a request fails, the runtime keeps the existing Scrip
 - `JobManager` - Run isolation, active pointer resolution, metadata management, and safe directory pathing
 - `EventStore` - Immutable append-only event ledger (JSONL + SQLite)
 - `GuardEvaluator` - Sandbox evaluator for transition guard expressions
-- `ContextRouter` - Bounded Jev-backed skill and context selection before prompt assembly
+- `ContextRouter` - Jev-backed skill and context selection before prompt assembly
 - `ProjectionEngine` - Handlebars deliverable generator for read-model projections with dual-write archiving
 - `LegacySkillAdapter` - Backward compatibility wrapper and converter for SKILL.md
 - `McpServer` - Stdio Model Context Protocol (MCP) server integration

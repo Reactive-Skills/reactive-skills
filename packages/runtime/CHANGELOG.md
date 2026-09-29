@@ -1,4 +1,8 @@
 
+## [0.15.1] - 2026-09-29
+
+- feat(runtime): remove context route candidate limit (96c7878)
+
 ## [0.15.0] - 2026-09-28
 
 - feat(axi): discover context-route skill candidates (f106ae7)

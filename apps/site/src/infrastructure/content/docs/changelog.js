@@ -8,6 +8,18 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-15-1",
+    "heading": "v0.15.1 (2026-09-29)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "feat(runtime): remove context route candidate limit"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-15-0",
     "heading": "v0.15.0 (2026-09-28)",
     "blocks": [

@@ -185,7 +185,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     'Use Jev to select the smallest useful skill and context slice before prompt assembly',
     {
       user_message: z.string().min(1).describe('Current user task or message'),
-      candidates: z.array(contextCandidateSchema).max(12).optional().describe('Optional bounded skill metadata; omit to use local manifest discovery'),
+      candidates: z.array(contextCandidateSchema).optional().describe('Optional skill metadata; omit to use local manifest discovery'),
       token_budget: z.number().int().min(128).max(32768).optional().describe('Maximum context tokens for selected route'),
       state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Small bounded state hints'),
     },
@@ -212,7 +212,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     'Route with Jev, then load only the selected skill context before prompt assembly',
     {
       user_message: z.string().min(1).describe('Current user task or message'),
-      candidates: z.array(contextCandidateSchema).max(12).optional().describe('Optional bounded skill metadata; omit to use local skill discovery'),
+      candidates: z.array(contextCandidateSchema).optional().describe('Optional skill metadata; omit to use local skill discovery'),
       token_budget: z.number().int().min(128).max(32768).optional().describe('Maximum context tokens for selected route'),
       state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Small bounded state hints'),
       job_id: z.string().optional().describe('Optional job/run ID for a selected reactive skill'),

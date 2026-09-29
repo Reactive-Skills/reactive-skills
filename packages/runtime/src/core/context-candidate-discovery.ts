@@ -51,7 +51,7 @@ export function readSkillMetadata(skillDir: string, fallbackName: string): { ski
 }
 
 /**
- * Discovers bounded skill metadata from the workspace and supported agent skill roots.
+ * Discovers unique skill metadata from the workspace and supported agent skill roots.
  * Reads metadata only; it never imports or executes skill code.
  */
 export function discoverContextCandidates(
@@ -100,6 +100,5 @@ export function discoverContextCandidates(
 
   return candidates
     .sort((left, right) => right.score - left.score || left.skill.localeCompare(right.skill))
-    .slice(0, 12)
     .map(({ score: _score, ...candidate }) => candidate);
 }
