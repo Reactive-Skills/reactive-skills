@@ -44,7 +44,7 @@ If the API key is unset or a request fails, the runtime keeps the existing Scrip
 - `ProjectionEngine` - Handlebars deliverable generator for read-model projections with dual-write archiving
 - `LegacySkillAdapter` - Backward compatibility wrapper and converter for SKILL.md
 - `McpServer` - Stdio Model Context Protocol (MCP) server integration
-- `SyncEngine` - Skill synchronization engine managing zero-drift directory junctions and physical mirroring across agent satellites
+- `SyncEngine` - Copies ordered skill sources into a physical central directory, then updates linked or physical agent satellites
 - `TelemetryServer` - Real-time Server-Sent Events (SSE) broadcaster and Private Network Access (PNA) HTTP bridge
 - `TelemetryBroker` - Read-only multi-skill, multi-job catalog, state, and multiplexed SSE broker
 
@@ -232,5 +232,4 @@ See [PERFORMANCE-STANDARDS.md](../../PERFORMANCE-STANDARDS.md) for full latency 
 ## License
 
 MIT
-
 

@@ -17,8 +17,8 @@ export async function syncCommand(args: string[]): Promise<SyncCommandResponse> 
       'VALIDATION_ERROR',
       [
         'Usage: reactive-skills-axi sync [skill-name] [--link|--copy] [--dry-run]',
-        'Usage: reactive-skills-axi sync --skill <name> [--skill <name> ...] [--link|--copy] [--dry-run]',
-        'Example: reactive-skills-axi sync --skill synthesis --skill onboarding-map',
+        'Usage: reactive-skills-axi sync --skill <name>[,<name>...] [--skill <name>[,<name>...] ...] [--link|--copy] [--dry-run]',
+        'Example: reactive-skills-axi sync --skill synthesis,onboarding-map',
       ],
     );
   }
@@ -52,8 +52,9 @@ export async function syncCommand(args: string[]): Promise<SyncCommandResponse> 
       'RUNTIME_ERROR',
       [
         'Usage: reactive-skills-axi sync [skill-name] [--link|--copy] [--dry-run]',
-        'Usage: reactive-skills-axi sync --skill <name> [--skill <name> ...] [--link|--copy] [--dry-run]',
+        'Usage: reactive-skills-axi sync --skill <name>[,<name>...] [--skill <name>[,<name>...] ...] [--link|--copy] [--dry-run]',
         'Example: reactive-skills-axi sync synthesis',
+        'Example: reactive-skills-axi sync --skill synthesis,onboarding-map',
         'Example: reactive-skills-axi sync --skill synthesis --skill onboarding-map',
         'Example: reactive-skills-axi sync --dry-run',
       ]

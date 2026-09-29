@@ -1040,7 +1040,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 13. TOOL: reactive_sync
   server.tool(
     'reactive_sync',
-    'Synchronize reactive and agent skills between authoring workspaces and agent satellite environments using zero-drift directory junctions',
+    'Copy skills from ordered sources into a physical central directory, then link or copy them to agent satellites',
     {
       skill: z.string().optional().describe('Skill name to sync (optional, syncs all skills if omitted)'),
       link: z.boolean().optional().describe('Use directory junctions / symlinks for zero-drift live editing (default: true)'),
@@ -1048,8 +1048,12 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       dryRun: z.boolean().optional().describe('Preview sync actions without touching disk (default: false)'),
       source: z.string().optional().describe('Custom source directory (optional)'),
       target: z.string().optional().describe('Custom target directory (optional)'),
+      central: z.string().optional().describe('Physical central skill directory (optional)'),
+      config: z.string().optional().describe('Sync config file (optional)'),
+      physicalTargets: z.array(z.string()).optional().describe('Satellites that require physical copies'),
+      showConfig: z.boolean().optional().describe('Show resolved sync configuration without writing'),
     },
-    async ({ skill, link = true, copy = false, dryRun = false, source, target }) => {
+    async ({ skill, link = true, copy = false, dryRun = false, source, target, central, config, physicalTargets, showConfig = false }) => {
       try {
         const syncArgs: string[] = [];
         if (skill) {
@@ -1069,6 +1073,10 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
         if (target) {
           syncArgs.push('--target', target);
         }
+        if (central) syncArgs.push('--central', central);
+        if (config) syncArgs.push('--config', config);
+        for (const physicalTarget of physicalTargets ?? []) syncArgs.push('--physical-target', physicalTarget);
+        if (showConfig) syncArgs.push('--show-config');
         syncArgs.push('--json');
 
         const { syncEngineCommand } = await import('../sync/cli.js');

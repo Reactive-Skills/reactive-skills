@@ -37,7 +37,7 @@ examples:
   reactive-skills-axi rebuild-sqlite my-skill
   reactive-skills-axi view my-skill [--job <alias-or-run-id>]
   reactive-skills-axi dashboard [--host 127.0.0.1] [--port <number>]
-  reactive-skills-axi sync [my-skill | --skill <name> [--skill <name> ...]]
+  reactive-skills-axi sync [my-skill | --skill <name>[,<name>...] [--skill <name>[,<name>...] ...]]
   reactive-skills-axi mcp
 `;
 
@@ -178,4 +178,3 @@ export async function main() {
 }
 
 main();
-

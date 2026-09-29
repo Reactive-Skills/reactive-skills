@@ -118,7 +118,7 @@ If Jev is unavailable, it returns `route: none` and the agent can continue its d
 | `jobs` | `npx -y @reactive-skills/axi jobs <skill> [list\|switch\|archive]` | Inspect, switch, and archive isolated execution runs and deliverables |
 | `view` | `npx -y @reactive-skills/axi view <skill>` | Launch real-time telemetry server and live visual statechart viewer |
 | `dashboard` | `npx -y @reactive-skills/axi dashboard [--host <host>] [--port <port>]` | Launch one read-only broker for multi-job telemetry |
-| `sync` | `npx -y @reactive-skills/axi sync [skill]` | Synchronize skills across authoring workspaces and agent satellites via zero-drift junctions |
+| `sync` | `npx -y @reactive-skills/axi sync [skill]` | Copy ordered sources into a physical central directory, then update linked or physical satellites |
 | `capabilities` | `npx -y @reactive-skills/axi capabilities --json` | Report runtime version and capabilities for INIT negotiation |
 | `bootloader` | `npx -y @reactive-skills/axi bootloader <skill> --json` | Retrieve the versioned authoritative runtime bootloader |
 | `preflight` | `npx -y @reactive-skills/axi preflight <skill>` | Check skill runtime requirements without creating a job |
@@ -187,29 +187,71 @@ skills/<skill-name>/
 
 ## 🔄 Syncing & Distributing Skills
 
-When authoring reactive skills in a central repository, consumer agent environments need immediate access to the updated definitions.
-Different harnesses look for skills in separate user-level directories, including `~/.claude/skills`, `~/.gemini/config/skills`, `~/.codex/skills`, `~/.devin/skills`, and `~/.agents/skills`.
-Copying files manually between these folders causes immediate version drift.
+The synchronizer copies skills from ordered local source directories into a physical central directory (default `~/.agents/skills`). The first source containing a skill name wins. Agent satellite directories then link to the central copy. Changes in a source repository reach the central directory on the next sync; linked satellites see those central changes immediately. Satellites that cannot read links receive physical copies, refreshed on each sync when their content changes.
 
-Reactive Skills solves this problem with zero-drift directory junctions on Windows and symbolic links on POSIX platforms.
-A junction allows consumer satellites to reference the authoritative authoring repository directly.
-Edits made in your authoring repository are instantly active in every agent environment with zero synchronization latency.
+Only immediate child folders containing `SKILL.md`, `skill.md`, or `skill.yaml` are distributed. Unrelated folders at a source root are ignored. Sync reads local files; it does not fetch Git updates.
+
+Configure the layout in `~/.agents/sync.json`:
+
+```json
+{
+  "sources": ["~/work/public-skills", "~/work/private-skills"],
+  "central": "~/.agents/skills",
+  "satellites": ["~/.claude/skills", "~/.codex/skills", "~/.gemini/config/skills"],
+  "physicalSatellites": ["~/.gemini/config/skills"]
+}
+```
+
+Change the persistent central directory by updating the `central` value in this file.
+Use `--central <dir>` to override it for one invocation, and use `--show-config` to inspect the resolved paths.
+When prior sync state records the old central path, the next sync can use that directory as a migration fallback while populating the new central directory.
+The old central directory remains on disk.
+
+Sources are optional. Without them, sync distributes valid skills already in the central directory. Without a config file, it uses the default central path and existing agent directories as satellites; the physical satellite list is empty. If a directory appears in both satellite lists, the physical copy takes precedence. If the central path appears in either satellite list, sync omits it.
+When `sync.json` is absent, existing sources from `~/.agents/sources.json` remain a fallback.
+If creating `sync.json` for the first time, copy any needed source paths into its `sources` array because the legacy source fallback applies only when `sync.json` is absent.
 
 ### CLI Synchronization
 
 ```bash
-# Synchronize all discovered skills to default satellites via directory junctions:
+# Show effective paths and source precedence:
+npx -y @reactive-skills/axi sync --show-config
+
+# Preview a one-run central directory override:
+npx -y @reactive-skills/axi sync --central ~/work/skill-registry --dry-run
+
+# Preview central copies, satellite links/copies, and source collisions:
+npx -y @reactive-skills/axi sync --dry-run
+
+# Synchronize all valid skills:
 npx -y @reactive-skills/axi sync
 
 # Synchronize a specific skill only:
 npx -y @reactive-skills/axi sync <skill-name>
 
+# Synchronize several selected skills together:
+npx -y @reactive-skills/axi sync --skill skill-one,skill-two
+# Repeated --skill flags remain supported:
+npx -y @reactive-skills/axi sync --skill skill-one --skill skill-two
+
+# Override configured sources with comma-separated paths:
+npx -y @reactive-skills/axi sync --source ~/work/public-skills,~/work/private-skills --dry-run
+
+# Add explicit sources before configured sources:
+npx -y @reactive-skills/axi sync --source ~/work/public-skills --all-sources --dry-run
+
+# Choose linked and physical satellite directories:
+npx -y @reactive-skills/axi sync --target ~/.codex/skills,~/.claude/skills --physical-target ~/.gemini/config/skills,~/.copilot/skills --dry-run
+
 # Preview changes without modifying files:
 npx -y @reactive-skills/axi sync <skill-name> --dry-run
 
-# Force physical file copy instead of directory junctions:
+# Use physical copies for all selected satellites for this run:
 npx -y @reactive-skills/axi sync <skill-name> --copy
 ```
+
+Each `--source`, `--target`, and `--physical-target` value can contain comma-separated paths, and each option can be repeated.
+Surrounding whitespace is ignored, and empty path entries are rejected.
 
 ### Model Context Protocol (MCP)
 
@@ -225,9 +267,7 @@ Agents running in GUI environments can call the native `reactive_sync` tool:
 
 ### Safety and Backups
 
-The synchronizer automatically discovers authoring directories from `~/.agents/sources.json` and the active repository.
-Before converting any pre-existing physical directory into a directory junction, the synchronizer creates a timestamped backup under `.sync-backups/`.
-Previous files are never removed without a safe backup copy.
+The synchronizer validates path overlaps before writing. It stages and verifies central copies before replacing existing skill folders. It backs up physical directories before replacement under each target's `.sync-backups/` directory. Valid skills already in the central directory remain there when no configured source supplies them. A state file at `~/.agents/sync-state.json` tracks links created by sync, allowing it to remove obsolete managed links when satellite configuration changes while preserving unrelated files.
 
 ---
 
@@ -375,4 +415,3 @@ For performance tiers, algorithmic budgets, and caching standards, see [PERFORMA
 The core Reactive Skills framework (`@reactive-skills/runtime` and `@reactive-skills/axi`) is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. See [LICENSE](LICENSE) for details.
 
 Reactive skills created using the Reactive Skills Architecture (e.g. in community skill repositories or third-party agents) may be licensed independently under permissive licenses such as MIT.
-

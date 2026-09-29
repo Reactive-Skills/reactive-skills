@@ -261,26 +261,49 @@ Output (TOON format):
 
 ### sync
 
-Synchronize skills from workspaces to global registry and satellite agent directories using zero-drift directory junctions.
+Copy skills from ordered authoring sources into a physical central directory, then update satellite agent directories with links or physical copies.
+The first source containing a skill name wins.
+Source edits reach satellites on the next sync, and linked satellites see central updates immediately.
+
+Configure the layout in `~/.agents/sync.json`; when that file is absent, registered sources from `~/.agents/sources.json` remain a fallback.
+Change the persistent central directory by updating the `central` value in `sync.json`.
+Use `--central <dir>` to override it for one invocation, and use `--show-config` to inspect the resolved paths.
+When prior sync state records the old central path, the next sync can use that directory as a migration fallback while populating the new central directory.
+The old central directory remains on disk.
+If creating `sync.json` for the first time, include the needed source paths because the legacy source fallback applies only when that file is absent.
 
 ```bash
-# Sync all skills across all satellites via junctions:
+# Show effective paths and source precedence:
+npx -y @reactive-skills/axi sync --show-config
+
+# Preview a one-run central directory override:
+npx -y @reactive-skills/axi sync --central ~/work/skill-registry --dry-run
+
+# Preview the planned distribution:
+npx -y @reactive-skills/axi sync --dry-run
+
+# Sync all valid skills:
 npx -y @reactive-skills/axi sync
 
 # Sync a specific skill:
 npx -y @reactive-skills/axi sync my-skill
 
 # Sync multiple selected skills:
+npx -y @reactive-skills/axi sync --skill skill-one,skill-two
+
+# Repeated --skill flags remain supported:
 npx -y @reactive-skills/axi sync --skill skill-one --skill skill-two
 
-# Preview sync operations without touching disk:
-npx -y @reactive-skills/axi sync --dry-run
+# Choose ordered sources and satellite paths:
+npx -y @reactive-skills/axi sync --source ~/work/public-skills,~/work/private-skills --target ~/.codex/skills,~/.claude/skills --physical-target ~/.gemini/config/skills --dry-run
 
-# Force physical file copy instead of junctions:
+# Use physical copies for all selected satellites on this run:
 npx -y @reactive-skills/axi sync my-skill --copy
 ```
 
-Use either one positional skill name or one or more `--skill` flags in a command.
+Use either one positional skill name or one or more `--skill` flags in a command. Each `--skill` value may contain comma-separated names; surrounding whitespace is ignored and empty names are rejected.
+Each `--source`, `--target`, and `--physical-target` value may contain comma-separated paths, and each option may be repeated.
+Surrounding whitespace is ignored, and empty path entries are rejected.
 Do not combine the positional skill form with `--skill` flags.
 Unknown selected names stop the full request before any target directory changes.
 

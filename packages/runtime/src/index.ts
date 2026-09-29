@@ -15,6 +15,7 @@ export * from './mcp/server.js';
 export * from './sync/types.js';
 export { runSync } from './sync/engine.js';
 export { executeSyncEngineCommand, syncEngineCommand } from './sync/cli.js';
+export { runDistribution } from './sync/distribution.js';
 export * from './telemetry/types.js';
 export * from './telemetry/server.js';
 export * from './telemetry/broker.js';
