@@ -1,6 +1,6 @@
 # Bulk Skill Sync Selection
 
-Status: In progress.
+Status: Implemented and verified for release candidate.
 
 ## Intent
 

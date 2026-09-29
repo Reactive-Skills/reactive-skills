@@ -1,4 +1,9 @@
 
+## [0.16.0] - 2026-09-29
+
+- fix(runtime): resolve projection paths on symlinked workspaces (0838519)
+- feat(sync): add central skill distribution and CSV paths (692c997)
+
 ## [0.15.1] - 2026-09-29
 
 - feat(runtime): remove context route candidate limit (96c7878)

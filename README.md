@@ -5,14 +5,15 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.15.1)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.0)
 
 ---
 
-> 🚀 **What's New in v0.15.1:**
-> - Context routing considers all unique discovered candidates and stages large lists within Jev request limits.
+> 🚀 **What's New in v0.16.0:**
+> - Skill sync now distributes ordered sources into a physical central registry, then links or copies skills to agent directories.
+> - Sync accepts comma-separated source and target paths and supports persistent or one-run central directory settings.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.15.1) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.0) · [View Changelog](CHANGELOG.md)
 
 ---
 

@@ -2,10 +2,11 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.15.1:**
-> - `context-route` considers all supplied or discovered skill records and stages large candidate lists within Jev request limits.
+> 🚀 **What's New in v0.16.0:**
+> - `sync` distributes skills through a configurable physical central directory to linked or physical-copy agent directories.
+> - `sync` accepts comma-separated source, target, and physical-target paths, with `--central` for one-run overrides.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.15.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
