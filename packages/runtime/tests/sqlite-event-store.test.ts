@@ -210,6 +210,33 @@ describe('SQLite Storage Driver & EventStore Integration', () => {
     fs.rmSync(workspaceDir, { recursive: true, force: true });
   });
 
+  it('should accept a symlinked workspace path when the projection output directory does not exist yet', () => {
+    const realWorkspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-projection-real-'));
+    const aliasParent = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-projection-alias-'));
+    const workspaceDir = path.join(aliasParent, 'workspace');
+    const skillDir = path.join(realWorkspaceDir, 'skill');
+    fs.symlinkSync(realWorkspaceDir, workspaceDir, process.platform === 'win32' ? 'junction' : 'dir');
+    fs.mkdirSync(path.join(skillDir, 'templates'), { recursive: true });
+    fs.writeFileSync(path.join(skillDir, 'templates', 'summary.hbs'), 'State: {{currentState}}', 'utf8');
+
+    const engine = new ProjectionEngine(
+      skillDir,
+      [{ template: 'templates/summary.hbs', output: '.docs/summary.md' }],
+      workspaceDir,
+      'job-1'
+    );
+    const store = new EventStore({ inMemory: true, skillId: 'test-skill' });
+    const writtenFiles = engine.project(store, 'SUCCESS', 'test-skill', {});
+
+    expect(writtenFiles).toContain(path.join(workspaceDir, '.docs', 'jobs', 'job-1', 'summary.md'));
+    expect(fs.existsSync(path.join(realWorkspaceDir, '.docs', 'jobs', 'job-1', 'summary.md'))).toBe(true);
+    expect(store.query({ type: 'PROJECTION_FAILED' })).toEqual([]);
+
+    store.close();
+    fs.rmSync(aliasParent, { recursive: true, force: true });
+    fs.rmSync(realWorkspaceDir, { recursive: true, force: true });
+  });
+
   it('should render production-shaped skill-manager projections', () => {
     const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-skill-manager-projection-'));
     const skillDir = path.join(workspaceDir, 'skill-manager');
@@ -460,4 +487,3 @@ describe('SQLite Storage Driver & EventStore Integration', () => {
     store.close();
   });
 });
-

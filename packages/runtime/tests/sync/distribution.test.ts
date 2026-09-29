@@ -45,8 +45,8 @@ describe('source → central → satellite distribution', () => {
     skill(privateSource, 'private-only', '# private only\n');
     fs.mkdirSync(path.join(publicSource, 'unrelated'));
     fs.writeFileSync(path.join(publicSource, 'unrelated', 'README.md'), 'junk');
-    fs.mkdirSync(path.join(publicSource, 'private-only'));
-    fs.writeFileSync(path.join(publicSource, 'private-only', 'README.md'), 'not a skill');
+    fs.mkdirSync(path.join(publicSource, 'invalid-folder'));
+    fs.writeFileSync(path.join(publicSource, 'invalid-folder', 'README.md'), 'not a skill');
     fs.writeFileSync(path.join(publicSource, 'shared', '.DS_Store'), 'junk');
     skill(central, 'existing-only', '# retained\n');
 
@@ -61,6 +61,7 @@ describe('source → central → satellite distribution', () => {
     expect(fs.existsSync(path.join(central, 'unrelated'))).toBe(false);
     expect(fs.existsSync(path.join(linked, 'unrelated'))).toBe(false);
     expect(fs.existsSync(path.join(physical, 'unrelated'))).toBe(false);
+    expect(fs.existsSync(path.join(central, 'invalid-folder'))).toBe(false);
     expect(fs.readFileSync(path.join(central, 'private-only', 'SKILL.md'), 'utf8')).toBe('# private only\n');
     expect(fs.existsSync(path.join(central, 'shared', '.DS_Store'))).toBe(false);
     expect(fs.readlinkSync(path.join(linked, 'shared'))).toBe(path.join(central, 'shared'));
