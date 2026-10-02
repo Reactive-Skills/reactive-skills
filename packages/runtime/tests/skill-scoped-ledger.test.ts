@@ -155,6 +155,26 @@ describe('skill-scoped event ledger', () => {
     store.close();
   });
 
+  it('keeps normal SQLite appends off full-history JSONL reconciliation', () => {
+    const workspaceDir = tempWorkspace();
+    const store = new EventStore({ workspaceDir, skillId: 'demo', runId: createSortableId(), enableSqlite: true });
+    const reconcileSpy = vi.spyOn(store, 'syncJsonlFromSqlite');
+
+    try {
+      store.append('ONE', {});
+      store.append('TWO', {});
+
+      expect(reconcileSpy).not.toHaveBeenCalled();
+      const jsonlPath = path.join(workspaceDir, '.reactive', 'skills', 'demo', 'events.jsonl');
+      const mirrored = fs.readFileSync(jsonlPath, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+      expect(mirrored.map(event => event.type)).toEqual(['ONE', 'TWO']);
+    } finally {
+      reconcileSpy.mockRestore();
+      store.close();
+      fs.rmSync(workspaceDir, { recursive: true, force: true });
+    }
+  });
+
   it('imports legacy per-job JSONL into a UUID-backed run without deleting source data', () => {
     const workspaceDir = tempWorkspace();
     const legacyDir = path.join(workspaceDir, '.reactive', 'skills', 'demo', 'jobs', 'old-alias');
