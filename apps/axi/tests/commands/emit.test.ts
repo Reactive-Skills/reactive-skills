@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 
 const mockHandleSignal = vi.fn().mockResolvedValue({
   transitioned: true,
@@ -36,14 +37,14 @@ describe('emitCommand', () => {
   beforeEach(() => {
     originalCwd = process.cwd();
     vi.clearAllMocks();
-    tmpDir = path.resolve(process.cwd(), '.tmp-emit-test');
-    fs.mkdirSync(tmpDir, { recursive: true });
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-axi-emit-test-'));
     process.chdir(tmpDir);
   });
 
   afterEach(() => {
     process.chdir(originalCwd);
     if (fs.existsSync(tmpDir)) {
+      expect(path.dirname(fs.realpathSync(tmpDir))).toBe(fs.realpathSync(os.tmpdir()));
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
@@ -53,6 +54,69 @@ describe('emitCommand', () => {
     const result = await emitCommand(['test-skill']);
     expect(result).toContain('error:');
     expect(result).toContain('Missing arguments');
+  });
+
+  const payloadForms = [
+    { name: 'none', args: [], payload: {} },
+    { name: 'JSON', args: ['{"exit_code":0}'], payload: { exit_code: 0 } },
+    { name: 'file', args: ['@payload.json'], payload: { exit_code: 0 } },
+    { name: 'flag JSON', args: ['--payload', '{"exit_code":0}'], payload: { exit_code: 0 } },
+    { name: 'flag file', args: ['--payload', '@payload.json'], payload: { exit_code: 0 } },
+  ];
+
+  for (const signal of ['BASELINE_ESTABLISHED', 'AUTHORING_BASELINE_ESTABLISHED']) {
+    it.each(payloadForms)(`preserves shorthand ${signal} with $name payload`, async ({ args, payload }) => {
+      const skillDir = path.join(tmpDir, 'skills', 'test-skill');
+      fs.mkdirSync(skillDir, { recursive: true });
+      fs.writeFileSync(path.join(skillDir, 'skill.yaml'), 'name: test-skill\n');
+      fs.writeFileSync(path.join(tmpDir, 'payload.json'), '{"exit_code":0}');
+      const { emitCommand } = await import('../../src/commands/emit.js');
+      const { FSMEngine } = await import('@reactive-skills/runtime');
+
+      const output = await emitCommand([
+        'test-skill', signal, ...args, '--job', 'isolated-trial', '--idempotency-key', 'trial-1',
+      ]);
+
+      expect(mockHandleSignal).toHaveBeenCalledExactlyOnceWith(signal, payload, {
+        source: 'cli', causationId: '01a06e96-auto-causation-event-id', idempotencyKey: 'trial-1',
+      });
+      expect(FSMEngine).toHaveBeenCalledWith(expect.objectContaining({
+        jobId: 'isolated-trial', eventContext: { run_id: 'isolated-trial' },
+      }));
+      expect(output).toContain(`signal: ${signal}`);
+    });
+  }
+
+  for (const eventId of ['01a06e96-8414-7c46-bf87-dd09d5547385', '01ARZ3NDEKTSV4RRFFQ69G5FAV']) {
+    it.each(payloadForms)(`preserves explicit ${eventId} with $name payload`, async ({ args, payload }) => {
+      const skillDir = path.join(tmpDir, 'skills', 'test-skill');
+      fs.mkdirSync(skillDir, { recursive: true });
+      fs.writeFileSync(path.join(skillDir, 'skill.yaml'), 'name: test-skill\n');
+      fs.writeFileSync(path.join(tmpDir, 'payload.json'), '{"exit_code":0}');
+      const { emitCommand } = await import('../../src/commands/emit.js');
+
+      await emitCommand(['test-skill', eventId, 'BASELINE_ESTABLISHED', ...args]);
+
+      expect(mockHandleSignal).toHaveBeenCalledExactlyOnceWith('BASELINE_ESTABLISHED', payload, {
+        source: 'cli', causationId: eventId, idempotencyKey: undefined,
+      });
+    });
+  }
+
+  it.each([
+    ['BASELINE_ESTABLISHED', '{broken'],
+    ['BASELINE_ESTABLISHED', '--payload', '{broken'],
+    ['BASELINE_ESTABLISHED', '@missing.json'],
+  ])('rejects malformed or missing payload for %s (%s)', async (...args) => {
+    const skillDir = path.join(tmpDir, 'skills', 'test-skill');
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(path.join(skillDir, 'skill.yaml'), 'name: test-skill\n');
+    const { emitCommand } = await import('../../src/commands/emit.js');
+
+    const output = await emitCommand(['test-skill', ...args]);
+
+    expect(output).toContain('VALIDATION_ERROR');
+    expect(mockHandleSignal).not.toHaveBeenCalled();
   });
 
   it('supports 2-arg syntax: emit <skill> <signal> with auto-resolved eventId', async () => {
