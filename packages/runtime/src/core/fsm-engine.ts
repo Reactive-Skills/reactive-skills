@@ -820,6 +820,7 @@ export class FSMEngine {
         }
 
         // Evaluate Guard & Snap-On Judgment
+        const guardRunVersion = this.eventStore.getRunVersion();
         const guardResult = await GuardEvaluator.evaluate(
           transDef.guard,
           transDef.guardFunction,
@@ -832,7 +833,7 @@ export class FSMEngine {
           transDef.judgment
         );
 
-        this.eventStore.assertRunVersion(signalRunVersion);
+        this.eventStore.assertRunVersion(guardRunVersion);
 
         this.eventStore.append(
           'GUARD_EVALUATED',
