@@ -123,7 +123,8 @@ states:
 ## Signal Context
 
 A signal can update context through `contextUpdates` in its payload and through payload fields named in `context_keys`.
-Guards and judgments read the stored context plus the signal's `context_keys` fields, and they read its pending `contextUpdates` through `payload.contextUpdates`.
+Guards and judgments read the stored context plus the signal's `context_keys` fields.
+Guards read the signal's pending `contextUpdates` through `payload.contextUpdates`, and Jev judgments receive the payload as `event`.
 A guard that compares old and new values, such as `payload.contextUpdates.version === context.version + 1`, therefore sees the stored value in `context`.
 The signal's updates become context only when its transition commits.
 A refused or unhandled signal stays in the event ledger but leaves context unchanged, both in the running engine and when a later process rehydrates the run.
