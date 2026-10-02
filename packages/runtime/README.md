@@ -128,6 +128,7 @@ Guards read the signal's pending `contextUpdates` through `payload.contextUpdate
 A guard that compares old and new values, such as `payload.contextUpdates.version === context.version + 1`, therefore sees the stored value in `context`.
 The signal's updates become context only when its transition commits.
 A refused or unhandled signal stays in the event ledger but leaves context unchanged, both in the running engine and when a later process rehydrates the run.
+A possible follow-up is an opt-in guard variable holding the merged copy, which would leave `context` unchanged for existing guards.
 
 ## Context Scoping (Optional)
 
