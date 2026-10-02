@@ -39,6 +39,13 @@ describe('runtime capability contracts', () => {
     expect(STATIC_RUNTIME_CAPABILITIES).toContain('runtime.bootloader');
   });
 
+  it('distinguishes repaired replay from older builds with the same package version', () => {
+    expect(STATIC_RUNTIME_CAPABILITIES).toContain('runtime.accepted_update_replay');
+    const required = { required_capabilities: ['runtime.accepted_update_replay'] };
+    expect(evaluateRuntimeRequirements(required, { runtime_version: '0.16.0', capabilities: ['runtime.bootloader'] }).compatible).toBe(false);
+    expect(evaluateRuntimeRequirements(required, { runtime_version: '0.16.0', capabilities: [...STATIC_RUNTIME_CAPABILITIES] }).compatible).toBe(true);
+  });
+
   it('does not treat an unknown runtime version as compatible with a minimum version', () => {
     const result = evaluateRuntimeRequirements(
       { min_runtime_version: '0.10.0' },
