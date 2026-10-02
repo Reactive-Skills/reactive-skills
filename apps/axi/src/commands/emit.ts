@@ -6,11 +6,49 @@ import { getSuggestions } from '../suggestions.js';
 import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.js';
 
 
+const USAGE_SUGGESTION = 'Usage: reactive-skills-axi emit <skill> <signal> \'{"key":"value"}\' or \'@filepath.json\'';
+
+/**
+ * Splits emit arguments so a flag is never read as the skill, event ID, or signal.
+ */
+function parseEmitArgs(filteredArgs: string[]): { positionals: string[]; flagPayload?: string; unknownFlags: string[] } {
+  const positionals: string[] = [];
+  const unknownFlags: string[] = [];
+  let flagPayload: string | undefined;
+
+  for (let i = 0; i < filteredArgs.length; i++) {
+    const arg = filteredArgs[i];
+    if (arg === '--payload') {
+      flagPayload = filteredArgs[++i] ?? '';
+    } else if (arg.startsWith('--payload=')) {
+      flagPayload = arg.slice('--payload='.length);
+    } else if (arg.startsWith('-')) {
+      unknownFlags.push(arg);
+    } else {
+      positionals.push(arg);
+    }
+  }
+
+  return { positionals, flagPayload, unknownFlags };
+}
+
+const looksLikePayload = (arg: string | undefined): boolean => /^[{[@]/.test(arg?.trimStart() ?? '');
+
 export async function emitCommand(args: string[]): Promise<string> {
   const { jobId, idempotencyKey, filteredArgs } = extractJobFlag(args);
-  const skillName = filteredArgs[0];
+  const { positionals, flagPayload, unknownFlags } = parseEmitArgs(filteredArgs);
+  const skillName = positionals[0];
 
-  if (!skillName || filteredArgs.length < 2) {
+  if (unknownFlags.length > 0) {
+    const error = new AxiError(
+      `Unknown emit flag: ${unknownFlags.join(', ')}`,
+      'VALIDATION_ERROR',
+      ['Supported flags: --payload, --job, --idempotency-key', USAGE_SUGGESTION]
+    );
+    return renderOutput([renderError(error.message, error.code, error.suggestions)]);
+  }
+
+  if (!skillName || positionals.length < 2) {
     const error = new AxiError(
       'Missing arguments',
       'VALIDATION_ERROR',
@@ -30,21 +68,29 @@ export async function emitCommand(args: string[]): Promise<string> {
   let signalName: string;
   let payloadArgStr = '';
 
-  // Check if filteredArgs[1] is an event UUID / sortable-id (20+ chars) or a signal name
-  const looksLikeEventId = /^[0-9a-zA-Z_-]{20,}$/.test(filteredArgs[1]);
+  // A long signal name can resemble an event UUID / sortable-id (20+ chars), so the
+  // explicit form needs a signal after it rather than a payload.
+  const looksLikeEventId = /^[0-9a-zA-Z_-]{20,}$/.test(positionals[1]);
 
-  if (looksLikeEventId && filteredArgs.length >= 3) {
-    eventId = filteredArgs[1];
-    signalName = filteredArgs[2];
-    payloadArgStr = filteredArgs.slice(3).join(' ').trim();
+  if (looksLikeEventId && positionals.length >= 3 && !looksLikePayload(positionals[2])) {
+    eventId = positionals[1];
+    signalName = positionals[2];
+    payloadArgStr = positionals.slice(3).join(' ').trim();
   } else {
-    signalName = filteredArgs[1];
-    payloadArgStr = filteredArgs.slice(2).join(' ').trim();
+    signalName = positionals[1];
+    payloadArgStr = positionals.slice(2).join(' ').trim();
   }
 
-  // Handle --payload flag if used
-  if (payloadArgStr.startsWith('--payload')) {
-    payloadArgStr = payloadArgStr.replace(/^--payload\s*/, '').trim();
+  if (flagPayload !== undefined) {
+    if (payloadArgStr) {
+      const error = new AxiError(
+        'Payload given both positionally and with --payload',
+        'VALIDATION_ERROR',
+        ['Pass the payload once', USAGE_SUGGESTION]
+      );
+      return renderOutput([renderError(error.message, error.code, error.suggestions)]);
+    }
+    payloadArgStr = flagPayload.trim();
   }
 
   try {
@@ -68,7 +114,7 @@ export async function emitCommand(args: string[]): Promise<string> {
           const error = new AxiError(
             'Invalid JSON payload file: ' + filePath,
             'VALIDATION_ERROR',
-            ['Usage: reactive-skills-axi emit <skill> <signal> \'{"key":"value"}\' or \'@filepath.json\'']
+            [USAGE_SUGGESTION]
           );
           return renderOutput([renderError(error.message, error.code, error.suggestions)]);
         }
@@ -79,7 +125,7 @@ export async function emitCommand(args: string[]): Promise<string> {
           const error = new AxiError(
             'Invalid JSON payload',
             'VALIDATION_ERROR',
-            ['Usage: reactive-skills-axi emit <skill> <signal> \'{"key":"value"}\' or \'@filepath.json\'']
+            [USAGE_SUGGESTION]
           );
           return renderOutput([renderError(error.message, error.code, error.suggestions)]);
         }
