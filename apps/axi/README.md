@@ -2,11 +2,11 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.16.0:**
-> - `sync` distributes skills through a configurable physical central directory to linked or physical-copy agent directories.
-> - `sync` accepts comma-separated source, target, and physical-target paths, with `--central` for one-run overrides.
+> 🚀 **What's New in v0.16.1:**
+> - `emit <skill> <signal> --payload @file` works for long signal names, and unknown or duplicate payload flags are rejected.
+> - Signals handled by an ancestor state now transition instead of failing with `RUN_VERSION_CONFLICT`.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

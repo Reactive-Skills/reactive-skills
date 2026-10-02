@@ -8,6 +8,23 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-16-1",
+    "heading": "v0.16.1 (2026-10-02)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "Merge pull request #19 from Reactive-Skills/codex/sqlite-ancestor-dispatch",
+          "Merge branch 'main' into codex/sqlite-ancestor-dispatch",
+          "feat(runtime): advertise accepted update replay and add its coverage (#18)",
+          "fix(runtime): repair bubbling, refused-signal context, and emit flag parsing (#17)",
+          "fix(site): declare registry generator dependency (#16)",
+          "fix(runtime): preserve version checks during event bubbling"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-16-0",
     "heading": "v0.16.0 (2026-09-29)",
     "blocks": [

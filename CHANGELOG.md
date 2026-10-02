@@ -1,4 +1,13 @@
 
+## [0.16.1] - 2026-10-02
+
+- Merge pull request #19 from Reactive-Skills/codex/sqlite-ancestor-dispatch (788239c)
+- Merge branch 'main' into codex/sqlite-ancestor-dispatch (a48bd71)
+- feat(runtime): advertise accepted update replay and add its coverage (#18) (4aca73f)
+- fix(runtime): repair bubbling, refused-signal context, and emit flag parsing (#17) (2feac31)
+- fix(site): declare registry generator dependency (#16) (aff5aa2)
+- fix(runtime): preserve version checks during event bubbling (1960ad6)
+
 ## [0.16.0] - 2026-09-29
 
 - fix(runtime): resolve projection paths on symlinked workspaces (0838519)
