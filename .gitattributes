@@ -1,0 +1,2 @@
+# Keep LF in working trees so hashbang scripts parse and rewritten test fixtures match the index on Windows.
+* text=auto eol=lf
