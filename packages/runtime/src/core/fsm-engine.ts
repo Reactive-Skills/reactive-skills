@@ -232,6 +232,10 @@ export class FSMEngine {
       latestPath = this.resolveInitialPath([this.manifest.initial_state]);
     }
 
+    // A signal's context changes are durable only once the transition it caused is committed,
+    // so refused and unhandled signals replay without changing context.
+    const pendingSignalUpdates = new Map<string, Record<string, any>>();
+
     for (const e of eventsToReplay) {
       if (e.type === 'SKILL_INITIALIZED' && e.payload?.active_path) {
         latestPath = e.payload.active_path;
@@ -240,23 +244,19 @@ export class FSMEngine {
         }
       } else if (e.type === 'STATE_TRANSITION' && e.payload?.to) {
         latestPath = e.payload.to.split('.');
+        const causationId = e.causation_id || e.causationId;
+        const signalUpdates = causationId ? pendingSignalUpdates.get(causationId) : undefined;
+        if (signalUpdates) {
+          this.updateContext(signalUpdates);
+          pendingSignalUpdates.delete(causationId!);
+        }
       } else if (e.type === 'STATE_ENTRY_HOOK' && e.payload?.action?.set_context) {
         this.updateContext(e.payload.action.set_context);
       } else if (e.type === 'SIGNAL_EMITTED') {
-        if (this.manifest.context_keys) {
-          const incomingContextUpdates: Record<string, any> = {};
-          for (const key of this.manifest.context_keys) {
-            if (e.payload[key] !== undefined) {
-              incomingContextUpdates[key] = e.payload[key];
-            }
-          }
-          if (Object.keys(incomingContextUpdates).length > 0) {
-            this.updateContext(incomingContextUpdates);
-          }
-        }
-        if (e.payload?.contextUpdates) {
-          this.updateContext(e.payload.contextUpdates);
-        }
+        pendingSignalUpdates.set(e.id, {
+          ...this.contextKeyUpdates(e.payload),
+          ...(e.payload?.contextUpdates || {}),
+        });
       } else if (e.payload?.contextUpdates) {
         this.updateContext(e.payload.contextUpdates);
       }
@@ -314,6 +314,19 @@ export class FSMEngine {
 
   public updateContext(updates: Record<string, any>): void {
     this.context = { ...this.context, ...updates };
+  }
+
+  /**
+   * Payload fields named in the manifest's context_keys.
+   */
+  private contextKeyUpdates(payload: Record<string, any> | undefined): Record<string, any> {
+    const updates: Record<string, any> = {};
+    for (const key of this.manifest.context_keys || []) {
+      if (payload?.[key] !== undefined) {
+        updates[key] = payload[key];
+      }
+    }
+    return updates;
   }
 
   public getSkillDir(): string {
@@ -788,17 +801,11 @@ export class FSMEngine {
 
     this.turnsSinceLastSignal = 0;
 
-    // Merge incoming payload fields that match context_keys into the context
-    if (this.manifest.context_keys) {
-      const incomingContextUpdates: Record<string, any> = {};
-      for (const key of this.manifest.context_keys) {
-        if (payload[key] !== undefined) {
-          incomingContextUpdates[key] = payload[key];
-        }
-      }
-      if (Object.keys(incomingContextUpdates).length > 0) {
-        this.updateContext(incomingContextUpdates);
-      }
+    // Guards see payload fields that match context_keys; a refused signal restores the prior context.
+    const contextBeforeSignal = this.context;
+    const incomingContextUpdates = this.contextKeyUpdates(payload);
+    if (Object.keys(incomingContextUpdates).length > 0) {
+      this.updateContext(incomingContextUpdates);
     }
 
     // Bubble search: test from deepest leaf substate up to root
@@ -820,6 +827,7 @@ export class FSMEngine {
         }
 
         // Evaluate Guard & Snap-On Judgment
+        const guardRunVersion = this.eventStore.getRunVersion();
         const guardResult = await GuardEvaluator.evaluate(
           transDef.guard,
           transDef.guardFunction,
@@ -832,7 +840,7 @@ export class FSMEngine {
           transDef.judgment
         );
 
-        this.eventStore.assertRunVersion(signalRunVersion);
+        this.eventStore.assertRunVersion(guardRunVersion);
 
         this.eventStore.append(
           'GUARD_EVALUATED',
@@ -963,6 +971,7 @@ export class FSMEngine {
       }
     }
 
+    this.context = contextBeforeSignal;
     return {
       transitioned: false,
       previousState,

@@ -15,6 +15,7 @@ export const STATIC_RUNTIME_CAPABILITIES = [
   'context.routing',
   'context.preparation',
   'runtime.bootloader',
+  'runtime.accepted_update_replay',
 ] as const;
 
 export type RuntimeTransport = 'axi' | 'mcp';
