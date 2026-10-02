@@ -115,4 +115,23 @@ describe('refused signal context', () => {
     expect(fromHistory.getCurrentState()).toBe('AUDIT');
     expect(fromHistory.getContext()).toMatchObject({ attempt: 4, rejected: false });
   });
+
+  it('rebuilds exactly the context the live engine holds', async () => {
+    const { open } = workspace();
+    const engine = open();
+    await engine.handleSignal('SUBMITTED', { score: 0, contextUpdates: { attempt: 1 } });
+    await engine.handleSignal('RETRY', { contextUpdates: { attempt: 2 } });
+    await engine.handleSignal('NOTED', { note: 'draft', contextUpdates: { attempt: 99 } });
+    await engine.handleSignal('SUBMITTED', { score: 1, contextUpdates: { attempt: 3 } });
+    await engine.handleSignal('PASSED', { contextUpdates: { attempt: 98, ready: true } });
+    await engine.handleSignal('UNKNOWN', { contextUpdates: { attempt: 97 } });
+    const live = engine.getContext();
+    expect(live).toMatchObject({ attempt: 3 });
+    expect(live).not.toHaveProperty('note');
+    expect(live).not.toHaveProperty('ready');
+
+    expect(open().getContext()).toEqual(live);
+    vi.spyOn(EventStore.prototype, 'getLatestSnapshot').mockReturnValue(null);
+    expect(open().getContext()).toEqual(live);
+  });
 });

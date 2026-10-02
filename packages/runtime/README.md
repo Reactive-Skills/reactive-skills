@@ -120,6 +120,14 @@ states:
         guard: "event.payload.completed === true"
 ```
 
+## Signal Context
+
+A signal can update context through `contextUpdates` in its payload and through payload fields named in `context_keys`.
+Guards and judgments read the stored context plus the signal's `context_keys` fields, and they read its pending `contextUpdates` through `payload.contextUpdates`.
+A guard that compares old and new values, such as `payload.contextUpdates.version === context.version + 1`, therefore sees the stored value in `context`.
+The signal's updates become context only when its transition commits.
+A refused or unhandled signal stays in the event ledger but leaves context unchanged, both in the running engine and when a later process rehydrates the run.
+
 ## Context Scoping (Optional)
 
 For hierarchical skills with many substates, you can declare `context_scope` on individual states to limit the context variables passed into that state's prompt. This reduces token cost when revisiting states and enables delta-aware prompt delivery.
