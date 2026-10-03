@@ -331,7 +331,7 @@ describe('runSync', () => {
     expect(fs.existsSync(path.join(dest, 'alpha', 'extra_dir'))).toBe(false);
   });
 
-  it('removes nested runtime/control metadata from destination', () => {
+  it('mirrors skill-owned metadata and removes only destination entries absent from source', () => {
     createNestedMetadata(src, 'alpha');
     // Destination has extra metadata dirs
     fs.mkdirSync(path.join(dest, 'alpha'), { recursive: true });
@@ -345,18 +345,16 @@ describe('runSync', () => {
 
     const report = runSync({ sourceDir: src, targetDirs: [dest] });
 
-    // Destination has extra excluded dirs, so mirror runs (not unchanged)
+    // Different contents require a mirror, regardless of directory names.
     expect(report.results.filter(r => r.action === 'mirrored')).toHaveLength(1);
     expect(report.results.filter(r => r.action === 'backed_up')).toHaveLength(1);
     expect(fs.existsSync(path.join(dest, 'alpha', 'SKILL.md'))).toBe(true);
-    // Source's excluded dirs should not be copied
-    expect(fs.existsSync(path.join(dest, 'alpha', '.reactive'))).toBe(false);
-    expect(fs.existsSync(path.join(dest, 'alpha', 'node_modules'))).toBe(false);
-    expect(fs.existsSync(path.join(dest, 'alpha', 'dist'))).toBe(false);
-    // Destination's extra excluded dirs should be removed
-    expect(fs.existsSync(path.join(dest, 'alpha', '.reactive'))).toBe(false);
-    expect(fs.existsSync(path.join(dest, 'alpha', 'node_modules'))).toBe(false);
-    expect(fs.existsSync(path.join(dest, 'alpha', 'dist'))).toBe(false);
+    expect(fs.readFileSync(path.join(dest, 'alpha', '.reactive', 'config.json'), 'utf8')).toBe('{}');
+    expect(fs.readFileSync(path.join(dest, 'alpha', 'node_modules', 'pkg'), 'utf8')).toBe('content');
+    expect(fs.readFileSync(path.join(dest, 'alpha', 'dist', 'out.js'), 'utf8')).toBe('code');
+    expect(fs.existsSync(path.join(dest, 'alpha', '.reactive', 'old.json'))).toBe(false);
+    expect(fs.existsSync(path.join(dest, 'alpha', 'node_modules', 'old'))).toBe(false);
+    expect(fs.existsSync(path.join(dest, 'alpha', 'dist', 'old.js'))).toBe(false);
   });
 
   it('idempotent mirror reports unchanged when payload identical', () => {
@@ -530,7 +528,7 @@ describe('runSync', () => {
     }
   });
 
-  it('excludes runtime metadata from source distributable payload', () => {
+  it('includes skill-owned runtime metadata, tests and dependencies', () => {
     createSkill(src, 'alpha');
     // Add runtime metadata to source
     fs.mkdirSync(path.join(src, 'alpha', '.reactive'), { recursive: true });
@@ -543,13 +541,12 @@ describe('runSync', () => {
     const report = runSync({ sourceDir: src, targetDirs: [dest] });
 
     expect(report.results.filter(r => r.action === 'mirrored')).toHaveLength(1);
-    // None of the excluded dirs should appear in destination
-    expect(fs.existsSync(path.join(dest, 'alpha', '.reactive'))).toBe(false);
-    expect(fs.existsSync(path.join(dest, 'alpha', 'tests'))).toBe(false);
-    expect(fs.existsSync(path.join(dest, 'alpha', 'node_modules'))).toBe(false);
+    expect(fs.readFileSync(path.join(dest, 'alpha', '.reactive', 'config.json'), 'utf8')).toBe('{}');
+    expect(fs.readFileSync(path.join(dest, 'alpha', 'tests', 'test.ts'), 'utf8')).toBe('test');
+    expect(fs.readFileSync(path.join(dest, 'alpha', 'node_modules', 'pkg'), 'utf8')).toBe('content');
   });
 
-  it('excludes .sync-backups from source discovery and payload copying', () => {
+  it('excludes parent .sync-backups from discovery but preserves the name inside a skill', () => {
     createSkill(src, '.sync-backups');
     createSkill(src, 'alpha');
     fs.mkdirSync(path.join(src, 'alpha', '.sync-backups'), { recursive: true });
@@ -559,7 +556,7 @@ describe('runSync', () => {
 
     expect(report.skillsFound).toBe(1);
     expect(fs.existsSync(path.join(dest, '.sync-backups'))).toBe(false);
-    expect(fs.existsSync(path.join(dest, 'alpha', '.sync-backups'))).toBe(false);
+    expect(fs.readFileSync(path.join(dest, 'alpha', '.sync-backups', 'old.md'), 'utf8')).toBe('old');
   });
 
   it('removes extra empty directories from destination (mirror semantics)', () => {
@@ -578,7 +575,7 @@ describe('runSync', () => {
     expect(report2.results.filter(r => r.action === 'unchanged')).toHaveLength(1);
   });
 
-  it('detects excluded files nested anywhere in destination', () => {
+  it('removes extra destination files even when their names resemble runtime metadata', () => {
     createSkill(src, 'alpha');
     fs.mkdirSync(path.join(src, 'alpha', 'sub'), { recursive: true });
     fs.writeFileSync(path.join(src, 'alpha', 'sub', 'keep.txt'), 'keep');
@@ -595,7 +592,7 @@ describe('runSync', () => {
     expect(report2.results.filter(r => r.action === 'unchanged')).toHaveLength(1);
   });
 
-  it('detects excluded directories nested anywhere in destination, not only top level', () => {
+  it('removes extra destination directories at any depth', () => {
     createSkill(src, 'alpha');
     // First sync so the destination exists and is identical
     runSync({ sourceDir: src, targetDirs: [dest] });
@@ -603,11 +600,11 @@ describe('runSync', () => {
       runSync({ sourceDir: src, targetDirs: [dest] }).results.filter(r => r.action === 'unchanged'),
     ).toHaveLength(1);
 
-    // Inject a nested excluded dir deep inside the destination
+    // This directory is absent from the source, so it must be removed.
     fs.mkdirSync(path.join(dest, 'alpha', 'sub', 'node_modules'), { recursive: true });
     fs.writeFileSync(path.join(dest, 'alpha', 'sub', 'node_modules', 'pkg'), 'junk');
 
-    // Should no longer be "unchanged" because a nested excluded dir exists
+    // The additional destination entry means the trees differ.
     const report = runSync({ sourceDir: src, targetDirs: [dest] });
     expect(report.results.filter(r => r.action === 'mirrored')).toHaveLength(1);
     expect(fs.existsSync(path.join(dest, 'alpha', 'sub', 'node_modules'))).toBe(false);

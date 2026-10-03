@@ -5,16 +5,16 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.1)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.2)
 
 ---
 
-> 🚀 **What's New in v0.16.1:**
-> - Signals handled by an ancestor state now transition instead of failing with a run version conflict.
-> - A refused or unhandled signal leaves context unchanged, both live and after a run is rehydrated.
-> - `emit` never reads a flag such as `--payload` as the signal name, even after a long signal.
+> 🚀 **What's New in v0.16.2:**
+> - Skill sync preserves all contents inside each selected skill, while still filtering repository folders at the source root.
+> - Nested links and full backups survive sync without traversing link targets.
+> - Creation help is read-only; unsupported leading options are rejected before files are written.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.1) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.2) · [View Changelog](CHANGELOG.md)
 
 ---
 
@@ -192,6 +192,9 @@ skills/<skill-name>/
 The synchronizer copies skills from ordered local source directories into a physical central directory (default `~/.agents/skills`). The first source containing a skill name wins. Agent satellite directories then link to the central copy. Changes in a source repository reach the central directory on the next sync; linked satellites see those central changes immediately. Satellites that cannot read links receive physical copies, refreshed on each sync when their content changes.
 
 Only immediate child folders containing `SKILL.md`, `skill.md`, or `skill.yaml` are distributed. Unrelated folders at a source root are ignored. Sync reads local files; it does not fetch Git updates.
+Within a selected skill, sync preserves every file and directory, including scripts, tests, hidden files and empty directories.
+Nested symbolic links remain links; sync does not traverse their targets.
+Repository-folder exclusions apply only when discovering skills at the source root.
 
 Configure the layout in `~/.agents/sync.json`:
 

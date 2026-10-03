@@ -63,7 +63,8 @@ describe('source → central → satellite distribution', () => {
     expect(fs.existsSync(path.join(physical, 'unrelated'))).toBe(false);
     expect(fs.existsSync(path.join(central, 'invalid-folder'))).toBe(false);
     expect(fs.readFileSync(path.join(central, 'private-only', 'SKILL.md'), 'utf8')).toBe('# private only\n');
-    expect(fs.existsSync(path.join(central, 'shared', '.DS_Store'))).toBe(false);
+    expect(fs.readFileSync(path.join(central, 'shared', '.DS_Store'), 'utf8')).toBe('junk');
+    expect(fs.readFileSync(path.join(physical, 'shared', '.DS_Store'), 'utf8')).toBe('junk');
     expect(fs.readlinkSync(path.join(linked, 'shared'))).toBe(path.join(central, 'shared'));
     expect(fs.lstatSync(path.join(physical, 'shared')).isDirectory()).toBe(true);
     expect(fs.lstatSync(path.join(physical, 'shared')).isSymbolicLink()).toBe(false);

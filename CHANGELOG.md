@@ -1,4 +1,8 @@
 
+## [0.16.2] - 2026-10-03
+
+- fix(sync): preserve complete skill contents and read-only creation help (6f34cd1)
+
 ## [0.16.1] - 2026-10-02
 
 - Merge pull request #19 from Reactive-Skills/codex/sqlite-ancestor-dispatch (788239c)

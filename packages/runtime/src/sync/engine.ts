@@ -14,13 +14,6 @@ const NEVER_SKILLS = new Set([
   '.cache', '.tmp', '.idea', '.vscode', '.github', 'docs', 'tmp', 'coverage',
 ]);
 
-const EXCLUDE_FROM_SKILL = new Set([
-  '.git', '.docs', '.reactive', '.playwright-mcp', '.backup', '.sync-backups',
-  'tests', 'scripts', 'node_modules', 'dist', '.DS_Store', '.cache', '.tmp',
-  '.idea', '.vscode', '.pytest_cache', '.venv', '__pycache__', 'coverage',
-  '.turbo', 'tmp',
-]);
-
 export function discoverSkills(sourceDir: string): SkillEntry[] {
   if (!fs.existsSync(sourceDir)) return [];
   const entries = fs.readdirSync(sourceDir, { withFileTypes: true });
@@ -52,13 +45,14 @@ function getDistributableFiles(skillPath: string): string[] {
   function walk(dir: string, rel = ''): void {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const e of entries) {
-      if (EXCLUDE_FROM_SKILL.has(e.name)) continue;
       const full = path.join(dir, e.name);
       const relPath = rel ? path.join(rel, e.name) : e.name;
       if (e.isDirectory()) {
         walk(full, relPath);
-      } else if (e.isFile()) {
+      } else if (e.isFile() || e.isSymbolicLink()) {
         files.push(relPath);
+      } else {
+        throw new Error(`Unsupported skill entry: ${full}`);
       }
     }
   }
@@ -67,8 +61,11 @@ function getDistributableFiles(skillPath: string): string[] {
 }
 
 function hashFile(filePath: string): string {
+  if (fs.lstatSync(filePath).isSymbolicLink()) {
+    return crypto.createHash('sha256').update('link\0').update(fs.readlinkSync(filePath)).digest('hex');
+  }
   const content = fs.readFileSync(filePath);
-  return crypto.createHash('sha256').update(content).digest('hex');
+  return crypto.createHash('sha256').update('file\0').update(content).digest('hex');
 }
 
 function getFileHashes(skillPath: string, files: string[]): Map<string, string> {
@@ -79,19 +76,6 @@ function getFileHashes(skillPath: string, files: string[]): Map<string, string> 
   return hashes;
 }
 
-function hasExcludedEntryAnywhere(dirPath: string): boolean {
-  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-  for (const e of entries) {
-    if (EXCLUDE_FROM_SKILL.has(e.name)) return true;
-    if (e.isSymbolicLink()) return true;
-    if (e.isDirectory()) {
-      const full = path.join(dirPath, e.name);
-      if (hasExcludedEntryAnywhere(full)) return true;
-    }
-  }
-  return false;
-}
-
 function getDistributableEntries(skillPath: string): string[] {
   const entries: string[] = [];
   function walk(dir: string, rel = ''): void {
@@ -99,12 +83,13 @@ function getDistributableEntries(skillPath: string): string[] {
     const files: string[] = [];
     const all = fs.readdirSync(dir, { withFileTypes: true });
     for (const e of all) {
-      if (EXCLUDE_FROM_SKILL.has(e.name)) continue;
       const relPath = rel ? path.join(rel, e.name) : e.name;
       if (e.isDirectory()) {
         subdirs.push({ rel: relPath, full: path.join(dir, e.name) });
-      } else if (e.isFile()) {
+      } else if (e.isFile() || e.isSymbolicLink()) {
         files.push(relPath);
+      } else {
+        throw new Error(`Unsupported skill entry: ${path.join(dir, e.name)}`);
       }
     }
     for (const d of subdirs.sort((a, b) => a.rel.localeCompare(b.rel))) {
@@ -143,7 +128,6 @@ export function directoriesEqual(srcPath: string, destPath: string): boolean {
     if (destHashes.get(file) !== hash) return false;
   }
 
-  if (hasExcludedEntryAnywhere(destPath)) return false;
   return true;
 }
 
@@ -152,13 +136,25 @@ function copyToStaging(srcPath: string, stagingPath: string): void {
   fs.mkdirSync(stagingPath, { recursive: true });
 
   for (const e of entries) {
-    if (EXCLUDE_FROM_SKILL.has(e.name)) continue;
     const s = path.join(srcPath, e.name);
     const d = path.join(stagingPath, e.name);
     if (e.isDirectory()) {
       copyToStaging(s, d);
     } else if (e.isFile()) {
       fs.copyFileSync(s, d);
+    } else if (e.isSymbolicLink()) {
+      // Recreate the link itself; cpSync cannot copy dangling links on Windows.
+      let linkType: 'file' | 'dir' = 'file';
+      if (process.platform === 'win32') {
+        try {
+          if (fs.statSync(s).isDirectory()) linkType = 'dir';
+        } catch (err: any) {
+          if (err.code !== 'ENOENT' && err.code !== 'ELOOP') throw err;
+        }
+      }
+      fs.symlinkSync(fs.readlinkSync(s), d, linkType);
+    } else {
+      throw new Error(`Unsupported skill entry: ${s}`);
     }
   }
 }
@@ -172,16 +168,7 @@ function createExternalBackup(targetDir: string, skillName: string): string {
 
   const destSkillPath = path.join(targetDir, skillName);
   if (fs.existsSync(destSkillPath)) {
-    const entries = fs.readdirSync(destSkillPath, { withFileTypes: true });
-    for (const e of entries) {
-      const s = path.join(destSkillPath, e.name);
-      const d = path.join(backupPath, e.name);
-      if (e.isDirectory()) {
-        fs.cpSync(s, d, { recursive: true });
-      } else if (e.isFile()) {
-        fs.copyFileSync(s, d);
-      }
-    }
+    copyToStaging(destSkillPath, backupPath);
   }
   return backupPath;
 }
@@ -516,17 +503,7 @@ export function runSync(options: SyncOptions): SyncReport {
         // destination is never lost.
         if (backupPath && !fs.existsSync(destPath)) {
           const destSkillPath = path.join(targetDir, skill.name);
-          const entries = fs.readdirSync(backupPath, { withFileTypes: true });
-          fs.mkdirSync(destSkillPath, { recursive: true });
-          for (const e of entries) {
-            const s = path.join(backupPath, e.name);
-            const d = path.join(destSkillPath, e.name);
-            if (e.isDirectory()) {
-              fs.cpSync(s, d, { recursive: true });
-            } else if (e.isFile()) {
-              fs.copyFileSync(s, d);
-            }
-          }
+          copyToStaging(backupPath, destSkillPath);
         }
         report.errors.push(
           `Mirror failed for ${skill.name} to ${targetDir}: ${err.message}`,

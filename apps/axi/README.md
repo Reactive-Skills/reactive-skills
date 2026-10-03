@@ -2,11 +2,11 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.16.1:**
-> - `emit <skill> <signal> --payload @file` works for long signal names, and unknown or duplicate payload flags are rejected.
-> - Signals handled by an ancestor state now transition instead of failing with `RUN_VERSION_CONFLICT`.
+> 🚀 **What's New in v0.16.2:**
+> - `init --help` and `init -h` show usage without creating files; unsupported leading options fail before writes.
+> - Source-aware sync preserves complete skill contents, including bundled helpers and tests.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.2) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

@@ -2,11 +2,11 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.16.1:**
-> - Bubbled signals keep run version checks valid, so ancestor handlers transition.
-> - Refused and unhandled signals persist no context updates, live or on replay, and `runtime.accepted_update_replay` lets skills require this behavior.
+> 🚀 **What's New in v0.16.2:**
+> - Sync preserves all skill-owned files, directories and nested links, with complete backups and rollback copies.
+> - Parent-directory discovery exclusions remain in place; nested link targets are not traversed.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.2) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
