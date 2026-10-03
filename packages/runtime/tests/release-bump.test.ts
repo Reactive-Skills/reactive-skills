@@ -68,7 +68,8 @@ function createReleaseFixture(options: { includePreviousTag?: boolean; syncExitC
   );
 
   const git = (...args: string[]) =>
-    spawnSync('git', args, { cwd: tempRoot, encoding: 'utf8', stdio: 'pipe' });
+    spawnSync('git', args, { cwd: tempRoot, encoding: 'utf8', stdio: 'pipe', timeout: 10_000,
+      env: { ...process.env, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.fsmonitor', GIT_CONFIG_VALUE_0: 'false' } });
   for (const args of [
     ['init'],
     ['config', 'user.name', 'Release Test'],
@@ -98,6 +99,7 @@ function runBump(runtimeRoot: string, env: NodeJS.ProcessEnv = process.env, requ
   return spawnSync(process.execPath, [bumpScript, requestedBump], {
     cwd: runtimeRoot,
     encoding: 'utf8',
+    timeout: 10_000,
     env,
   });
 }
@@ -119,7 +121,8 @@ function failingCommandEnv(root: string, name: 'pnpm' | 'npm', exitCode: number)
   return { ...process.env, [pathVariable]: `${binRoot}${path.delimiter}${existingPath}` };
 }
 
-describe('release version bump', () => {
+// Real Git, package-manager and archive processes exceed five seconds on Windows.
+describe('release version bump', { timeout: 15_000 }, () => {
   it('uses the previous version tag, preserves skill versions, and keeps archived tarballs', () => {
     const fixture = createReleaseFixture();
     const result = runBump(fixture.runtimeRoot);

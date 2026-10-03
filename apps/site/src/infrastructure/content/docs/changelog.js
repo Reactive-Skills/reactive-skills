@@ -8,6 +8,18 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-16-2",
+    "heading": "v0.16.2 (2026-10-03)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "fix(sync): preserve complete skill contents and read-only creation help"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-16-1",
     "heading": "v0.16.1 (2026-10-02)",
     "blocks": [
