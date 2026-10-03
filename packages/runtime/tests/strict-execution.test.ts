@@ -28,7 +28,7 @@ describe('Strict Execution Mode', () => {
     it('should auto-abort after max_idle_turns consecutive recordTurnStart() calls without a signal', async () => {
       const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
       const eventStore = new EventStore({ inMemory: true });
-      const engine = new FSMEngine({ skillDir, eventStore });
+      const engine = new FSMEngine({ skillDir, eventStore, workspaceDir: tempDir });
 
       expect(engine.isStrictExecution()).toBe(true);
 
@@ -50,7 +50,7 @@ describe('Strict Execution Mode', () => {
     it('should reset turn counter when emitting any signal', async () => {
       const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
       const eventStore = new EventStore({ inMemory: true });
-      const engine = new FSMEngine({ skillDir, eventStore });
+      const engine = new FSMEngine({ skillDir, eventStore, workspaceDir: tempDir });
 
       engine.recordTurnStart();
       engine.recordTurnStart();
@@ -68,7 +68,7 @@ describe('Strict Execution Mode', () => {
     it('should never auto-abort in non-strict mode', async () => {
       const skillDir = path.resolve(tempDir, 'skills', '_test_hitl_skill');
       const eventStore = new EventStore({ inMemory: true });
-      const engine = new FSMEngine({ skillDir, eventStore });
+      const engine = new FSMEngine({ skillDir, eventStore, workspaceDir: tempDir });
 
       expect(engine.isStrictExecution()).toBe(false);
 
@@ -81,7 +81,7 @@ describe('Strict Execution Mode', () => {
     it('should treat BYPASS_DETECTED state as terminal', async () => {
       const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
       const eventStore = new EventStore({ inMemory: true });
-      const engine = new FSMEngine({ skillDir, eventStore });
+      const engine = new FSMEngine({ skillDir, eventStore, workspaceDir: tempDir });
 
       // Trigger bypass
       engine.recordTurnStart();
@@ -99,7 +99,7 @@ describe('Strict Execution Mode', () => {
     it('should not call recordTurnStart when already in bypass state', () => {
       const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
       const eventStore = new EventStore({ inMemory: true });
-      const engine = new FSMEngine({ skillDir, eventStore });
+      const engine = new FSMEngine({ skillDir, eventStore, workspaceDir: tempDir });
 
       // Trigger bypass
       engine.recordTurnStart();
@@ -116,14 +116,14 @@ describe('Strict Execution Mode', () => {
     it('should restore turnsSinceLastSignal from event history', () => {
       const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
       const eventStore = new EventStore({ inMemory: true });
-      const engine1 = new FSMEngine({ skillDir, eventStore });
+      const engine1 = new FSMEngine({ skillDir, eventStore, workspaceDir: tempDir });
 
       engine1.recordTurnStart();
       engine1.recordTurnStart();
       expect(engine1.getTurnsSinceLastSignal()).toBe(2);
 
       // Create a new engine with the same event store - should rehydrate
-      const engine2 = new FSMEngine({ skillDir, eventStore });
+      const engine2 = new FSMEngine({ skillDir, eventStore, workspaceDir: tempDir });
       expect(engine2.getTurnsSinceLastSignal()).toBe(2);
       expect(engine2.isBypassDetected()).toBe(false);
     });
@@ -131,7 +131,7 @@ describe('Strict Execution Mode', () => {
     it('should restore inBypassState from event history', () => {
       const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
       const eventStore = new EventStore({ inMemory: true });
-      const engine1 = new FSMEngine({ skillDir, eventStore });
+      const engine1 = new FSMEngine({ skillDir, eventStore, workspaceDir: tempDir });
 
       engine1.recordTurnStart();
       engine1.recordTurnStart();
@@ -139,7 +139,7 @@ describe('Strict Execution Mode', () => {
       expect(engine1.isBypassDetected()).toBe(true);
 
       // Create a new engine with the same event store
-      const engine2 = new FSMEngine({ skillDir, eventStore });
+      const engine2 = new FSMEngine({ skillDir, eventStore, workspaceDir: tempDir });
       expect(engine2.isBypassDetected()).toBe(true);
       expect(engine2.getCurrentState()).toBe('BYPASS_DETECTED');
     });

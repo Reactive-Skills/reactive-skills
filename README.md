@@ -192,6 +192,9 @@ skills/<skill-name>/
 The synchronizer copies skills from ordered local source directories into a physical central directory (default `~/.agents/skills`). The first source containing a skill name wins. Agent satellite directories then link to the central copy. Changes in a source repository reach the central directory on the next sync; linked satellites see those central changes immediately. Satellites that cannot read links receive physical copies, refreshed on each sync when their content changes.
 
 Only immediate child folders containing `SKILL.md`, `skill.md`, or `skill.yaml` are distributed. Unrelated folders at a source root are ignored. Sync reads local files; it does not fetch Git updates.
+Within a selected skill, sync preserves every file and directory, including scripts, tests, hidden files and empty directories.
+Nested symbolic links remain links; sync does not traverse their targets.
+Repository-folder exclusions apply only when discovering skills at the source root.
 
 Configure the layout in `~/.agents/sync.json`:
 

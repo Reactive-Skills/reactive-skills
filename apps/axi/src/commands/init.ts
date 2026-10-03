@@ -158,6 +158,13 @@ function createSkillReleaseJson(name: string): string {
 }
 
 export async function initCommand(args: string[]): Promise<string> {
+  if (args.includes('--help') || args.includes('-h')) {
+    return 'Usage: reactive-skills-axi init <name>\n\n' +
+      'Create a reactive skill in skills/<name>/ under the current directory.\n' +
+      'Options: --help, -h  Show this help without creating files.\n' +
+      'Example: reactive-skills-axi init my-skill';
+  }
+
   const name = args[0];
 
   if (!name) {
@@ -169,6 +176,14 @@ export async function initCommand(args: string[]): Promise<string> {
     return renderOutput([
       renderError(error.message, error.code, error.suggestions),
     ]);
+  }
+
+  if (name.startsWith('-')) {
+    throw new AxiError(
+      'Unsupported option: ' + name,
+      'VALIDATION_ERROR',
+      ['Usage: reactive-skills-axi init <name>', 'Run reactive-skills-axi init --help for creation usage']
+    );
   }
 
   const skillPath = path.join(SKILLS_DIR, name);
