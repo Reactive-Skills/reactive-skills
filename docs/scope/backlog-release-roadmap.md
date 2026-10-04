@@ -10,6 +10,7 @@ Baseline: v0.16.2 on npm, 15 open issues, 2 open PRs (both CI green, mergeable).
 - Each train runs as its own jsm-workflow job (`--job r<N>-<theme>`).
 - Approval covers branches, PRs, and merges; stop before every tag and npm publish for explicit go.
 - R1b added: fix ameliorate and resume-manager drift by migrating to the intended `min_probability` values; only those two skills.
+- #22 split: a Jev outage refuses and stays in state in v0.17.1; without Jev, gates stay self-reported but labeled in v0.17.1 and move to human approval in v0.18.0.
 
 ## Release trains
 
@@ -17,8 +18,8 @@ Baseline: v0.16.2 on npm, 15 open issues, 2 open PRs (both CI green, mergeable).
 | --- | --- | --- | --- | --- |
 | R1 | v0.17.0 | Probability thresholds (ready now) | PR #35 (SECURITY.md), PR #27 (closes #23, #25) | S |
 | R1b | skill releases | Guard contract drift caught by R1 | ameliorate `PLANS_VERIFIED`, resume-manager `RECORDED` migrated to `min_probability` | S |
-| R2 | v0.17.1 | Gate integrity | #28 test leak, #22 fail-closed script fallback, #15 adapter_hint tests, docs, validate warning | S-M |
-| R3 | v0.18.0 | Authoring diagnostics | #32 refusal reasons, #29 unknown-key lint, #10 guard module-format preflight | M |
+| R2 | v0.17.1 | Gate integrity | #28 test leak, #22 part 1 (Jev outage refuses and stays in state; no-Jev self-approval labeled), #15 adapter_hint tests, docs, validate warning | S-M |
+| R3 | v0.18.0 | Authoring diagnostics | #32 refusal reasons, #22 part 2 (human approval for gates no adapter can judge), #29 unknown-key lint, #10 guard module-format preflight | M |
 | R4 | v0.19.0 | Workspace binding | #14 + #26 (same root cause: cwd-scoped store) | M-L |
 | R5 | v0.20.0 | Guard context | #31 run-history view for guards, #24 Jev `context_keys` | M |
 | R6 | v0.21.0 | Sandbox opt-in | #34 phase 1 (isolate behind `guard_execution`, default `trusted`), #33 `vet` + trust record | L |
@@ -29,7 +30,7 @@ Baseline: v0.16.2 on npm, 15 open issues, 2 open PRs (both CI green, mergeable).
 
 - R1 first: already reviewed by CI, closes 2 issues, unblocks R2 and R3 (both touch `judgment-engine.ts`, `validate.ts`).
 - #28 first inside R2: every later RED/GREEN cycle runs without leaking `.docs/jobs` into the repo root.
-- #22 is fail-open on semantic gates during a Jev outage, highest correctness risk, small fix.
+- #22 is fail-open on semantic gates, highest correctness risk; split in two so no user gets stuck (see Judgment policy without Jev).
 - #32 before #34: sandbox returns `{ passed, reason }` using the #32 contract.
 - #31 before #34: sandbox must inject the history view, so design it first.
 - #10 informs the #34 in-isolate CommonJS loader.
@@ -53,6 +54,20 @@ Baseline: v0.16.2 on npm, 15 open issues, 2 open PRs (both CI green, mergeable).
 4. Tag `vX.Y.Z` on merged main, `publish.yml` publishes npm + GitHub release.
 5. Verify `npm view @reactive-skills/runtime version`, `@reactive-skills/axi`, GH release.
 6. Cortex note, delete merged branches and worktrees.
+
+## Judgment policy without Jev (#22)
+
+Today, the script adapter decides any criterion it cannot compile from the payload: `exit_code === 0` or `success: true` passes a predicate, `payload.choice` picks a categorical label, and `payload.score` sets an evaluation score.
+This happens as the fallback during a Jev outage and as the primary adapter whenever `TYPESAFE_API_KEY` is not set, so the agent approves its own semantic gates.
+Making the script adapter fail closed everywhere would block every semantic gate for users without Jev and could loop through `fallback_target` states.
+
+| Case | v0.17.1 (R2) | v0.18.0 (R3) |
+| --- | --- | --- |
+| Jev configured, but it fails (outage, timeout, open circuit) | Refuse the signal and stay in the current state; no `fallback_target` routing; the reason says Jev is unavailable and to retry | Unchanged |
+| Jev not configured | Keep today's decision, but label it in the emit result and the `GUARD_EVALUATED` event as self-reported | Ask the human to approve the gate, with a clear message |
+| Executable JavaScript criterion | Evaluated normally by the script adapter | Unchanged |
+
+Predicate, categorical, and evaluation judgments all follow this policy.
 
 ## R1 extra gate
 
