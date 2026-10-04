@@ -1,10 +1,21 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import { FSMEngine } from '../src/core/fsm-engine.js';
 import { EventStore } from '../src/core/event-store.js';
 
 describe('Hierarchical State Machine (HSM): Bubbling & Lifecycle Hooks', () => {
+  // Engines write their stores under workspaceDir; keep them out of the repository (#28).
+  const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsa-hsm-test-'));
+  afterAll(() => {
+    try {
+      fs.rmSync(workspaceDir, { recursive: true, force: true });
+    } catch {
+      // Windows may still hold engine files open.
+    }
+  });
+
   const tempSkillDir = path.resolve(process.cwd(), 'skills', '_test_hsm_skill');
 
   beforeEach(() => {
@@ -79,7 +90,7 @@ states:
 
   it('should execute on_enter hook and set_context on initial state boot', () => {
     const eventStore = new EventStore({ inMemory: true });
-    const engine = new FSMEngine({ skillDir: tempSkillDir, eventStore });
+    const engine = new FSMEngine({ skillDir: tempSkillDir, workspaceDir, eventStore });
 
     expect(engine.getCurrentState()).toBe('EXPLORE');
     expect(engine.getContext().hook_count).toBe(1);
@@ -91,7 +102,7 @@ states:
 
   it('should auto-initialize to nested substate (initial_substate) and execute sequential entry hooks', async () => {
     const eventStore = new EventStore({ inMemory: true });
-    const engine = new FSMEngine({ skillDir: tempSkillDir, eventStore });
+    const engine = new FSMEngine({ skillDir: tempSkillDir, workspaceDir, eventStore });
 
     // Transition from EXPLORE -> ACTIVE_WORK (which resolves to ACTIVE_WORK.TASK_A)
     const res = await engine.handleSignal('START_WORK');
@@ -109,7 +120,7 @@ states:
 
   it('should bubble unhandled events up to ancestor states', async () => {
     const eventStore = new EventStore({ inMemory: true });
-    const engine = new FSMEngine({ skillDir: tempSkillDir, eventStore });
+    const engine = new FSMEngine({ skillDir: tempSkillDir, workspaceDir, eventStore });
 
     // Move into ACTIVE_WORK.TASK_A
     await engine.handleSignal('START_WORK');
@@ -131,7 +142,7 @@ states:
 
   it('should transition between sibling substates cleanly', async () => {
     const eventStore = new EventStore({ inMemory: true });
-    const engine = new FSMEngine({ skillDir: tempSkillDir, eventStore });
+    const engine = new FSMEngine({ skillDir: tempSkillDir, workspaceDir, eventStore });
 
     await engine.handleSignal('START_WORK');
     expect(engine.getCurrentState()).toBe('ACTIVE_WORK.TASK_A');

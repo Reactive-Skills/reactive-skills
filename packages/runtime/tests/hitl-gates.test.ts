@@ -1,10 +1,21 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import { FSMEngine } from '../src/core/fsm-engine.js';
 import { EventStore } from '../src/core/event-store.js';
 
 describe('Human-in-the-Loop (HITL) State Gates', () => {
+  // Engines write their stores under workspaceDir; keep them out of the repository (#28).
+  const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsa-hitl-test-'));
+  afterAll(() => {
+    try {
+      fs.rmSync(workspaceDir, { recursive: true, force: true });
+    } catch {
+      // Windows may still hold engine files open.
+    }
+  });
+
   const tempSkillDir = path.resolve(process.cwd(), 'skills', '_test_hitl_skill');
 
   beforeEach(() => {
@@ -59,7 +70,7 @@ states:
 
   it('should detect human gate and format XML directives in prompt slice', async () => {
     const eventStore = new EventStore({ inMemory: true });
-    const engine = new FSMEngine({ skillDir: tempSkillDir, eventStore });
+    const engine = new FSMEngine({ skillDir: tempSkillDir, workspaceDir, eventStore });
 
     expect(engine.isWaitingForHuman()).toBe(false);
 
@@ -79,7 +90,7 @@ states:
 
   it('should transition to EXECUTION when user approves via onHumanResponse', async () => {
     const eventStore = new EventStore({ inMemory: true });
-    const engine = new FSMEngine({ skillDir: tempSkillDir, eventStore });
+    const engine = new FSMEngine({ skillDir: tempSkillDir, workspaceDir, eventStore });
 
     await engine.handleSignal('DRAFT_READY');
     expect(engine.getCurrentState()).toBe('PLAN_APPROVAL');
@@ -103,7 +114,7 @@ states:
 
   it('should loop back to PLAN_DRAFT with feedback when user requests changes', async () => {
     const eventStore = new EventStore({ inMemory: true });
-    const engine = new FSMEngine({ skillDir: tempSkillDir, eventStore });
+    const engine = new FSMEngine({ skillDir: tempSkillDir, workspaceDir, eventStore });
 
     await engine.handleSignal('DRAFT_READY');
     expect(engine.getCurrentState()).toBe('PLAN_APPROVAL');
@@ -123,7 +134,7 @@ states:
 
   it('should transition automatically from ask_question tool output', async () => {
     const eventStore = new EventStore({ inMemory: true });
-    const engine = new FSMEngine({ skillDir: tempSkillDir, eventStore });
+    const engine = new FSMEngine({ skillDir: tempSkillDir, workspaceDir, eventStore });
 
     await engine.handleSignal('DRAFT_READY');
 

@@ -7,7 +7,7 @@ Decision record: `docs/adr/0011-judgment-outage-refusal-and-self-reported-decisi
 
 ## 1. Test output containment (#28)
 
-1. Every runtime and AXI test that constructs an engine with a projecting skill passes a per-test temporary `workspaceDir` and removes it afterwards.
+1. Every runtime and AXI test that constructs an engine, or a file-backed event store, passes a temporary `workspaceDir` and removes it afterwards, so neither projections nor ledger stores land in the repository; containment is verified from a clean checkout state.
 2. A Vitest global setup in the runtime and AXI packages records directories up to three levels under `.docs/` and `.reactive/` at the repository root, in `packages/runtime`, and in `apps/axi` (deeper run folders inside skill stores are ignored so concurrent agent runs do not trip it), and its teardown fails the run when new ones appear; a permanent test covers the guard.
 3. Leaked `.docs/jobs/<id>/` folders at the repository root whose only file is `test-fsm-summary.md` are removed once, after the fix lands.
 

@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import { LegacySkillAdapter } from '../src/core/legacy-adapter.js';
@@ -6,6 +7,16 @@ import { FSMEngine } from '../src/core/fsm-engine.js';
 import { EventStore } from '../src/core/event-store.js';
 
 describe('Legacy Skill Adapter & Converter', () => {
+  // Engines write their stores under workspaceDir; keep them out of the repository (#28).
+  const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsa-legacy-test-'));
+  afterAll(() => {
+    try {
+      fs.rmSync(workspaceDir, { recursive: true, force: true });
+    } catch {
+      // Windows may still hold engine files open.
+    }
+  });
+
   const legacyDir = path.resolve(process.cwd(), 'skills', '_test_legacy_skill');
 
   beforeEach(() => {
@@ -51,7 +62,7 @@ description: Applies clean code rules for naming and modular functions
     expect(fs.existsSync(path.join(upgradedDir, 'templates', 'summary.md.hbs'))).toBe(true);
 
     // Boot it with FSMEngine to confirm valid execution!
-    const engine = new FSMEngine({ skillDir: upgradedDir, eventStore: new EventStore({ inMemory: true }) });
+    const engine = new FSMEngine({ skillDir: upgradedDir, workspaceDir, eventStore: new EventStore({ inMemory: true }) });
     expect(engine.getCurrentState()).toBe('EXECUTION');
     const prompt = engine.generatePromptSlice();
     expect(prompt.rawPrompt).toContain('Meaningful names');
