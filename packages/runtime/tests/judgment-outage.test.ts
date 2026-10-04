@@ -372,6 +372,55 @@ states:
     });
   });
 
+  describe('rejected credentials (v0.17.2)', () => {
+    const httpError = (status: number, message: string) => Object.assign(new Error(message), { status });
+    const failingJev = (error: Error) => ({
+      id: 'jev', supports: () => true, isConfigured: () => true, isAvailable: async () => true,
+      evaluate: async () => { throw error; },
+    });
+
+    it.each([401, 403])('refuses on HTTP %i and tells the operator to fix or unset TYPESAFE_API_KEY', async (status) => {
+      JudgmentEngine.registerAdapter(failingJev(httpError(status, `${status} Cannot authenticate with the server.`)));
+      const engine = newEngine();
+
+      const result = await engine.handleSignal('SUBMIT', { exit_code: 0 });
+
+      expect(result.transitioned).toBe(false);
+      expect(engine.getCurrentState()).toBe('REVIEW');
+      expect(engine.getEventStore().query({ type: 'GUARD_EVALUATED' }).at(-1)!.payload.judgment.band).toBe('unevaluable');
+      expect(result.refusalReason).toMatch(/jev rejected TYPESAFE_API_KEY/);
+      expect(result.refusalReason).toMatch(/unset TYPESAFE_API_KEY to continue with self-reported decisions/);
+      expect(result.refusalReason).not.toMatch(/Retry the signal when/);
+    });
+
+    it.each([
+      ['a timeout', new Error('Jev request timed out')],
+      ['a server error', httpError(503, '503 Service Unavailable')],
+    ])('keeps the unavailable and retry message for %s', async (_name, error) => {
+      JudgmentEngine.registerAdapter(failingJev(error));
+      const result = await newEngine().handleSignal('SUBMIT', { exit_code: 0 });
+      expect(result.refusalReason).toMatch(/jev is unavailable/);
+      expect(result.refusalReason).toMatch(/Retry the signal when jev is reachable/);
+    });
+
+    it('names rejected credentials for a non-Jev model adapter', async () => {
+      JudgmentEngine.registerAdapter({
+        id: 'other_model', supports: () => true, isAvailable: async () => true,
+        evaluate: async () => { throw httpError(401, 'invalid token'); },
+      });
+      const result = await JudgmentEngine.evaluate(
+        { type: 'predicate', criterion: SEMANTIC, adapter_hint: 'other_model' },
+        {
+          event: { id: 'e', seq: 1, timestamp: new Date().toISOString(), type: 'X', payload: { exit_code: 0 } },
+          context: {},
+          currentState: 'REVIEW',
+        }
+      );
+      expect(result.band).toBe('unevaluable');
+      expect(result.error).toMatch(/other_model rejected its credentials \(invalid token\)/);
+    });
+  });
+
   describe('exact predicates stay independent of Jev (#15)', () => {
     it('selects the script adapter for adapter_hint: script even when Jev is available, and never calls Jev', async () => {
       const jevEvaluate = vi.fn(async () => ({

@@ -38,6 +38,7 @@ When the declared fallback adapter is another model that also fails during an ou
 
 Replaying a refused signal with the same idempotency key returns the original refusal reason, because the key identifies that submission.
 A retry after an outage needs a new idempotency key, and the refusal reason says so.
+When the adapter rejects its credentials (HTTP 401 or 403), the judgment still refuses, and the reason says the credentials were rejected; for Jev it says to fix or replace the key, or unset `TYPESAFE_API_KEY` to continue with self-reported decisions (v0.17.2).
 
 When Jev is not configured, the heuristic still decides, and the result carries `selfReported: true`.
 

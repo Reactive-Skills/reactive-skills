@@ -447,6 +447,7 @@ export class JudgmentEngine {
 
     let result: JudgmentResult | null = null;
     let primaryFailed = false;
+    let credentialsRejected = false;
     let failureCause = adapterSelectionReason === 'jev_unavailable'
       ? 'the TypeSafe SDK is missing or failed to load'
       : 'circuit breaker open';
@@ -467,6 +468,8 @@ export class JudgmentEngine {
         primaryBreaker.recordFailure();
         primaryFailed = true;
         failureCause = err?.message || String(err);
+        // 401 and 403 mean the adapter rejected its credentials, which retrying cannot fix.
+        credentialsRejected = err?.status === 401 || err?.status === 403;
       }
     } else {
       primaryFailed = true;
@@ -481,7 +484,7 @@ export class JudgmentEngine {
       try {
         const fallbackResult = await fallbackAdapter.evaluate(req, evalContext);
         if (outageAdapterId && fallbackResult.selfReported) {
-          return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, fallbackResult.adapterName);
+          return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, fallbackResult.adapterName, credentialsRejected);
         }
         return this.applyDecision(
           judgment,
@@ -491,7 +494,7 @@ export class JudgmentEngine {
       } catch (err: any) {
         if (outageAdapterId) {
           const cause = `${failureCause}; fallback ${fallbackId} also failed: ${err.message}`;
-          return this.unevaluable(judgment, outageAdapterId, cause, adapterSelectionReason, fallbackId);
+          return this.unevaluable(judgment, outageAdapterId, cause, adapterSelectionReason, fallbackId, credentialsRejected);
         }
         return {
           verdict: false,
@@ -510,7 +513,7 @@ export class JudgmentEngine {
 
     // An open Jev circuit or a broken Jev install made the script adapter primary; it cannot judge natural language either.
     if (outageAdapterId && result.selfReported) {
-      return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, result.adapterName);
+      return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, result.adapterName, credentialsRejected);
     }
 
     // 3. Apply the declared threshold and decision band
@@ -552,7 +555,8 @@ export class JudgmentEngine {
     adapterId: string,
     cause: string,
     adapterSelectionReason: string,
-    attemptedAdapterId: string
+    attemptedAdapterId: string,
+    credentialsRejected = false
   ): JudgmentResult & { fallbackTriggered: boolean; fallbackTarget?: string } {
     return {
       verdict: false,
@@ -561,7 +565,9 @@ export class JudgmentEngine {
       adapterName: attemptedAdapterId,
       adapterSelectionReason: `${adapterSelectionReason}:unevaluable`,
       latencyMs: 0,
-      error: `Judgment could not be evaluated: ${adapterId} is unavailable (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. Retry the signal when ${adapterId} is reachable, with a new idempotency key if you set one.`,
+      error: credentialsRejected
+        ? `Judgment could not be evaluated: ${adapterId === 'jev' ? 'jev rejected TYPESAFE_API_KEY' : `${adapterId} rejected its credentials`} (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. ${adapterId === 'jev' ? 'Fix or replace the key, or unset TYPESAFE_API_KEY to continue with self-reported decisions' : `Fix the credentials for ${adapterId}`}; retrying with the same credentials will not help.`
+        : `Judgment could not be evaluated: ${adapterId} is unavailable (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. Retry the signal when ${adapterId} is reachable, with a new idempotency key if you set one.`,
       threshold: resolveJudgmentThreshold(judgment),
       band: 'unevaluable',
       fallbackTriggered: true,
