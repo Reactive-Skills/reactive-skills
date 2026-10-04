@@ -23,11 +23,12 @@ A refused signal also returns no reason, so an agent cannot tell an outage from 
 Classify a criterion as executable when it compiles as a JavaScript expression, without running it.
 Executable criteria keep today's behavior on every path.
 
-During a Jev outage, a judgment with a criterion that is not executable is unevaluable.
-The engine returns `passed: false`, band `unevaluable`, no `fallbackTarget`, and an error that says Jev is unavailable and to retry.
+During an outage, a judgment with a criterion that is not executable is unevaluable.
+The engine returns `passed: false`, band `unevaluable`, no `fallbackTarget`, and an error that names the unavailable adapter and says to retry.
 The signal is refused, the run stays in its current state, and no fallback transition happens.
 
-An outage means the selected primary adapter is Jev and Jev is available but fails, or Jev's circuit breaker is open.
+An outage means the selected primary model adapter (Jev or any other registered adapter except `script`) reports itself available but fails or is blocked by its open circuit breaker, or an open Jev circuit made the script adapter the default.
+An adapter that reports itself unavailable is not configured, which is not an outage.
 
 When Jev is not configured, the heuristic still decides, and the result carries `selfReported: true`.
 

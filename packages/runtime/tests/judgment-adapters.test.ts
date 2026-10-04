@@ -262,7 +262,7 @@ describe('Decoupled Judgment & Snap-On Adapters', () => {
       expect(sdkMock.systemOne).not.toHaveBeenCalled();
     });
 
-    it('should cascade from failing primary adapter to fallback script adapter', async () => {
+    it('should cascade from failing primary adapter to fallback script adapter for an executable criterion', async () => {
       // Create a mock failing primary adapter
       const failingAdapter: JudgmentAdapter = {
         id: 'failing_ai',
@@ -284,7 +284,7 @@ describe('Decoupled Judgment & Snap-On Adapters', () => {
       const result = await JudgmentEngine.evaluate(
         {
           type: 'predicate',
-          criterion: 'Build succeeded',
+          criterion: 'payload.exit_code === 0',
           adapter_hint: 'failing_ai',
           fallback_adapter: 'script',
         },
@@ -297,6 +297,37 @@ describe('Decoupled Judgment & Snap-On Adapters', () => {
 
       const breaker = JudgmentEngine.getBreaker('failing_ai');
       expect(breaker?.getState()).toBe('CLOSED'); // 1 failure recorded, threshold 2
+    });
+
+    it('should refuse instead of trusting the payload when a failing primary leaves a natural-language criterion', async () => {
+      JudgmentEngine.registerAdapter({
+        id: 'failing_ai',
+        supports: () => true,
+        isAvailable: async () => true,
+        evaluate: async () => {
+          throw new Error('503 Service Unavailable');
+        },
+      });
+
+      const result = await JudgmentEngine.evaluate(
+        {
+          type: 'predicate',
+          criterion: 'Build succeeded',
+          adapter_hint: 'failing_ai',
+          fallback_adapter: 'script',
+          fallback_target: 'REPAIR',
+        },
+        {
+          event: { id: 'evt-1', seq: 1, timestamp: new Date().toISOString(), type: 'BUILD', payload: { exit_code: 0 } },
+          context: {},
+          currentState: 'BUILDING',
+        }
+      );
+
+      expect(result.passed).toBe(false);
+      expect(result.band).toBe('unevaluable');
+      expect(result.fallbackTarget).toBeUndefined();
+      expect(result.error).toMatch(/failing_ai is unavailable \(503 Service Unavailable\)/);
     });
 
     it('should enforce confidence thresholds and return fallback_target if confidence is low', async () => {
@@ -336,14 +367,14 @@ describe('Decoupled Judgment & Snap-On Adapters', () => {
       expect(result.fallbackTarget).toBe('HUMAN_APPROVAL');
     });
 
-    it('should preserve Script fallback when the direct Jev SDK fails', async () => {
+    it('should preserve Script fallback for an executable criterion when the direct Jev SDK fails', async () => {
       process.env.TYPESAFE_API_KEY = 'test-key';
       sdkMock.systemOne.mockRejectedValue(new Error('TypeSafe service unavailable'));
 
       const result = await JudgmentEngine.evaluate(
         {
           type: 'predicate',
-          criterion: 'Build succeeded',
+          criterion: 'payload.exit_code === 0',
           adapter_hint: 'jev',
           fallback_adapter: 'script',
         },

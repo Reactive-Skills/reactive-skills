@@ -55,6 +55,10 @@ type SignalHandlingResult = {
   handledAtDepth?: number;
   deliverablesWritten: string[];
   metrics?: ExecutionMetrics;
+  /** Error from the last guard or judgment that refused the signal, when it reported one. */
+  refusalReason?: string;
+  /** Set when the deciding judgment came from the agent's own payload (ADR 0011). */
+  judgmentBasis?: 'self_reported';
 };
 
 export class FSMEngine {
@@ -808,6 +812,8 @@ export class FSMEngine {
       this.updateContext(incomingContextUpdates);
     }
 
+    let refusalReason: string | undefined;
+
     // Bubble search: test from deepest leaf substate up to root
     for (let depth = this.activeStatePath.length; depth >= 1; depth--) {
       const testPath = this.activeStatePath.slice(0, depth);
@@ -859,6 +865,9 @@ export class FSMEngine {
 
         let effectiveTarget = transDef.target;
         let isTransitioning = guardResult.passed;
+        if (!guardResult.passed && !guardResult.fallbackTarget && guardResult.error) {
+          refusalReason = guardResult.error;
+        }
 
         if (!guardResult.passed && guardResult.fallbackTarget) {
           effectiveTarget = guardResult.fallbackTarget;
@@ -967,6 +976,7 @@ export class FSMEngine {
             handledAtDepth: depth,
             deliverablesWritten,
             metrics,
+            ...(guardResult.judgmentResult?.selfReported ? { judgmentBasis: 'self_reported' as const } : {}),
           };
         }
       }
@@ -979,6 +989,7 @@ export class FSMEngine {
       newState: previousState,
       event,
       deliverablesWritten: [],
+      ...(refusalReason ? { refusalReason } : {}),
     };
   }
 

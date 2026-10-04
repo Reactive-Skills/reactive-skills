@@ -15,8 +15,8 @@ Decision record: `docs/adr/0011-judgment-outage-refusal-and-self-reported-decisi
 
 4. `isExecutableCriterion(criterion)` returns true when `(criterion)` compiles as a JavaScript expression, and never executes it.
 5. When the script adapter decides from the payload because the criterion is not executable, its result sets `selfReported: true`.
-6. A Jev outage is either a failure of the selected Jev primary adapter while Jev reports itself available, or an open Jev circuit breaker.
-7. During an outage, a judgment whose criterion is not executable returns `passed: false`, band `unevaluable`, `fallbackTriggered: false`, no `fallbackTarget`, and an error naming Jev as unavailable with a retry instruction.
+6. An outage is a failure, or an open circuit breaker, of the selected primary model adapter (Jev or any registered adapter except `script`) while it reports itself available, or an open Jev circuit that made the script adapter the default.
+7. During an outage, a judgment whose criterion is not executable returns `passed: false`, band `unevaluable`, `fallbackTriggered: true` (the cascade ran), no `fallbackTarget`, and an error naming the unavailable adapter with a retry instruction.
 8. During an outage, an executable criterion is evaluated by the script fallback as before.
 9. When Jev is not configured, the heuristic decides as before, and the result keeps `selfReported: true`.
 10. `JudgmentBand` includes `unevaluable`.

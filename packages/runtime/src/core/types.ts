@@ -119,7 +119,11 @@ export interface JudgmentThreshold {
   value: number;
 }
 
-export type JudgmentBand = 'accept' | 'escalate' | 'reject';
+/**
+ * `unevaluable` marks a judgment no adapter could decide: the model adapter failed and the
+ * criterion is not an executable expression (ADR 0011). It refuses without fallback routing.
+ */
+export type JudgmentBand = 'accept' | 'escalate' | 'reject' | 'unevaluable';
 
 export interface JudgmentResult {
   verdict: boolean | string | number;
@@ -138,6 +142,11 @@ export interface JudgmentResult {
   threshold?: JudgmentThreshold;
   /** Decision band, set by the judgment engine. */
   band?: JudgmentBand;
+  /**
+   * True when the script adapter decided from the agent's payload (`exit_code`, `success`,
+   * `choice`, or `score`) because the criterion is not an executable expression.
+   */
+  selfReported?: boolean;
 }
 
 export interface JudgmentAdapter {

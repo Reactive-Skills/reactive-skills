@@ -164,6 +164,8 @@ export async function emitCommand(args: string[]): Promise<string> {
         event_id: result.event.id,
         handled_at_depth: result.handledAtDepth,
         deliverables: result.deliverablesWritten,
+        refusal_reason: result.refusalReason,
+        judgment_basis: result.judgmentBasis,
       }, [
         { type: 'field', key: 'skill_id' },
         { type: 'field', key: 'signal' },
@@ -172,6 +174,9 @@ export async function emitCommand(args: string[]): Promise<string> {
         { type: 'field', key: 'current_state' },
         { type: 'field', key: 'run_id' },
         { type: 'field', key: 'event_id' },
+        // Why a guard refused, and whether the deciding judgment was self-reported (ADR 0011).
+        ...(result.refusalReason ? [{ type: 'field' as const, key: 'refusal_reason' }] : []),
+        ...(result.judgmentBasis ? [{ type: 'field' as const, key: 'judgment_basis' }] : []),
       ]));
 
       if (result.transitioned) {

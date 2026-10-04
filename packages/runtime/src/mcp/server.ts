@@ -461,6 +461,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
                   newState: result.newState,
                   isWaitingForHuman: engine.isWaitingForHuman(),
                   projectionsWritten: result.deliverablesWritten,
+                  refusalReason: result.refusalReason,
+                  judgmentBasis: result.judgmentBasis,
                 },
                 null,
                 2
