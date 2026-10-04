@@ -40,7 +40,7 @@ Decision record: `docs/adr/0011-judgment-outage-refusal-and-self-reported-decisi
 22. During an outage, when the declared fallback adapter is another model and it also fails, the judgment is unevaluable and has no `fallbackTarget`.
 23. The concepts doc no longer claims that an outage routes to `fallback_target`.
 24. Replaying a signal that transitioned, including through a parent handler after a leaf refusal, returns no `refusalReason`; the replay reads only events caused by that signal.
-25. `validate` warns when a criterion that does not end in a question mark starts with a sandbox reference or uses JavaScript-only operators but does not compile.
+25. `validate` warns when a criterion that does not end in a question mark starts with a sandbox reference (including optional chaining) or uses JavaScript-only operators but does not compile, and suggests fixing the expression or rephrasing it as a question.
 26. `validate` warns when `adapter_hint` or `fallback_adapter` names an adapter other than `script` or `jev`.
 
 ## 4. Build order

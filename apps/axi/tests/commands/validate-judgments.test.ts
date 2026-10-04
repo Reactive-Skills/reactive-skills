@@ -129,7 +129,7 @@ adapter_hint: script
 `));
 
     expect(result.warnings).toContain(
-      'State "REVIEW" transition on "SUBMIT" criterion looks like a JavaScript expression but does not compile, so the runtime treats it as natural language and, without Jev, decides it from the payload; fix the expression'
+      'State "REVIEW" transition on "SUBMIT" criterion looks like a JavaScript expression but does not compile, so the runtime treats it as natural language and, without Jev, decides it from the payload; fix the expression or rephrase it as a question'
     );
 
     fs.rmSync(path.join(tmpDir, 'judgment-skill'), { recursive: true, force: true });
@@ -155,6 +155,24 @@ fallback_adapter: scrpt
     expect(result.warnings).toContain(
       `State "REVIEW" transition on "SUBMIT" fallback_adapter 'scrpt' is not a built-in adapter (script, jev); unless it is registered at runtime, the judgment cannot use it`
     );
+
+    fs.rmSync(path.join(tmpDir, 'judgment-skill'), { recursive: true, force: true });
+    const builtIn = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "Is it ready?"
+adapter_hint: jev
+fallback_adapter: script
+`));
+    expect(builtIn.warnings.some((w) => w.includes('is not a built-in adapter'))).toBe(false);
+  });
+
+  it('flags code-like criteria with optional chaining and offers rephrasing for prose', () => {
+    const result = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "payload?.score >"
+adapter_hint: script
+`));
+    expect(result.warnings.some((w) => w.includes('does not compile') && w.includes('or rephrase it as a question'))).toBe(true);
   });
 
   it('names the default min_confidence when a semantic predicate declares no threshold', () => {

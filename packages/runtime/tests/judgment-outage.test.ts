@@ -310,6 +310,21 @@ states:
       expect(isExecutableCriterion('genehmigt')).toBe(false);
       expect(isExecutableCriterion('承認')).toBe(false);
       expect(isExecutableCriterion('café')).toBe(false);
+      expect(isExecutableCriterion('café')).toBe(false);
+      expect(isExecutableCriterion('स्वीकृत')).toBe(false);
+      expect(isExecutableCriterion('อนุมัติ')).toBe(false);
+    });
+
+    it('keeps one refused signal from leaking into the replay of a different signal', async () => {
+      JudgmentEngine.registerAdapter(throwingJev());
+      const engine = newEngine();
+
+      await engine.handleSignal('SUBMIT', { exit_code: 0 }, { idempotencyKey: 'refused-1' });
+      await engine.handleSignal('SUBMIT_EXACT', { exit_code: 0 }, { idempotencyKey: 'accepted-1' });
+      const replay = await engine.handleSignal('SUBMIT_EXACT', { exit_code: 0 }, { idempotencyKey: 'accepted-1' });
+
+      expect(engine.getCurrentState()).toBe('DONE');
+      expect(replay.refusalReason).toBeUndefined();
     });
 
     it('stays unevaluable when the declared fallback is another model that also fails', async () => {

@@ -83,7 +83,7 @@ const BUILT_IN_ADAPTERS = ['script', 'jev'];
  */
 function looksLikeExpression(criterion: string): boolean {
   if (/\?\s*$/.test(criterion)) return false;
-  return /^\s*[!(]*\s*(payload|context|event|state)\s*[.[]/.test(criterion) || /===|!==|&&|\|\||=>/.test(criterion);
+  return /^\s*[!(]*\s*(payload|context|event|state)\s*\??[.[]/.test(criterion) || /===|!==|&&|\|\||=>/.test(criterion);
 }
 
 /**
@@ -106,7 +106,7 @@ export function lintJudgmentThresholds(manifest: Record<string, any>): JudgmentL
     // A typo in an exact check silently turns it into natural language that the payload can decide.
     if (typeof judgment.criterion === 'string' && looksLikeExpression(judgment.criterion) && !isExecutableCriterion(judgment.criterion)) {
       warnings.push(
-        `${location} criterion looks like a JavaScript expression but does not compile, so the runtime treats it as natural language and, without Jev, decides it from the payload; fix the expression`
+        `${location} criterion looks like a JavaScript expression but does not compile, so the runtime treats it as natural language and, without Jev, decides it from the payload; fix the expression or rephrase it as a question`
       );
     }
 
