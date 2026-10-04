@@ -379,7 +379,7 @@ states:
       evaluate: async () => { throw error; },
     });
 
-    it.each([401, 403])('refuses on HTTP %i and tells the operator to fix or unset TYPESAFE_API_KEY', async (status) => {
+    it.each([401, 403])('refuses on HTTP %i and tells the agent to ask the user to fix TYPESAFE_API_KEY', async (status) => {
       JudgmentEngine.registerAdapter(failingJev(httpError(status, `${status} Cannot authenticate with the server.`)));
       const engine = newEngine();
 
@@ -389,7 +389,9 @@ states:
       expect(engine.getCurrentState()).toBe('REVIEW');
       expect(engine.getEventStore().query({ type: 'GUARD_EVALUATED' }).at(-1)!.payload.judgment.band).toBe('unevaluable');
       expect(result.refusalReason).toMatch(/jev rejected TYPESAFE_API_KEY/);
-      expect(result.refusalReason).toMatch(/unset TYPESAFE_API_KEY to continue with self-reported decisions/);
+      expect(result.refusalReason).toMatch(/Stop and ask the user to fix or replace TYPESAFE_API_KEY/);
+      expect(result.refusalReason).toMatch(/do not unset it to get past this gate/);
+      expect(result.refusalReason).not.toMatch(/continue with self-reported decisions/);
       expect(result.refusalReason).not.toMatch(/Retry the signal when/);
     });
 
@@ -512,6 +514,7 @@ states:
       );
       expect(result.band).toBe('unevaluable');
       expect(result.error).toMatch(/other_model rejected its credentials \(invalid token\)/);
+      expect(result.error).toMatch(/Stop and ask the user to fix the credentials for other_model/);
     });
   });
 

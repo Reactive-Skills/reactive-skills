@@ -581,8 +581,9 @@ export class JudgmentEngine {
       adapterName: attemptedAdapterId,
       adapterSelectionReason: `${adapterSelectionReason}:unevaluable`,
       latencyMs: 0,
+      // This reason reaches the agent: it asks for the user and never suggests removing the key (ADR 0011).
       error: credentialsRejected
-        ? `Judgment could not be evaluated: ${adapterId === 'jev' ? 'jev rejected TYPESAFE_API_KEY' : `${adapterId} rejected its credentials`} (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. Retrying with the same credentials will not help: ${adapterId === 'jev' ? 'fix or replace the key, or unset TYPESAFE_API_KEY to continue with self-reported decisions' : `fix the credentials for ${adapterId}`}.`
+        ? `Judgment could not be evaluated: ${adapterId === 'jev' ? 'jev rejected TYPESAFE_API_KEY' : `${adapterId} rejected its credentials`} (${cause}). This gate cannot be judged until the credentials work, and retrying with the same credentials will not help. ${adapterId === 'jev' ? 'Stop and ask the user to fix or replace TYPESAFE_API_KEY; do not unset it to get past this gate.' : `Stop and ask the user to fix the credentials for ${adapterId}.`}`
         : `Judgment could not be evaluated: ${adapterId} is unavailable (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. Retry the signal when ${adapterId} is reachable, with a new idempotency key if you set one.`,
       threshold: resolveJudgmentThreshold(judgment),
       band: 'unevaluable',
