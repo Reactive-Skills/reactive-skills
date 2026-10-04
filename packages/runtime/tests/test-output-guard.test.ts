@@ -28,6 +28,7 @@ describe('test output guard', () => {
     const before = snapshotTestOutput([base]);
     fs.mkdirSync(path.join(base, '.docs', 'jobs', '01a1064c-leak'));
     expect(() => assertNoNewTestOutput(before, [base])).toThrow(/jobs[\\/]01a1064c-leak/);
+    expect(() => assertNoNewTestOutput(before, [base])).toThrow(/another agent ran a skill in this checkout/);
   });
 
   it('fails on a leaked run folder at the top of .reactive', () => {

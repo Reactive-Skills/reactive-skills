@@ -41,6 +41,7 @@ export function assertNoNewTestOutput(before, bases = OUTPUT_BASES) {
       ...shown,
       ...more,
       'Pass a temporary workspaceDir to every FSMEngine or MCP server a test creates.',
+      'If another agent ran a skill in this checkout during the test run, these may be its output instead; check the paths before treating them as a leak.',
     ].join('\n')
   );
 }
