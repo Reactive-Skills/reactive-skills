@@ -32,6 +32,7 @@ reactive-skills/                          # Repo root
 │       │   │   ├── event-store.ts        # Append-only JSONL + SQLite event ledger
 │       │   │   ├── guard-evaluator.ts    # node:vm sandbox invariant evaluator
 │       │   │   ├── judgment-engine.ts    # Decoupled snap-on judgment engine & circuit breaker
+│       │   │   ├── judgment-thresholds.ts # Pure threshold resolution & accept/escalate/reject bands
 │       │   │   ├── projection-engine.ts  # Handlebars deliverable generator
 │       │   │   ├── fsm-engine.ts         # HSM loader, path resolver & bubbling engine
 │       │   │   ├── runtime-hooks.ts      # Pre/post-turn in-harness interceptor hooks

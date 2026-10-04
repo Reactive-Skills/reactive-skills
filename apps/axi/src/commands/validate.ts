@@ -3,6 +3,7 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import { createReactiveBootloaderReference, SkillManifestSchema, SkillManifest } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
+import { lintGuardContracts, lintJudgmentThresholds } from './judgment-contracts.js';
 import { renderDetail, renderList, renderHelp, renderOutput } from '../toon.js';
 
 export interface SkillValidationResult {
@@ -342,6 +343,11 @@ export function validateSkill(skillDir: string): SkillValidationResult {
             errors.push(`State "${fullName}" transition on signal "${signal}" targets unknown state "${target}"`);
           }
 
+          const escalateTarget = typeof trans === 'object' ? (trans as any)?.judgment?.escalate?.target : undefined;
+          if (typeof escalateTarget === 'string' && !allStateNames.has(escalateTarget)) {
+            errors.push(`State "${fullName}" transition on "${signal}" judgment escalates to unknown state "${escalateTarget}"`);
+          }
+
           if (guard && typeof guard === 'string') {
             try {
               new Function('event', 'payload', 'context', `return (${guard});`);
@@ -362,6 +368,12 @@ export function validateSkill(skillDir: string): SkillValidationResult {
   if (parsed.states && typeof parsed.states === 'object') {
     validateTransitions(parsed.states);
   }
+
+  // 4b. Judgment Thresholds & Guard Contract Drift
+  const thresholdLint = lintJudgmentThresholds(parsed);
+  const contractLint = lintGuardContracts(skillDir, parsed);
+  errors.push(...thresholdLint.errors, ...contractLint.errors);
+  warnings.push(...thresholdLint.warnings, ...contractLint.warnings);
 
   // 5. Deliverable Projections Check
   if (Array.isArray(parsed.deliverable_projections)) {

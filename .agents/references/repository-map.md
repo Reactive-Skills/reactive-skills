@@ -5,6 +5,7 @@
 - `packages/runtime/src/core/event-store.ts`: Immutable append-only event ledger (JSONL + native SQLite driver).
 - `packages/runtime/src/core/guard-evaluator.ts`: Sandbox evaluator for transition conditions.
 - `packages/runtime/src/core/judgment-engine.ts`: Decoupled Ports-and-Adapters judgment engine with snap-on adapters and circuit breaking.
+- `packages/runtime/src/core/judgment-thresholds.ts`: Pure judgment threshold resolution and accept, escalate, or reject band decisions.
 - `packages/runtime/src/core/context-router.ts`: Bounded Jev-backed skill and context routing before prompt assembly.
 - `packages/runtime/src/core/context-candidate-discovery.ts`: Bounded local skill metadata discovery for automatic context routing.
 - `packages/runtime/src/core/bootloader.ts`: Versioned authoritative runtime bootloader and stable skill reference helpers.

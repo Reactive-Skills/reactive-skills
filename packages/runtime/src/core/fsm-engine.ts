@@ -870,6 +870,7 @@ export class FSMEngine {
               to: effectiveTarget,
               originalTarget: transDef.target,
               reason: guardResult.error || 'Judgment rejected or below confidence threshold',
+              band: guardResult.judgmentResult?.band,
               judgment: guardResult.judgmentResult,
             },
             { state: testPath.join('.'), causationId: event.id }
