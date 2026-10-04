@@ -409,6 +409,53 @@ states:
       expect(third.refusalReason).not.toMatch(/Retry the signal when/);
     });
 
+    it('keeps the rejected-key message on the default-selection path once 401s open the circuit', async () => {
+      JudgmentEngine.registerAdapter(failingJev(httpError(401, '401 Cannot authenticate with the server.')));
+      const engine = newEngine();
+      await engine.handleSignal('SUBMIT', { exit_code: 0 });
+      await engine.handleSignal('SUBMIT', { exit_code: 0 });
+
+      const result = await engine.handleSignal('SUBMIT_DEFAULT', { exit_code: 0 });
+
+      expect(result.refusalReason).toMatch(/jev rejected TYPESAFE_API_KEY/);
+    });
+
+    it('forgets a rejection after a success or when the adapter is replaced', async () => {
+      const ctx = {
+        event: { id: 'e', seq: 1, timestamp: new Date().toISOString(), type: 'X', payload: { exit_code: 0 } },
+        context: {},
+        currentState: 'REVIEW',
+      };
+      const judgment = { type: 'predicate' as const, criterion: SEMANTIC, adapter_hint: 'jev' };
+      let mode: 'reject' | 'ok' | 'down' = 'reject';
+      JudgmentEngine.registerAdapter({
+        id: 'jev', supports: () => true, isConfigured: () => true, isAvailable: async () => true,
+        evaluate: async () => {
+          if (mode === 'reject') throw httpError(401, 'bad key');
+          if (mode === 'down') throw new Error('timed out');
+          return { verdict: true, confidence: 0.9, probability: 0.95, passed: true, adapterName: 'jev', latencyMs: 1 };
+        },
+      });
+
+      await JudgmentEngine.evaluate(judgment, ctx);
+      mode = 'ok';
+      expect((await JudgmentEngine.evaluate(judgment, ctx)).passed).toBe(true);
+      mode = 'down';
+      expect((await JudgmentEngine.evaluate(judgment, ctx)).error).toMatch(/jev is unavailable/);
+
+      mode = 'reject';
+      await JudgmentEngine.evaluate(judgment, ctx);
+      JudgmentEngine.registerAdapter({
+        id: 'jev', supports: () => true, isConfigured: () => true, isAvailable: async () => false,
+        evaluate: async () => { throw new Error('TypeSafe SDK is unavailable'); },
+      });
+      // The breaker stays open from the earlier failures, but the replaced adapter's old rejection must not show.
+      const replaced = await JudgmentEngine.evaluate({ type: 'predicate', criterion: SEMANTIC }, ctx);
+      expect(replaced.band).toBe('unevaluable');
+      expect(replaced.error).toMatch(/jev is unavailable/);
+      expect(replaced.error).not.toMatch(/rejected/);
+    });
+
     it.each([
       ['a timeout', new Error('Jev request timed out')],
       ['a server error', httpError(503, '503 Service Unavailable')],

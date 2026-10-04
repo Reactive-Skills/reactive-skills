@@ -386,6 +386,7 @@ export class JudgmentEngine {
 
   public static registerAdapter(adapter: JudgmentAdapter, breakerOptions?: CircuitBreakerOptions): void {
     this.adapters.set(adapter.id, adapter);
+    this.rejectedCredentials.delete(adapter.id);
     if (!this.breakers.has(adapter.id)) {
       this.breakers.set(adapter.id, new CircuitBreaker(breakerOptions));
     }
