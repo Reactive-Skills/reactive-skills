@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { JudgmentEngine, isExecutableCriterion } from '../src/core/judgment-engine.js';
+import { JudgmentEngine, JevJudgmentAdapter, isExecutableCriterion } from '../src/core/judgment-engine.js';
 import { FSMEngine } from '../src/core/fsm-engine.js';
 import { createReactiveMcpServer } from '../src/mcp/server.js';
 import { JudgmentAdapter } from '../src/core/types.js';
@@ -41,6 +41,19 @@ states:
         judgment:
           type: predicate
           criterion: "${SEMANTIC}"
+          fallback_target: REPAIR
+      SUBMIT_FRAGILE:
+        target: DONE
+        judgment:
+          type: predicate
+          criterion: "payload.findings.length === 4"
+          fallback_target: REPAIR
+      SUBMIT_FRAGILE_JEV:
+        target: DONE
+        judgment:
+          type: predicate
+          criterion: "payload.findings.length === 4"
+          adapter_hint: jev
           fallback_target: REPAIR
       CHOOSE:
         target: DONE
@@ -204,6 +217,96 @@ describe('Judgment outage refusal and self-reported decisions (#22)', () => {
       const result = await engine.handleSignal('SUBMIT', { exit_code: 0 });
       expect(result.transitioned).toBe(true);
       expect(result.judgmentBasis).toBe('self_reported');
+    });
+  });
+
+  describe('review amendments', () => {
+    it('fails closed when an executable criterion throws, instead of trusting exit_code (no model)', async () => {
+      const engine = newEngine();
+      const result = await engine.handleSignal('SUBMIT_FRAGILE', { exit_code: 0 });
+
+      expect(engine.getCurrentState()).toBe('REPAIR');
+      expect(result.judgmentBasis).toBeUndefined();
+      const guard = engine.getEventStore().query({ type: 'GUARD_EVALUATED' }).at(-1)!;
+      expect(guard.payload.passed).toBe(false);
+      expect(guard.payload.judgment.selfReported).toBeUndefined();
+      expect(guard.payload.error).toMatch(/criterion threw/i);
+    });
+
+    it('fails closed when an executable criterion throws during an outage, without calling it unevaluable', async () => {
+      JudgmentEngine.registerAdapter(throwingJev());
+      const engine = newEngine();
+      await engine.handleSignal('SUBMIT_FRAGILE_JEV', { exit_code: 0 });
+
+      expect(engine.getCurrentState()).toBe('REPAIR');
+      const guard = engine.getEventStore().query({ type: 'GUARD_EVALUATED' }).at(-1)!;
+      expect(guard.payload.judgment.band).toBe('reject');
+      expect(guard.payload.error).toMatch(/criterion threw/i);
+    });
+
+    it('treats a single bare word as natural language, but keeps literals and sandbox names executable', () => {
+      expect(isExecutableCriterion('approved')).toBe(false);
+      expect(isExecutableCriterion('  Ready ')).toBe(false);
+      expect(isExecutableCriterion('true')).toBe(true);
+      expect(isExecutableCriterion('payload')).toBe(true);
+      expect(isExecutableCriterion('payload.approved')).toBe(true);
+    });
+
+    it('returns the original refusal reason when a refused signal is replayed with the same idempotency key', async () => {
+      JudgmentEngine.registerAdapter(throwingJev());
+      const engine = newEngine();
+
+      const first = await engine.handleSignal('SUBMIT', { exit_code: 0 }, { idempotencyKey: 'submit-1' });
+      const replay = await engine.handleSignal('SUBMIT', { exit_code: 0 }, { idempotencyKey: 'submit-1' });
+
+      expect(first.refusalReason).toMatch(/new idempotency key/i);
+      expect(replay.transitioned).toBe(false);
+      expect(replay.refusalReason).toBe(first.refusalReason);
+      expect(engine.getCurrentState()).toBe('REVIEW');
+    });
+
+    it('stays unevaluable when the declared fallback is another model that also fails', async () => {
+      JudgmentEngine.registerAdapter(throwingJev());
+      JudgmentEngine.registerAdapter({
+        id: 'backup_model', supports: () => true, isAvailable: async () => true,
+        evaluate: async () => { throw new Error('backup down'); },
+      });
+      const result = await JudgmentEngine.evaluate(
+        { type: 'predicate', criterion: SEMANTIC, adapter_hint: 'jev', fallback_adapter: 'backup_model', fallback_target: 'REPAIR' },
+        {
+          event: { id: 'e', seq: 1, timestamp: new Date().toISOString(), type: 'X', payload: { exit_code: 0 } },
+          context: {},
+          currentState: 'REVIEW',
+        }
+      );
+      expect(result.band).toBe('unevaluable');
+      expect(result.fallbackTarget).toBeUndefined();
+      expect(result.error).toMatch(/backup down/);
+    });
+
+    it('treats Jev as configured when its key is set even if the SDK cannot load, so the gate refuses', async () => {
+      JudgmentEngine.registerAdapter({
+        id: 'jev',
+        supports: () => true,
+        isConfigured: () => true,
+        isAvailable: async () => false,
+        evaluate: async () => { throw new Error('TypeSafe SDK is unavailable'); },
+      });
+      const engine = newEngine();
+
+      const result = await engine.handleSignal('SUBMIT_DEFAULT', { exit_code: 0 });
+
+      expect(result.transitioned).toBe(false);
+      expect(engine.getCurrentState()).toBe('REVIEW');
+      expect(engine.getEventStore().query({ type: 'GUARD_EVALUATED' }).at(-1)!.payload.judgment.band).toBe('unevaluable');
+      expect(result.refusalReason).toMatch(/jev is unavailable/i);
+    });
+
+    it('reports the built-in Jev adapter as configured exactly when TYPESAFE_API_KEY is set', () => {
+      const jev = new JevJudgmentAdapter();
+      expect(jev.isConfigured()).toBe(false);
+      process.env.TYPESAFE_API_KEY = 'some-key';
+      expect(jev.isConfigured()).toBe(true);
     });
   });
 

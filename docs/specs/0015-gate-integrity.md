@@ -1,6 +1,6 @@
 # Specification: Gate Integrity (v0.17.1)
 
-Status: Draft for DoD approval.
+Status: Implemented on `fix/r2-gate-integrity`; amended after review on 2026-10-04.
 
 Scope: `docs/scope/release-v0.17.1-gate-integrity.md`.
 Decision record: `docs/adr/0011-judgment-outage-refusal-and-self-reported-decisions.md`.
@@ -8,17 +8,17 @@ Decision record: `docs/adr/0011-judgment-outage-refusal-and-self-reported-decisi
 ## 1. Test output containment (#28)
 
 1. Every runtime and AXI test that constructs an engine with a projecting skill passes a per-test temporary `workspaceDir` and removes it afterwards.
-2. A Vitest global setup in the runtime and AXI packages records the entries under `.docs/` and `.reactive/` at the repository root, in `packages/runtime`, and in `apps/axi`, and its teardown fails the run when new entries appear.
+2. A Vitest global setup in the runtime and AXI packages records directories up to three levels under `.docs/` and `.reactive/` at the repository root, in `packages/runtime`, and in `apps/axi` (deeper run folders inside skill stores are ignored so concurrent agent runs do not trip it), and its teardown fails the run when new ones appear; a permanent test covers the guard.
 3. Leaked `.docs/jobs/<id>/` folders at the repository root whose only file is `test-fsm-summary.md` are removed once, after the fix lands.
 
 ## 2. Outage refusal and self-reported decisions (#22 part 1)
 
-4. `isExecutableCriterion(criterion)` returns true when `(criterion)` compiles as a JavaScript expression, and never executes it.
+4. `isExecutableCriterion(criterion)` returns true when `(criterion)` compiles as a JavaScript expression and is not a single bare word other than `payload`, `context`, `event`, `state`, or `req`; it never executes the criterion.
 5. When the script adapter decides from the payload because the criterion is not executable, its result sets `selfReported: true`.
 6. An outage is a failure, or an open circuit breaker, of the selected primary model adapter (Jev or any registered adapter except `script`) while it reports itself available, or an open Jev circuit that made the script adapter the default.
 7. During an outage, a judgment whose criterion is not executable returns `passed: false`, band `unevaluable`, `fallbackTriggered: true` (the cascade ran), no `fallbackTarget`, and an error naming the unavailable adapter with a retry instruction.
 8. During an outage, an executable criterion is evaluated by the script fallback as before.
-9. When Jev is not configured, the heuristic decides as before, and the result keeps `selfReported: true`.
+9. When Jev is not configured (no `TYPESAFE_API_KEY`), the heuristic decides a natural-language criterion as before, and the result keeps `selfReported: true`; with the key set but the SDK missing or broken, Jev is configured and an outage applies.
 10. `JudgmentBand` includes `unevaluable`.
 11. A refused signal's result carries `refusalReason` from the failing guard's error when one exists.
 12. A transitioned signal whose judgment was self-reported carries `judgmentBasis: "self_reported"`.
@@ -31,6 +31,14 @@ Decision record: `docs/adr/0011-judgment-outage-refusal-and-self-reported-decisi
 16. When the hinted primary adapter throws, the declared fallback adapter runs.
 17. `validate` warns when a predicate's criterion is executable and its `adapter_hint` is not `script`, and names the fix.
 18. Authoring docs state that `fallback_adapter` runs only when the primary adapter fails, not on a low-confidence answer, and describe the judgment policy without Jev.
+
+## 3a. Review amendments
+
+19. An executable criterion that throws at runtime returns `passed: false` with the error, is not marked self-reported, and never falls back to the payload heuristic, with or without a configured model.
+20. A single bare word that is not a sandbox name is natural language, for both the engine and `validate`.
+21. Replaying a refused signal with the same idempotency key returns `transitioned: false` with the original `refusalReason`, and the unevaluable reason tells the agent to use a new idempotency key when retrying.
+22. During an outage, when the declared fallback adapter is another model and it also fails, the judgment is unevaluable and has no `fallbackTarget`.
+23. The concepts doc no longer claims that an outage routes to `fallback_target`.
 
 ## 4. Build order
 

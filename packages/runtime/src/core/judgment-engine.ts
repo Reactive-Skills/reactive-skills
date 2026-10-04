@@ -96,11 +96,17 @@ export class CircuitBreaker {
   }
 }
 
+/** Names a lone word may use and still count as an expression rather than natural language. */
+const EXPRESSION_WORDS = new Set(['payload', 'context', 'event', 'state', 'req', 'true', 'false', 'null', 'undefined']);
+
 /**
- * True when a judgment criterion compiles as a JavaScript expression. Compiles only; never runs it.
- * The script adapter evaluates executable criteria exactly and has no way to judge any other text.
+ * True when a judgment criterion compiles as a JavaScript expression and is not a lone word such
+ * as `approved`. Compiles only; never runs it. The script adapter evaluates executable criteria
+ * exactly and has no way to judge any other text.
  */
 export function isExecutableCriterion(criterion: string): boolean {
+  const trimmed = criterion.trim();
+  if (/^[A-Za-z_$][\w$]*$/.test(trimmed) && !EXPRESSION_WORDS.has(trimmed)) return false;
   try {
     new vm.Script(`"use strict"; (${criterion});`);
     return true;
@@ -148,89 +154,38 @@ export class ScriptJudgmentAdapter implements JudgmentAdapter {
       codeGeneration: { strings: false, wasm: false },
     });
 
-    try {
-      // When the criterion cannot run as an expression, the decision comes from the agent's own
-      // payload and is marked self-reported (ADR 0011).
-      if (req.type === 'predicate') {
-        let isTrue = false;
-        let selfReported = false;
-        try {
-          const script = new vm.Script(`"use strict"; Boolean(${req.criterion})`);
-          isTrue = Boolean(script.runInContext(vmContext, { timeout: 100 }));
-        } catch {
-          selfReported = true;
-          if (typeof evalContext.event?.payload?.exit_code === 'number') {
-            isTrue = evalContext.event.payload.exit_code === 0;
-          } else if (evalContext.event?.payload?.success === true) {
-            isTrue = true;
-          }
-        }
+    // An executable criterion is always decided by running it, and fails closed if it throws.
+    // Only natural language is decided from the agent's own payload, marked self-reported (ADR 0011).
+    const executable = isExecutableCriterion(req.criterion);
+    const payload = evalContext.event?.payload;
+    const run = (wrapper: 'Boolean' | 'String' | 'Number'): unknown =>
+      new vm.Script(`"use strict"; ${wrapper}(${req.criterion})`).runInContext(vmContext, { timeout: 100 });
+    const finish = (result: Omit<JudgmentResult, 'adapterName' | 'latencyMs'>): JudgmentResult => ({
+      ...result,
+      adapterName: this.id,
+      latencyMs: Number((performance.now() - startTime).toFixed(2)),
+    });
+    const selfReported = executable ? {} : { selfReported: true };
 
-        const latencyMs = Number((performance.now() - startTime).toFixed(2));
-        return {
-          verdict: isTrue,
-          confidence: 1.0,
-          probability: isTrue ? 1 : 0,
-          passed: isTrue,
-          adapterName: this.id,
-          latencyMs,
-          ...(selfReported ? { selfReported } : {}),
-        };
+    try {
+      if (req.type === 'predicate') {
+        const isTrue = executable
+          ? Boolean(run('Boolean'))
+          : typeof payload?.exit_code === 'number' ? payload.exit_code === 0 : payload?.success === true;
+        return finish({ verdict: isTrue, confidence: 1.0, probability: isTrue ? 1 : 0, passed: isTrue, ...selfReported });
       }
 
       if (req.type === 'categorical') {
-        let choice = req.options?.[0] || '';
-        let selfReported = false;
-        try {
-          const script = new vm.Script(`"use strict"; String(${req.criterion})`);
-          choice = String(script.runInContext(vmContext, { timeout: 100 }));
-        } catch {
-          selfReported = true;
-          choice = String(evalContext.event?.payload?.choice || req.options?.[0] || '');
-        }
-
-        const latencyMs = Number((performance.now() - startTime).toFixed(2));
-        return {
-          verdict: choice,
-          confidence: 1.0,
-          probability: 1,
-          passed: req.options ? req.options.includes(choice) : true,
-          adapterName: this.id,
-          latencyMs,
-          ...(selfReported ? { selfReported } : {}),
-        };
+        const choice = executable ? String(run('String')) : String(payload?.choice || req.options?.[0] || '');
+        const passed = req.options ? req.options.includes(choice) : true;
+        return finish({ verdict: choice, confidence: 1.0, probability: 1, passed, ...selfReported });
       }
 
       // Evaluation type (numerical score)
-      let score = 0;
-      let selfReported = false;
-      try {
-        const script = new vm.Script(`"use strict"; Number(${req.criterion})`);
-        score = Number(script.runInContext(vmContext, { timeout: 100 })) || 0;
-      } catch {
-        selfReported = true;
-        score = Number(evalContext.event?.payload?.score) || 0;
-      }
-
-      const latencyMs = Number((performance.now() - startTime).toFixed(2));
-      return {
-        verdict: score,
-        confidence: 1.0,
-        passed: score > 0,
-        adapterName: this.id,
-        latencyMs,
-        ...(selfReported ? { selfReported } : {}),
-      };
+      const score = executable ? Number(run('Number')) || 0 : Number(payload?.score) || 0;
+      return finish({ verdict: score, confidence: 1.0, passed: score > 0, ...selfReported });
     } catch (err: any) {
-      const latencyMs = Number((performance.now() - startTime).toFixed(2));
-      return {
-        verdict: false,
-        confidence: 0.0,
-        passed: false,
-        adapterName: this.id,
-        latencyMs,
-        error: err.message,
-      };
+      return finish({ verdict: false, confidence: 0.0, passed: false, error: `Criterion threw: ${err.message}` });
     }
   }
 }
@@ -249,8 +204,13 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
   }
 
   public async isAvailable(): Promise<boolean> {
-    if (!process.env.TYPESAFE_API_KEY?.trim()) return false;
+    if (!this.isConfigured()) return false;
     return (await loadTypeSafeSdk()) !== null;
+  }
+
+  /** A set key means the user chose Jev, so a missing or broken SDK is an outage, not "no Jev". */
+  public isConfigured(): boolean {
+    return Boolean(process.env.TYPESAFE_API_KEY?.trim());
   }
 
   public async evaluate(
@@ -487,7 +447,9 @@ export class JudgmentEngine {
 
     let result: JudgmentResult | null = null;
     let primaryFailed = false;
-    let failureCause = 'circuit breaker open';
+    let failureCause = adapterSelectionReason === 'jev_unavailable'
+      ? 'the TypeSafe SDK is missing or failed to load'
+      : 'circuit breaker open';
 
     // 1. Try Primary Adapter if breaker allows
     if (primaryAdapter && primaryBreaker?.canExecute()) {
@@ -527,6 +489,10 @@ export class JudgmentEngine {
           true
         );
       } catch (err: any) {
+        if (outageAdapterId) {
+          const cause = `${failureCause}; fallback ${fallbackId} also failed: ${err.message}`;
+          return this.unevaluable(judgment, outageAdapterId, cause, adapterSelectionReason, fallbackId);
+        }
         return {
           verdict: false,
           confidence: 0.0,
@@ -542,7 +508,7 @@ export class JudgmentEngine {
       }
     }
 
-    // An open Jev circuit made the script adapter primary; it cannot judge natural language either.
+    // An open Jev circuit or a broken Jev install made the script adapter primary; it cannot judge natural language either.
     if (outageAdapterId && result.selfReported) {
       return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, result.adapterName);
     }
@@ -553,15 +519,15 @@ export class JudgmentEngine {
 
   /**
    * Returns the model adapter that is configured but cannot answer: the selected primary model
-   * adapter failed or is blocked by its circuit, or an open Jev circuit forced the script default.
-   * An adapter that reports itself unavailable is not configured, which is not an outage.
+   * adapter failed or is blocked by its circuit, or Jev is configured but its open circuit or
+   * broken install forced the script default. An adapter that is not configured is not in an outage.
    */
   private static async detectOutage(
     primaryAdapterId: string,
     primaryFailed: boolean,
     adapterSelectionReason: string
   ): Promise<string | undefined> {
-    const candidateId = adapterSelectionReason === 'jev_circuit_open'
+    const candidateId = adapterSelectionReason === 'jev_circuit_open' || adapterSelectionReason === 'jev_unavailable'
       ? 'jev'
       : primaryFailed && primaryAdapterId !== 'script'
         ? primaryAdapterId
@@ -569,7 +535,8 @@ export class JudgmentEngine {
     const candidate = candidateId ? this.adapters.get(candidateId) : undefined;
     if (!candidateId || !candidate) return undefined;
     try {
-      return (await candidate.isAvailable()) ? candidateId : undefined;
+      const configured = candidate.isConfigured ? await candidate.isConfigured() : await candidate.isAvailable();
+      return configured ? candidateId : undefined;
     } catch {
       return undefined;
     }
@@ -594,7 +561,7 @@ export class JudgmentEngine {
       adapterName: attemptedAdapterId,
       adapterSelectionReason: `${adapterSelectionReason}:unevaluable`,
       latencyMs: 0,
-      error: `Judgment could not be evaluated: ${adapterId} is unavailable (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. Retry the signal when ${adapterId} is reachable.`,
+      error: `Judgment could not be evaluated: ${adapterId} is unavailable (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. Retry the signal when ${adapterId} is reachable, with a new idempotency key if you set one.`,
       threshold: resolveJudgmentThreshold(judgment),
       band: 'unevaluable',
       fallbackTriggered: true,

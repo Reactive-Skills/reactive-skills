@@ -16,7 +16,7 @@ Test runs must not leave projection output in the repository.
 3. #15: `adapter_hint: script` regression tests, authoring docs, and a `validate` warning.
 4. v0.17.1 release candidate.
 
-Each milestone ships as its own pull request; the release candidate follows the last one.
+The three milestones ship as one pull request with one commit per issue (approved in the DoD); the release candidate follows it.
 
 ## Acceptance seeds
 

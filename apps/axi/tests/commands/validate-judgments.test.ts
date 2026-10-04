@@ -111,6 +111,14 @@ criterion: "Is it ready?"
 min_probability: 0.85
 `, { header: 'runtime_requirements:\n  required_capabilities: [judgment.probability_thresholds]\n' }));
     expect(semantic.warnings.some((w) => w.includes('executable expression'))).toBe(false);
+
+    fs.rmSync(path.join(tmpDir, 'judgment-skill'), { recursive: true, force: true });
+    const bareWord = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "approved"
+`));
+    expect(bareWord.warnings.some((w) => w.includes('executable expression'))).toBe(false);
+    expect(bareWord.warnings.some((w) => w.includes('relies on the default min_confidence'))).toBe(true);
   });
 
   it('names the default min_confidence when a semantic predicate declares no threshold', () => {

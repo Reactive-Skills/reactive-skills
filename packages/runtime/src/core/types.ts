@@ -153,6 +153,11 @@ export interface JudgmentAdapter {
   readonly id: string;
   supports(type: JudgmentType): boolean;
   isAvailable(): Promise<boolean>;
+  /**
+   * Whether the user set this adapter up, even if it cannot answer right now. A configured adapter
+   * that cannot answer is in an outage (ADR 0011). Defaults to `isAvailable()` when omitted.
+   */
+  isConfigured?(): boolean | Promise<boolean>;
   evaluate(req: JudgmentRequest, evalContext: any): Promise<JudgmentResult>;
 }
 

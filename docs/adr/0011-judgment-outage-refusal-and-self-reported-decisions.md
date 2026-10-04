@@ -20,15 +20,24 @@ A refused signal also returns no reason, so an agent cannot tell an outage from 
 
 ## Decision
 
-Classify a criterion as executable when it compiles as a JavaScript expression, without running it.
-Executable criteria keep today's behavior on every path.
+Classify a criterion as executable when it compiles as a JavaScript expression and is not a single bare word other than the sandbox names `payload`, `context`, `event`, `state`, and `req`.
+Classification compiles the criterion and never runs it, and `validate` uses the same rule.
+
+An executable criterion is always decided by evaluating it.
+If it throws, for example because a payload field it reads is missing, the judgment fails closed with the error and never falls back to the payload heuristic.
+Only a criterion that is not executable can be decided from the payload.
 
 During an outage, a judgment with a criterion that is not executable is unevaluable.
 The engine returns `passed: false`, band `unevaluable`, no `fallbackTarget`, and an error that names the unavailable adapter and says to retry.
 The signal is refused, the run stays in its current state, and no fallback transition happens.
 
 An outage means the selected primary model adapter (Jev or any other registered adapter except `script`) reports itself available but fails or is blocked by its open circuit breaker, or an open Jev circuit made the script adapter the default.
-An adapter that reports itself unavailable is not configured, which is not an outage.
+Jev counts as configured whenever `TYPESAFE_API_KEY` is set, even when the TypeSafe SDK is missing or fails to load, so a broken install refuses instead of passing on self-report.
+Any other adapter counts as configured when it reports itself available; an adapter that is not configured is not in an outage.
+When the declared fallback adapter is another model that also fails during an outage, the judgment is unevaluable as well.
+
+Replaying a refused signal with the same idempotency key returns the original refusal reason, because the key identifies that submission.
+A retry after an outage needs a new idempotency key, and the refusal reason says so.
 
 When Jev is not configured, the heuristic still decides, and the result carries `selfReported: true`.
 
@@ -41,6 +50,7 @@ The policy applies to predicate, categorical, and evaluation judgments.
 ## Alternatives
 
 - Fail closed everywhere: rejected because every semantic gate would stop working without a TypeSafe key.
+- Treat a runtime error in an executable criterion like natural language (the behavior before this decision): rejected because an exact gate then passes whenever the payload reports `exit_code: 0`.
 - Route unevaluable judgments to `fallback_target`: rejected because it sends agents to repair unjudged work and can loop during an outage.
 - Opt-in heuristic per skill (`fallback_heuristic: payload_status`): rejected because users without Jev would be stuck on every skill that does not opt in.
 - A separate `JUDGMENT_UNEVALUABLE` event: deferred; band `unevaluable` in `GUARD_EVALUATED` carries the same information without a new event type.

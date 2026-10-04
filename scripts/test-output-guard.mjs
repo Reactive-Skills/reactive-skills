@@ -7,7 +7,9 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 /** Directories where engine output lands when a test omits `workspaceDir`. */
 export const OUTPUT_BASES = [repoRoot, path.join(repoRoot, 'packages', 'runtime'), path.join(repoRoot, 'apps', 'axi')];
 const OUTPUT_DIRS = ['.docs', '.reactive'];
-const MAX_DEPTH = 4;
+// Three levels catch `.docs/jobs/<run>`, `.reactive/<run>`, and new skill stores, while ignoring the
+// runs and jobs a concurrent agent adds inside an existing store.
+const MAX_DEPTH = 3;
 
 function collectDirs(dir, depth, found) {
   if (!fs.existsSync(dir)) return;

@@ -776,12 +776,18 @@ export class FSMEngine {
     if (metadata.idempotencyKey) {
       const existing = this.eventStore.getEventByIdempotencyKey(metadata.idempotencyKey);
       if (existing) {
+        // The key identifies that submission, so a replay reports why it was refused (ADR 0011).
+        const refusal = this.eventStore
+          .query({ type: 'GUARD_EVALUATED' })
+          .filter((e) => e.causationId === existing.id && !e.payload?.passed && !e.payload?.fallbackTarget && e.payload?.error)
+          .at(-1);
         return {
           transitioned: false,
           previousState,
           newState: previousState,
           event: existing,
           deliverablesWritten: [],
+          ...(refusal ? { refusalReason: String(refusal.payload.error) } : {}),
         };
       }
     }
