@@ -87,6 +87,22 @@ describe('SQLite Storage Driver & EventStore Integration', () => {
     driver.close();
   });
 
+  it.each([
+    ['SQLite', { inMemory: true, enableSqlite: true }],
+    ['in-memory', { inMemory: true }],
+  ])('queries events by causationId with %s storage', (_name, options) => {
+    const store = new EventStore(options);
+    const signal = store.append('SIGNAL_EMITTED', { signal: 'SUBMIT' }, { state: 'REVIEW' });
+    const other = store.append('SIGNAL_EMITTED', { signal: 'OTHER' }, { state: 'REVIEW' });
+    store.append('GUARD_EVALUATED', { passed: false }, { state: 'REVIEW', causationId: signal.id });
+    store.append('GUARD_EVALUATED', { passed: true }, { state: 'REVIEW', causationId: other.id });
+    store.append('STATE_TRANSITION', { to: 'DONE' }, { state: 'DONE', causationId: other.id });
+
+    const caused = store.query({ causationId: signal.id });
+    expect(caused.map((e) => e.type)).toEqual(['GUARD_EVALUATED']);
+    expect(store.query({ causationId: other.id }).map((e) => e.type)).toEqual(['GUARD_EVALUATED', 'STATE_TRANSITION']);
+  });
+
   it('should synchronize EventStore append with SQLite driver automatically', () => {
     const store = new EventStore({ inMemory: true, enableSqlite: true });
     

@@ -4,6 +4,7 @@ import yaml from 'js-yaml';
 import {
   DEFAULT_MIN_CONFIDENCE,
   PROBABILITY_THRESHOLDS_CAPABILITY,
+  isExecutableCriterion,
   predicateProbabilityForConfidence,
   resolveJudgmentThreshold,
   type JudgmentDefinition,
@@ -73,6 +74,18 @@ function effectiveAcceptProbability(judgment: Record<string, any>): number | und
   return predicateProbabilityForConfidence(minConfidence);
 }
 
+/** Adapters the runtime registers itself; skills can only use others that the host registers. */
+const BUILT_IN_ADAPTERS = ['script', 'jev'];
+
+/**
+ * True when text reads like code rather than a question: it starts with a sandbox reference or uses
+ * JavaScript-only operators. Questions that mention fields such as `context.plans` stay natural language.
+ */
+function looksLikeExpression(criterion: string): boolean {
+  if (/\?\s*$/.test(criterion)) return false;
+  return /^\s*[!(]*\s*(payload|context|event|state)\s*\??[.[]/.test(criterion) || /===|!==|&&|\|\||=>/.test(criterion);
+}
+
 /**
  * Warns on semantic judgments that rely on min_confidence and on new fields used without the capability requirement.
  */
@@ -81,6 +94,36 @@ export function lintJudgmentThresholds(manifest: Record<string, any>): JudgmentL
   const judgments = collectTransitionJudgments(manifest.states);
 
   for (const { location, judgment } of judgments) {
+    for (const field of ['adapter_hint', 'fallback_adapter'] as const) {
+      const name = judgment[field];
+      if (typeof name === 'string' && !BUILT_IN_ADAPTERS.includes(name)) {
+        warnings.push(
+          `${location} ${field} '${name}' is not a built-in adapter (${BUILT_IN_ADAPTERS.join(', ')}); unless it is registered at runtime, the judgment cannot use it`
+        );
+      }
+    }
+
+    // A typo in an exact check silently turns it into natural language that the payload can decide.
+    if (typeof judgment.criterion === 'string' && looksLikeExpression(judgment.criterion) && !isExecutableCriterion(judgment.criterion)) {
+      warnings.push(
+        `${location} criterion looks like a JavaScript expression but does not compile, so the runtime treats it as natural language and, without Jev, decides it from the payload; fix the expression or rephrase it as a question`
+      );
+    }
+
+    // An exact check needs the script adapter as primary; a fallback runs only when the primary fails (#15).
+    if (
+      judgment.type === 'predicate'
+      && judgment.adapter_hint !== 'script'
+      && typeof judgment.criterion === 'string'
+      && isExecutableCriterion(judgment.criterion)
+    ) {
+      const hint = judgment.adapter_hint ? `'${judgment.adapter_hint}'` : 'not set';
+      warnings.push(
+        `${location} predicate criterion is an executable expression, but adapter_hint is ${hint}; when Jev is available the model judges this exact check instead of the script adapter evaluating it. Set adapter_hint: script (fallback_adapter: script runs only when the primary adapter fails)`
+      );
+      continue;
+    }
+
     if (judgment.adapter_hint === 'script' || judgment.min_probability !== undefined) continue;
 
     if (judgment.type === 'predicate') {

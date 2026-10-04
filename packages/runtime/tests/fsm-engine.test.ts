@@ -1,4 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { FSMEngine } from '../src/core/fsm-engine.js';
 import { EventStore } from '../src/core/event-store.js';
@@ -7,18 +9,25 @@ describe('Reactive Skills Engine & Event Store', () => {
   const skillDir = path.resolve(process.cwd(), 'skills', '_test_fsm_skill');
   let eventStore: EventStore;
   let engine: FSMEngine;
+  let workspaceDir: string;
 
   beforeEach(async () => {
+    workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-fsm-engine-test-'));
     eventStore = new EventStore({ inMemory: true });
     engine = new FSMEngine({
       skillDir,
       eventStore,
+      workspaceDir,
       initialContext: {
         target_file: 'src/calc.ts',
         test_file: 'tests/calc.test.ts',
       },
     });
     await engine.handleSignal('RUNTIME_READY');
+  });
+
+  afterEach(() => {
+    fs.rmSync(workspaceDir, { recursive: true, force: true });
   });
 
   it('should initialize to initial_state with event #1 logged', () => {

@@ -55,6 +55,10 @@ type SignalHandlingResult = {
   handledAtDepth?: number;
   deliverablesWritten: string[];
   metrics?: ExecutionMetrics;
+  /** Error from the last guard or judgment that refused the signal, when it reported one. */
+  refusalReason?: string;
+  /** Set when the deciding judgment came from the agent's own payload (ADR 0011). */
+  judgmentBasis?: 'self_reported';
 };
 
 export class FSMEngine {
@@ -772,12 +776,21 @@ export class FSMEngine {
     if (metadata.idempotencyKey) {
       const existing = this.eventStore.getEventByIdempotencyKey(metadata.idempotencyKey);
       if (existing) {
+        // The key identifies that submission, so a replay reports why it was refused (ADR 0011).
+        const caused = this.eventStore.query({ causationId: existing.id });
+        const accepted = caused.some((e) => e.type === 'STATE_TRANSITION');
+        const refusal = accepted
+          ? undefined
+          : caused
+            .filter((e) => e.type === 'GUARD_EVALUATED' && !e.payload?.passed && !e.payload?.fallbackTarget && e.payload?.error)
+            .at(-1);
         return {
           transitioned: false,
           previousState,
           newState: previousState,
           event: existing,
           deliverablesWritten: [],
+          ...(refusal ? { refusalReason: String(refusal.payload.error) } : {}),
         };
       }
     }
@@ -807,6 +820,8 @@ export class FSMEngine {
     if (Object.keys(incomingContextUpdates).length > 0) {
       this.updateContext(incomingContextUpdates);
     }
+
+    let refusalReason: string | undefined;
 
     // Bubble search: test from deepest leaf substate up to root
     for (let depth = this.activeStatePath.length; depth >= 1; depth--) {
@@ -859,6 +874,9 @@ export class FSMEngine {
 
         let effectiveTarget = transDef.target;
         let isTransitioning = guardResult.passed;
+        if (!guardResult.passed && !guardResult.fallbackTarget && guardResult.error) {
+          refusalReason = guardResult.error;
+        }
 
         if (!guardResult.passed && guardResult.fallbackTarget) {
           effectiveTarget = guardResult.fallbackTarget;
@@ -967,6 +985,7 @@ export class FSMEngine {
             handledAtDepth: depth,
             deliverablesWritten,
             metrics,
+            ...(guardResult.judgmentResult?.selfReported ? { judgmentBasis: 'self_reported' as const } : {}),
           };
         }
       }
@@ -979,6 +998,7 @@ export class FSMEngine {
       newState: previousState,
       event,
       deliverablesWritten: [],
+      ...(refusalReason ? { refusalReason } : {}),
     };
   }
 

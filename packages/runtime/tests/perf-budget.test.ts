@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { FSMEngine } from '../src/core/fsm-engine.js';
 import { EventStore } from '../src/core/event-store.js';
 
@@ -12,13 +13,11 @@ describe('Performance Budget & Metrics Telemetry', () => {
   let engine: FSMEngine;
 
   beforeEach(async () => {
-    tempDbDir = path.resolve(process.cwd(), '.reactive/test-perf');
-    if (!fs.existsSync(tempDbDir)) {
-      fs.mkdirSync(tempDbDir, { recursive: true });
-    }
+    tempDbDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-perf-test-'));
     tempDbPath = path.resolve(tempDbDir, `perf-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 
     eventStore = new EventStore({
+      workspaceDir: tempDbDir,
       sqlitePath: tempDbPath,
       enableSqlite: true,
     });
@@ -26,6 +25,7 @@ describe('Performance Budget & Metrics Telemetry', () => {
     engine = new FSMEngine({
       skillDir,
       eventStore,
+      workspaceDir: tempDbDir,
       perfThresholds: {
         maxTransitionDurationMs: (process.env.CI || process.platform === 'win32') ? 1000 : 25,
       },
@@ -100,6 +100,7 @@ describe('Performance Budget & Metrics Telemetry', () => {
     const strictEngine = new FSMEngine({
       skillDir,
       eventStore,
+      workspaceDir: tempDbDir,
       perfThresholds: {
         maxSliceDurationMs: 0.0001,
         maxTransitionDurationMs: 0.0001,

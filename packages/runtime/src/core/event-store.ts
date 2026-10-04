@@ -57,6 +57,8 @@ export interface EventQueryOptions {
   limit?: number;
   runId?: string;
   allRuns?: boolean;
+  /** Only events caused by this event id, such as the guard and transition events of one signal. */
+  causationId?: string;
 }
 
 type RunMetadata = {
@@ -166,6 +168,7 @@ export class SQLiteStorageDriver {
       CREATE INDEX IF NOT EXISTS idx_events_ledger_seq ON events(ledger_seq);
       CREATE INDEX IF NOT EXISTS idx_events_type ON events(run_id, type);
       CREATE INDEX IF NOT EXISTS idx_events_state ON events(run_id, state);
+      CREATE INDEX IF NOT EXISTS idx_events_causation ON events(run_id, causation_id);
       CREATE UNIQUE INDEX IF NOT EXISTS idx_events_run_idempotency
         ON events(run_id, idempotency_key)
         WHERE idempotency_key IS NOT NULL;
@@ -425,6 +428,7 @@ export class SQLiteStorageDriver {
     else if (options.runId) { sql += ' AND run_id = ?'; params.push(options.runId); }
     if (options.type) { sql += ' AND type = ?'; params.push(options.type); }
     if (options.state) { sql += ' AND state = ?'; params.push(options.state); }
+    if (options.causationId) { sql += ' AND causation_id = ?'; params.push(options.causationId); }
     if (options.sinceSeq !== undefined) { sql += ' AND seq > ?'; params.push(options.sinceSeq); }
     sql += options.allRuns ? ' ORDER BY ledger_seq ASC, rowid ASC' : ' ORDER BY seq ASC';
     if (options.limit) { sql += ' LIMIT ?'; params.push(options.limit); }
@@ -1121,6 +1125,7 @@ export class EventStore {
     const filtered = this.events.filter(event => {
       if (filter.type && event.type !== filter.type) return false;
       if (filter.state && event.state !== filter.state) return false;
+      if (filter.causationId && event.causationId !== filter.causationId) return false;
       if (filter.sinceSeq !== undefined && event.seq <= filter.sinceSeq) return false;
       if (filter.runId && event.run_id !== filter.runId) return false;
       return true;

@@ -50,7 +50,7 @@ export const conceptsDoc = {
         { type: 'list', items: [
           'ScriptJudgmentAdapter: Built-in default (<1ms) providing deterministic sandboxed heuristic evaluation with zero configuration.',
           'JevJudgmentAdapter: Direct integration with TypeSafe AI\'s System One decision model through @typesafe-ai/sdk. It requires TYPESAFE_API_KEY, does not invoke jev-axi, and preserves Script fallback behavior when unavailable.',
-          'Circuit Breaker & Fallbacks: Resilient evaluation wraps external calls in a circuit breaker. If an adapter times out or trips, the FSM transitions directly to a declared fallback_target (e.g. BLOCKED or MANUAL_REVIEW) and audits GUARD_FALLBACK_TRIGGERED into the event ledger.',
+          'Circuit Breaker & Outages: Resilient evaluation wraps external calls in a circuit breaker. When a configured model adapter times out, fails, or trips, a criterion written as a JavaScript expression is still evaluated by the built-in script adapter. A natural-language criterion cannot be judged that way, so the signal is refused with a refusal_reason and the run stays in its current state. A judgment that rejects a result routes to its declared fallback_target (e.g. BLOCKED or MANUAL_REVIEW) and audits GUARD_FALLBACK_TRIGGERED into the event ledger.',
         ] },
         { type: 'code', example: {
           language: 'yaml',

@@ -119,6 +119,46 @@ describe('emitCommand', () => {
     expect(mockHandleSignal).not.toHaveBeenCalled();
   });
 
+  it('shows the refusal reason when a guard refuses the signal (#22)', async () => {
+    const skillDir = path.join(tmpDir, 'skills', 'test-skill');
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(path.join(skillDir, 'skill.yaml'), 'name: test-skill\n');
+    mockHandleSignal.mockResolvedValueOnce({
+      transitioned: false,
+      previousState: 'REVIEW',
+      newState: 'REVIEW',
+      event: { id: '01a06e96-refused-event-id' },
+      deliverablesWritten: [],
+      refusalReason: 'Judgment could not be evaluated: jev is unavailable (timeout). Retry the signal when jev is reachable.',
+    });
+    const { emitCommand } = await import('../../src/commands/emit.js');
+
+    const output = await emitCommand(['test-skill', 'SUBMIT', '{"exit_code":0}']);
+
+    expect(output).toContain('transitioned: "false"');
+    expect(output).toContain('refusal_reason: "Judgment could not be evaluated: jev is unavailable (timeout).');
+  });
+
+  it('labels a transition decided by a self-reported judgment (#22)', async () => {
+    const skillDir = path.join(tmpDir, 'skills', 'test-skill');
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(path.join(skillDir, 'skill.yaml'), 'name: test-skill\n');
+    mockHandleSignal.mockResolvedValueOnce({
+      transitioned: true,
+      previousState: 'REVIEW',
+      newState: 'DONE',
+      event: { id: '01a06e96-self-reported-event-id' },
+      deliverablesWritten: [],
+      judgmentBasis: 'self_reported',
+    });
+    const { emitCommand } = await import('../../src/commands/emit.js');
+
+    const output = await emitCommand(['test-skill', 'SUBMIT', '{"exit_code":0}']);
+
+    expect(output).toContain('judgment_basis: self_reported');
+    expect(output).not.toContain('refusal_reason');
+  });
+
   it('supports 2-arg syntax: emit <skill> <signal> with auto-resolved eventId', async () => {
     const skillDir = path.join(process.cwd(), 'skills', 'test-skill');
     fs.mkdirSync(skillDir, { recursive: true });

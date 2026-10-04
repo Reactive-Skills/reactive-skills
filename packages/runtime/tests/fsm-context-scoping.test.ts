@@ -86,6 +86,7 @@ ${extraStates}
     makeSkill();
     const engine = new FSMEngine({
       skillDir,
+      workspaceDir: tempDir,
       eventStore: new EventStore({ inMemory: true }),
     });
 
@@ -110,6 +111,7 @@ ${extraStates}
     makeSkill();
     const engine = new FSMEngine({
       skillDir,
+      workspaceDir: tempDir,
       eventStore: new EventStore({ inMemory: true }),
     });
 
@@ -120,7 +122,7 @@ ${extraStates}
   it('should record STATE_VISITED on first entry and STATE_REVISITED on re-entry', async () => {
     makeSkill();
     const eventStore = new EventStore({ inMemory: true });
-    const engine = new FSMEngine({ skillDir, eventStore });
+    const engine = new FSMEngine({ skillDir, workspaceDir: tempDir, eventStore });
 
     // First visit to ENTRY
     const events = eventStore.getAll();
@@ -150,6 +152,7 @@ ${extraStates}
     const eventStore = new EventStore({ inMemory: true });
     const engine = new FSMEngine({
       skillDir,
+      workspaceDir: tempDir,
       eventStore,
       initialContext: { mission: 'Original mission', internal_counter: 0 },
     });
@@ -189,6 +192,7 @@ ${extraStates}
     const eventStore = new EventStore({ inMemory: true });
     const engine = new FSMEngine({
       skillDir,
+      workspaceDir: tempDir,
       eventStore,
       initialContext: {
         mission: 'Test mission',
@@ -219,6 +223,7 @@ ${extraStates}
     const eventStore = new EventStore({ inMemory: true });
     const engine = new FSMEngine({
       skillDir,
+      workspaceDir: tempDir,
       eventStore,
       initialContext: {
         mission: 'Mission v1',
@@ -244,6 +249,7 @@ ${extraStates}
     const eventStore = new EventStore({ inMemory: true });
     const engine = new FSMEngine({
       skillDir,
+      workspaceDir: tempDir,
       eventStore,
     });
 
@@ -286,6 +292,7 @@ states:
 
     const engine = new FSMEngine({
       skillDir,
+      workspaceDir: tempDir,
       eventStore: new EventStore({ inMemory: true }),
     });
 
@@ -322,6 +329,7 @@ states:
 
     const engine = new FSMEngine({
       skillDir,
+      workspaceDir: tempDir,
       eventStore: new EventStore({ inMemory: true }),
     });
 
@@ -336,6 +344,7 @@ states:
     const eventStore = new EventStore({ inMemory: true });
     const engine = new FSMEngine({
       skillDir,
+      workspaceDir: tempDir,
       eventStore,
       initialContext: {
         mission: 'Test mission',
@@ -372,6 +381,7 @@ states:
     const eventStore = new EventStore({ inMemory: true });
     const engine = new FSMEngine({
       skillDir,
+      workspaceDir: tempDir,
       eventStore,
       initialContext: {
         mission: 'Original',

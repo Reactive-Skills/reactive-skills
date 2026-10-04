@@ -48,7 +48,7 @@ states:
     fs.writeFileSync(path.join(skillDir, 'skill.yaml'), cyclicYaml, 'utf8');
 
     const eventStore = new EventStore({ inMemory: true });
-    const engine = new FSMEngine({ skillDir, eventStore });
+    const engine = new FSMEngine({ skillDir, workspaceDir: tempDir, eventStore });
 
     // Emitting START -> STATE_A (emits GO_B) -> STATE_B (emits GO_A) -> STATE_A (repeats infinitely)
     // This will trip the cycle guard at MAX_QUEUE_DRAIN_DEPTH (50)
@@ -87,7 +87,7 @@ states:
     fs.writeFileSync(path.join(skillDir, 'skill.yaml'), linearYaml, 'utf8');
 
     const eventStore = new EventStore({ inMemory: true });
-    const engine = new FSMEngine({ skillDir, eventStore });
+    const engine = new FSMEngine({ skillDir, workspaceDir: tempDir, eventStore });
 
     const result = await engine.handleSignal('START');
     expect(result.transitioned).toBe(true);

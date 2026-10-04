@@ -96,6 +96,25 @@ export class CircuitBreaker {
   }
 }
 
+/** Names a lone word may use and still count as an expression rather than natural language. */
+const EXPRESSION_WORDS = new Set(['payload', 'context', 'event', 'state', 'req', 'true', 'false', 'null', 'undefined']);
+
+/**
+ * True when a judgment criterion compiles as a JavaScript expression and is not a lone word such
+ * as `approved`. Compiles only; never runs it. The script adapter evaluates executable criteria
+ * exactly and has no way to judge any other text.
+ */
+export function isExecutableCriterion(criterion: string): boolean {
+  const trimmed = criterion.trim();
+  if (/^[\p{L}_$][\p{L}\p{N}\p{M}_$\u200c\u200d]*$/u.test(trimmed) && !EXPRESSION_WORDS.has(trimmed)) return false;
+  try {
+    new vm.Script(`"use strict"; (${criterion});`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Built-in baseline ScriptJudgmentAdapter (Zero dependencies, deterministic)
  * Always available, runs in sandboxed node:vm
@@ -135,79 +154,38 @@ export class ScriptJudgmentAdapter implements JudgmentAdapter {
       codeGeneration: { strings: false, wasm: false },
     });
 
+    // An executable criterion is always decided by running it, and fails closed if it throws.
+    // Only natural language is decided from the agent's own payload, marked self-reported (ADR 0011).
+    const executable = isExecutableCriterion(req.criterion);
+    const payload = evalContext.event?.payload;
+    const run = (wrapper: 'Boolean' | 'String' | 'Number'): unknown =>
+      new vm.Script(`"use strict"; ${wrapper}(${req.criterion})`).runInContext(vmContext, { timeout: 100 });
+    const finish = (result: Omit<JudgmentResult, 'adapterName' | 'latencyMs'>): JudgmentResult => ({
+      ...result,
+      adapterName: this.id,
+      latencyMs: Number((performance.now() - startTime).toFixed(2)),
+    });
+    const selfReported = executable ? {} : { selfReported: true };
+
     try {
       if (req.type === 'predicate') {
-        let isTrue = false;
-        try {
-          const script = new vm.Script(`"use strict"; Boolean(${req.criterion})`);
-          isTrue = Boolean(script.runInContext(vmContext, { timeout: 100 }));
-        } catch {
-          // Heuristic fallback: check if payload has exit_code === 0 or status === 'ok'
-          if (typeof evalContext.event?.payload?.exit_code === 'number') {
-            isTrue = evalContext.event.payload.exit_code === 0;
-          } else if (evalContext.event?.payload?.success === true) {
-            isTrue = true;
-          }
-        }
-
-        const latencyMs = Number((performance.now() - startTime).toFixed(2));
-        return {
-          verdict: isTrue,
-          confidence: 1.0,
-          probability: isTrue ? 1 : 0,
-          passed: isTrue,
-          adapterName: this.id,
-          latencyMs,
-        };
+        const isTrue = executable
+          ? Boolean(run('Boolean'))
+          : typeof payload?.exit_code === 'number' ? payload.exit_code === 0 : payload?.success === true;
+        return finish({ verdict: isTrue, confidence: 1.0, probability: isTrue ? 1 : 0, passed: isTrue, ...selfReported });
       }
 
       if (req.type === 'categorical') {
-        let choice = req.options?.[0] || '';
-        try {
-          const script = new vm.Script(`"use strict"; String(${req.criterion})`);
-          choice = String(script.runInContext(vmContext, { timeout: 100 }));
-        } catch {
-          choice = String(evalContext.event?.payload?.choice || req.options?.[0] || '');
-        }
-
-        const latencyMs = Number((performance.now() - startTime).toFixed(2));
-        return {
-          verdict: choice,
-          confidence: 1.0,
-          probability: 1,
-          passed: req.options ? req.options.includes(choice) : true,
-          adapterName: this.id,
-          latencyMs,
-        };
+        const choice = executable ? String(run('String')) : String(payload?.choice || req.options?.[0] || '');
+        const passed = req.options ? req.options.includes(choice) : true;
+        return finish({ verdict: choice, confidence: 1.0, probability: 1, passed, ...selfReported });
       }
 
       // Evaluation type (numerical score)
-      let score = 0;
-      try {
-        const script = new vm.Script(`"use strict"; Number(${req.criterion})`);
-        score = Number(script.runInContext(vmContext, { timeout: 100 })) || 0;
-      } catch {
-        score = Number(evalContext.event?.payload?.score) || 0;
-      }
-
-      const latencyMs = Number((performance.now() - startTime).toFixed(2));
-      return {
-        verdict: score,
-        confidence: 1.0,
-        passed: score > 0,
-        adapterName: this.id,
-        latencyMs,
-      };
+      const score = executable ? Number(run('Number')) || 0 : Number(payload?.score) || 0;
+      return finish({ verdict: score, confidence: 1.0, passed: score > 0, ...selfReported });
     } catch (err: any) {
-      const latencyMs = Number((performance.now() - startTime).toFixed(2));
-      return {
-        verdict: false,
-        confidence: 0.0,
-        passed: false,
-        adapterName: this.id,
-        latencyMs,
-        error: err.message,
-      };
+      return finish({ verdict: false, confidence: 0.0, passed: false, error: `Criterion threw: ${err.message}` });
     }
   }
 }
@@ -226,8 +204,13 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
   }
 
   public async isAvailable(): Promise<boolean> {
-    if (!process.env.TYPESAFE_API_KEY?.trim()) return false;
+    if (!this.isConfigured()) return false;
     return (await loadTypeSafeSdk()) !== null;
+  }
+
+  /** A set key means the user chose Jev, so a missing or broken SDK is an outage, not "no Jev". */
+  public isConfigured(): boolean {
+    return Boolean(process.env.TYPESAFE_API_KEY?.trim());
   }
 
   public async evaluate(
@@ -464,6 +447,9 @@ export class JudgmentEngine {
 
     let result: JudgmentResult | null = null;
     let primaryFailed = false;
+    let failureCause = adapterSelectionReason === 'jev_unavailable'
+      ? 'the TypeSafe SDK is missing or failed to load'
+      : 'circuit breaker open';
 
     // 1. Try Primary Adapter if breaker allows
     if (primaryAdapter && primaryBreaker?.canExecute()) {
@@ -480,10 +466,13 @@ export class JudgmentEngine {
       } catch (err: any) {
         primaryBreaker.recordFailure();
         primaryFailed = true;
+        failureCause = err?.message || String(err);
       }
     } else {
       primaryFailed = true;
     }
+
+    const outageAdapterId = await this.detectOutage(primaryAdapterId, primaryFailed, adapterSelectionReason);
 
     // 2. Cascade to Fallback Adapter if primary failed or was blocked by breaker
     if (!result || primaryFailed) {
@@ -491,12 +480,19 @@ export class JudgmentEngine {
       const fallbackAdapter = this.adapters.get(fallbackId) || this.adapters.get('script')!;
       try {
         const fallbackResult = await fallbackAdapter.evaluate(req, evalContext);
+        if (outageAdapterId && fallbackResult.selfReported) {
+          return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, fallbackResult.adapterName);
+        }
         return this.applyDecision(
           judgment,
           { ...fallbackResult, adapterSelectionReason: `${adapterSelectionReason}:fallback` },
           true
         );
       } catch (err: any) {
+        if (outageAdapterId) {
+          const cause = `${failureCause}; fallback ${fallbackId} also failed: ${err.message}`;
+          return this.unevaluable(judgment, outageAdapterId, cause, adapterSelectionReason, fallbackId);
+        }
         return {
           verdict: false,
           confidence: 0.0,
@@ -512,8 +508,64 @@ export class JudgmentEngine {
       }
     }
 
+    // An open Jev circuit or a broken Jev install made the script adapter primary; it cannot judge natural language either.
+    if (outageAdapterId && result.selfReported) {
+      return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, result.adapterName);
+    }
+
     // 3. Apply the declared threshold and decision band
     return this.applyDecision(judgment, result, false);
+  }
+
+  /**
+   * Returns the model adapter that is configured but cannot answer: the selected primary model
+   * adapter failed or is blocked by its circuit, or Jev is configured but its open circuit or
+   * broken install forced the script default. An adapter that is not configured is not in an outage.
+   */
+  private static async detectOutage(
+    primaryAdapterId: string,
+    primaryFailed: boolean,
+    adapterSelectionReason: string
+  ): Promise<string | undefined> {
+    const candidateId = adapterSelectionReason === 'jev_circuit_open' || adapterSelectionReason === 'jev_unavailable'
+      ? 'jev'
+      : primaryFailed && primaryAdapterId !== 'script'
+        ? primaryAdapterId
+        : undefined;
+    const candidate = candidateId ? this.adapters.get(candidateId) : undefined;
+    if (!candidateId || !candidate) return undefined;
+    try {
+      const configured = candidate.isConfigured ? await candidate.isConfigured() : await candidate.isAvailable();
+      return configured ? candidateId : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * A judgment no adapter could decide. The cascade ran (`fallbackTriggered`), but there is no
+   * `fallbackTarget`, so the signal is refused and the run stays put instead of being sent to
+   * repair work that was never judged (ADR 0011).
+   */
+  private static unevaluable(
+    judgment: JudgmentDefinition,
+    adapterId: string,
+    cause: string,
+    adapterSelectionReason: string,
+    attemptedAdapterId: string
+  ): JudgmentResult & { fallbackTriggered: boolean; fallbackTarget?: string } {
+    return {
+      verdict: false,
+      confidence: 0,
+      passed: false,
+      adapterName: attemptedAdapterId,
+      adapterSelectionReason: `${adapterSelectionReason}:unevaluable`,
+      latencyMs: 0,
+      error: `Judgment could not be evaluated: ${adapterId} is unavailable (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. Retry the signal when ${adapterId} is reachable, with a new idempotency key if you set one.`,
+      threshold: resolveJudgmentThreshold(judgment),
+      band: 'unevaluable',
+      fallbackTriggered: true,
+    };
   }
 
   private static applyDecision(

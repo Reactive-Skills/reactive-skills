@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,6 +8,16 @@ import { FSMEngine } from '../src/core/fsm-engine.js';
 import { TelemetryServer } from '../src/telemetry/server.js';
 
 describe('TelemetryServer (SSE & Private Network Access)', () => {
+  // Engines write their stores under workspaceDir; keep them out of the repository (#28).
+  const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsa-telemetry-test-'));
+  afterAll(() => {
+    try {
+      fs.rmSync(workspaceDir, { recursive: true, force: true });
+    } catch {
+      // Windows may still hold engine files open.
+    }
+  });
+
   const tempSkillDir = path.resolve(process.cwd(), 'skills', '_test_telemetry_skill');
   let eventStore: EventStore;
   let server: TelemetryServer | null = null;
@@ -350,6 +360,7 @@ states:
   it('should handle POST /signal and trigger FSM transitions', async () => {
     const engine = new FSMEngine({
       skillDir: tempSkillDir,
+      workspaceDir,
       eventStore,
     });
 

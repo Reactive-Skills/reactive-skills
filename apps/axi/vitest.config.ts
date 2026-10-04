@@ -11,6 +11,9 @@ export default defineConfig({
     root: appRoot,
     globals: true,
     environment: 'node',
+    globalSetup: path.resolve(__dirname, 'vitest.global-setup.ts'),
     include: ['tests/**/*.test.ts'],
+    // The first test in a file pays for a cold import of the runtime, which can pass 5s on Windows under load.
+    testTimeout: 20_000,
   },
 });
