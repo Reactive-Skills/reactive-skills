@@ -147,7 +147,11 @@ export interface JudgmentResult {
    * `choice`, or `score`) because the criterion is not an executable expression.
    */
   selfReported?: boolean;
+  /** Who decided the judgment (ADR 0012), set by the judgment engine. */
+  decidedBy?: JudgmentDecisionSource;
 }
+
+export type JudgmentDecisionSource = 'model' | 'expression' | 'human' | 'self_reported';
 
 export interface JudgmentAdapter {
   readonly id: string;

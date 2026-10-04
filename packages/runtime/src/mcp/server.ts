@@ -463,6 +463,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
                   projectionsWritten: result.deliverablesWritten,
                   refusalReason: result.refusalReason,
                   judgmentBasis: result.judgmentBasis,
+                  warning: result.warning,
                 },
                 null,
                 2

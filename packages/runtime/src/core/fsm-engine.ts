@@ -19,6 +19,7 @@ import {
 } from './types.js';
 import { EventStore, createSortableId } from './event-store.js';
 import { GuardEvaluator } from './guard-evaluator.js';
+import { hasSelfReportGrant } from './approval-grants.js';
 import { LegacySkillAdapter } from './legacy-adapter.js';
 import { ProjectionEngine } from './projection-engine.js';
 import { JobManager, isJobTerminal } from './job-manager.js';
@@ -57,9 +58,26 @@ type SignalHandlingResult = {
   metrics?: ExecutionMetrics;
   /** Error from the last guard or judgment that refused the signal, when it reported one. */
   refusalReason?: string;
-  /** Set when the deciding judgment came from the agent's own payload (ADR 0011). */
-  judgmentBasis?: 'self_reported';
+  /** Set when a person (ADR 0012) or the agent's own payload (ADR 0011) decided the judgment. */
+  judgmentBasis?: 'self_reported' | 'human';
+  /** Shown with every self-reported decision so the operator and the agent can see it (ADR 0012). */
+  warning?: string;
 };
+
+/** A gate no adapter could judge, waiting for a person to decide it (ADR 0012). */
+export interface PendingApproval {
+  id: string;
+  state: string;
+  signal: string;
+  target: string;
+  criterion: string;
+  judgmentType: string;
+  payload: Record<string, any>;
+  reason?: string;
+  requestedAt: string;
+}
+
+const SELF_REPORT_WARNING = "Decided from the agent's own report because self-reported decisions are enabled for this workspace; reactive-skills-axi approve --revoke-self-reported turns them off.";
 
 export class FSMEngine {
   private skillDir: string;
@@ -779,11 +797,14 @@ export class FSMEngine {
         // The key identifies that submission, so a replay reports why it was refused (ADR 0011).
         const caused = this.eventStore.query({ causationId: existing.id });
         const accepted = caused.some((e) => e.type === 'STATE_TRANSITION');
+        const refusedEvent = caused.find((e) => e.type === 'SIGNAL_REFUSED');
         const refusal = accepted
           ? undefined
-          : caused
-            .filter((e) => e.type === 'GUARD_EVALUATED' && !e.payload?.passed && !e.payload?.fallbackTarget && e.payload?.error)
-            .at(-1);
+          : refusedEvent
+            ? { payload: { error: refusedEvent.payload?.reason } }
+            : caused
+              .filter((e) => e.type === 'GUARD_EVALUATED' && !e.payload?.passed && !e.payload?.fallbackTarget && e.payload?.error)
+              .at(-1);
         return {
           transitioned: false,
           previousState,
@@ -822,6 +843,8 @@ export class FSMEngine {
     }
 
     let refusalReason: string | undefined;
+    const selfReportAllowed = hasSelfReportGrant(this.workspaceDir);
+    const humanApproval = this.resolveHumanDecision(signalName, metadata.causationId);
 
     // Bubble search: test from deepest leaf substate up to root
     for (let depth = this.activeStatePath.length; depth >= 1; depth--) {
@@ -851,6 +874,8 @@ export class FSMEngine {
             context: this.context,
             currentState: testPath.join('.'),
             skillDir: this.skillDir,
+            selfReportAllowed,
+            humanDecision: transDef.judgment && humanApproval?.state === testPath.join('.') ? humanApproval.decision : undefined,
           },
           transDef.judgment
         );
@@ -876,6 +901,11 @@ export class FSMEngine {
         let isTransitioning = guardResult.passed;
         if (!guardResult.passed && !guardResult.fallbackTarget && guardResult.error) {
           refusalReason = guardResult.error;
+        }
+        if (transDef.judgment && guardResult.judgmentResult?.band === 'unevaluable') {
+          this.recordApprovalRequest(testPath.join('.'), signalName, transDef.target, transDef.judgment, payload, guardResult.error);
+          const job = this.getJobName() || this.getJobId() || 'default';
+          refusalReason = `${guardResult.error ?? 'Judgment could not be evaluated.'} This gate is waiting for a person: stop and ask the user to run \`reactive-skills-axi approve ${this.manifest.name} --job ${job}\` in their own terminal.`;
         }
 
         if (!guardResult.passed && guardResult.fallbackTarget) {
@@ -985,13 +1015,18 @@ export class FSMEngine {
             handledAtDepth: depth,
             deliverablesWritten,
             metrics,
-            ...(guardResult.judgmentResult?.selfReported ? { judgmentBasis: 'self_reported' as const } : {}),
+            ...(guardResult.judgmentResult?.decidedBy === 'human' ? { judgmentBasis: 'human' as const } : {}),
+            ...(guardResult.judgmentResult?.selfReported ? { judgmentBasis: 'self_reported' as const, warning: SELF_REPORT_WARNING } : {}),
           };
         }
       }
     }
 
     this.context = contextBeforeSignal;
+    if (refusalReason) {
+      // The full reason, including any approval instruction, so an idempotent replay returns it as sent.
+      this.eventStore.append('SIGNAL_REFUSED', { signal: signalName, reason: refusalReason }, { state: previousState, causationId: event.id });
+    }
     return {
       transitioned: false,
       previousState,
@@ -1146,6 +1181,71 @@ export class FSMEngine {
         });
       }
     }
+  }
+
+  /** Gates in the active state path that no adapter could judge and no person has decided yet. */
+  public getPendingApprovals(): PendingApproval[] {
+    const decided = new Set(this.eventStore.query({ type: 'APPROVAL_DECIDED' }).map((e) => e.payload?.requestId));
+    const active = new Set(this.activeStatePath.map((_, i) => this.activeStatePath.slice(0, i + 1).join('.')));
+    return this.eventStore
+      .query({ type: 'APPROVAL_REQUESTED' })
+      .filter((e) => !decided.has(e.id) && active.has(e.payload?.state))
+      .map((e) => ({
+        id: e.id,
+        state: e.payload.state,
+        signal: e.payload.signal,
+        target: e.payload.target,
+        criterion: e.payload.criterion,
+        judgmentType: e.payload.judgmentType,
+        payload: e.payload.payload ?? {},
+        reason: e.payload.reason,
+        requestedAt: e.timestamp,
+      }));
+  }
+
+  /**
+   * Records a person's decision on a pending gate and re-sends its signal. Only
+   * `reactive-skills-axi approve` calls this, after the user confirms a code in an interactive
+   * terminal (ADR 0012).
+   */
+  public async decideApproval(requestId: string, decision: 'approve' | 'reject', channel: string): Promise<SignalHandlingResult> {
+    const request = this.getPendingApprovals().find((r) => r.id === requestId);
+    if (!request) throw new Error(`No pending approval ${requestId} in this run`);
+    const decided = this.eventStore.append(
+      'APPROVAL_DECIDED',
+      { requestId, decision, channel, state: request.state, signal: request.signal },
+      { state: this.getCurrentState(), causationId: requestId }
+    );
+    return this.handleSignal(request.signal, request.payload, { source: 'human_approval', causationId: decided.id });
+  }
+
+  /** A decision counts only for its own request's signal, and only for the first signal it causes. */
+  private resolveHumanDecision(signalName: string, causationId?: string): { state: string; decision: 'approve' | 'reject' } | undefined {
+    if (!causationId) return undefined;
+    const decided = this.eventStore.query({ type: 'APPROVAL_DECIDED' }).find((e) => e.id === causationId);
+    if (!decided || decided.payload?.signal !== signalName) return undefined;
+    const request = this.eventStore.query({ type: 'APPROVAL_REQUESTED' }).find((e) => e.id === decided.payload?.requestId);
+    if (!request || request.payload?.signal !== signalName) return undefined;
+    const signalsCaused = this.eventStore.query({ causationId: decided.id }).filter((e) => e.type === 'SIGNAL_EMITTED');
+    if (signalsCaused.length !== 1) return undefined;
+    const decision = decided.payload?.decision === 'approve' ? 'approve' : 'reject';
+    return { state: request.payload.state, decision };
+  }
+
+  private recordApprovalRequest(
+    state: string,
+    signal: string,
+    target: string,
+    judgment: { type: string; criterion: string },
+    payload: Record<string, any>,
+    reason?: string
+  ): void {
+    if (this.getPendingApprovals().some((r) => r.state === state && r.signal === signal)) return;
+    this.eventStore.append(
+      'APPROVAL_REQUESTED',
+      { state, signal, target, criterion: judgment.criterion, judgmentType: judgment.type, payload, reason },
+      { state }
+    );
   }
 
   public getJobId(): string | undefined {

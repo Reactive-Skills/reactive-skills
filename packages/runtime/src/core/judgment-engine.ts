@@ -112,8 +112,8 @@ function isAuthoringError(err: unknown): boolean {
   return err instanceof JudgmentAuthoringError || (err as { name?: string } | null)?.name === 'JudgmentAuthoringError';
 }
 
-/** Why no adapter could decide a judgment; selects the agent-facing reason (ADR 0011). */
-type UnevaluableKind = 'outage' | 'credentials' | 'authoring';
+/** Why no adapter could decide a judgment; selects the agent-facing reason (ADR 0011, ADR 0012). */
+type UnevaluableKind = 'outage' | 'credentials' | 'authoring' | 'no_model';
 
 /** Names a lone word may use and still count as an expression rather than natural language. */
 const EXPRESSION_WORDS = new Set(['payload', 'context', 'event', 'state', 'req', 'true', 'false', 'null', 'undefined']);
@@ -444,6 +444,25 @@ export class JudgmentEngine {
       rubric: judgment.rubric,
     };
 
+    // A person decided this gate in an interactive terminal (ADR 0012); the engine validated it.
+    if (evalContext.humanDecision) {
+      const approved = evalContext.humanDecision === 'approve';
+      return {
+        verdict: approved,
+        confidence: 1,
+        probability: approved ? 1 : 0,
+        passed: approved,
+        adapterName: 'human',
+        adapterSelectionReason: 'human_approval',
+        latencyMs: 0,
+        decidedBy: 'human',
+        threshold: resolveJudgmentThreshold(judgment),
+        band: approved ? 'accept' : 'reject',
+        fallbackTriggered: false,
+        ...(approved ? {} : { error: 'A person rejected this gate in an interactive terminal.', fallbackTarget: judgment.fallback_target }),
+      };
+    }
+
     // Determine target primary adapter
     let primaryAdapterId = judgment.adapter_hint;
     let adapterSelectionReason = judgment.adapter_hint
@@ -518,6 +537,8 @@ export class JudgmentEngine {
       failureCause = `${earlierRejection}; circuit breaker open`;
     }
     const failureKind = (): UnevaluableKind => (authoringError ? 'authoring' : credentialsRejected ? 'credentials' : 'outage');
+    // Without a configured model, only an operator grant lets the agent's own payload decide (ADR 0012).
+    const needsGrant = (r: JudgmentResult) => Boolean(r.selfReported) && !evalContext.selfReportAllowed;
 
     // 2. Cascade to Fallback Adapter if primary failed or was blocked by breaker
     if (!result || primaryFailed) {
@@ -527,6 +548,9 @@ export class JudgmentEngine {
         const fallbackResult = await fallbackAdapter.evaluate(req, evalContext);
         if (outageAdapterId && fallbackResult.selfReported) {
           return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, fallbackResult.adapterName, failureKind());
+        }
+        if (needsGrant(fallbackResult)) {
+          return this.unevaluable(judgment, primaryAdapterId, failureCause, adapterSelectionReason, fallbackResult.adapterName, 'no_model');
         }
         return this.applyDecision(
           judgment,
@@ -556,6 +580,9 @@ export class JudgmentEngine {
     // An open Jev circuit or a broken Jev install made the script adapter primary; it cannot judge natural language either.
     if (outageAdapterId && result.selfReported) {
       return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, result.adapterName, failureKind());
+    }
+    if (needsGrant(result)) {
+      return this.unevaluable(judgment, primaryAdapterId, failureCause, adapterSelectionReason, result.adapterName, 'no_model');
     }
 
     // 3. Apply the declared threshold and decision band
@@ -604,6 +631,7 @@ export class JudgmentEngine {
       credentials: `Judgment could not be evaluated: ${adapterId === 'jev' ? 'jev rejected TYPESAFE_API_KEY' : `${adapterId} rejected its credentials`} (${cause}). This gate cannot be judged until the credentials work, and retrying with the same credentials will not help. ${adapterId === 'jev' ? 'Stop and ask the user to fix or replace TYPESAFE_API_KEY; do not unset it to get past this gate.' : `Stop and ask the user to fix the credentials for ${adapterId}.`}`,
       outage: `Judgment could not be evaluated: ${adapterId} is unavailable (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. Retry the signal when ${adapterId} is reachable, with a new idempotency key if you set one.`,
       authoring: `Judgment could not be evaluated: the judgment is misconfigured (${cause}). Retrying will not help; tell the user the skill needs fixing.`,
+      no_model: 'Judgment could not be evaluated: no model is configured to judge this criterion, and self-reported decisions are not enabled for this workspace.',
     };
     return {
       verdict: false,
@@ -628,6 +656,7 @@ export class JudgmentEngine {
     const decision = decideJudgment(judgment, result);
     return {
       ...result,
+      decidedBy: result.decidedBy ?? (result.adapterName === 'script' ? (result.selfReported ? 'self_reported' : 'expression') : 'model'),
       passed: decision.passed,
       threshold: decision.threshold,
       band: decision.band,

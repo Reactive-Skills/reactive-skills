@@ -166,6 +166,7 @@ export async function emitCommand(args: string[]): Promise<string> {
         deliverables: result.deliverablesWritten,
         refusal_reason: result.refusalReason,
         judgment_basis: result.judgmentBasis,
+        warning: result.warning,
       }, [
         { type: 'field', key: 'skill_id' },
         { type: 'field', key: 'signal' },
@@ -174,9 +175,10 @@ export async function emitCommand(args: string[]): Promise<string> {
         { type: 'field', key: 'current_state' },
         { type: 'field', key: 'run_id' },
         { type: 'field', key: 'event_id' },
-        // Why a guard refused, and whether the deciding judgment was self-reported (ADR 0011).
+        // Why a guard refused, and whether a person or the agent's own report decided the judgment (ADR 0011, 0012).
         ...(result.refusalReason ? [{ type: 'field' as const, key: 'refusal_reason' }] : []),
         ...(result.judgmentBasis ? [{ type: 'field' as const, key: 'judgment_basis' }] : []),
+        ...(result.warning ? [{ type: 'field' as const, key: 'warning' }] : []),
       ]));
 
       if (result.transitioned) {

@@ -10,6 +10,10 @@ export interface GuardEvaluationContext {
   context: Record<string, any>;
   currentState: string;
   skillDir?: string;
+  /** True when an operator granted self-reported decisions for this workspace (ADR 0012). */
+  selfReportAllowed?: boolean;
+  /** A validated human decision for this transition's judgment (ADR 0012). */
+  humanDecision?: 'approve' | 'reject';
 }
 
 const ALLOWED_GUARD_EXTENSIONS = ['.js', '.mjs', '.cjs'];

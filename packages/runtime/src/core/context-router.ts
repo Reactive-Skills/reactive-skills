@@ -316,6 +316,8 @@ async function evaluateCandidateBatch(
       },
       context,
       currentState: 'CONTEXT_ROUTING',
+      // Routing is advisory, not a gate, and its payload is the runtime's own fail-closed "none" choice.
+      selfReportAllowed: true,
     }
   );
   const selectedIndex = typeof judgment.verdict === 'string'
