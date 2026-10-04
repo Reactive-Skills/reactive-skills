@@ -310,7 +310,7 @@ states:
       expect(isExecutableCriterion('genehmigt')).toBe(false);
       expect(isExecutableCriterion('承認')).toBe(false);
       expect(isExecutableCriterion('café')).toBe(false);
-      expect(isExecutableCriterion('café')).toBe(false);
+      expect(isExecutableCriterion('cafe\u0301')).toBe(false);
       expect(isExecutableCriterion('स्वीकृत')).toBe(false);
       expect(isExecutableCriterion('อนุมัติ')).toBe(false);
     });

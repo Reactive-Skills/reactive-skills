@@ -106,7 +106,7 @@ const EXPRESSION_WORDS = new Set(['payload', 'context', 'event', 'state', 'req',
  */
 export function isExecutableCriterion(criterion: string): boolean {
   const trimmed = criterion.trim();
-  if (/^[\p{L}_$][\p{L}\p{N}\p{M}_$‌‍]*$/u.test(trimmed) && !EXPRESSION_WORDS.has(trimmed)) return false;
+  if (/^[\p{L}_$][\p{L}\p{N}\p{M}_$\u200c\u200d]*$/u.test(trimmed) && !EXPRESSION_WORDS.has(trimmed)) return false;
   try {
     new vm.Script(`"use strict"; (${criterion});`);
     return true;
