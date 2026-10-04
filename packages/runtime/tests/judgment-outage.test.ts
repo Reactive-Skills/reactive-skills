@@ -393,6 +393,22 @@ states:
       expect(result.refusalReason).not.toMatch(/Retry the signal when/);
     });
 
+    it('keeps the rejected-key message after repeated 401s open the circuit breaker', async () => {
+      const jev = failingJev(httpError(401, '401 Cannot authenticate with the server.'));
+      const evaluate = vi.spyOn(jev, 'evaluate');
+      JudgmentEngine.registerAdapter(jev);
+      const engine = newEngine();
+
+      await engine.handleSignal('SUBMIT', { exit_code: 0 });
+      await engine.handleSignal('SUBMIT', { exit_code: 0 });
+      expect(JudgmentEngine.getBreaker('jev')!.canExecute()).toBe(false);
+      const third = await engine.handleSignal('SUBMIT', { exit_code: 0 });
+
+      expect(evaluate).toHaveBeenCalledTimes(2);
+      expect(third.refusalReason).toMatch(/jev rejected TYPESAFE_API_KEY/);
+      expect(third.refusalReason).not.toMatch(/Retry the signal when/);
+    });
+
     it.each([
       ['a timeout', new Error('Jev request timed out')],
       ['a server error', httpError(503, '503 Service Unavailable')],

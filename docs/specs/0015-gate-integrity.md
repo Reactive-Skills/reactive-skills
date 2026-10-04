@@ -48,6 +48,8 @@ Decision record: `docs/adr/0011-judgment-outage-refusal-and-self-reported-decisi
 27. When the selected model adapter fails with HTTP 401 or 403, the judgment is still unevaluable, and the reason says the credentials were rejected instead of suggesting a retry.
 28. For Jev, that reason says to fix or replace the key, or unset `TYPESAFE_API_KEY` to continue with self-reported decisions.
 29. Timeouts, connection failures, and other HTTP errors keep the unavailable and retry reason.
+30. While the circuit breaker is open after a credential rejection, refusals keep the rejected-credentials reason; a success, any other failure, or a reset clears it.
+31. A credential rejection from a fallback model adapter appears only in the cause text; the reason describes the primary adapter.
 
 ## 4. Build order
 

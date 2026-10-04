@@ -372,6 +372,11 @@ function normalizeScoreRubric(rubric: string | string[] | undefined): string[] {
 export class JudgmentEngine {
   private static adapters: Map<string, JudgmentAdapter> = new Map();
   private static breakers: Map<string, CircuitBreaker> = new Map();
+  /**
+   * Last credential rejection (HTTP 401 or 403) per adapter, kept beside its circuit breaker so a
+   * refusal while the circuit is open still says the credentials were rejected.
+   */
+  private static rejectedCredentials: Map<string, string> = new Map();
 
   static {
     // Register standard adapters
@@ -398,6 +403,7 @@ export class JudgmentEngine {
     for (const breaker of this.breakers.values()) {
       breaker.reset();
     }
+    this.rejectedCredentials.clear();
     this.adapters.clear();
     this.registerAdapter(new ScriptJudgmentAdapter());
     this.registerAdapter(new JevJudgmentAdapter());
@@ -460,6 +466,7 @@ export class JudgmentEngine {
           timeout_ms: judgment.timeout_ms,
         } as any);
         primaryBreaker.recordSuccess();
+        this.rejectedCredentials.delete(primaryAdapterId);
         result = {
           ...result,
           adapterSelectionReason,
@@ -470,12 +477,20 @@ export class JudgmentEngine {
         failureCause = err?.message || String(err);
         // 401 and 403 mean the adapter rejected its credentials, which retrying cannot fix.
         credentialsRejected = err?.status === 401 || err?.status === 403;
+        if (credentialsRejected) this.rejectedCredentials.set(primaryAdapterId, failureCause);
+        else this.rejectedCredentials.delete(primaryAdapterId);
       }
     } else {
       primaryFailed = true;
     }
 
     const outageAdapterId = await this.detectOutage(primaryAdapterId, primaryFailed, adapterSelectionReason);
+    // An open circuit throws nothing, so use the rejection that opened it.
+    const earlierRejection = outageAdapterId ? this.rejectedCredentials.get(outageAdapterId) : undefined;
+    if (!credentialsRejected && earlierRejection) {
+      credentialsRejected = true;
+      failureCause = `${earlierRejection}; circuit breaker open`;
+    }
 
     // 2. Cascade to Fallback Adapter if primary failed or was blocked by breaker
     if (!result || primaryFailed) {
@@ -566,7 +581,7 @@ export class JudgmentEngine {
       adapterSelectionReason: `${adapterSelectionReason}:unevaluable`,
       latencyMs: 0,
       error: credentialsRejected
-        ? `Judgment could not be evaluated: ${adapterId === 'jev' ? 'jev rejected TYPESAFE_API_KEY' : `${adapterId} rejected its credentials`} (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. ${adapterId === 'jev' ? 'Fix or replace the key, or unset TYPESAFE_API_KEY to continue with self-reported decisions' : `Fix the credentials for ${adapterId}`}; retrying with the same credentials will not help.`
+        ? `Judgment could not be evaluated: ${adapterId === 'jev' ? 'jev rejected TYPESAFE_API_KEY' : `${adapterId} rejected its credentials`} (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. Retrying with the same credentials will not help: ${adapterId === 'jev' ? 'fix or replace the key, or unset TYPESAFE_API_KEY to continue with self-reported decisions' : `fix the credentials for ${adapterId}`}.`
         : `Judgment could not be evaluated: ${adapterId} is unavailable (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. Retry the signal when ${adapterId} is reachable, with a new idempotency key if you set one.`,
       threshold: resolveJudgmentThreshold(judgment),
       band: 'unevaluable',
