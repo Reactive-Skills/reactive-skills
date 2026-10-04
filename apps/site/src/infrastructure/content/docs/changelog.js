@@ -8,6 +8,33 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-17-1",
+    "heading": "v0.17.1 (2026-10-04)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "Merge pull request #48 from Reactive-Skills/fix/r2-gate-integrity",
+          "test: give every test engine a temp workspace",
+          "fix(runtime): write zero-width joiners and the NFD test case as escapes",
+          "fix(runtime): cover combining marks in lone words and optional chaining in criterion lint",
+          "fix(runtime): scope replay to its signal and flag silent gate typos",
+          "fix(runtime): close gate gaps found in review",
+          "docs(context): record gate integrity slice in progress tracker",
+          "feat(axi): warn when an exact predicate can be judged by Jev",
+          "test: widen timeouts for CLI and release tests on slow Windows runs",
+          "fix(runtime): refuse judgments a failing model leaves unevaluable",
+          "test: keep test output out of the repository and fail runs that leak it",
+          "docs: scope, spec, and ADR 0011 for v0.17.1 gate integrity",
+          "Merge pull request #46 from Reactive-Skills/docs/roadmap-slot-new-issues",
+          "docs(scope): slot issues #39, #40, #42 to #45 into release trains",
+          "Merge pull request #41 from Reactive-Skills/docs/roadmap-r1-shipped",
+          "docs: record v0.17.0 release and R1b ameliorate migration"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-17-0",
     "heading": "v0.17.0 (2026-10-04)",
     "blocks": [
