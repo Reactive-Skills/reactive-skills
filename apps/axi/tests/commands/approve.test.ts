@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { FSMEngine, JudgmentEngine, hasSelfReportGrant, grantSelfReport } from '@reactive-skills/runtime';
 import { approveCommand, generateApprovalCode, type ApproveIO } from '../../src/commands/approve.js';
 
@@ -89,9 +91,8 @@ describe('approveCommand (#22 part 2)', () => {
     await refuseSubmit();
     const io = terminal(['ABCD'], false);
 
-    const output = await approveCommand(['approval-skill', '--job', 'review-run'], io, { generateCode: () => 'ABCD' });
-
-    expect(output).toContain('approve needs an interactive terminal');
+    await expect(approveCommand(['approval-skill', '--job', 'review-run'], io, { generateCode: () => 'ABCD' }))
+      .rejects.toThrow('approve needs an interactive terminal');
     await withEngine((engine) => {
       expect(engine.getCurrentState()).toBe('REVIEW');
       expect(engine.getPendingApprovals()).toHaveLength(1);
@@ -141,8 +142,8 @@ describe('approveCommand (#22 part 2)', () => {
     expect(wrong).toContain('self_reported: unchanged');
     expect(hasSelfReportGrant(tmpDir)).toBe(false);
 
-    const piped = await approveCommand(['approval-skill', '--allow-self-reported'], terminal(['ABCD'], false), { generateCode: () => 'ABCD' });
-    expect(piped).toContain('approve needs an interactive terminal');
+    await expect(approveCommand(['approval-skill', '--allow-self-reported'], terminal(['ABCD'], false), { generateCode: () => 'ABCD' }))
+      .rejects.toThrow('approve needs an interactive terminal');
     expect(hasSelfReportGrant(tmpDir)).toBe(false);
 
     const right = await approveCommand(['approval-skill', '--allow-self-reported'], terminal(['ABCD']), { generateCode: () => 'ABCD' });
@@ -157,6 +158,26 @@ describe('approveCommand (#22 part 2)', () => {
 
     expect(output).toContain('self_reported: disabled');
     expect(hasSelfReportGrant(tmpDir)).toBe(false);
+  });
+
+  it('exits non-zero through the compiled CLI when piped, and changes nothing (criterion 5)', async () => {
+    await refuseSubmit();
+    const cli = fileURLToPath(new URL('../../dist/cli/index.js', import.meta.url));
+    const env = { ...process.env };
+    delete env.TYPESAFE_API_KEY;
+    delete env.WORKSPACE_DIR;
+
+    for (const args of [['--job', 'review-run'], ['--allow-self-reported']]) {
+      const result = spawnSync(process.execPath, [cli, 'approve', 'approval-skill', ...args], {
+        cwd: tmpDir, input: 'ABCD\n', encoding: 'utf8', timeout: 15_000, env,
+      });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('approve needs an interactive terminal');
+    }
+    expect(hasSelfReportGrant(tmpDir)).toBe(false);
+    await withEngine((engine) => {
+      expect(engine.getEventStore().query({ type: 'APPROVAL_DECIDED' })).toHaveLength(0);
+    });
   });
 
   it('generates codes from the unambiguous alphabet', () => {

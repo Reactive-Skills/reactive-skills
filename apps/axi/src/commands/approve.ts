@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import readline from 'node:readline';
 import { FSMEngine, grantSelfReport, revokeSelfReport, type PendingApproval } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
-import { renderError, renderOutput, renderDetail } from '../toon.js';
+import { renderOutput, renderDetail } from '../toon.js';
 import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.js';
 
 const USAGE = [
@@ -47,7 +47,8 @@ function summarize(payload: Record<string, any>): string {
 /**
  * Lets a person decide gates that no adapter could judge, and grant or revoke self-reported
  * decisions (ADR 0012). It runs only in an interactive terminal and asks for a one-time code, so an
- * agent working through its own shell or MCP tools cannot approve on the user's behalf.
+ * agent working through its own shell or MCP tools cannot approve on the user's behalf. Errors are
+ * thrown so the CLI writes them to stderr and exits non-zero.
  */
 export async function approveCommand(
   args: string[],
@@ -64,44 +65,39 @@ export async function approveCommand(
   const skillName = filteredArgs.find((a) => !a.startsWith('-'));
   const code = options.generateCode ?? (() => generateApprovalCode());
 
+  if (!skillName || unknown.length > 0 || (allowSelfReported && revokeSelfReported)) {
+    throw new AxiError(unknown.length > 0 ? `Unknown option: ${unknown[0]}` : 'Missing skill name', 'VALIDATION_ERROR', USAGE);
+  }
+  const skillPath = resolveSkillPath(skillName);
+  if (!skillPath) {
+    throw new AxiError(`Skill '${skillName}' not found in any known location`, 'NOT_FOUND', ['Checked: ./skills/, ~/.agents/skills/, ~/.gemini/config/skills/']);
+  }
+  const workspaceDir = resolveWorkspaceDir(skillPath);
+
+  if (revokeSelfReported) {
+    const removed = revokeSelfReport(workspaceDir);
+    return renderOutput([renderDetail('approve', { skill_id: skillName, self_reported: 'disabled', changed: removed }, [
+      { type: 'field', key: 'skill_id' },
+      { type: 'field', key: 'self_reported' },
+      { type: 'field', key: 'changed' },
+    ])]);
+  }
+
+  if (!io.input.isTTY || !io.output.isTTY) {
+    throw new AxiError(
+      'approve needs an interactive terminal: run it yourself in a terminal window, not through an agent, a pipe, or a script',
+      'VALIDATION_ERROR',
+      ['Open a terminal and run the same command there', ...USAGE]
+    );
+  }
+
+  const reader = lineReader(io);
   try {
-    if (!skillName || unknown.length > 0 || (allowSelfReported && revokeSelfReported)) {
-      throw new AxiError(unknown.length > 0 ? `Unknown option: ${unknown[0]}` : 'Missing skill name', 'VALIDATION_ERROR', USAGE);
-    }
-    const skillPath = resolveSkillPath(skillName);
-    if (!skillPath) {
-      throw new AxiError(`Skill '${skillName}' not found in any known location`, 'NOT_FOUND', ['Checked: ./skills/, ~/.agents/skills/, ~/.gemini/config/skills/']);
-    }
-    const workspaceDir = resolveWorkspaceDir(skillPath);
-
-    if (revokeSelfReported) {
-      const removed = revokeSelfReport(workspaceDir);
-      return renderOutput([renderDetail('approve', { skill_id: skillName, self_reported: 'disabled', changed: removed }, [
-        { type: 'field', key: 'skill_id' },
-        { type: 'field', key: 'self_reported' },
-        { type: 'field', key: 'changed' },
-      ])]);
-    }
-
-    if (!io.input.isTTY || !io.output.isTTY) {
-      throw new AxiError(
-        'approve needs an interactive terminal: run it yourself in a terminal window, not through an agent, a pipe, or a script',
-        'VALIDATION_ERROR',
-        ['Open a terminal and run the same command there', ...USAGE]
-      );
-    }
-
-    const reader = lineReader(io);
-    try {
-      return allowSelfReported
-        ? await grantInteractively(reader, io, skillName, workspaceDir, code)
-        : await decidePending(reader, io, skillName, skillPath, workspaceDir, jobId, code);
-    } finally {
-      reader.close();
-    }
-  } catch (err: any) {
-    const error = err instanceof AxiError ? err : new AxiError(err?.message ?? String(err), 'RUNTIME_ERROR', USAGE);
-    return renderOutput([renderError(error.message, error.code, error.suggestions)]);
+    return allowSelfReported
+      ? await grantInteractively(reader, io, skillName, workspaceDir, code)
+      : await decidePending(reader, io, skillName, skillPath, workspaceDir, jobId, code);
+  } finally {
+    reader.close();
   }
 }
 
