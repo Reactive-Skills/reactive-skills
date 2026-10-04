@@ -12,7 +12,7 @@ function event(id, type, detail) {
   return { id, type, detail };
 }
 
-export function GuideRunDemo() {
+export function RunDemo() {
   const [state, setState] = useState('VERIFY');
   const [guard, setGuard] = useState('READY');
   const [events, setEvents] = useState(INITIAL_EVENTS);

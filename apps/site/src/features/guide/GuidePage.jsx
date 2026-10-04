@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight, Check, ChevronRight, CircleHelp, FileText, Layers3, Terminal, Workflow } from 'lucide-react';
 import { CommandBlock } from '@/components/common/CommandBlock';
-import { GuideRunDemo } from './GuideRunDemo';
+import { RunDemo as GuideRunDemo } from '@/features/landing/RunDemo';
 
 const CONTENT_LINKS = [
   { label: 'Start here', href: '#start' },

@@ -31,9 +31,9 @@ export function SkillComparison() {
         <h3 className="mt-3 font-display text-lg font-semibold text-phino-text">A reactive skill</h3>
         <ul className="mt-3 space-y-2 text-sm text-phino-text-muted">
           <li>Scoped prompt slice for only the active state.</li>
-          <li>Explicit state path verified through deterministic guards.</li>
+          <li>Explicit state path with a declared check on every transition.</li>
           <li>Immutable event store (JSONL + SQLite) for replay and audit.</li>
-          <li>Deterministic recovery to the last verified checkpoint.</li>
+          <li>Resume from the last recorded state instead of starting over.</li>
         </ul>
       </div>
     </div>

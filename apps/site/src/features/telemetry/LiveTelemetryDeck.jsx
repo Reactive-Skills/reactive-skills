@@ -287,7 +287,7 @@ export function LiveTelemetryDeck({ skill }) {
         <div className="rounded-xl border border-phino-border bg-phino-surface p-4">
           <div className="text-xs font-medium text-phino-text-muted">Latest Signal</div>
           <div className="mt-1.5 font-mono text-sm text-phino-text truncate">
-            {events.length > 0 ? events[events.length - 1].type : '—'}
+            {events.length > 0 ? events[events.length - 1].type : 'None'}
           </div>
         </div>
       </div>
