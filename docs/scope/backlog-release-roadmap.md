@@ -81,9 +81,12 @@ Predicate, categorical, and evaluation judgments all follow this policy.
 
 | Skill | Repo | Gate | Today | Target |
 | --- | --- | --- | --- | --- |
-| ameliorate | bytesbybrandon/skills | `PLAN.VERIFY_PLANS / PLANS_VERIFIED` | `min_confidence: 0.9` (P >= 0.95) | `min_probability: 0.9` |
-| resume-manager | Reactive-Skills/skills | `RECORD_ACCOMPLISHMENT / RECORDED` | `min_confidence: 0.85` (P >= 0.925) | `min_probability: 0.85` + `escalate` 0.35 |
+| ameliorate | bytesbybrandon/skills | `PLAN.VERIFY_PLANS / PLANS_VERIFIED` | `min_confidence: 0.9` (P >= 0.95) | `min_probability: 0.9` (done: bytesbybrandon/skills#3, ameliorate 2.2.0) |
+| resume-manager | Reactive-Skills/skills | `RECORD_ACCOMPLISHMENT / RECORDED` | `min_confidence: 0.85` (P >= 0.925) | `min_probability: 0.85` (in progress as separate work on `feat/resume-manager-probability-thresholds`) |
 
+Runtimes before 0.17.0 refuse skills that require `judgment.probability_thresholds`, so global installs must reach 0.17.0 before a migrated skill syncs.
+
+0. Upgrade global installs to 0.17.0 (`npm i -g @reactive-skills/axi@0.17.0 @reactive-skills/runtime@0.17.0`) and confirm `capabilities` lists `judgment.probability_thresholds`; every machine that syncs skills needs the same upgrade.
 1. Edit through skill-manager UPDATE in the registered source; add `runtime_requirements.required_capabilities: [judgment.probability_thresholds]`.
 2. If resume-manager has no existing review state for the `escalate` target, stop and ask before adding topology.
 3. Bump each skill's release version (Reactive-Skills/skills CI enforces `skill-release.json`), update STATECHART if topology changes.
