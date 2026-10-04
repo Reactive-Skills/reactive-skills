@@ -8,6 +8,22 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-17-2",
+    "heading": "v0.17.2 (2026-10-04)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "Merge pull request #50 from Reactive-Skills/fix/r2b-auth-message",
+          "test: prove a success or another failure clears a stored credential rejection",
+          "fix(runtime): forget a credential rejection when its adapter is replaced",
+          "fix(runtime): keep the rejected-credentials reason while the circuit is open",
+          "fix(runtime): say when a model rejects its credentials"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-17-1",
     "heading": "v0.17.1 (2026-10-04)",
     "blocks": [

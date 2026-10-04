@@ -2,11 +2,10 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.17.1:**
-> - `emit` prints `refusal_reason` when a guard or judgment refuses a signal, and `judgment_basis: self_reported` when a judgment was decided from the agent's payload because no model is configured.
-> - `validate` warns on exact predicates without `adapter_hint: script`, on criteria that look like code but do not compile, and on adapter names other than `script` or `jev`.
+> 🚀 **What's New in v0.17.2:**
+> - `emit` shows an actionable `refusal_reason` when Jev rejects `TYPESAFE_API_KEY`: fix or replace the key, or unset it to continue with self-reported decisions.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.2) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
