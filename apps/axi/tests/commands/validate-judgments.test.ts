@@ -68,6 +68,51 @@ min_confidence: 0.7
     );
   });
 
+  it('warns when an executable predicate lacks adapter_hint: script (#15)', () => {
+    const result = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "payload.findings.length === 4 && payload.findings.every(f => f.status)"
+min_confidence: 0.85
+fallback_adapter: script
+fallback_target: REVISE
+`));
+
+    expect(result.valid).toBe(true);
+    const warning = result.warnings.find((w) => w.includes('executable expression'));
+    expect(warning).toBe(
+      'State "REVIEW" transition on "SUBMIT" predicate criterion is an executable expression, but adapter_hint is not set; when Jev is available the model judges this exact check instead of the script adapter evaluating it. Set adapter_hint: script (fallback_adapter: script runs only when the primary adapter fails)'
+    );
+    expect(result.warnings.some((w) => w.includes('relies on min_confidence'))).toBe(false);
+  });
+
+  it('names a non-script adapter_hint on an executable predicate (#15)', () => {
+    const result = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "payload.exit_code === 0"
+adapter_hint: jev
+min_probability: 0.9
+`, { header: 'runtime_requirements:\n  required_capabilities: [judgment.probability_thresholds]\n' }));
+
+    expect(result.warnings.some((w) => w.includes("adapter_hint is 'jev'"))).toBe(true);
+  });
+
+  it('does not warn about adapter_hint for a hinted executable predicate or a natural-language criterion (#15)', () => {
+    const hinted = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "payload.exit_code === 0"
+adapter_hint: script
+`));
+    expect(hinted.warnings.some((w) => w.includes('executable expression'))).toBe(false);
+
+    fs.rmSync(path.join(tmpDir, 'judgment-skill'), { recursive: true, force: true });
+    const semantic = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "Is it ready?"
+min_probability: 0.85
+`, { header: 'runtime_requirements:\n  required_capabilities: [judgment.probability_thresholds]\n' }));
+    expect(semantic.warnings.some((w) => w.includes('executable expression'))).toBe(false);
+  });
+
   it('names the default min_confidence when a semantic predicate declares no threshold', () => {
     const result = validateSkill(writeSkill(tmpDir, `
 type: predicate

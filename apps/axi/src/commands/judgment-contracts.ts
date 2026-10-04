@@ -4,6 +4,7 @@ import yaml from 'js-yaml';
 import {
   DEFAULT_MIN_CONFIDENCE,
   PROBABILITY_THRESHOLDS_CAPABILITY,
+  isExecutableCriterion,
   predicateProbabilityForConfidence,
   resolveJudgmentThreshold,
   type JudgmentDefinition,
@@ -81,6 +82,20 @@ export function lintJudgmentThresholds(manifest: Record<string, any>): JudgmentL
   const judgments = collectTransitionJudgments(manifest.states);
 
   for (const { location, judgment } of judgments) {
+    // An exact check needs the script adapter as primary; a fallback runs only when the primary fails (#15).
+    if (
+      judgment.type === 'predicate'
+      && judgment.adapter_hint !== 'script'
+      && typeof judgment.criterion === 'string'
+      && isExecutableCriterion(judgment.criterion)
+    ) {
+      const hint = judgment.adapter_hint ? `'${judgment.adapter_hint}'` : 'not set';
+      warnings.push(
+        `${location} predicate criterion is an executable expression, but adapter_hint is ${hint}; when Jev is available the model judges this exact check instead of the script adapter evaluating it. Set adapter_hint: script (fallback_adapter: script runs only when the primary adapter fails)`
+      );
+      continue;
+    }
+
     if (judgment.adapter_hint === 'script' || judgment.min_probability !== undefined) continue;
 
     if (judgment.type === 'predicate') {

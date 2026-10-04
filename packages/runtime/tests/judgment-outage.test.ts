@@ -207,6 +207,72 @@ describe('Judgment outage refusal and self-reported decisions (#22)', () => {
     });
   });
 
+  describe('exact predicates stay independent of Jev (#15)', () => {
+    it('selects the script adapter for adapter_hint: script even when Jev is available, and never calls Jev', async () => {
+      const jevEvaluate = vi.fn(async () => ({
+        verdict: false, confidence: 0.06, probability: 0.47, passed: false, adapterName: 'jev', latencyMs: 1,
+      }));
+      JudgmentEngine.registerAdapter({ id: 'jev', supports: () => true, isAvailable: async () => true, evaluate: jevEvaluate });
+      const workspaceDir = fs.mkdtempSync(path.join(tmpDir, 'exact-'));
+      fs.writeFileSync(path.join(workspaceDir, 'skill.yaml'), `
+schema_version: "2.0.0"
+name: exact-skill
+description: "Exact predicate fixture"
+initial_state: AUDIT
+states:
+  AUDIT:
+    transitions:
+      AUDIT_COMPLETED:
+        target: DONE
+        judgment:
+          type: predicate
+          criterion: "payload.findings.length === 4 && payload.findings.every(f => f.status && f.description)"
+          min_confidence: 0.85
+          adapter_hint: script
+          fallback_adapter: script
+          fallback_target: AUDIT
+  DONE: {}
+`);
+      const engine = new FSMEngine({ skillDir: workspaceDir, workspaceDir });
+      engines.push(engine);
+      const findings = [1, 2, 3, 4].map((n) => ({ status: 'ok', description: `finding ${n}` }));
+
+      const result = await engine.handleSignal('AUDIT_COMPLETED', { findings });
+
+      expect(jevEvaluate).not.toHaveBeenCalled();
+      expect(result.transitioned).toBe(true);
+      expect(engine.getCurrentState()).toBe('DONE');
+      const guard = engine.getEventStore().query({ type: 'GUARD_EVALUATED' }).at(-1)!;
+      expect(guard.payload.judgment.adapterName).toBe('script');
+      expect(guard.payload.judgment.adapterSelectionReason).toBe('adapter_hint:script');
+    });
+
+    it('runs the declared fallback adapter when the hinted primary adapter throws', async () => {
+      JudgmentEngine.registerAdapter({
+        id: 'flaky_model', supports: () => true, isAvailable: async () => true,
+        evaluate: async () => { throw new Error('connection reset'); },
+      });
+      JudgmentEngine.registerAdapter({
+        id: 'backup_model', supports: () => true, isAvailable: async () => true,
+        evaluate: async () => ({ verdict: true, confidence: 0.9, probability: 0.95, passed: true, adapterName: 'backup_model', latencyMs: 1 }),
+      });
+
+      const result = await JudgmentEngine.evaluate(
+        { type: 'predicate', criterion: SEMANTIC, adapter_hint: 'flaky_model', fallback_adapter: 'backup_model', min_probability: 0.9 },
+        {
+          event: { id: 'e', seq: 1, timestamp: new Date().toISOString(), type: 'X', payload: {} },
+          context: {},
+          currentState: 'REVIEW',
+        }
+      );
+
+      expect(result.fallbackTriggered).toBe(true);
+      expect(result.adapterName).toBe('backup_model');
+      expect(result.passed).toBe(true);
+      expect(result.band).toBe('accept');
+    });
+  });
+
   describe('MCP emit result', () => {
     const emitViaMcp = async (signal: string, payload: Record<string, unknown>) => {
       const workspaceDir = fs.mkdtempSync(path.join(tmpDir, 'mcp-'));
