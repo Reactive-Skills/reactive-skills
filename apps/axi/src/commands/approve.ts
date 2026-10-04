@@ -79,7 +79,7 @@ function describeEvidence(payload: Record<string, any>): string {
   return `${printable(shown)} [${Buffer.byteLength(text)} bytes, sha256 ${digest}]`;
 }
 
-const CANCELLED = 'Cancelled: no matching answer before input ended, so nothing was decided';
+const CANCELLED = 'Cancelled without a decision: input ended or five answers did not match';
 
 const MAX_ATTEMPTS = 5;
 
