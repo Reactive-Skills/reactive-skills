@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getBlogContentSource } from '@/infrastructure/container';
 import { BlogPostView } from '@/features/blog/BlogPostView';
+import { getAdjacentPosts } from '@/lib/blog/adjacentPosts';
 import { absoluteUrl } from '@/infrastructure/siteMetadata';
 
 export async function generateStaticParams() {
@@ -61,10 +62,7 @@ export default async function BlogPostPage({ params }) {
     notFound();
   }
 
-  const allPosts = content.listPosts();
-  const currentIndex = allPosts.findIndex((p) => p.slug === slug);
-  const prevPost = currentIndex > 0 ? allPosts[currentIndex - 1] : null;
-  const nextPost = currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null;
+  const { prevPost, nextPost } = getAdjacentPosts(content.listPosts(), slug);
 
   return <BlogPostView post={post} nextPost={nextPost} prevPost={prevPost} />;
 }
