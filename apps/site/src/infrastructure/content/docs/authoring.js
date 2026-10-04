@@ -75,6 +75,8 @@ name: "tdd-flow"
 description: "Red-Green-Refactor test-driven development workflow"
 initial_state: "INIT"
 strict_execution: true
+runtime_requirements:
+  required_capabilities: ["judgment.probability_thresholds"]
 context_keys: ["target_module", "test_file"]
 
 states:
@@ -121,7 +123,7 @@ states:
         judgment:
           type: "predicate"
           criterion: "Did the refactoring maintain public APIs without introducing regressions?"
-          min_confidence: 0.85
+          min_probability: 0.85
           fallback_target: "GREEN_CODE"
       REGRESSION:
         target: "GREEN_CODE"
@@ -169,17 +171,55 @@ Do NOT attempt to write application logic or make the test pass in this state.`,
         { type: 'text', text: 'Guards prevent subjective completion claims. Transitions require verified facts, code assertions, or semantic verification:' },
         { type: 'list', items: [
           'Inline expressions: Written in standard JavaScript (e.g. payload.exit_code == 0 && payload.coverage >= 80).',
-          'Semantic judgments: Declared via judgment: { type, criterion, min_confidence, fallback_target }. Evaluated via the decoupled Judgment Engine (built-in sandbox or optional @typesafe-ai/sdk-backed Jev System One decisions).',
+          'Semantic judgments: Declared via judgment: { type, criterion, min_probability, escalate, fallback_target }. Evaluated via the decoupled Judgment Engine (built-in sandbox or optional @typesafe-ai/sdk-backed Jev System One decisions).',
           'Circuit breaker fallback routing: If a model judgment fails, times out, or trips, the FSM transitions directly to a declared fallback_target state and logs GUARD_FALLBACK_TRIGGERED.',
           'Model capability tiers: Declared via model: { tier: fast | balanced | reasoning | decision } to guide multi-model routing across states.',
           'Custom guard scripts: Placed in guards/<guard_name>.js for complex validation like AST checks or git status verifications.',
+          'Guard contracts: guards/*.yaml judgment contracts are design documents. The runtime enforces only the skill.yaml judgment, and reactive-skills-axi validate reports drift between the two.',
           'Deliverable projections: Configured via deliverable_projections in skill.yaml. Handlebars templates (templates/*.hbs) automatically fold the event log into deliverables (.docs/*.md) without requiring manual agent summarization.',
         ] },
       ],
     },
     {
+      id: 'judgment-thresholds',
+      heading: '5. Judgment probability thresholds',
+      blocks: [
+        { type: 'text', text: 'Write the probability you mean with min_probability. For a predicate it is compared directly with P(yes). For a categorical judgment it is compared with the probability of the picked label, which must also be one of the options. min_probability is not available on evaluation judgments, and a predicate min_probability must be at least 0.5.' },
+        { type: 'text', text: 'An optional escalate band routes grey-zone results to a review state instead of the fallback. A result at or above escalate.min_probability and below min_probability moves to escalate.target. Anything lower moves to fallback_target, or refuses the transition when no fallback_target is declared.' },
+        { type: 'code', example: {
+          language: 'yaml',
+          command: `runtime_requirements:
+  required_capabilities: ["judgment.probability_thresholds"]
+
+states:
+  REVIEW:
+    transitions:
+      REVIEW_SUBMITTED:
+        target: "MERGE"
+        judgment:
+          type: "predicate"
+          criterion: "Does the diff satisfy every approved acceptance criterion?"
+          min_probability: 0.85
+          escalate:
+            min_probability: 0.3
+            target: "HUMAN_REVIEW"
+          fallback_target: "REVISE"`,
+          explanation: 'P(yes) of 0.85 or more merges, 0.3 up to 0.85 asks a human, and below 0.3 returns to REVISE.',
+        } },
+        { type: 'text', text: 'The older min_confidence field keeps its meaning. For predicates the runtime reports confidence as |P(yes) - 0.5| * 2, so min_confidence: m requires P(yes) >= 0.5 + m / 2. For categorical judgments min_confidence is compared with the adapter\'s own confidence score, not with the picked label\'s probability. A judgment may set min_probability or min_confidence, not both, and a judgment with neither uses min_confidence 0.75.' },
+        { type: 'table', caption: 'Migrating predicate min_confidence to min_probability', columns: ['min_confidence', 'Required P(yes)', 'Equivalent min_probability'], rows: [
+          ['0.6', '0.80', '0.8'],
+          ['0.7', '0.85', '0.85'],
+          ['0.75 (default)', '0.875', '0.875'],
+          ['0.85', '0.925', '0.925'],
+          ['0.9', '0.95', '0.95'],
+        ] },
+        { type: 'callout', variant: 'warn', title: 'Require the capability before migrating', text: 'Runtimes before judgment.probability_thresholds drop min_probability and escalate and apply min_confidence 0.75 instead. List judgment.probability_thresholds in runtime_requirements.required_capabilities so an older runtime refuses the skill rather than silently changing its gates. reactive-skills-axi validate warns when the requirement is missing.' },
+      ],
+    },
+    {
       id: 'inspection-verification',
-      heading: '5. Inspect and verify your customized skill',
+      heading: '6. Inspect and verify your customized skill',
       blocks: [
         { type: 'text', text: 'After updating your manifest and state prompt files, verify the skill topology and transition paths before executing:' },
         { type: 'code', example: {
@@ -199,7 +239,7 @@ states:
     },
     {
       id: 'distribute-sync',
-      heading: '6. Distribute to agent satellites with axi sync',
+      heading: '7. Distribute to agent satellites with axi sync',
       blocks: [
         { type: 'text', text: 'Once your skill validates cleanly, synchronize it across all local agent harnesses (Claude, Gemini, Codex, Devin, Cline, Copilot) using zero-drift directory junctions:' },
         { type: 'code', example: {

@@ -7,6 +7,7 @@ import {
   JudgmentAdapter,
 } from './types.js';
 import { GuardEvaluationContext } from './guard-evaluator.js';
+import { decideJudgment, resolveJudgmentThreshold } from './judgment-thresholds.js';
 
 interface TypeSafeClientLike {
   systemOne(
@@ -153,6 +154,7 @@ export class ScriptJudgmentAdapter implements JudgmentAdapter {
         return {
           verdict: isTrue,
           confidence: 1.0,
+          probability: isTrue ? 1 : 0,
           passed: isTrue,
           adapterName: this.id,
           latencyMs,
@@ -172,6 +174,7 @@ export class ScriptJudgmentAdapter implements JudgmentAdapter {
         return {
           verdict: choice,
           confidence: 1.0,
+          probability: 1,
           passed: req.options ? req.options.includes(choice) : true,
           adapterName: this.id,
           latencyMs,
@@ -294,6 +297,7 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
         return {
           verdict,
           confidence: Math.abs(boundedProbability - 0.5) * 2,
+          probability: boundedProbability,
           passed: verdict,
           adapterName: this.id,
           latencyMs,
@@ -312,6 +316,7 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
         return {
           verdict: choice,
           confidence,
+          probability: pickedProbability(answer, choice),
           passed: req.options ? req.options.includes(choice) : Boolean(choice),
           adapterName: this.id,
           latencyMs,
@@ -338,6 +343,14 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
       if (timer) clearTimeout(timer);
     }
   }
+}
+
+function pickedProbability(answer: object, choice: string): number | undefined {
+  const probabilities = (answer as { probabilities?: unknown }).probabilities;
+  if (!probabilities || typeof probabilities !== 'object') return undefined;
+  const probability = (probabilities as Record<string, unknown>)[choice];
+  if (typeof probability !== 'number' || !Number.isFinite(probability)) return undefined;
+  return Math.min(1, Math.max(0, probability));
 }
 
 function normalizeScoreRubric(rubric: string | string[] | undefined): string[] {
@@ -414,7 +427,6 @@ export class JudgmentEngine {
     judgment: JudgmentDefinition,
     evalContext: GuardEvaluationContext
   ): Promise<JudgmentResult & { fallbackTriggered?: boolean; fallbackTarget?: string }> {
-    const minConfidence = judgment.min_confidence ?? 0.75;
     const req: JudgmentRequest = {
       type: judgment.type,
       criterion: judgment.criterion,
@@ -478,14 +490,12 @@ export class JudgmentEngine {
       const fallbackId = judgment.fallback_adapter || 'script';
       const fallbackAdapter = this.adapters.get(fallbackId) || this.adapters.get('script')!;
       try {
-        result = await fallbackAdapter.evaluate(req, evalContext);
-        return {
-          ...result,
-          adapterSelectionReason: `${adapterSelectionReason}:fallback`,
-          fallbackTriggered: true,
-          passed: result.passed && result.confidence >= minConfidence,
-          fallbackTarget: (result.passed && result.confidence >= minConfidence) ? undefined : judgment.fallback_target,
-        };
+        const fallbackResult = await fallbackAdapter.evaluate(req, evalContext);
+        return this.applyDecision(
+          judgment,
+          { ...fallbackResult, adapterSelectionReason: `${adapterSelectionReason}:fallback` },
+          true
+        );
       } catch (err: any) {
         return {
           verdict: false,
@@ -494,21 +504,32 @@ export class JudgmentEngine {
           adapterName: fallbackId,
           latencyMs: 0,
           error: `Both primary (${primaryAdapterId}) and fallback (${fallbackId}) adapters failed: ${err.message}`,
+          threshold: resolveJudgmentThreshold(judgment),
+          band: 'reject',
           fallbackTriggered: true,
           fallbackTarget: judgment.fallback_target,
         };
       }
     }
 
-    // 3. Check Confidence Threshold
-    const passedConfidence = result.confidence >= minConfidence;
-    const finalPassed = Boolean(result.passed) && passedConfidence;
+    // 3. Apply the declared threshold and decision band
+    return this.applyDecision(judgment, result, false);
+  }
 
+  private static applyDecision(
+    judgment: JudgmentDefinition,
+    result: JudgmentResult,
+    fallbackTriggered: boolean
+  ): JudgmentResult & { fallbackTriggered: boolean; fallbackTarget?: string } {
+    const decision = decideJudgment(judgment, result);
     return {
       ...result,
-      fallbackTriggered: false,
-      passed: finalPassed,
-      fallbackTarget: finalPassed ? undefined : judgment.fallback_target,
+      passed: decision.passed,
+      threshold: decision.threshold,
+      band: decision.band,
+      error: result.error ?? decision.error,
+      fallbackTriggered,
+      fallbackTarget: decision.target,
     };
   }
 }

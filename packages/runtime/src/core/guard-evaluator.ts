@@ -14,6 +14,14 @@ export interface GuardEvaluationContext {
 
 const ALLOWED_GUARD_EXTENSIONS = ['.js', '.mjs', '.cjs'];
 
+function describeJudgmentFailure(judgment: JudgmentDefinition, result: JudgmentResult): string {
+  if (result.threshold?.field !== 'min_probability') {
+    return `Judgment rejected: '${judgment.criterion}' (confidence: ${result.confidence})`;
+  }
+  const outcome = result.band === 'escalate' ? 'escalated' : 'rejected';
+  return `Judgment ${outcome}: '${judgment.criterion}' (probability: ${result.probability}, min_probability: ${result.threshold.value})`;
+}
+
 /**
  * Guard Evaluator: Safely checks transition guards and domain invariants inside an isolated sandbox
  */
@@ -53,7 +61,7 @@ export class GuardEvaluator {
         if (!jEval.passed) {
           return {
             passed: false,
-            error: jEval.error || `Judgment rejected: '${judgment.criterion}' (confidence: ${jEval.confidence})`,
+            error: jEval.error || describeJudgmentFailure(judgment, jEval),
             judgmentResult,
             fallbackTriggered,
             fallbackTarget,

@@ -35,6 +35,54 @@ The adapter supports predicate, categorical, and ordered score judgments.
 Score judgments accept an array such as `rubric: ["weak", "acceptable", "strong"]`, or a string separated by `|`.
 If the API key is unset or a request fails, the runtime keeps the existing Script adapter fallback and circuit-breaker behavior.
 
+### Judgment Thresholds
+
+`min_probability` states the probability a judgment needs.
+For predicates it is compared directly with P(yes).
+For categorical judgments it is compared with the picked label's probability, and the label must be one of `options`.
+A predicate `min_probability` must be at least `0.5`, and `evaluation` judgments do not support it.
+
+An optional `escalate` band routes grey-zone results to a review state.
+A result at or above `escalate.min_probability` and below `min_probability` moves to `escalate.target`.
+Lower results move to `fallback_target`, or the transition is refused when no `fallback_target` is declared.
+
+```yaml
+runtime_requirements:
+  required_capabilities: [judgment.probability_thresholds]
+
+states:
+  REVIEW:
+    transitions:
+      REVIEW_SUBMITTED:
+        target: MERGE
+        judgment:
+          type: predicate
+          criterion: "Does the diff satisfy every approved acceptance criterion?"
+          min_probability: 0.85
+          escalate:
+            min_probability: 0.3
+            target: HUMAN_REVIEW
+          fallback_target: REVISE
+```
+
+`min_confidence` keeps its meaning.
+For predicates the runtime reports confidence as `|P(yes) - 0.5| * 2`, so `min_confidence: m` requires `P(yes) >= 0.5 + m / 2`.
+For categorical judgments `min_confidence` is compared with the adapter's own confidence score.
+A judgment sets `min_probability` or `min_confidence`, not both, and a judgment with neither uses `min_confidence: 0.75`.
+
+| `min_confidence` | Required P(yes) | Equivalent `min_probability` |
+| --- | --- | --- |
+| 0.6 | 0.80 | 0.8 |
+| 0.7 | 0.85 | 0.85 |
+| 0.75 (default) | 0.875 | 0.875 |
+| 0.85 | 0.925 | 0.925 |
+| 0.9 | 0.95 | 0.95 |
+
+Runtimes without the `judgment.probability_thresholds` capability drop `min_probability` and `escalate` and apply `min_confidence: 0.75`.
+Require the capability before migrating a skill so older runtimes refuse it instead of silently changing its gates.
+`GUARD_EVALUATED` records the judgment's `probability`, `threshold`, and `band` (`accept`, `escalate`, or `reject`), and `GUARD_FALLBACK_TRIGGERED` records the `band`.
+`reactive-skills-axi validate` warns on semantic judgments that still rely on `min_confidence` and reports drift between `guards/*.yaml` contracts and the `skill.yaml` judgments the runtime enforces.
+
 ## Core Modules
 
 - `FSMEngine` - Hierarchical State Machine loader, state path resolver, and signal-driven transition engine

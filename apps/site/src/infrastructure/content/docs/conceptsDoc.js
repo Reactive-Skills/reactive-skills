@@ -61,10 +61,14 @@ transitions:
     judgment:
       type: "predicate"
       criterion: "Did the security scan confirm zero leaked API keys and no high-severity vulnerabilities?"
-      min_confidence: 0.85
+      min_probability: 0.85
+      escalate:
+        min_probability: 0.3
+        target: "MANUAL_REVIEW"
       fallback_target: "BLOCKED"`,
-          explanation: 'Transition advances only if the judgment confidence meets the threshold; otherwise diverts safely to BLOCKED.',
+          explanation: 'Transition advances when P(yes) is at least 0.85, routes a P(yes) from 0.3 up to 0.85 to MANUAL_REVIEW, and diverts anything lower to BLOCKED.',
         } },
+        { type: 'text', text: 'min_probability is compared directly with P(yes) for predicates and with the picked label\'s probability for categorical judgments. The older min_confidence field is unchanged: for predicates it measures distance from 0.5 as |P(yes) - 0.5| * 2, so min_confidence: m requires P(yes) >= 0.5 + m / 2. Skills that use min_probability or escalate should require the judgment.probability_thresholds runtime capability.' },
       ],
     },
     {

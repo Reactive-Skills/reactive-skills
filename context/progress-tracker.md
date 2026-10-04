@@ -41,6 +41,7 @@
 | :--- | :--- | :--- |
 | Decoupled Judgment Engine & Snap-On Adapters (`JudgmentPort`, `CircuitBreaker`) | Core | ✅ Done |
 | Semantic Model Capability Tiers (`StateModelDefinition`, `<model_contract>`) | Core | ✅ Done |
+| Judgment probability thresholds (`min_probability`, `escalate`, `judgment.probability_thresholds`, guard contract drift checks in `validate`) | Core | ✅ Done |
 | TSDoc `@Tier / @Complexity / @CRAPScore` annotations on hot-path methods | Quality | ⏳ Queued |
 | Automated CC/CRAP gate in CI (`check:complexity` script) | Quality | ⏳ Queued |
 | Context doc synchronization (architecture, progress tracker, project overview) | Docs | ✅ Done |

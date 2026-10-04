@@ -69,10 +69,28 @@ export interface DecisionRecord {
  */
 export type JudgmentType = 'predicate' | 'categorical' | 'evaluation';
 
+/**
+ * Grey-zone band below `min_probability` that routes to `target` instead of `fallback_target`.
+ */
+export interface JudgmentEscalation {
+  min_probability: number;
+  target: string;
+}
+
 export interface JudgmentDefinition {
   type: JudgmentType;
   criterion: string;
+  /**
+   * Adapter confidence threshold. For predicates, confidence is `|P(yes) - 0.5| * 2`,
+   * so `min_confidence: m` requires `P(yes) >= 0.5 + m / 2`.
+   */
   min_confidence?: number;
+  /**
+   * Probability threshold compared directly with P(yes) for predicates and with the
+   * picked label's probability for categorical judgments.
+   */
+  min_probability?: number;
+  escalate?: JudgmentEscalation;
   options?: string[];
   rubric?: string | string[];
   adapter_hint?: string;
@@ -94,15 +112,32 @@ export interface JudgmentRequest {
   rubric?: string | string[];
 }
 
+export type JudgmentThresholdField = 'min_probability' | 'min_confidence';
+
+export interface JudgmentThreshold {
+  field: JudgmentThresholdField;
+  value: number;
+}
+
+export type JudgmentBand = 'accept' | 'escalate' | 'reject';
+
 export interface JudgmentResult {
   verdict: boolean | string | number;
   confidence: number;
+  /**
+   * P(yes) for predicates, or the picked label's probability for categorical judgments.
+   */
+  probability?: number;
   passed: boolean;
   adapterName: string;
   adapterSelectionReason?: string;
   latencyMs: number;
   error?: string;
   raw?: unknown;
+  /** Threshold that decided the result, set by the judgment engine. */
+  threshold?: JudgmentThreshold;
+  /** Decision band, set by the judgment engine. */
+  band?: JudgmentBand;
 }
 
 export interface JudgmentAdapter {
@@ -248,16 +283,62 @@ export interface ContextDelta {
  */
 export const JudgmentTypeSchema = z.enum(['predicate', 'categorical', 'evaluation']);
 
+const ProbabilitySchema = z.number().min(0).max(1);
+
+export const JudgmentEscalationSchema = z.object({
+  min_probability: ProbabilitySchema,
+  target: z.string().min(1),
+});
+
 export const JudgmentDefinitionSchema = z.object({
   type: JudgmentTypeSchema,
   criterion: z.string(),
-  min_confidence: z.number().min(0).max(1).optional(),
+  min_confidence: ProbabilitySchema.optional(),
+  min_probability: ProbabilitySchema.optional(),
+  escalate: JudgmentEscalationSchema.optional(),
   options: z.array(z.string()).optional(),
   rubric: z.union([z.string(), z.array(z.string()).min(2)]).optional(),
   adapter_hint: z.string().optional(),
   fallback_adapter: z.string().optional(),
   fallback_target: z.string().optional(),
   timeout_ms: z.number().positive().optional(),
+}).superRefine((judgment, ctx) => {
+  if (judgment.min_probability !== undefined && judgment.min_confidence !== undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['min_probability'],
+      message: 'set either min_probability or min_confidence, not both',
+    });
+  }
+  if (judgment.min_probability !== undefined && judgment.type === 'evaluation') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['min_probability'],
+      message: 'min_probability is supported for predicate and categorical judgments',
+    });
+  }
+  if (judgment.type === 'predicate' && judgment.min_probability !== undefined && judgment.min_probability < 0.5) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['min_probability'],
+      message: 'predicate min_probability must be at least 0.5 so a no verdict cannot pass',
+    });
+  }
+  if (judgment.escalate) {
+    if (judgment.min_probability === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['escalate'],
+        message: 'escalate requires min_probability',
+      });
+    } else if (judgment.escalate.min_probability >= judgment.min_probability) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['escalate', 'min_probability'],
+        message: 'escalate.min_probability must be lower than min_probability',
+      });
+    }
+  }
 });
 
 export const RuntimeRequirementsSchema = z.object({
