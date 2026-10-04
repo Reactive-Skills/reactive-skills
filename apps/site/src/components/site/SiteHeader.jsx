@@ -14,6 +14,7 @@ const NAV = [
   { title: 'Docs', href: '/docs' },
   { title: 'Registry', href: '/registry' },
   { title: 'Blog', href: '/blog' },
+  { title: 'Telemetry', href: '/telemetry' },
 ];
 
 export function SiteHeader() {

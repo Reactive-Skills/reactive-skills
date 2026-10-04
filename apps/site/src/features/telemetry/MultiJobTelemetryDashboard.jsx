@@ -49,9 +49,9 @@ function findCatalogTarget(catalog, target) {
 
 export function MultiJobTelemetryDashboard() {
   const [brokerUrlInput, setBrokerUrlInput] = useState(DEFAULT_BROKER_URL);
-  const [brokerUrl, setBrokerUrl] = useState(DEFAULT_BROKER_URL);
+  const [brokerUrl, setBrokerUrl] = useState('');
   const [catalog, setCatalog] = useState(null);
-  const [catalogStatus, setCatalogStatus] = useState('loading');
+  const [catalogStatus, setCatalogStatus] = useState('idle');
   const [catalogError, setCatalogError] = useState('');
   const [selectedSkillId, setSelectedSkillId] = useState('');
   const [selectedJobId, setSelectedJobId] = useState('');
@@ -95,7 +95,7 @@ export function MultiJobTelemetryDashboard() {
   };
 
   useEffect(() => {
-    loadCatalog();
+    if (brokerUrl) loadCatalog();
   }, [brokerUrl]);
 
   useEffect(() => {
@@ -176,7 +176,7 @@ export function MultiJobTelemetryDashboard() {
       }));
     };
 
-    if (trackedTargets.length > 0) loadStates();
+    if (brokerUrl && trackedTargets.length > 0) loadStates();
     return () => {
       cancelled = true;
     };
@@ -188,7 +188,7 @@ export function MultiJobTelemetryDashboard() {
       eventSourceRef.current = null;
     }
 
-    if (trackedTargets.length === 0) return undefined;
+    if (!brokerUrl || trackedTargets.length === 0) return undefined;
 
     const streamUrl = new URL(`${normalizeBrokerUrl(brokerUrl)}/events`);
     streamUrl.searchParams.set('sinceSeq', '0');
@@ -288,7 +288,12 @@ export function MultiJobTelemetryDashboard() {
     });
   };
 
-  const statusLabel = catalogStatus === 'ready' ? 'Broker connected' : catalogStatus === 'loading' ? 'Connecting' : 'Connection error';
+  const statusLabel = {
+    idle: 'Not connected',
+    loading: 'Connecting',
+    ready: 'Broker connected',
+    error: 'Connection error',
+  }[catalogStatus];
   const hasJobs = (catalog?.skills || []).some((skill) => skill.jobs?.length > 0);
 
   return (
@@ -308,7 +313,9 @@ export function MultiJobTelemetryDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2 text-xs text-phino-text-muted" role="status" aria-live="polite">
-            {catalogStatus === 'ready' ? <CheckCircle2 className="h-4 w-4 text-phino-success" aria-hidden="true" /> : <WifiOff className="h-4 w-4 text-phino-warning" aria-hidden="true" />}
+            {catalogStatus === 'ready'
+              ? <CheckCircle2 className="h-4 w-4 text-phino-success" aria-hidden="true" />
+              : <WifiOff className={cn('h-4 w-4', catalogStatus === 'idle' ? 'text-phino-text-subtle' : 'text-phino-warning')} aria-hidden="true" />}
             {statusLabel}
           </div>
         </div>
@@ -328,7 +335,7 @@ export function MultiJobTelemetryDashboard() {
           <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-lg bg-phino-text px-4 py-2.5 text-sm font-semibold text-phino-canvas transition-opacity hover:opacity-90">
             Connect broker
           </button>
-          <button type="button" onClick={loadCatalog} className="inline-flex items-center justify-center gap-2 rounded-lg border border-phino-border px-4 py-2.5 text-sm font-semibold text-phino-text transition-colors hover:bg-phino-surface-raised" aria-label="Refresh broker catalog">
+          <button type="button" onClick={loadCatalog} disabled={!brokerUrl} className="inline-flex items-center justify-center gap-2 rounded-lg border border-phino-border px-4 py-2.5 text-sm font-semibold text-phino-text transition-colors hover:bg-phino-surface-raised disabled:cursor-not-allowed disabled:opacity-40" aria-label="Refresh broker catalog">
             <RefreshCw className={cn('h-4 w-4', catalogStatus === 'loading' && 'animate-spin')} aria-hidden="true" />
             Refresh
           </button>
@@ -365,6 +372,18 @@ export function MultiJobTelemetryDashboard() {
         </div>
         <p className="mt-3 text-xs text-phino-text-muted">The dashboard keeps one multiplexed SSE connection for all tracked jobs.</p>
       </div>
+
+      {catalogStatus === 'idle' && (
+        <div className="rounded-2xl border border-dashed border-phino-border bg-phino-surface p-8 sm:p-10" role="status">
+          <p className="text-sm font-semibold text-phino-text">Start a local broker to see live runs</p>
+          <ol className="mt-3 space-y-2 text-sm leading-relaxed text-phino-text-muted">
+            <li>1. In your workspace, run <code className="rounded bg-phino-code-bg px-1.5 py-0.5 font-mono text-xs text-phino-code-text">npx -y @reactive-skills/axi dashboard</code>.</li>
+            <li>2. Paste the printed <code className="font-mono text-xs">url</code> above and select Connect broker.</li>
+            <li>3. If your browser asks to allow local network access, allow it for this site.</li>
+          </ol>
+          <p className="mt-3 text-xs text-phino-text-subtle">The broker is read-only. Nothing leaves your machine.</p>
+        </div>
+      )}
 
       {catalogStatus === 'loading' && !catalog && (
         <div className="rounded-2xl border border-phino-border bg-phino-surface p-10 text-center text-sm text-phino-text-muted" role="status">Loading broker catalog...</div>
