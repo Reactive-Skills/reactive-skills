@@ -266,6 +266,10 @@ export function MultiJobTelemetryDashboard() {
   const connectBroker = (event) => {
     event.preventDefault();
     const nextUrl = normalizeBrokerUrl(brokerUrlInput);
+    if (nextUrl && nextUrl === brokerUrl) {
+      loadCatalog();
+      return;
+    }
     setBrokerUrl(nextUrl);
   };
 
