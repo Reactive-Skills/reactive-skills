@@ -76,4 +76,23 @@ describe('Judgment authoring errors (#47)', () => {
     expect(result!.refusalReason).toMatch(/Retrying will not help/);
     expect(result!.refusalReason).not.toMatch(/Retry the signal when/);
   });
+
+  it('keeps the authoring cause after an earlier credentials rejection in the same process', async () => {
+    let calls = 0;
+    JudgmentEngine.registerAdapter({
+      id: 'jev', supports: () => true, isConfigured: () => true, isAvailable: async () => true,
+      evaluate: async () => {
+        calls += 1;
+        if (calls === 1) throw Object.assign(new Error('401 Unauthorized'), { status: 401 });
+        throw new JudgmentAuthoringError('Jev evaluation requires at least two ordered rubric criteria');
+      },
+    });
+    engine = new FSMEngine({ skillDir: workspaceDir, workspaceDir });
+
+    await engine.handleSignal('SUBMIT_MODEL', {});
+    const second = await engine.handleSignal('SUBMIT_MODEL', {});
+
+    expect(second.refusalReason).toMatch(/misconfigured \(Jev evaluation requires at least two ordered rubric criteria\)/);
+    expect(second.refusalReason).not.toMatch(/401/);
+  });
 });

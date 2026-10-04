@@ -50,7 +50,9 @@ An approval passes the judgment with `decidedBy: "human"`, and a rejection route
 Each decision applies once, to the same state and signal.
 MCP has no tool that approves a gate.
 
-Within one OS account this channel stops an agent from approving by accident, but it does not stop an agent that deliberately emulates a terminal or calls the runtime library directly.
+Within one OS account this channel stops an agent from approving by accident.
+It does not stop an agent that drives a terminal session, for example through an MCP server that provides one, or that calls the runtime library directly.
+The grant file is also plain JSON that any file tool can write.
 
 ### Self-Reported Decisions
 

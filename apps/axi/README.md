@@ -268,7 +268,9 @@ Output (TOON format):
 
 Decide a gate that no model could judge, or turn self-reported decisions on or off for the workspace (ADR 0012).
 Run it yourself in your own terminal.
-It refuses to run when standard input or standard output is not an interactive terminal, so an agent cannot run it through a pipe or a script.
+It refuses to run when standard input or standard output is not an interactive terminal, so an agent cannot complete it through a pipe or a script.
+An agent with a tool that drives a terminal session, which some MCP servers provide, can still run it, so treat the code as protection against accidental approval rather than a security boundary.
+Run it from the workspace folder that the agent's message names; `approve` prints the workspace it used and fails when the run is not there.
 
 ```bash
 # Decide the gates waiting in a run:
@@ -281,7 +283,7 @@ npx -y @reactive-skills/axi approve my-skill --allow-self-reported
 npx -y @reactive-skills/axi approve my-skill --revoke-self-reported
 ```
 
-For each waiting gate, `approve` shows the state, signal, criterion, and the agent's payload, then prints a four-character code.
+For each waiting gate, `approve` shows the state, signal, criterion, and the agent's payload with its size and hash, then prints a four-character code.
 Typing the code approves the gate, and anything else rejects it.
 An approval re-sends the original signal, and the transition reports `judgment_basis: human`.
 A rejection routes to `fallback_target` when one is declared and otherwise leaves the run in its state.

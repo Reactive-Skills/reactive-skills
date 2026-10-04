@@ -532,7 +532,8 @@ export class JudgmentEngine {
     const outageAdapterId = await this.detectOutage(primaryAdapterId, primaryFailed, adapterSelectionReason);
     // An open circuit throws nothing, so use the rejection that opened it.
     const earlierRejection = outageAdapterId ? this.rejectedCredentials.get(outageAdapterId) : undefined;
-    if (!credentialsRejected && earlierRejection) {
+    // An authoring error keeps its own cause even after an earlier credentials rejection.
+    if (!credentialsRejected && !authoringError && earlierRejection) {
       credentialsRejected = true;
       failureCause = `${earlierRejection}; circuit breaker open`;
     }

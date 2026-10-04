@@ -33,19 +33,49 @@ export interface ApproveOptions {
   generateCode?: () => string;
 }
 
-/** One line reader per command, so lines typed ahead are not lost between prompts. */
+/**
+ * One line reader per command, so lines typed ahead are not lost between prompts. `ask` resolves
+ * null when input ends, for example on Ctrl+D, so the command can cancel instead of hanging.
+ */
 function lineReader(io: ApproveIO) {
   const rl = readline.createInterface({ input: io.input, output: io.output, terminal: false });
+  let closed = false;
+  const waiting = new Set<(answer: string | null) => void>();
+  rl.on('close', () => {
+    closed = true;
+    for (const resolve of waiting) resolve(null);
+    waiting.clear();
+  });
   return {
-    ask: (question: string) => new Promise<string>((resolve) => rl.question(question, resolve)),
+    ask: (question: string) =>
+      new Promise<string | null>((resolve) => {
+        if (closed) return resolve(null);
+        waiting.add(resolve);
+        rl.question(question, (answer) => {
+          waiting.delete(resolve);
+          resolve(answer);
+        });
+      }),
     close: () => rl.close(),
   };
 }
 
-function summarize(payload: Record<string, any>): string {
-  const text = JSON.stringify(payload ?? {});
-  return text.length > 600 ? `${text.slice(0, 600)}...` : text;
+/** Control and bidirectional formatting characters could fake or hide lines in the terminal. */
+const UNSAFE_TEXT = /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+
+function printable(text: string): string {
+  return text.replace(UNSAFE_TEXT, ' ');
 }
+
+/** The person approves the whole payload, so show its size and a hash even when the text is cut. */
+function describeEvidence(payload: Record<string, any>): string {
+  const text = JSON.stringify(payload ?? {});
+  const digest = crypto.createHash('sha256').update(text).digest('hex').slice(0, 16);
+  const shown = text.length > 600 ? `${text.slice(0, 600)}... (truncated)` : text;
+  return `${printable(shown)} [${Buffer.byteLength(text)} bytes, sha256 ${digest}]`;
+}
+
+const CANCELLED = 'Cancelled: input ended before an answer, so nothing was decided';
 
 /**
  * Lets a person decide gates that no adapter could judge, and grant or revoke self-reported
@@ -115,6 +145,7 @@ async function grantInteractively(reader: LineReader, io: ApproveIO, skillName: 
   );
   const expected = code();
   const answer = await reader.ask(`Type ${expected} to enable self-reported decisions, anything else to cancel: `);
+  if (answer === null) throw new AxiError(CANCELLED, 'VALIDATION_ERROR');
   const granted = answer.trim().toUpperCase() === expected;
   if (granted) grantSelfReport(workspaceDir, 'interactive_terminal');
   return renderOutput([renderDetail('approve', { skill_id: skillName, workspace: workspaceDir, self_reported: granted ? 'enabled' : 'unchanged' }, [
@@ -146,17 +177,24 @@ async function decidePending(
   }
   const engine = new FSMEngine({ skillDir: skillPath, workspaceDir, jobId, eventContext: { run_id: jobId } });
   try {
-    const pending: PendingApproval[] = engine.getPendingApprovals();
     const decisions: Array<Record<string, unknown>> = [];
-    for (const request of pending) {
+    // Re-list after each decision: a transition can leave other requests outside the active state.
+    const seen = new Set<string>();
+    const next = (): PendingApproval | undefined => engine.getPendingApprovals().find((r) => !seen.has(r.id));
+    for (let request = next(); request; request = next()) {
+      seen.add(request.id);
       io.output.write(
-        `\nPending gate: ${request.state} / ${request.signal} -> ${request.target}\n` +
-          `Criterion: ${request.criterion}\n` +
-          (request.reason ? `Why it needs you: ${request.reason}\n` : '') +
-          `Agent evidence: ${summarize(request.payload)}\n`
+        printable(`Pending gate: ${request.state} / ${request.signal} -> ${request.target}`) + '\n' +
+          printable(`Criterion: ${request.criterion}`) + '\n' +
+          (request.reason ? printable(`Why it needs you: ${request.reason}`) + '\n' : '') +
+          `Agent evidence: ${describeEvidence(request.payload)}\n`
       );
       const expected = code();
       const answer = await reader.ask(`Type ${expected} to approve, anything else to reject: `);
+      if (answer === null) {
+        if (decisions.length === 0) throw new AxiError(CANCELLED, 'VALIDATION_ERROR');
+        break;
+      }
       const decision = answer.trim().toUpperCase() === expected ? 'approve' : 'reject';
       const result = await engine.decideApproval(request.id, decision, 'interactive_terminal');
       decisions.push({ signal: request.signal, decision, transitioned: result.transitioned, current_state: result.newState });

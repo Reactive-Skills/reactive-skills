@@ -115,6 +115,23 @@ describe('Human approval for unjudgeable gates (#22 part 2)', () => {
       await engine.handleSignal('SUBMIT', { exit_code: 0 });
       expect(engine.getPendingApprovals()).toHaveLength(1);
     });
+
+    it('replaces a pending request when the signal is refused again with a different payload', async () => {
+      const engine = newEngine();
+      await engine.handleSignal('SUBMIT', { evidence: 'first draft' });
+      await engine.handleSignal('SUBMIT', { evidence: 'corrected' });
+
+      const pending = engine.getPendingApprovals();
+      expect(pending).toHaveLength(1);
+      expect(pending[0].payload).toEqual({ evidence: 'corrected' });
+    });
+
+    it('links each request to the refused signal that caused it', async () => {
+      const engine = newEngine();
+      const refused = await engine.handleSignal('SUBMIT', { exit_code: 0 });
+      const request = engine.getEventStore().query({ type: 'APPROVAL_REQUESTED' }).at(-1)!;
+      expect(request.causationId ?? request.causation_id).toBe(refused.event.id);
+    });
   });
 
   describe('human decisions', () => {
@@ -163,6 +180,23 @@ describe('Human approval for unjudgeable gates (#22 part 2)', () => {
       expect(replay.transitioned).toBe(false);
       const guard = engine.getEventStore().query({ type: 'GUARD_EVALUATED' }).at(-1)!;
       expect(guard.payload.judgment.decidedBy).not.toBe('human');
+    });
+
+    it('ignores a decision when the re-sent payload differs from the one the person saw', async () => {
+      const engine = newEngine();
+      await engine.handleSignal('SUBMIT_STRICT', { evidence: 'shown to the person' });
+      const [request] = engine.getPendingApprovals();
+      // An orphaned decision, as if approve stopped after recording it and before re-sending the signal.
+      const decided = engine.getEventStore().append(
+        'APPROVAL_DECIDED',
+        { requestId: request.id, decision: 'approve', channel: 'interactive_terminal', state: request.state, signal: request.signal },
+        { state: request.state, causationId: request.id }
+      );
+
+      const swapped = await engine.handleSignal('SUBMIT_STRICT', { evidence: 'something else' }, { causationId: decided.id });
+
+      expect(swapped.transitioned).toBe(false);
+      expect(engine.getCurrentState()).toBe('REVIEW');
     });
 
     it('rejects an unknown request id', async () => {

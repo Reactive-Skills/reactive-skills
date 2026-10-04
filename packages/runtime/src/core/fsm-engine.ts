@@ -844,7 +844,7 @@ export class FSMEngine {
 
     let refusalReason: string | undefined;
     const selfReportAllowed = hasSelfReportGrant(this.workspaceDir);
-    const humanApproval = this.resolveHumanDecision(signalName, metadata.causationId);
+    const humanApproval = this.resolveHumanDecision(signalName, payload, metadata.causationId);
 
     // Bubble search: test from deepest leaf substate up to root
     for (let depth = this.activeStatePath.length; depth >= 1; depth--) {
@@ -875,7 +875,12 @@ export class FSMEngine {
             currentState: testPath.join('.'),
             skillDir: this.skillDir,
             selfReportAllowed,
-            humanDecision: transDef.judgment && humanApproval?.state === testPath.join('.') ? humanApproval.decision : undefined,
+            humanDecision: transDef.judgment
+              && humanApproval?.state === testPath.join('.')
+              && humanApproval.target === transDef.target
+              && humanApproval.criterion === transDef.judgment.criterion
+              ? humanApproval.decision
+              : undefined,
           },
           transDef.judgment,
           transDef.guard_message
@@ -904,7 +909,7 @@ export class FSMEngine {
           refusalReason = guardResult.error;
         }
         if (transDef.judgment && guardResult.judgmentResult?.band === 'unevaluable') {
-          this.recordApprovalRequest(testPath.join('.'), signalName, transDef.target, transDef.judgment, payload, guardResult.error);
+          this.recordApprovalRequest(testPath.join('.'), signalName, transDef.target, transDef.judgment, payload, event.id, guardResult.error);
           const job = this.getJobName() || this.getJobId() || 'default';
           refusalReason = `${guardResult.error ?? 'Judgment could not be evaluated.'} This gate is waiting for a person: stop and ask the user to run \`reactive-skills-axi approve ${this.manifest.name} --job ${job}\` in their own terminal, from ${this.workspaceDir}.`;
         }
@@ -1196,8 +1201,12 @@ export class FSMEngine {
   public getPendingApprovals(): PendingApproval[] {
     const decided = new Set(this.eventStore.query({ type: 'APPROVAL_DECIDED' }).map((e) => e.payload?.requestId));
     const active = new Set(this.activeStatePath.map((_, i) => this.activeStatePath.slice(0, i + 1).join('.')));
-    return this.eventStore
-      .query({ type: 'APPROVAL_REQUESTED' })
+    // A newer request for the same state and signal, such as one with corrected evidence, replaces older ones.
+    const latest = new Map<string, SignalEvent>();
+    for (const e of this.eventStore.query({ type: 'APPROVAL_REQUESTED' })) {
+      latest.set(JSON.stringify([e.payload?.state, e.payload?.signal]), e);
+    }
+    return [...latest.values()]
       .filter((e) => !decided.has(e.id) && active.has(e.payload?.state))
       .map((e) => ({
         id: e.id,
@@ -1228,17 +1237,25 @@ export class FSMEngine {
     return this.handleSignal(request.signal, request.payload, { source: 'human_approval', causationId: decided.id });
   }
 
-  /** A decision counts only for its own request's signal, and only for the first signal it causes. */
-  private resolveHumanDecision(signalName: string, causationId?: string): { state: string; decision: 'approve' | 'reject' } | undefined {
+  /**
+   * A decision counts only for its own request's signal and the exact payload the person saw, and
+   * only for the first signal it causes.
+   */
+  private resolveHumanDecision(
+    signalName: string,
+    payload: Record<string, any>,
+    causationId?: string
+  ): { state: string; target: string; criterion: string; decision: 'approve' | 'reject' } | undefined {
     if (!causationId) return undefined;
     const decided = this.eventStore.query({ type: 'APPROVAL_DECIDED' }).find((e) => e.id === causationId);
     if (!decided || decided.payload?.signal !== signalName) return undefined;
     const request = this.eventStore.query({ type: 'APPROVAL_REQUESTED' }).find((e) => e.id === decided.payload?.requestId);
     if (!request || request.payload?.signal !== signalName) return undefined;
+    if (JSON.stringify(request.payload.payload ?? {}) !== JSON.stringify(payload ?? {})) return undefined;
     const signalsCaused = this.eventStore.query({ causationId: decided.id }).filter((e) => e.type === 'SIGNAL_EMITTED');
     if (signalsCaused.length !== 1) return undefined;
     const decision = decided.payload?.decision === 'approve' ? 'approve' : 'reject';
-    return { state: request.payload.state, decision };
+    return { state: request.payload.state, target: request.payload.target, criterion: request.payload.criterion, decision };
   }
 
   private recordApprovalRequest(
@@ -1247,13 +1264,17 @@ export class FSMEngine {
     target: string,
     judgment: { type: string; criterion: string },
     payload: Record<string, any>,
+    causationId: string,
     reason?: string
   ): void {
-    if (this.getPendingApprovals().some((r) => r.state === state && r.signal === signal)) return;
+    const samePending = this.getPendingApprovals().some(
+      (r) => r.state === state && r.signal === signal && JSON.stringify(r.payload) === JSON.stringify(payload)
+    );
+    if (samePending) return;
     this.eventStore.append(
       'APPROVAL_REQUESTED',
       { state, signal, target, criterion: judgment.criterion, judgmentType: judgment.type, payload, reason },
-      { state }
+      { state, causationId }
     );
   }
 

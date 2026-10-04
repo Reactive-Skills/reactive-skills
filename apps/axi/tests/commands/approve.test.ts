@@ -25,6 +25,11 @@ states:
           type: predicate
           criterion: "Does the delivered output satisfy the approved assertion?"
           fallback_target: REPAIR
+      SUBMIT_ALT:
+        target: DONE
+        judgment:
+          type: predicate
+          criterion: "Is the alternative delivery acceptable?"
   DONE:
     description: "Done"
   REPAIR:
@@ -207,6 +212,46 @@ describe('approveCommand (#22 part 2)', () => {
     await withEngine((engine) => {
       expect(engine.getEventStore().query({ type: 'APPROVAL_DECIDED' })).toHaveLength(0);
     });
+  });
+
+  it('stops prompting for gates the first decision moved past (review m3)', async () => {
+    await refuseSubmit();
+    await withEngine((engine) => engine.handleSignal('SUBMIT_ALT', { summary: 'alt' }));
+    const io = terminal(['ABCD', 'ABCD']);
+
+    const output = await approveCommand(['approval-skill', '--job', 'review-run'], io, { generateCode: () => 'ABCD' });
+
+    expect(io.written().match(/Pending gate:/g)).toHaveLength(1);
+    expect(output).toContain('decided: "1"');
+    expect(output).toContain('current_state: DONE');
+  });
+
+  it('cancels without deciding when input ends at the prompt (review m4)', async () => {
+    await refuseSubmit();
+
+    await expect(approveCommand(['approval-skill', '--job', 'review-run'], terminal([]), { generateCode: () => 'ABCD' }))
+      .rejects.toThrow('Cancelled');
+    await expect(approveCommand(['approval-skill', '--allow-self-reported'], terminal([]), { generateCode: () => 'ABCD' }))
+      .rejects.toThrow('Cancelled');
+
+    expect(hasSelfReportGrant(tmpDir)).toBe(false);
+    await withEngine((engine) => {
+      expect(engine.getEventStore().query({ type: 'APPROVAL_DECIDED' })).toHaveLength(0);
+    });
+  });
+
+  it('shows evidence size and hash and strips characters that could fake terminal lines (review m6)', async () => {
+    const rlo = String.fromCharCode(0x202e);
+    const csi = String.fromCharCode(0x9b);
+    await withEngine((engine) => engine.handleSignal('SUBMIT', { note: `looks fine${rlo}${csi}`, filler: 'x'.repeat(700) }));
+    const io = terminal(['ABCD']);
+
+    await approveCommand(['approval-skill', '--job', 'review-run'], io, { generateCode: () => 'ABCD' });
+
+    const written = io.written();
+    expect(written).toMatch(/\(truncated\) \[\d+ bytes, sha256 [0-9a-f]{16}\]/);
+    expect(written).not.toContain(rlo);
+    expect(written).not.toContain(csi);
   });
 
   it('generates codes from the unambiguous alphabet', () => {
