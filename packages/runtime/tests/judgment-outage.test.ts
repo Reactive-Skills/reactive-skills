@@ -94,10 +94,13 @@ function throwingJev(): JudgmentAdapter & { calls: number } {
 describe('Judgment outage refusal and self-reported decisions (#22)', () => {
   let tmpDir: string;
   let originalKey: string | undefined;
+  let originalHome: { HOME?: string; USERPROFILE?: string };
   let engines: FSMEngine[] = [];
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsa-judgment-outage-'));
+    originalHome = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+    process.env.HOME = process.env.USERPROFILE = path.join(tmpDir, 'home');
     fs.writeFileSync(path.join(tmpDir, 'skill.yaml'), skillYaml);
     originalKey = process.env.TYPESAFE_API_KEY;
     delete process.env.TYPESAFE_API_KEY;
@@ -115,6 +118,10 @@ describe('Judgment outage refusal and self-reported decisions (#22)', () => {
     }
     if (originalKey === undefined) delete process.env.TYPESAFE_API_KEY;
     else process.env.TYPESAFE_API_KEY = originalKey;
+    for (const [name, value] of Object.entries(originalHome)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
   });
 
   const newEngine = (workspaceDir = tmpDir) => {

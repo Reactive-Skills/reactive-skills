@@ -34,28 +34,32 @@ export interface ApproveOptions {
 }
 
 /**
- * One line reader per command, so lines typed ahead are not lost between prompts. `ask` resolves
- * null when input ends, for example on Ctrl+D, so the command can cancel instead of hanging.
+ * One line reader per command that queues lines, so a line typed before its prompt is not lost.
+ * `ask` resolves null when input ends, for example on Ctrl+D, so the command cancels instead of hanging.
  */
 function lineReader(io: ApproveIO) {
-  const rl = readline.createInterface({ input: io.input, output: io.output, terminal: false });
+  const rl = readline.createInterface({ input: io.input, terminal: false });
+  const lines: string[] = [];
+  const waiting: Array<(answer: string | null) => void> = [];
   let closed = false;
-  const waiting = new Set<(answer: string | null) => void>();
+  rl.on('line', (line) => {
+    const next = waiting.shift();
+    if (next) next(line);
+    else lines.push(line);
+  });
   rl.on('close', () => {
     closed = true;
-    for (const resolve of waiting) resolve(null);
-    waiting.clear();
+    for (const resolve of waiting.splice(0)) resolve(null);
   });
   return {
-    ask: (question: string) =>
-      new Promise<string | null>((resolve) => {
-        if (closed) return resolve(null);
-        waiting.add(resolve);
-        rl.question(question, (answer) => {
-          waiting.delete(resolve);
-          resolve(answer);
-        });
-      }),
+    ask: (question: string) => {
+      io.output.write(question);
+      return new Promise<string | null>((resolve) => {
+        if (lines.length > 0) resolve(lines.shift()!);
+        else if (closed) resolve(null);
+        else waiting.push(resolve);
+      });
+    },
     close: () => rl.close(),
   };
 }
@@ -75,7 +79,25 @@ function describeEvidence(payload: Record<string, any>): string {
   return `${printable(shown)} [${Buffer.byteLength(text)} bytes, sha256 ${digest}]`;
 }
 
-const CANCELLED = 'Cancelled: input ended before an answer, so nothing was decided';
+const CANCELLED = 'Cancelled: no matching answer before input ended, so nothing was decided';
+
+const MAX_ATTEMPTS = 5;
+
+/**
+ * The code approves and `reject` rejects. Anything else asks again, up to five tries, so a typo or
+ * a stray Enter never reroutes the run. Returns null when input ends or the tries run out.
+ */
+async function askDecision(reader: LineReader, io: ApproveIO, expected: string): Promise<'approve' | 'reject' | null> {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const answer = await reader.ask(`Type ${expected} to approve or reject to reject: `);
+    if (answer === null) return null;
+    const typed = answer.trim().toUpperCase();
+    if (typed === expected) return 'approve';
+    if (typed === 'REJECT') return 'reject';
+    io.output.write('That did not match. ');
+  }
+  return null;
+}
 
 /**
  * Lets a person decide gates that no adapter could judge, and grant or revoke self-reported
@@ -189,13 +211,11 @@ async function decidePending(
           (request.reason ? printable(`Why it needs you: ${request.reason}`) + '\n' : '') +
           `Agent evidence: ${describeEvidence(request.payload)}\n`
       );
-      const expected = code();
-      const answer = await reader.ask(`Type ${expected} to approve, anything else to reject: `);
-      if (answer === null) {
+      const decision = await askDecision(reader, io, code());
+      if (decision === null) {
         if (decisions.length === 0) throw new AxiError(CANCELLED, 'VALIDATION_ERROR');
         break;
       }
-      const decision = answer.trim().toUpperCase() === expected ? 'approve' : 'reject';
       const result = await engine.decideApproval(request.id, decision, 'interactive_terminal');
       decisions.push({ signal: request.signal, decision, transitioned: result.transitioned, current_state: result.newState });
     }

@@ -53,10 +53,13 @@ states:
 describe('Human approval for unjudgeable gates (#22 part 2)', () => {
   let workspaceDir: string;
   let originalKey: string | undefined;
+  let originalHome: { HOME?: string; USERPROFILE?: string };
   let engines: FSMEngine[] = [];
 
   beforeEach(() => {
     workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsa-human-approval-'));
+    originalHome = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+    process.env.HOME = process.env.USERPROFILE = path.join(workspaceDir, 'home');
     fs.writeFileSync(path.join(workspaceDir, 'skill.yaml'), skillYaml);
     originalKey = process.env.TYPESAFE_API_KEY;
     delete process.env.TYPESAFE_API_KEY;
@@ -74,6 +77,10 @@ describe('Human approval for unjudgeable gates (#22 part 2)', () => {
     }
     if (originalKey === undefined) delete process.env.TYPESAFE_API_KEY;
     else process.env.TYPESAFE_API_KEY = originalKey;
+    for (const [name, value] of Object.entries(originalHome)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
   });
 
   const newEngine = () => {
@@ -234,6 +241,41 @@ describe('Human approval for unjudgeable gates (#22 part 2)', () => {
       expect(hasSelfReportGrant(workspaceDir)).toBe(false);
       const result = await newEngine().handleSignal('SUBMIT', { exit_code: 0 });
       expect(result.transitioned).toBe(false);
+    });
+
+    it('ignores a hand-written, copied, or edited grant (DoD H26)', async () => {
+      const grantFile = path.join(workspaceDir, '.reactive', 'self-report-grant.json');
+      fs.mkdirSync(path.dirname(grantFile), { recursive: true });
+      fs.writeFileSync(grantFile, JSON.stringify({ grantedAt: new Date().toISOString(), channel: 'interactive_terminal' }));
+      expect(hasSelfReportGrant(workspaceDir)).toBe(false);
+
+      const elsewhere = fs.mkdtempSync(path.join(workspaceDir, 'elsewhere-'));
+      grantSelfReport(elsewhere, 'interactive_terminal');
+      fs.copyFileSync(path.join(elsewhere, '.reactive', 'self-report-grant.json'), grantFile);
+      expect(hasSelfReportGrant(elsewhere)).toBe(true);
+      expect(hasSelfReportGrant(workspaceDir)).toBe(false);
+
+      grantSelfReport(workspaceDir, 'interactive_terminal');
+      expect(hasSelfReportGrant(workspaceDir)).toBe(true);
+      const edited = { ...JSON.parse(fs.readFileSync(grantFile, 'utf8')), channel: 'agent' };
+      fs.writeFileSync(grantFile, JSON.stringify(edited));
+      expect(hasSelfReportGrant(workspaceDir)).toBe(false);
+
+      const refused = await newEngine().handleSignal('SUBMIT', { exit_code: 0 });
+      expect(refused.transitioned).toBe(false);
+    });
+
+    it('records the first use of a grant in a run once (DoD H25)', async () => {
+      grantSelfReport(workspaceDir, 'interactive_terminal');
+      const engine = newEngine();
+
+      await engine.handleSignal('SUBMIT_STRICT', { exit_code: 1 });
+      await engine.handleSignal('SUBMIT', { exit_code: 0 });
+
+      expect(engine.getCurrentState()).toBe('DONE');
+      const used = engine.getEventStore().query({ type: 'SELF_REPORT_GRANT_USED' });
+      expect(used).toHaveLength(1);
+      expect(used[0].payload).toMatchObject({ channel: 'interactive_terminal' });
     });
 
     it('reports whether a grant was removed, and throws when removal fails', () => {

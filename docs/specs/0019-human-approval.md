@@ -16,22 +16,23 @@ Decision record: `docs/adr/0012-human-approval-for-unjudgeable-gates.md`, buildi
 
 5. `reactive-skills-axi approve <skill> [--job <id>]` exits with an error and changes nothing unless both standard input and standard output are interactive terminals.
 6. It lists pending requests for the job, oldest first, with state, signal, criterion, and a bounded summary of the payload.
-7. For each request it prints a four-character code from an unambiguous alphabet generated with `crypto.randomInt`, reads one line, and treats an exact match (case-insensitive) as approval and anything else as rejection.
+7. For each request it prints a four-character code from an unambiguous alphabet generated with `crypto.randomInt` and reads one line at a time: an exact match (case-insensitive) approves, `reject` rejects, any other answer asks again up to five times, and end of input or a fifth wrong answer cancels without deciding (amended 2026-10-04 after review).
 8. It appends `APPROVAL_DECIDED` with `requestId`, `decision`, and `channel: "interactive_terminal"`, then re-sends the original signal and payload with that event as the signal's cause.
 9. MCP registers no tool that decides a pending request.
 
 ## 3. Human-decided judgments
 
-10. When a signal's cause is an `APPROVAL_DECIDED` event, the engine validates that it names an `APPROVAL_REQUESTED` event for the same state and signal in the same run and that no earlier `SIGNAL_EMITTED` was caused by it.
+10. When a signal's cause is an `APPROVAL_DECIDED` event, the engine validates that it names an `APPROVAL_REQUESTED` event for the same state, signal, target, criterion, and payload in the same run and that no earlier `SIGNAL_EMITTED` was caused by it.
 11. A valid approval decides the judgment with `passed: true`, band `accept`, and `decidedBy: "human"`; a valid rejection decides it with band `reject`, which routes to `fallback_target` when declared and otherwise refuses.
 12. An invalid or already consumed decision is ignored, and the judgment is evaluated normally.
 13. The emit result reports `judgment_basis: human` for a human-decided transition.
 
 ## 4. Self-report grant
 
-14. `approve --allow-self-reported` requires the same terminal and code check and writes `.reactive/self-report-grant.json` with `grantedAt` and `channel`; `approve --revoke-self-reported` deletes it without a code.
+14. `approve --allow-self-reported` requires the same terminal and code check and writes `.reactive/self-report-grant.json` with `grantedAt`, `channel`, and an HMAC signature over the workspace path, time, and channel, keyed by `~/.reactive-skills/approval-key`; the runtime ignores a grant whose signature does not verify. `approve --revoke-self-reported` deletes it without a code (signature amended 2026-10-04 after review).
 15. With a grant and no configured model, natural-language criteria are decided from the payload, labeled self-reported, and the emit output carries a warning line.
 16. A grant never applies when a configured model is in an outage.
+16a. The first self-reported decision each grant allows in a run appends `SELF_REPORT_GRANT_USED` with the grant's `grantedAt` and `channel`.
 
 ## 5. Decision source
 

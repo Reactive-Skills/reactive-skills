@@ -44,7 +44,7 @@ The runtime records an `APPROVAL_REQUESTED` event, and the refusal reason tells 
 
 `approve` runs only in an interactive terminal.
 It shows each waiting gate with the agent's payload and asks the user to type back a one-time code.
-The code approves the gate, and any other answer rejects it.
+The code approves the gate, and typing `reject` rejects it; any other answer asks again.
 The runtime records `APPROVAL_DECIDED` and re-sends the original signal.
 An approval passes the judgment with `decidedBy: "human"`, and a rejection routes to `fallback_target` or refuses.
 Each decision applies once, to the same state and signal.
@@ -52,13 +52,14 @@ MCP has no tool that approves a gate.
 
 Within one OS account this channel stops an agent from approving by accident.
 It does not stop an agent that drives a terminal session, for example through an MCP server that provides one, or that calls the runtime library directly.
-The grant file is also plain JSON that any file tool can write.
+An agent that reads the signing key can still forge a grant.
 
 ### Self-Reported Decisions
 
 Self-reported decisions let the signal payload decide natural-language criteria when no model is configured.
 They are off by default, and only the user can turn them on, by running `reactive-skills-axi approve <skill> --allow-self-reported` in an interactive terminal and typing back the code.
-The grant applies to the whole workspace and is stored in `.reactive/self-report-grant.json`.
+The grant applies to the whole workspace and is stored in `.reactive/self-report-grant.json`, signed with a key in `~/.reactive-skills/approval-key` and bound to the workspace path.
+The runtime ignores a hand-written, edited, or copied grant, and records the first decision each grant allows in a run as `SELF_REPORT_GRANT_USED`.
 `reactive-skills-axi approve <skill> --revoke-self-reported` removes it.
 
 Every self-reported transition reports `judgment_basis: self_reported` with a warning in the emit output.

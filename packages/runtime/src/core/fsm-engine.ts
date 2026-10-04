@@ -19,7 +19,7 @@ import {
 } from './types.js';
 import { EventStore, createSortableId } from './event-store.js';
 import { GuardEvaluator } from './guard-evaluator.js';
-import { hasSelfReportGrant } from './approval-grants.js';
+import { hasSelfReportGrant, readSelfReportGrant } from './approval-grants.js';
 import { LegacySkillAdapter } from './legacy-adapter.js';
 import { ProjectionEngine } from './projection-engine.js';
 import { JobManager, isJobTerminal } from './job-manager.js';
@@ -903,6 +903,8 @@ export class FSMEngine {
           { state: testPath.join('.'), causationId: event.id }
         );
 
+        if (guardResult.judgmentResult?.selfReported) this.recordGrantUse(event.id);
+
         let effectiveTarget = transDef.target;
         let isTransitioning = guardResult.passed;
         if (!guardResult.passed && !guardResult.fallbackTarget && guardResult.error) {
@@ -1256,6 +1258,19 @@ export class FSMEngine {
     if (signalsCaused.length !== 1) return undefined;
     const decision = decided.payload?.decision === 'approve' ? 'approve' : 'reject';
     return { state: request.payload.state, target: request.payload.target, criterion: request.payload.criterion, decision };
+  }
+
+  /** Makes the first decision each grant allows in a run visible in the ledger (ADR 0012). */
+  private recordGrantUse(causationId: string): void {
+    const grant = readSelfReportGrant(this.workspaceDir);
+    if (!grant) return;
+    const seen = this.eventStore.query({ type: 'SELF_REPORT_GRANT_USED' }).some((e) => e.payload?.grantedAt === grant.grantedAt);
+    if (seen) return;
+    this.eventStore.append(
+      'SELF_REPORT_GRANT_USED',
+      { grantedAt: grant.grantedAt, channel: grant.channel },
+      { state: this.getCurrentState(), causationId }
+    );
   }
 
   private recordApprovalRequest(

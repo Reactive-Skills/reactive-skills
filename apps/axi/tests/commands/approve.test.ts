@@ -54,12 +54,16 @@ describe('approveCommand (#22 part 2)', () => {
   let tmpDir: string;
   let skillDir: string;
 
+  let originalHome: { HOME?: string; USERPROFILE?: string };
+
   beforeEach(() => {
     originalCwd = process.cwd();
     originalKey = process.env.TYPESAFE_API_KEY;
     delete process.env.TYPESAFE_API_KEY;
     JudgmentEngine.reset();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-axi-approve-'));
+    originalHome = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+    process.env.HOME = process.env.USERPROFILE = path.join(tmpDir, 'home');
     skillDir = path.join(tmpDir, 'skills', 'approval-skill');
     fs.mkdirSync(skillDir, { recursive: true });
     fs.writeFileSync(path.join(skillDir, 'skill.yaml'), skillYaml);
@@ -71,6 +75,10 @@ describe('approveCommand (#22 part 2)', () => {
     JudgmentEngine.reset();
     if (originalKey === undefined) delete process.env.TYPESAFE_API_KEY;
     else process.env.TYPESAFE_API_KEY = originalKey;
+    for (const [name, value] of Object.entries(originalHome)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     } catch {
@@ -125,9 +133,41 @@ describe('approveCommand (#22 part 2)', () => {
     });
   });
 
-  it('rejects the pending gate when the typed code does not match (criterion 7)', async () => {
+  it('asks again on a wrong code and approves once the code matches (criterion 7, DoD H6)', async () => {
     await refuseSubmit();
-    const io = terminal(['WXYZ']);
+    const io = terminal(['WXYZ', 'abcd']);
+
+    const output = await approveCommand(['approval-skill', '--job', 'review-run'], io, { generateCode: () => 'ABCD' });
+
+    expect(io.written()).toContain('did not match');
+    expect(output).toContain('current_state: DONE');
+  });
+
+  it('cancels without deciding when input ends after a wrong code (DoD H6)', async () => {
+    await refuseSubmit();
+
+    await expect(approveCommand(['approval-skill', '--job', 'review-run'], terminal(['WXYZ']), { generateCode: () => 'ABCD' }))
+      .rejects.toThrow('Cancelled');
+    await withEngine((engine) => {
+      expect(engine.getEventStore().query({ type: 'APPROVAL_DECIDED' })).toHaveLength(0);
+    });
+  });
+
+  it('cancels after five wrong answers without deciding (DoD H6)', async () => {
+    await refuseSubmit();
+    const io = terminal(['A', 'B', 'C', 'D', 'E', 'ABCD']);
+
+    await expect(approveCommand(['approval-skill', '--job', 'review-run'], io, { generateCode: () => 'ABCD' }))
+      .rejects.toThrow('Cancelled');
+    expect(io.written().match(/did not match/g)).toHaveLength(5);
+    await withEngine((engine) => {
+      expect(engine.getEventStore().query({ type: 'APPROVAL_DECIDED' })).toHaveLength(0);
+    });
+  });
+
+  it('rejects the pending gate only when the user types reject (criterion 7, DoD H6)', async () => {
+    await refuseSubmit();
+    const io = terminal(['WXYZ', 'Reject']);
 
     const output = await approveCommand(['approval-skill', '--job', 'review-run'], io, { generateCode: () => 'ABCD' });
 
