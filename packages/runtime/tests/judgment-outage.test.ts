@@ -457,6 +457,37 @@ states:
     });
 
     it.each([
+      ['a success', 'ok'],
+      ['a non-credential failure', 'down'],
+    ] as const)('clears a stored rejection after %s', async (_name, next) => {
+      const ctx = {
+        event: { id: 'e', seq: 1, timestamp: new Date().toISOString(), type: 'X', payload: { exit_code: 0 } },
+        context: {},
+        currentState: 'REVIEW',
+      };
+      let mode: 'reject' | 'ok' | 'down' = 'reject';
+      let available = true;
+      const jev = {
+        id: 'jev', supports: () => true, isConfigured: () => true, isAvailable: async () => available,
+        evaluate: async () => {
+          if (mode === 'reject') throw httpError(401, 'bad key');
+          if (mode === 'down') throw new Error('timed out');
+          return { verdict: true, confidence: 0.9, probability: 0.95, passed: true, adapterName: 'jev', latencyMs: 1 };
+        },
+      };
+      JudgmentEngine.registerAdapter(jev, { failureThreshold: 5 });
+      await JudgmentEngine.evaluate({ type: 'predicate', criterion: SEMANTIC, adapter_hint: 'jev' }, ctx);
+      mode = next;
+      await JudgmentEngine.evaluate({ type: 'predicate', criterion: SEMANTIC, adapter_hint: 'jev' }, ctx);
+
+      // With Jev configured but unavailable and the breaker closed, only a stale rejection could say "rejected".
+      available = false;
+      const result = await JudgmentEngine.evaluate({ type: 'predicate', criterion: SEMANTIC }, ctx);
+      expect(result.band).toBe('unevaluable');
+      expect(result.error).not.toMatch(/rejected/);
+    });
+
+    it.each([
       ['a timeout', new Error('Jev request timed out')],
       ['a server error', httpError(503, '503 Service Unavailable')],
     ])('keeps the unavailable and retry message for %s', async (_name, error) => {
