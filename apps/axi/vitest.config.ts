@@ -11,6 +11,7 @@ export default defineConfig({
     root: appRoot,
     globals: true,
     environment: 'node',
+    globalSetup: path.resolve(__dirname, 'vitest.global-setup.ts'),
     include: ['tests/**/*.test.ts'],
   },
 });

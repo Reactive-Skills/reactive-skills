@@ -46,13 +46,14 @@ states:
     const eventDbPath = path.join(tempDir, 'events.db');
     const eventJsonlPath = path.join(tempDir, 'events.jsonl');
     const store = new EventStore({
+      workspaceDir: tempDir,
       sqlitePath: eventDbPath,
       storagePath: eventJsonlPath,
       enableSqlite: true,
     });
 
     // 2. Boot first engine and advance to STAGE_TWO
-    const engine1 = new FSMEngine({ skillDir, eventStore: store });
+    const engine1 = new FSMEngine({ skillDir, workspaceDir: tempDir, eventStore: store });
     expect(engine1.getCurrentState()).toBe('STAGE_ONE');
 
     const res = await engine1.handleSignal('ADVANCE', { contextUpdates: { counter: 42 } });
@@ -62,11 +63,12 @@ states:
 
     // 3. Boot second engine pointing to same persistent EventStore (simulating process restart)
     const store2 = new EventStore({
+      workspaceDir: tempDir,
       sqlitePath: eventDbPath,
       storagePath: eventJsonlPath,
       enableSqlite: true,
     });
-    const engine2 = new FSMEngine({ skillDir, eventStore: store2 });
+    const engine2 = new FSMEngine({ skillDir, workspaceDir: tempDir, eventStore: store2 });
 
     // 4. Verify engine2 booted directly into STAGE_TWO with restored context
     expect(engine2.getCurrentState()).toBe('STAGE_TWO');
@@ -101,7 +103,7 @@ states:
 `;
     fs.writeFileSync(path.join(skillDir, 'skill.yaml'), skillYaml, 'utf8');
 
-    const engine = new FSMEngine({ skillDir, eventStore: new EventStore({ inMemory: true }) });
+    const engine = new FSMEngine({ skillDir, workspaceDir: tempDir, eventStore: new EventStore({ inMemory: true }) });
     expect(engine.getCurrentState()).toBe('INITIAL');
 
     // Emitting START enters VALIDATING, which emits VALIDATED in on_enter, auto-stepping to SUCCESS
@@ -243,12 +245,13 @@ states:
 
     const eventDbPath = path.join(tempDir, 'snapshot-events.db');
     const store1 = new EventStore({
+      workspaceDir: tempDir,
       sqlitePath: eventDbPath,
       enableSqlite: true,
     });
 
     // 1. Boot engine1 and transition across multiple states
-    const engine1 = new FSMEngine({ skillDir, eventStore: store1 });
+    const engine1 = new FSMEngine({ skillDir, workspaceDir: tempDir, eventStore: store1 });
     expect(engine1.getCurrentState()).toBe('S1');
 
     await engine1.handleSignal('GO_TO_S2', { contextUpdates: { step: 2 } });
@@ -279,6 +282,7 @@ states:
 
     // 4. Cold boot engine2 pointing to the same SQLite database
     const store2 = new EventStore({
+      workspaceDir: tempDir,
       sqlitePath: eventDbPath,
       enableSqlite: true,
     });
@@ -287,7 +291,7 @@ states:
     const getAllSpy = vi.spyOn(store2, 'getAll');
     const getSinceSpy = vi.spyOn(store2, 'getSince');
 
-    const engine2 = new FSMEngine({ skillDir, eventStore: store2 });
+    const engine2 = new FSMEngine({ skillDir, workspaceDir: tempDir, eventStore: store2 });
 
     // 5. Verify engine2 restored into S4 with full context (including the post-snapshot event)
     expect(engine2.getCurrentState()).toBe('S4');
