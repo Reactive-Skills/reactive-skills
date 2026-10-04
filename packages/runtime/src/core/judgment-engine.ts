@@ -96,6 +96,25 @@ export class CircuitBreaker {
   }
 }
 
+/**
+ * A judgment configuration problem an adapter detects before asking its model, such as an
+ * evaluation rubric with fewer than two criteria. It is not an outage, so it never counts against
+ * the circuit breaker, and retrying cannot fix it (spec 0019, #47).
+ */
+export class JudgmentAuthoringError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'JudgmentAuthoringError';
+  }
+}
+
+function isAuthoringError(err: unknown): boolean {
+  return err instanceof JudgmentAuthoringError || (err as { name?: string } | null)?.name === 'JudgmentAuthoringError';
+}
+
+/** Why no adapter could decide a judgment; selects the agent-facing reason (ADR 0011). */
+type UnevaluableKind = 'outage' | 'credentials' | 'authoring';
+
 /** Names a lone word may use and still count as an expression rather than natural language. */
 const EXPRESSION_WORDS = new Set(['payload', 'context', 'event', 'state', 'req', 'true', 'false', 'null', 'undefined']);
 
@@ -339,11 +358,11 @@ function pickedProbability(answer: object, choice: string): number | undefined {
 function normalizeScoreRubric(rubric: string | string[] | undefined): string[] {
   if (Array.isArray(rubric)) {
     if (rubric.length >= 2) return rubric;
-    throw new Error('Jev evaluation requires at least two ordered rubric criteria');
+    throw new JudgmentAuthoringError('Jev evaluation requires at least two ordered rubric criteria');
   }
 
   if (!rubric?.trim()) {
-    throw new Error('Jev evaluation requires ordered rubric criteria');
+    throw new JudgmentAuthoringError('Jev evaluation requires ordered rubric criteria');
   }
 
   const trimmed = rubric.trim();
@@ -361,7 +380,7 @@ function normalizeScoreRubric(rubric: string | string[] | undefined): string[] {
   const delimiter = trimmed.includes('|') ? '|' : trimmed.includes('\n') ? '\n' : ',';
   const criteria = trimmed.split(delimiter).map((item) => item.trim()).filter(Boolean);
   if (criteria.length < 2) {
-    throw new Error('Jev evaluation requires at least two ordered rubric criteria separated by |');
+    throw new JudgmentAuthoringError('Jev evaluation requires at least two ordered rubric criteria separated by |');
   }
   return criteria;
 }
@@ -455,6 +474,7 @@ export class JudgmentEngine {
     let result: JudgmentResult | null = null;
     let primaryFailed = false;
     let credentialsRejected = false;
+    let authoringError = false;
     let failureCause = adapterSelectionReason === 'jev_unavailable'
       ? 'the TypeSafe SDK is missing or failed to load'
       : 'circuit breaker open';
@@ -473,13 +493,18 @@ export class JudgmentEngine {
           adapterSelectionReason,
         };
       } catch (err: any) {
-        primaryBreaker.recordFailure();
         primaryFailed = true;
         failureCause = err?.message || String(err);
-        // 401 and 403 mean the adapter rejected its credentials, which retrying cannot fix.
-        credentialsRejected = err?.status === 401 || err?.status === 403;
-        if (credentialsRejected) this.rejectedCredentials.set(primaryAdapterId, failureCause);
-        else this.rejectedCredentials.delete(primaryAdapterId);
+        if (isAuthoringError(err)) {
+          // A misconfigured judgment is not an outage, so it does not count against the breaker.
+          authoringError = true;
+        } else {
+          primaryBreaker.recordFailure();
+          // 401 and 403 mean the adapter rejected its credentials, which retrying cannot fix.
+          credentialsRejected = err?.status === 401 || err?.status === 403;
+          if (credentialsRejected) this.rejectedCredentials.set(primaryAdapterId, failureCause);
+          else this.rejectedCredentials.delete(primaryAdapterId);
+        }
       }
     } else {
       primaryFailed = true;
@@ -492,6 +517,7 @@ export class JudgmentEngine {
       credentialsRejected = true;
       failureCause = `${earlierRejection}; circuit breaker open`;
     }
+    const failureKind = (): UnevaluableKind => (authoringError ? 'authoring' : credentialsRejected ? 'credentials' : 'outage');
 
     // 2. Cascade to Fallback Adapter if primary failed or was blocked by breaker
     if (!result || primaryFailed) {
@@ -500,7 +526,7 @@ export class JudgmentEngine {
       try {
         const fallbackResult = await fallbackAdapter.evaluate(req, evalContext);
         if (outageAdapterId && fallbackResult.selfReported) {
-          return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, fallbackResult.adapterName, credentialsRejected);
+          return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, fallbackResult.adapterName, failureKind());
         }
         return this.applyDecision(
           judgment,
@@ -510,7 +536,7 @@ export class JudgmentEngine {
       } catch (err: any) {
         if (outageAdapterId) {
           const cause = `${failureCause}; fallback ${fallbackId} also failed: ${err.message}`;
-          return this.unevaluable(judgment, outageAdapterId, cause, adapterSelectionReason, fallbackId, credentialsRejected);
+          return this.unevaluable(judgment, outageAdapterId, cause, adapterSelectionReason, fallbackId, failureKind());
         }
         return {
           verdict: false,
@@ -529,7 +555,7 @@ export class JudgmentEngine {
 
     // An open Jev circuit or a broken Jev install made the script adapter primary; it cannot judge natural language either.
     if (outageAdapterId && result.selfReported) {
-      return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, result.adapterName, credentialsRejected);
+      return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, result.adapterName, failureKind());
     }
 
     // 3. Apply the declared threshold and decision band
@@ -572,8 +598,13 @@ export class JudgmentEngine {
     cause: string,
     adapterSelectionReason: string,
     attemptedAdapterId: string,
-    credentialsRejected = false
+    kind: UnevaluableKind = 'outage'
   ): JudgmentResult & { fallbackTriggered: boolean; fallbackTarget?: string } {
+    const reasons: Record<UnevaluableKind, string> = {
+      credentials: `Judgment could not be evaluated: ${adapterId === 'jev' ? 'jev rejected TYPESAFE_API_KEY' : `${adapterId} rejected its credentials`} (${cause}). This gate cannot be judged until the credentials work, and retrying with the same credentials will not help. ${adapterId === 'jev' ? 'Stop and ask the user to fix or replace TYPESAFE_API_KEY; do not unset it to get past this gate.' : `Stop and ask the user to fix the credentials for ${adapterId}.`}`,
+      outage: `Judgment could not be evaluated: ${adapterId} is unavailable (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. Retry the signal when ${adapterId} is reachable, with a new idempotency key if you set one.`,
+      authoring: `Judgment could not be evaluated: the judgment is misconfigured (${cause}). Retrying will not help; tell the user the skill needs fixing.`,
+    };
     return {
       verdict: false,
       confidence: 0,
@@ -582,9 +613,7 @@ export class JudgmentEngine {
       adapterSelectionReason: `${adapterSelectionReason}:unevaluable`,
       latencyMs: 0,
       // This reason reaches the agent: it asks for the user and never suggests removing the key (ADR 0011).
-      error: credentialsRejected
-        ? `Judgment could not be evaluated: ${adapterId === 'jev' ? 'jev rejected TYPESAFE_API_KEY' : `${adapterId} rejected its credentials`} (${cause}). This gate cannot be judged until the credentials work, and retrying with the same credentials will not help. ${adapterId === 'jev' ? 'Stop and ask the user to fix or replace TYPESAFE_API_KEY; do not unset it to get past this gate.' : `Stop and ask the user to fix the credentials for ${adapterId}.`}`
-        : `Judgment could not be evaluated: ${adapterId} is unavailable (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. Retry the signal when ${adapterId} is reachable, with a new idempotency key if you set one.`,
+      error: reasons[kind],
       threshold: resolveJudgmentThreshold(judgment),
       band: 'unevaluable',
       fallbackTriggered: true,
