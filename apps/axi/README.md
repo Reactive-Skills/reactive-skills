@@ -2,10 +2,10 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.17.2:**
-> - `emit` shows an actionable `refusal_reason` when Jev rejects `TYPESAFE_API_KEY`: fix or replace the key, or unset it to continue with self-reported decisions.
+> 🚀 **What's New in v0.17.3:**
+> - For a rejected `TYPESAFE_API_KEY`, `emit` shows a `refusal_reason` that asks the agent to stop and have the user fix the key.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.2) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.3) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

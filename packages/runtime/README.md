@@ -2,10 +2,10 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.17.2:**
-> - A model adapter that fails with HTTP 401 or 403 produces an unevaluable judgment whose reason says the credentials were rejected; the rejection is kept beside the circuit breaker and cleared on success, another failure, re-registration, or reset.
+> 🚀 **What's New in v0.17.3:**
+> - The rejected-credentials reason addresses the user through the agent: stop and ask the user to fix the credentials; it never suggests removing the key.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.2) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.3) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -32,7 +32,9 @@ npm install @reactive-skills/runtime
 
 The adapter supports predicate, categorical, and ordered score judgments.
 Score judgments accept an array such as `rubric: ["weak", "acceptable", "strong"]`, or a string separated by `|`.
-If the API key is unset or a request fails, the runtime keeps the existing Script adapter fallback and circuit-breaker behavior.
+A criterion written as a JavaScript expression always runs in the Script adapter.
+Without `TYPESAFE_API_KEY`, a natural-language criterion is decided from the signal payload and labeled self-reported.
+With the key set, a failed or rejected Jev request refuses the signal for a natural-language criterion, and the run stays in its state (ADR 0011).
 
 ### Judgment Thresholds
 

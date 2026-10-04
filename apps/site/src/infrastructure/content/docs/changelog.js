@@ -8,6 +8,19 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-17-3",
+    "heading": "v0.17.3 (2026-10-04)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "Merge pull request #52 from Reactive-Skills/fix/r2c-agent-message",
+          "fix(runtime): ask the user to fix rejected credentials instead of suggesting removal"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-17-2",
     "heading": "v0.17.2 (2026-10-04)",
     "blocks": [
