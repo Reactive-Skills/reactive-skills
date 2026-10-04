@@ -31,6 +31,9 @@ states:
     description: "Repair"
 `;
 
+/** TOON quotes Windows paths and escapes their backslashes. */
+const plain = (text: string) => text.replaceAll('\\\\', '\\').replaceAll('"', '');
+
 function terminal(lines: string[], isTTY = true): ApproveIO & { written: () => string } {
   const input = Object.assign(new PassThrough(), { isTTY });
   const output = Object.assign(new PassThrough(), { isTTY });
@@ -131,10 +134,36 @@ describe('approveCommand (#22 part 2)', () => {
   });
 
   it('reports nothing to decide when no gate is waiting', async () => {
+    await withEngine(() => undefined);
+
     const output = await approveCommand(['approval-skill', '--job', 'review-run'], terminal([]), { generateCode: () => 'ABCD' });
 
     expect(output).toContain('decided: "0"');
     expect(output).toContain('current_state: REVIEW');
+    expect(plain(output)).toContain(`workspace: ${tmpDir}`);
+  });
+
+  it('fails without creating a run when the run is not in this workspace', async () => {
+    await refuseSubmit();
+    const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 'reactive-axi-approve-elsewhere-'));
+    process.chdir(elsewhere);
+    try {
+      await expect(approveCommand([skillDir, '--job', 'review-run'], terminal(['ABCD']), { generateCode: () => 'ABCD' }))
+        .rejects.toThrow(`No run 'review-run' of approval-skill in ${elsewhere}`);
+      expect(fs.existsSync(path.join(elsewhere, '.reactive'))).toBe(false);
+    } finally {
+      process.chdir(tmpDir);
+      fs.rmSync(elsewhere, { recursive: true, force: true });
+    }
+  });
+
+  it('names the workspace before asking to enable self-reported decisions', async () => {
+    const io = terminal(['ABCD']);
+
+    const output = await approveCommand(['approval-skill', '--allow-self-reported'], io, { generateCode: () => 'ABCD' });
+
+    expect(io.written()).toContain(`Workspace: ${tmpDir}`);
+    expect(plain(output)).toContain(`workspace: ${tmpDir}`);
   });
 
   it('grants self-reported decisions only when the typed code matches (criterion 14)', async () => {

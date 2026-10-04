@@ -1,6 +1,9 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import readline from 'node:readline';
-import { FSMEngine, grantSelfReport, revokeSelfReport, type PendingApproval } from '@reactive-skills/runtime';
+import yaml from 'js-yaml';
+import { FSMEngine, JobManager, grantSelfReport, revokeSelfReport, type PendingApproval } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderOutput, renderDetail } from '../toon.js';
 import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.js';
@@ -76,8 +79,9 @@ export async function approveCommand(
 
   if (revokeSelfReported) {
     const removed = revokeSelfReport(workspaceDir);
-    return renderOutput([renderDetail('approve', { skill_id: skillName, self_reported: 'disabled', changed: removed }, [
+    return renderOutput([renderDetail('approve', { skill_id: skillName, workspace: workspaceDir, self_reported: 'disabled', changed: removed }, [
       { type: 'field', key: 'skill_id' },
+      { type: 'field', key: 'workspace' },
       { type: 'field', key: 'self_reported' },
       { type: 'field', key: 'changed' },
     ])]);
@@ -106,14 +110,16 @@ type LineReader = ReturnType<typeof lineReader>;
 async function grantInteractively(reader: LineReader, io: ApproveIO, skillName: string, workspaceDir: string, code: () => string): Promise<string> {
   io.output.write(
     "Self-reported decisions let the agent's own report decide natural-language gates when no model is configured.\n" +
-      'Every such decision is flagged. This applies to the whole workspace until you revoke it.\n'
+      'Every such decision is flagged. This applies to the whole workspace until you revoke it.\n' +
+      `Workspace: ${workspaceDir}\n`
   );
   const expected = code();
   const answer = await reader.ask(`Type ${expected} to enable self-reported decisions, anything else to cancel: `);
   const granted = answer.trim().toUpperCase() === expected;
   if (granted) grantSelfReport(workspaceDir, 'interactive_terminal');
-  return renderOutput([renderDetail('approve', { skill_id: skillName, self_reported: granted ? 'enabled' : 'unchanged' }, [
+  return renderOutput([renderDetail('approve', { skill_id: skillName, workspace: workspaceDir, self_reported: granted ? 'enabled' : 'unchanged' }, [
     { type: 'field', key: 'skill_id' },
+    { type: 'field', key: 'workspace' },
     { type: 'field', key: 'self_reported' },
   ])]);
 }
@@ -127,6 +133,17 @@ async function decidePending(
   jobId: string | undefined,
   code: () => string
 ): Promise<string> {
+  // Opening an engine on a missing run would create one, so a wrong folder fails loudly instead.
+  const manifest = yaml.load(fs.readFileSync(path.join(skillPath, 'skill.yaml'), 'utf8')) as { name?: string } | undefined;
+  const skillId = manifest?.name || path.basename(skillPath);
+  const jobs = new JobManager(workspaceDir);
+  const runRef = jobId || jobs.getActiveJobId(skillId);
+  if (!jobs.getJob(skillId, runRef)) {
+    throw new AxiError(`No run '${runRef}' of ${skillId} in ${workspaceDir}`, 'NOT_FOUND', [
+      'Run approve from the folder named in the agent message',
+      `Run \`reactive-skills-axi jobs ${skillName}\` there to list runs`,
+    ]);
+  }
   const engine = new FSMEngine({ skillDir: skillPath, workspaceDir, jobId, eventContext: { run_id: jobId } });
   try {
     const pending: PendingApproval[] = engine.getPendingApprovals();
@@ -144,8 +161,9 @@ async function decidePending(
       const result = await engine.decideApproval(request.id, decision, 'interactive_terminal');
       decisions.push({ signal: request.signal, decision, transitioned: result.transitioned, current_state: result.newState });
     }
-    return renderOutput([renderDetail('approve', { skill_id: skillName, decided: decisions.length, current_state: engine.getCurrentState(), decisions }, [
+    return renderOutput([renderDetail('approve', { skill_id: skillName, workspace: workspaceDir, decided: decisions.length, current_state: engine.getCurrentState(), decisions }, [
       { type: 'field', key: 'skill_id' },
+      { type: 'field', key: 'workspace' },
       { type: 'field', key: 'decided' },
       { type: 'field', key: 'current_state' },
       ...(decisions.length > 0 ? [{ type: 'field' as const, key: 'decisions' }] : []),

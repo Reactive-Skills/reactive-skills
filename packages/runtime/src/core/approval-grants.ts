@@ -37,11 +37,13 @@ export function grantSelfReport(workspaceDir: string, channel: string): SelfRepo
   return grant;
 }
 
+/** Returns false when no grant existed; any other failure throws so a revoke never reports false success. */
 export function revokeSelfReport(workspaceDir: string): boolean {
   try {
     fs.rmSync(grantPath(workspaceDir));
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw err;
   }
 }

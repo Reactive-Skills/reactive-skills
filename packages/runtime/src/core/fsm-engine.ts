@@ -906,7 +906,7 @@ export class FSMEngine {
         if (transDef.judgment && guardResult.judgmentResult?.band === 'unevaluable') {
           this.recordApprovalRequest(testPath.join('.'), signalName, transDef.target, transDef.judgment, payload, guardResult.error);
           const job = this.getJobName() || this.getJobId() || 'default';
-          refusalReason = `${guardResult.error ?? 'Judgment could not be evaluated.'} This gate is waiting for a person: stop and ask the user to run \`reactive-skills-axi approve ${this.manifest.name} --job ${job}\` in their own terminal.`;
+          refusalReason = `${guardResult.error ?? 'Judgment could not be evaluated.'} This gate is waiting for a person: stop and ask the user to run \`reactive-skills-axi approve ${this.manifest.name} --job ${job}\` in their own terminal, from ${this.workspaceDir}.`;
         }
 
         if (!guardResult.passed && guardResult.fallbackTarget) {
@@ -1182,6 +1182,14 @@ export class FSMEngine {
         });
       }
     }
+  }
+
+  /**
+   * True when another process, such as `reactive-skills-axi approve`, wrote to this run after this
+   * engine loaded it, so a long-lived holder should rebuild the engine before using it.
+   */
+  public hasExternalChanges(): boolean {
+    return this.eventStore.hasExternalAppends();
   }
 
   /** Gates in the active state path that no adapter could judge and no person has decided yet. */

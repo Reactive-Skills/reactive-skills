@@ -646,6 +646,8 @@ export class EventStore {
   private sqlitePath: string | null = null;
   private runDir: string | null = null;
   private seqCounter = 0;
+  /** Set when another writer appended to this run since this store last synced (ADR 0012). */
+  private externalAppendSeen = false;
   private maxInMemoryEvents: number;
   private eventContext: EventContext;
   private projectionWatermarks = new Map<string, { eventSeq: number; projectionVersion: string }>();
@@ -1060,7 +1062,9 @@ export class EventStore {
     if (this.sqliteDriver) {
       try { persisted = this.sqliteDriver.appendEvent(event as SignalEvent) as SignalEvent<T>; }
       catch (error) { throw new Error('Event persistence failed: SQLite write did not complete.', { cause: error as Error }); }
-      this.seqCounter = persisted.seq;
+      // A gap before our own append means another process wrote to this run in between.
+      if (persisted.id === event.id && persisted.seq > this.seqCounter + 1) this.externalAppendSeen = true;
+      this.seqCounter = Math.max(this.seqCounter, persisted.seq);
       if (persisted.id !== event.id) {
         this.syncJsonlFromSqlite();
         return persisted as SignalEvent<T>;
@@ -1097,6 +1101,8 @@ export class EventStore {
   public getEventCount(): number { return this.sqliteDriver ? this.sqliteDriver.getEventCount(this.eventContext.run_id) : this.events.length; }
   public getLatestEvent(): SignalEvent | null { return this.sqliteDriver ? this.sqliteDriver.getLatestEvent(this.eventContext.run_id) : (this.events.at(-1) || null); }
   public getEventContext(): EventContext { return { ...this.eventContext }; }
+  /** True when another process appended to this run after this store loaded or last appended. */
+  public hasExternalAppends(): boolean { return this.externalAppendSeen || (this.sqliteDriver !== null && this.getLatestSequence() > this.seqCounter); }
   public getRunVersion(): number { return this.sqliteDriver?.getRunVersion(this.eventContext.run_id || 'default') || this.getLatestSequence(); }
   public assertRunVersion(version: number): void { this.sqliteDriver?.assertRunVersion(this.eventContext.run_id || 'default', version); }
   public getEventByIdempotencyKey(key: string): SignalEvent | null { return this.sqliteDriver?.getEventByIdempotencyKey(key, this.eventContext.run_id) || null; }

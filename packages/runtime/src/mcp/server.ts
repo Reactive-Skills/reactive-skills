@@ -116,9 +116,11 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
     if (engines.has(cacheKey)) {
       const cached = engines.get(cacheKey)!;
-      if (fs.existsSync(cached.getSkillDir())) {
+      // Rebuild when another process moved the run, for example an approval in the user's terminal.
+      if (fs.existsSync(cached.getSkillDir()) && !cached.hasExternalChanges()) {
         return cached;
       }
+      cached.close();
       engines.delete(cacheKey);
     }
 

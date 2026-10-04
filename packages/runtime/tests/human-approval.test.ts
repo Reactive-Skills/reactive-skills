@@ -98,6 +98,8 @@ describe('Human approval for unjudgeable gates (#22 part 2)', () => {
       expect(pending[0]).toMatchObject({ state: 'REVIEW', signal: 'SUBMIT', target: 'DONE', criterion: SEMANTIC });
       expect(result.refusalReason).toMatch(/no model is configured/i);
       expect(result.refusalReason).toMatch(/ask the user to run `reactive-skills-axi approve approval-skill --job [^`]+` in their own terminal/);
+      // The user's terminal may start elsewhere, so the reason names the workspace to run it from.
+      expect(result.refusalReason).toContain(`from ${workspaceDir}`);
     });
 
     it('records an approval request during a model outage', async () => {
@@ -198,6 +200,16 @@ describe('Human approval for unjudgeable gates (#22 part 2)', () => {
       expect(hasSelfReportGrant(workspaceDir)).toBe(false);
       const result = await newEngine().handleSignal('SUBMIT', { exit_code: 0 });
       expect(result.transitioned).toBe(false);
+    });
+
+    it('reports whether a grant was removed, and throws when removal fails', () => {
+      expect(revokeSelfReport(workspaceDir)).toBe(false);
+      grantSelfReport(workspaceDir, 'interactive_terminal');
+      expect(revokeSelfReport(workspaceDir)).toBe(true);
+
+      // A grant path that cannot be removed must not read as a successful revoke.
+      fs.mkdirSync(path.join(workspaceDir, '.reactive', 'self-report-grant.json', 'locked'), { recursive: true });
+      expect(() => revokeSelfReport(workspaceDir)).toThrow();
     });
   });
 
