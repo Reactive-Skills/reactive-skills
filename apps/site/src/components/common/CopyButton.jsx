@@ -5,7 +5,7 @@ import { Copy, Check, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-export function CopyButton({ value, label = 'Copy', className, size = 'md' }) {
+export function CopyButton({ value, label = 'Copy', ariaLabel, className, size = 'md' }) {
   const [status, setStatus] = useState('idle');
 
   const onCopy = useCallback(async () => {
@@ -39,7 +39,7 @@ export function CopyButton({ value, label = 'Copy', className, size = 'md' }) {
     <button
       type="button"
       onClick={onCopy}
-      aria-label={status === 'copied' ? 'Copied to clipboard' : label}
+      aria-label={status === 'copied' ? 'Copied to clipboard' : (ariaLabel ?? label)}
       className={cn(
         'inline-flex items-center rounded-md border border-phino-border bg-phino-surface-raised font-medium text-phino-text-muted transition-colors hover:border-phino-border-strong hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus focus-visible:ring-offset-2 focus-visible:ring-offset-phino-canvas',
         sizes[size],
