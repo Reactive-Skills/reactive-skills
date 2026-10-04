@@ -877,7 +877,8 @@ export class FSMEngine {
             selfReportAllowed,
             humanDecision: transDef.judgment && humanApproval?.state === testPath.join('.') ? humanApproval.decision : undefined,
           },
-          transDef.judgment
+          transDef.judgment,
+          transDef.guard_message
         );
 
         this.eventStore.assertRunVersion(guardRunVersion);
