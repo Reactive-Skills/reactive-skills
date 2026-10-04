@@ -264,6 +264,31 @@ Output (TOON format):
 - Job list with status, creation timestamp, and title
 - Archived status confirmations
 
+### approve
+
+Decide a gate that no model could judge, or turn self-reported decisions on or off for the workspace (ADR 0012).
+Run it yourself in your own terminal.
+It refuses to run when standard input or standard output is not an interactive terminal, so an agent cannot run it through a pipe or a script.
+
+```bash
+# Decide the gates waiting in a run:
+npx -y @reactive-skills/axi approve my-skill --job <job-id>
+
+# Let the agent's own report decide natural-language gates when no model is configured:
+npx -y @reactive-skills/axi approve my-skill --allow-self-reported
+
+# Turn self-reported decisions off again:
+npx -y @reactive-skills/axi approve my-skill --revoke-self-reported
+```
+
+For each waiting gate, `approve` shows the state, signal, criterion, and the agent's payload, then prints a four-character code.
+Typing the code approves the gate, and anything else rejects it.
+An approval re-sends the original signal, and the transition reports `judgment_basis: human`.
+A rejection routes to `fallback_target` when one is declared and otherwise leaves the run in its state.
+
+`--allow-self-reported` asks for a code the same way and writes `.reactive/self-report-grant.json`.
+`--revoke-self-reported` deletes it without a code.
+
 ### sync
 
 Copy skills from ordered authoring sources into a physical central directory, then update satellite agent directories with links or physical copies.
