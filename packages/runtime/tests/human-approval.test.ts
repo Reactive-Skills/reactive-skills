@@ -206,6 +206,22 @@ describe('Human approval for unjudgeable gates (#22 part 2)', () => {
       expect(engine.getCurrentState()).toBe('REVIEW');
     });
 
+    it('refuses to decide or transition when another process moved the run (review N1)', async () => {
+      const waiting = newEngine();
+      await waiting.handleSignal('SUBMIT_STRICT', { exit_code: 0 });
+      const [request] = waiting.getPendingApprovals();
+
+      // Another process moves the run while the person is still reading the prompt.
+      const other = newEngine();
+      await other.handleSignal('SUBMIT_EXACT', { exit_code: 0 });
+      expect(other.getCurrentState()).toBe('DONE');
+
+      await expect(waiting.decideApproval(request.id, 'approve', 'interactive_terminal')).rejects.toThrow(/changed in another process/);
+      await expect(waiting.handleSignal('SUBMIT_STRICT', { exit_code: 0 })).rejects.toThrow(/changed in another process/);
+      expect(other.getEventStore().query({ type: 'APPROVAL_DECIDED' })).toHaveLength(0);
+      expect(other.getEventStore().query({ type: 'STATE_TRANSITION' }).map((e) => e.payload.to)).toEqual(['DONE']);
+    });
+
     it('rejects an unknown request id', async () => {
       const engine = newEngine();
       await expect(engine.decideApproval('missing-request', 'approve', 'interactive_terminal')).rejects.toThrow(/no pending approval/i);

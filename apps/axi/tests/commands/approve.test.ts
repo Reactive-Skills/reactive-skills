@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -150,6 +150,26 @@ describe('approveCommand (#22 part 2)', () => {
       .rejects.toThrow('Cancelled');
     await withEngine((engine) => {
       expect(engine.getEventStore().query({ type: 'APPROVAL_DECIDED' })).toHaveLength(0);
+    });
+  });
+
+  it('applies nothing when the run moves while the prompt is open (review N1)', async () => {
+    await refuseSubmit();
+    const input = Object.assign(new PassThrough(), { isTTY: true });
+    const output = Object.assign(new PassThrough(), { isTTY: true });
+    let written = '';
+    output.on('data', (chunk) => (written += chunk.toString()));
+
+    const pending = approveCommand(['approval-skill', '--job', 'review-run'], { input, output }, { generateCode: () => 'ABCD' });
+    await vi.waitFor(() => expect(written).toContain('Type ABCD to approve'));
+    grantSelfReport(tmpDir, 'interactive_terminal');
+    await withEngine((engine) => engine.handleSignal('SUBMIT_ALT', { exit_code: 0 }));
+    input.end('ABCD\n');
+
+    await expect(pending).rejects.toThrow('The run changed while you were deciding');
+    await withEngine((engine) => {
+      expect(engine.getEventStore().query({ type: 'APPROVAL_DECIDED' })).toHaveLength(0);
+      expect(engine.getCurrentState()).toBe('DONE');
     });
   });
 

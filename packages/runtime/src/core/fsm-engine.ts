@@ -787,6 +787,7 @@ export class FSMEngine {
     payload: Record<string, any> = {},
     metadata: { source?: string; causationId?: string; requestId?: string; idempotencyKey?: string } = {}
   ): Promise<SignalHandlingResult> {
+    this.assertCurrent();
     const startTime = performance.now();
     const previousState = this.getCurrentState();
     const prevPath = [...this.activeStatePath];
@@ -1199,6 +1200,17 @@ export class FSMEngine {
     return this.eventStore.hasExternalAppends();
   }
 
+  /**
+   * A stale engine would decide or transition from a state the run already left, so it refuses
+   * instead; the caller reloads the run and tries again.
+   */
+  private assertCurrent(): void {
+    if (!this.eventStore.hasExternalAppends()) return;
+    const error = new Error('This run changed in another process after it was loaded, so nothing was applied. Reload the run and try again.') as Error & { code: string };
+    error.code = 'RUN_VERSION_CONFLICT';
+    throw error;
+  }
+
   /** Gates in the active state path that no adapter could judge and no person has decided yet. */
   public getPendingApprovals(): PendingApproval[] {
     const decided = new Set(this.eventStore.query({ type: 'APPROVAL_DECIDED' }).map((e) => e.payload?.requestId));
@@ -1229,6 +1241,7 @@ export class FSMEngine {
    * terminal (ADR 0012).
    */
   public async decideApproval(requestId: string, decision: 'approve' | 'reject', channel: string): Promise<SignalHandlingResult> {
+    this.assertCurrent();
     const request = this.getPendingApprovals().find((r) => r.id === requestId);
     if (!request) throw new Error(`No pending approval ${requestId} in this run`);
     const decided = this.eventStore.append(

@@ -216,7 +216,13 @@ async function decidePending(
         if (decisions.length === 0) throw new AxiError(CANCELLED, 'VALIDATION_ERROR');
         break;
       }
-      const result = await engine.decideApproval(request.id, decision, 'interactive_terminal');
+      let result;
+      try {
+        result = await engine.decideApproval(request.id, decision, 'interactive_terminal');
+      } catch (err) {
+        if ((err as { code?: string }).code !== 'RUN_VERSION_CONFLICT') throw err;
+        throw new AxiError('The run changed while you were deciding, so this decision was not applied. Run approve again to see the current gates.', 'VALIDATION_ERROR');
+      }
       decisions.push({ signal: request.signal, decision, transitioned: result.transitioned, current_state: result.newState });
     }
     return renderOutput([renderDetail('approve', { skill_id: skillName, workspace: workspaceDir, decided: decisions.length, current_state: engine.getCurrentState(), decisions }, [
