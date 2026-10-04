@@ -20,7 +20,7 @@ A refused signal also returns no reason, so an agent cannot tell an outage from 
 
 ## Decision
 
-Classify a criterion as executable when it compiles as a JavaScript expression and is not a single bare word other than the sandbox names `payload`, `context`, `event`, `state`, and `req`.
+Classify a criterion as executable when it compiles as a JavaScript expression and is not a single bare word (in any script) other than the sandbox names `payload`, `context`, `event`, `state`, and `req` or a JavaScript literal such as `true`.
 Classification compiles the criterion and never runs it, and `validate` uses the same rule.
 
 An executable criterion is always decided by evaluating it.
@@ -61,4 +61,5 @@ The policy applies to predicate, categorical, and evaluation judgments.
 - Users without Jev keep working, and every self-reported decision is visible.
 - Agents see why a judgment refused a signal.
 - Plain guards that return false still refuse without a reason until #32 adds guard messages.
+- `validate` warns on criteria that look like code but do not compile and on adapter names that are not built in, because both silently turn a gate into a self-reported decision.
 - v0.18.0 replaces self-reported decisions without Jev with human approval (#22 part 2).

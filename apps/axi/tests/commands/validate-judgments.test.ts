@@ -121,6 +121,42 @@ criterion: "approved"
     expect(bareWord.warnings.some((w) => w.includes('relies on the default min_confidence'))).toBe(true);
   });
 
+  it('warns when a criterion looks like an expression but does not compile', () => {
+    const result = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "payload.exit_code ==="
+adapter_hint: script
+`));
+
+    expect(result.warnings).toContain(
+      'State "REVIEW" transition on "SUBMIT" criterion looks like a JavaScript expression but does not compile, so the runtime treats it as natural language and, without Jev, decides it from the payload; fix the expression'
+    );
+
+    fs.rmSync(path.join(tmpDir, 'judgment-skill'), { recursive: true, force: true });
+    const question = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "Does \`context.plans\` name every negative failure mode && cite evidence?"
+min_probability: 0.9
+`, { header: 'runtime_requirements:\n  required_capabilities: [judgment.probability_thresholds]\n' }));
+    expect(question.warnings.some((w) => w.includes('does not compile'))).toBe(false);
+  });
+
+  it('warns on an adapter_hint or fallback_adapter that is not a built-in adapter', () => {
+    const result = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "Is it ready?"
+adapter_hint: Jev
+fallback_adapter: scrpt
+`));
+
+    expect(result.warnings).toContain(
+      `State "REVIEW" transition on "SUBMIT" adapter_hint 'Jev' is not a built-in adapter (script, jev); unless it is registered at runtime, the judgment cannot use it`
+    );
+    expect(result.warnings).toContain(
+      `State "REVIEW" transition on "SUBMIT" fallback_adapter 'scrpt' is not a built-in adapter (script, jev); unless it is registered at runtime, the judgment cannot use it`
+    );
+  });
+
   it('names the default min_confidence when a semantic predicate declares no threshold', () => {
     const result = validateSkill(writeSkill(tmpDir, `
 type: predicate

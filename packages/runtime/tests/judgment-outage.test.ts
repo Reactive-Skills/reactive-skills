@@ -265,6 +265,53 @@ describe('Judgment outage refusal and self-reported decisions (#22)', () => {
       expect(engine.getCurrentState()).toBe('REVIEW');
     });
 
+    it('does not report a stale refusal on replay when a parent handler accepted the signal', async () => {
+      JudgmentEngine.registerAdapter(throwingJev());
+      const workspaceDir = fs.mkdtempSync(path.join(tmpDir, 'hsm-'));
+      fs.writeFileSync(path.join(workspaceDir, 'skill.yaml'), `
+schema_version: "2.0.0"
+name: bubbling-outage
+description: "Leaf refusal with parent handler"
+initial_state: WORK
+states:
+  WORK:
+    description: "Work"
+    initial_substate: DRAFT
+    transitions:
+      SUBMIT:
+        target: DONE
+    substates:
+      DRAFT:
+        description: "Draft"
+        transitions:
+          SUBMIT:
+            target: DONE
+            judgment:
+              type: predicate
+              criterion: "${SEMANTIC}"
+              adapter_hint: jev
+  DONE:
+    description: "Done"
+`);
+      const engine = new FSMEngine({ skillDir: workspaceDir, workspaceDir });
+      engines.push(engine);
+
+      const first = await engine.handleSignal('SUBMIT', { exit_code: 0 }, { idempotencyKey: 'bubble-1' });
+      const replay = await engine.handleSignal('SUBMIT', { exit_code: 0 }, { idempotencyKey: 'bubble-1' });
+
+      expect(first.transitioned).toBe(true);
+      expect(engine.getCurrentState()).toBe('DONE');
+      expect(replay.transitioned).toBe(false);
+      expect(replay.refusalReason).toBeUndefined();
+    });
+
+    it('treats a lone non-ASCII word as natural language', () => {
+      expect(isExecutableCriterion('aprobado')).toBe(false);
+      expect(isExecutableCriterion('genehmigt')).toBe(false);
+      expect(isExecutableCriterion('承認')).toBe(false);
+      expect(isExecutableCriterion('café')).toBe(false);
+    });
+
     it('stays unevaluable when the declared fallback is another model that also fails', async () => {
       JudgmentEngine.registerAdapter(throwingJev());
       JudgmentEngine.registerAdapter({

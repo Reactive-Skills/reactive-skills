@@ -777,10 +777,13 @@ export class FSMEngine {
       const existing = this.eventStore.getEventByIdempotencyKey(metadata.idempotencyKey);
       if (existing) {
         // The key identifies that submission, so a replay reports why it was refused (ADR 0011).
-        const refusal = this.eventStore
-          .query({ type: 'GUARD_EVALUATED' })
-          .filter((e) => e.causationId === existing.id && !e.payload?.passed && !e.payload?.fallbackTarget && e.payload?.error)
-          .at(-1);
+        const caused = this.eventStore.query({ causationId: existing.id });
+        const accepted = caused.some((e) => e.type === 'STATE_TRANSITION');
+        const refusal = accepted
+          ? undefined
+          : caused
+            .filter((e) => e.type === 'GUARD_EVALUATED' && !e.payload?.passed && !e.payload?.fallbackTarget && e.payload?.error)
+            .at(-1);
         return {
           transitioned: false,
           previousState,
