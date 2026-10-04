@@ -8,6 +8,37 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-17-0",
+    "heading": "v0.17.0 (2026-10-04)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "Merge pull request #37 from Reactive-Skills/docs/roadmap-jev-policy",
+          "docs(scope): split #22 into outage refusal and no-Jev human approval",
+          "Merge pull request #36 from Reactive-Skills/docs/backlog-roadmap",
+          "docs(scope): add backlog release roadmap",
+          "Merge pull request #27 from Reactive-Skills/worktree-issue-25-predicate-thresholds",
+          "Merge branch 'main' into worktree-issue-25-predicate-thresholds",
+          "Merge pull request #35 from Reactive-Skills/docs/security-policy",
+          "docs(security): add security policy",
+          "Merge branch 'main' into worktree-issue-25-predicate-thresholds",
+          "Merge pull request #30 from Reactive-Skills/feat/site-adoption-ux",
+          "fix(site): retry broker connection when the URL is unchanged",
+          "docs(context): record site adoption UX slice",
+          "feat(site): fold guide into homepage and redirect /guide",
+          "feat(site): rebuild homepage around adoption with measured stats",
+          "feat(site): compact registry header and slim skill cards",
+          "fix(docs): number quickstart steps in order",
+          "fix(site): order blog prev and next by publication date and tighten blog layout",
+          "feat(site): add telemetry to nav and connect to broker on request",
+          "feat(site): measure registry instructions and format skill display names",
+          "feat(runtime): add probability judgment thresholds and guard contract lint"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-16-2",
     "heading": "v0.16.2 (2026-10-03)",
     "blocks": [

@@ -2,11 +2,11 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.16.2:**
-> - `init --help` and `init -h` show usage without creating files; unsupported leading options fail before writes.
-> - Source-aware sync preserves complete skill contents, including bundled helpers and tests.
+> 🚀 **What's New in v0.17.0:**
+> - `validate` reads `guards/*.yaml` and errors when a contract and its linked judgment disagree on type, threshold, escalate block, or accept or escalate band. Skills that passed before can now fail; resume-manager and ameliorate are known and migrate next.
+> - `validate` warns when a semantic judgment relies on `min_confidence`, names the equivalent `min_probability` for predicates, and warns when new fields are used without the `judgment.probability_thresholds` capability.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.16.2) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

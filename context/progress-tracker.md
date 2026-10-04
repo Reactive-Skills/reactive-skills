@@ -4,8 +4,9 @@
 
 | Package | Version | Status |
 | :--- | :--- | :--- |
-| `@reactive-skills/runtime` | v0.7.0 | ✅ Published |
-| `@reactive-skills/axi` | v0.7.0 | ✅ Published |
+| `@reactive-skills/runtime` | v0.16.2 | ✅ Published |
+| `@reactive-skills/axi` | v0.16.2 | ✅ Published |
+| `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.17.0 | 🧪 Candidate prepared (`docs/specs/0014-v0.17.0-release-preparation.md`) |
 
 ---
 
@@ -53,6 +54,22 @@
 | Slice | Archetype | Status |
 | :--- | :--- | :--- |
 | Adoption homepage, measured registry stats, registry and blog layout, telemetry nav, guide merge (`docs/specs/0013-site-adoption-ux.md`) | Site | ✅ Done |
+
+---
+
+## 🗺️ Backlog Release Roadmap (`docs/scope/backlog-release-roadmap.md`)
+
+| Train | Version | Scope | Status |
+| :--- | :--- | :--- | :--- |
+| R1 | v0.17.0 | Probability thresholds, guard contract lint, security policy (#23, #25) | 🧪 Candidate prepared |
+| R1b | skill releases | ameliorate and resume-manager migrate to `min_probability` | ⏳ After v0.17.0 publishes |
+| R2 | v0.17.1 | #28, #22 part 1, #15 | ⏳ Queued |
+| R3 | v0.18.0 | #32, #22 part 2, #29, #10 | ⏳ Queued |
+| R4 | v0.19.0 | #14, #26 | ⏳ Queued |
+| R5 | v0.20.0 | #31, #24 | ⏳ Queued |
+| R6 | v0.21.0 | #34 phase 1, #33 | ⏳ Queued |
+| R7 | v0.22.0 | #34 sandbox default, #33 strict mode | ⏳ Queued |
+| Triage | n/a | #12 Synthesis report scoping (likely skill or template side) | ⏳ Needs triage |
 
 ---
 

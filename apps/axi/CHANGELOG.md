@@ -1,4 +1,27 @@
 
+## [0.17.0] - 2026-10-04
+
+- Merge pull request #37 from Reactive-Skills/docs/roadmap-jev-policy (bfe44a7)
+- docs(scope): split #22 into outage refusal and no-Jev human approval (a212978)
+- Merge pull request #36 from Reactive-Skills/docs/backlog-roadmap (84ff187)
+- docs(scope): add backlog release roadmap (387645a)
+- Merge pull request #27 from Reactive-Skills/worktree-issue-25-predicate-thresholds (a22f4fd)
+- Merge branch 'main' into worktree-issue-25-predicate-thresholds (f21d75e)
+- Merge pull request #35 from Reactive-Skills/docs/security-policy (1164553)
+- docs(security): add security policy (bcdf87e)
+- Merge branch 'main' into worktree-issue-25-predicate-thresholds (a5ed5bf)
+- Merge pull request #30 from Reactive-Skills/feat/site-adoption-ux (f3e4459)
+- fix(site): retry broker connection when the URL is unchanged (5f0ee98)
+- docs(context): record site adoption UX slice (a94b572)
+- feat(site): fold guide into homepage and redirect /guide (3f859c1)
+- feat(site): rebuild homepage around adoption with measured stats (5489c6c)
+- feat(site): compact registry header and slim skill cards (c652937)
+- fix(docs): number quickstart steps in order (42ae914)
+- fix(site): order blog prev and next by publication date and tighten blog layout (3a210bc)
+- feat(site): add telemetry to nav and connect to broker on request (063159f)
+- feat(site): measure registry instructions and format skill display names (61564af)
+- feat(runtime): add probability judgment thresholds and guard contract lint (b97630a)
+
 ## [0.16.2] - 2026-10-03
 
 - fix(sync): preserve complete skill contents and read-only creation help (6f34cd1)
