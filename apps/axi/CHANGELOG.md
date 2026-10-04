@@ -1,4 +1,9 @@
 
+## [0.17.3] - 2026-10-04
+
+- Merge pull request #52 from Reactive-Skills/fix/r2c-agent-message (c491b5e)
+- fix(runtime): ask the user to fix rejected credentials instead of suggesting removal (63edb54)
+
 ## [0.17.2] - 2026-10-04
 
 - Merge pull request #50 from Reactive-Skills/fix/r2b-auth-message (2ade4ca)
