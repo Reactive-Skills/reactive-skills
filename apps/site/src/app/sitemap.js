@@ -17,7 +17,6 @@ export default function sitemap() {
 
   const routes = new Set([
     '/',
-    '/guide',
     '/registry',
     '/blog',
     ...docsRoutes,
