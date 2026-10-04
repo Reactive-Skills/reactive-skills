@@ -48,6 +48,14 @@
 
 ---
 
+## 🌐 Site
+
+| Slice | Archetype | Status |
+| :--- | :--- | :--- |
+| Adoption homepage, measured registry stats, registry and blog layout, telemetry nav, guide merge (`docs/specs/0013-site-adoption-ux.md`) | Site | ✅ Done |
+
+---
+
 ## 🛡️ Milestone: v1.0.0 — Public Stable Release
 
 | Slice | Archetype | Status |

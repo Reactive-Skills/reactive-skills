@@ -1,53 +1,23 @@
-import { GuidePage } from '@/features/guide/GuidePage';
+import Link from 'next/link';
 import { absoluteUrl } from '@/infrastructure/siteMetadata';
 
-const guideTitle = 'Guide: Resumable Agent Workflows';
-const guideDescription =
-  'Learn how to turn passive AI agent instructions into workflows agents can follow, verify, and resume.';
-const guideUrl = absoluteUrl('/guide');
-
 export const metadata = {
-  title: guideTitle,
-  description: guideDescription,
-  alternates: {
-    canonical: guideUrl,
-  },
-  openGraph: {
-    type: 'article',
-    url: guideUrl,
-    title: guideTitle,
-    description: guideDescription,
-    images: [absoluteUrl('/opengraph-image')],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: guideTitle,
-    description: guideDescription,
-    images: [absoluteUrl('/opengraph-image')],
-  },
+  title: 'Guide moved to the homepage',
+  robots: { index: false, follow: true },
+  alternates: { canonical: absoluteUrl('/') },
 };
 
-export default function GuideRoute() {
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'TechArticle',
-    headline: guideTitle,
-    description: guideDescription,
-    url: guideUrl,
-    inLanguage: 'en-US',
-    isPartOf: { '@id': `${absoluteUrl('/')}#website` },
-    about: {
-      '@type': 'SoftwareApplication',
-      name: 'Reactive Skills',
-      applicationCategory: 'DeveloperApplication',
-      operatingSystem: 'Cross-platform',
-    },
-  };
-
+export default function GuideRedirect() {
   return (
-    <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
-      <GuidePage />
-    </>
+    <div className="container py-20 text-center">
+      <meta httpEquiv="refresh" content="0; url=../" />
+      <p className="text-phino-text-muted">
+        The guide now lives on the{' '}
+        <Link href="/" className="font-semibold text-phino-signal-text underline underline-offset-4">
+          homepage
+        </Link>
+        .
+      </p>
+    </div>
   );
 }

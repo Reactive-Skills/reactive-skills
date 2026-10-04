@@ -14,10 +14,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
+import { skillDisplayName } from '../apps/site/src/lib/registry/skillDisplayName.js';
+import { normalizedByteLength } from '../apps/site/src/lib/registry/byteLength.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
-const LOCAL_SKILLS_REPO = path.resolve(ROOT_DIR, '..', 'skills');
+const LOCAL_SKILLS_REPO = process.env.SKILLS_REPO_DIR
+  ? path.resolve(process.env.SKILLS_REPO_DIR)
+  : path.resolve(ROOT_DIR, '..', 'skills');
 const OUTPUT_FILE = path.resolve(ROOT_DIR, 'apps/site/src/infrastructure/content/registry/skills.js');
 
 const IGNORED_DIRS = new Set([
@@ -83,6 +87,21 @@ function categoryForSkill(name, rawCat) {
     return 'Metaprogramming & Lifecycle';
   }
   return 'General';
+}
+
+function measureInstructionBytes(dir) {
+  const fileBytes = (filePath) => normalizedByteLength(fs.readFileSync(filePath, 'utf8'));
+  const statesDir = path.join(dir, 'states');
+  const stateBytes = fs.existsSync(statesDir)
+    ? fs.readdirSync(statesDir, { recursive: true })
+        .map(String)
+        .filter((entry) => entry.endsWith('.md'))
+        .sort()
+        .map((entry) => fileBytes(path.join(statesDir, entry)))
+    : [];
+  const skillDocPath = path.join(dir, 'SKILL.md');
+  const skillDocBytes = fs.existsSync(skillDocPath) ? fileBytes(skillDocPath) : 0;
+  return { skillDocBytes, stateBytes };
 }
 
 export function syncSkills() {
@@ -190,7 +209,7 @@ export function syncSkills() {
 
       skills.push({
         slug: doc.name,
-        name: doc.name.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+        name: doc.display_name ? String(doc.display_name) : skillDisplayName(doc.name),
         version: String(doc.version || '1.0.0'),
         schemaVersion: String(doc.schema_version || '2.1.0'),
         category: categoryForSkill(doc.name, doc.category),
@@ -212,6 +231,7 @@ export function syncSkills() {
         states: stateList,
         mermaidChart: mermaidChart || undefined,
         deliverables: deliverables.length > 0 ? deliverables : undefined,
+        instructionBytes: measureInstructionBytes(dir),
       });
 
       console.log(`[sync-registry] Synced: ${doc.name} (${stateList.length} states, v${doc.version}${priorityInfo.featured ? ' [FEATURED]' : ''})`);

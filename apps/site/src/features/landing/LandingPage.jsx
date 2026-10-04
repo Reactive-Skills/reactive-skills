@@ -1,62 +1,93 @@
 import { SectionHeading } from '@/components/common/SectionHeading';
 import { Hero } from './Hero';
+import { UseCases } from './UseCases';
 import { SkillComparison } from './SkillComparison';
-import { EventFlowDiagram } from './EventFlowDiagram';
-import { ValueAreas } from './ValueAreas';
-import { AgentHosts } from './AgentHosts';
+import { RunDemo } from './RunDemo';
+import { StartPaths } from './StartPaths';
+import { Boundaries } from './Boundaries';
 import { QuickstartCta } from './QuickstartCta';
 
-export function LandingPage({ machine, flow }) {
+const RUN_STEPS = [
+  ['01', 'Mount', 'The agent receives only VERIFY instructions.'],
+  ['02', 'Reject', 'A failed check blocks progress and preserves state.'],
+  ['03', 'Resume', 'A passing result advances the workflow and records why.'],
+];
+
+export function LandingPage({ stats, useCases }) {
   return (
     <div>
-      <Hero />
+      <Hero stats={stats} />
 
-      <section className="container py-16 sm:py-20" aria-labelledby="passive-heading">
+      <section className="container py-16 sm:py-20" aria-labelledby="use-cases-heading">
         <SectionHeading
-          eyebrow="the shift"
-          title="From a document the model reads to a machine you can watch"
-          description="Passive markdown instructions force models to self-police. Reactive skills enforce explicit state machines — verifiable guards, prompt isolation, and immutable event logs."
+          id="use-cases-heading"
+          eyebrow="where it fits"
+          title="Built for work that spans many steps"
+          description="Published workflows you can install today. Each one runs as explicit states, so your agent works one step at a time and moves on when a check passes."
         />
-        <h2 id="passive-heading" className="sr-only">Passive versus reactive skills</h2>
         <div className="mt-8">
-          <SkillComparison />
+          <UseCases items={useCases} />
         </div>
       </section>
 
-      <section className="border-y border-phino-border bg-phino-surface" aria-labelledby="flow-heading">
+      <section className="border-y border-phino-border bg-phino-surface" aria-labelledby="passive-heading">
         <div className="container py-16 sm:py-20">
           <SectionHeading
-            eyebrow="the event flow"
-            title="One chain explains the whole runtime"
-            description="Every reactive transition follows a deterministic pipeline: prompt slice, signal, guard evaluation, state transition, event ledger entry, and read projection."
+            id="passive-heading"
+            eyebrow="the shift"
+            title="From a document the model reads to a workflow you can watch"
+            description="A passive skill leaves the model to police itself. A reactive skill runs explicit states with checks on every transition, scoped instructions, and an append-only event log."
           />
-          <h2 id="flow-heading" className="sr-only">The event flow</h2>
-          <div className="mt-10">
-            <EventFlowDiagram flow={flow} />
-          </div>
-        </div>
-      </section>
-
-
-      <section className="border-t border-phino-border bg-phino-surface" aria-labelledby="value-heading">
-        <div className="container py-16 sm:py-20">
-          <SectionHeading eyebrow="why it matters" title="Three properties you get for free" />
-          <h2 id="value-heading" className="sr-only">Value areas</h2>
           <div className="mt-8">
-            <ValueAreas />
+            <SkillComparison />
           </div>
         </div>
       </section>
 
-      <section className="container py-16 sm:py-20" aria-labelledby="hosts-heading">
+      <section className="container py-16 sm:py-20" aria-labelledby="run-heading">
         <SectionHeading
-          eyebrow="agent interfaces"
-          title="Reach it through AXI and MCP"
-          description="Drive skills through a compatible local AXI or MCP transport. AXI offers token-lean shell output, while MCP connects host tool panels."
+          id="run-heading"
+          eyebrow="follow one run"
+          title="The useful part appears when something fails"
+          description="A passing demo proves little. A rejected check shows that the workflow can stop, keep its state, and continue from evidence."
         />
-        <h2 id="hosts-heading" className="sr-only">Built for agent hosts</h2>
         <div className="mt-8">
-          <AgentHosts />
+          <RunDemo />
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            {RUN_STEPS.map(([number, title, text]) => (
+              <div key={number} className="rounded-xl border border-phino-border bg-phino-surface p-4">
+                <span className="font-mono text-xs font-semibold text-phino-signal-text">{number}</span>
+                <p className="mt-3 font-display text-sm font-semibold text-phino-text">{title}</p>
+                <p className="mt-1 text-sm leading-relaxed text-phino-text-muted">{text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-phino-border bg-phino-surface" aria-labelledby="paths-heading">
+        <div className="container py-16 sm:py-20">
+          <SectionHeading
+            id="paths-heading"
+            eyebrow="choose your path"
+            title="Three ways to start"
+            description="Use a published skill, author one for your team, or connect the runtime to your agent host."
+          />
+          <div className="mt-8">
+            <StartPaths />
+          </div>
+        </div>
+      </section>
+
+      <section className="container py-16 sm:py-20" aria-labelledby="boundaries-heading">
+        <SectionHeading
+          id="boundaries-heading"
+          eyebrow="know the boundaries"
+          title="Use it where state and evidence matter"
+          description="Reactive Skills is not required for every prompt. It earns its place when a workflow spans multiple steps, tools, or sessions."
+        />
+        <div className="mt-8">
+          <Boundaries />
         </div>
       </section>
 

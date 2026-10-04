@@ -1,5 +1,6 @@
 import { IRegistryContentSource } from '@/contracts/RegistryContentSource';
 import { registrySkills } from '@/infrastructure/content/registry/skills';
+import { computeRegistryStats } from '@/lib/registry/registryStats';
 
 /**
  * In-memory implementation of the Skill Registry content boundary.
@@ -61,5 +62,9 @@ export class InMemoryRegistryContentSource extends IRegistryContentSource {
       counts[s.category] = (counts[s.category] || 0) + 1;
     }
     return Object.entries(counts).map(([name, count]) => ({ name, count }));
+  }
+
+  getStats() {
+    return computeRegistryStats(this._skills);
   }
 }

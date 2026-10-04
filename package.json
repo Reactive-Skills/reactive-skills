@@ -9,6 +9,7 @@
     "test": "pnpm --filter @reactive-skills/runtime test",
     "test:axi": "pnpm --filter @reactive-skills/axi test",
     "test:all": "pnpm --filter @reactive-skills/runtime test && pnpm --filter @reactive-skills/axi test",
+    "test:site": "pnpm --filter @reactive-skills/site test",
     "check:docs": "pnpm --filter @reactive-skills/runtime run check:docs",
     "check:prose": "pnpm --filter @reactive-skills/runtime run check:prose",
     "demo": "pnpm --filter @reactive-skills/runtime demo",

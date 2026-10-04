@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { BlogCard } from './BlogCard';
-import { Layers, Sparkles } from 'lucide-react';
+import { ArrowRight, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const MIN_POSTS_FOR_TOPIC_FILTER = 8;
 
 export function BlogIndexView({ posts, tags }) {
   const [selectedTag, setSelectedTag] = useState(null);
@@ -13,6 +16,8 @@ export function BlogIndexView({ posts, tags }) {
     : posts;
 
   const featuredPost = posts.find((p) => p.featured) || posts[0];
+  const seriesStart = posts.find((post) => post.series?.part === 1) || null;
+  const showTopicFilter = posts.length >= MIN_POSTS_FOR_TOPIC_FILTER && tags?.length > 0;
 
   return (
     <div className="container py-12 sm:py-16">
@@ -25,34 +30,34 @@ export function BlogIndexView({ posts, tags }) {
           The Reactive Skills Blog
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-phino-text-muted">
-          Technical deep-dives into Hierarchical State Machines, deterministic guarding, sub-second micro-decisions, and event-sourced agent architectures.
+          How Reactive Skills works under the hood: state machines for agent workflows, evidence checks, and event-sourced run history.
         </p>
       </div>
 
-      {/* Series Spotlight Banner */}
-      <div className="mt-10 rounded-xl border border-phino-signal/40 bg-phino-surface-raised p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {seriesStart && (
+        <Link
+          href={`/blog/${seriesStart.slug}`}
+          className="group mt-8 flex items-center justify-between gap-4 rounded-xl border border-phino-signal/40 bg-phino-surface-raised p-5 transition-colors hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
+        >
           <div className="flex items-start gap-3">
-            <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-phino-signal/40 bg-phino-signal/15 text-phino-signal-text">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-phino-signal/40 bg-phino-signal/15 text-phino-signal-text">
               <Layers className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
               <span className="font-mono text-xs font-semibold uppercase tracking-wider text-phino-signal-text">
-                Featured Launch Series
+                {seriesStart.series.total}-part series
               </span>
-              <h2 className="font-display text-lg font-semibold text-phino-text">
-                The Reactive Agentic Runtime (2-Part Series)
-              </h2>
-              <p className="text-sm text-phino-text-muted mt-1">
-                From passive monolithic prompts to Hierarchical State Machines and sub-second semantic micro-decisions with TypeSafe Jev.
-              </p>
+              <h2 className="font-display text-lg font-semibold text-phino-text">{seriesStart.series.title}</h2>
             </div>
           </div>
-        </div>
-      </div>
+          <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-phino-signal-text">
+            Start with Part 1 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+          </span>
+        </Link>
+      )}
 
       {/* Tag filter chips */}
-      {tags && tags.length > 0 && (
+      {showTopicFilter && (
         <div className="mt-8 flex flex-wrap items-center gap-2">
           <span className="text-xs font-mono text-phino-text-subtle mr-2">Filter by topic:</span>
           <button
