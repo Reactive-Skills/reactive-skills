@@ -38,4 +38,12 @@ export class IRegistryContentSource {
   getCategories() {
     throw new Error('IRegistryContentSource.getCategories must be implemented');
   }
+
+  /**
+   * Aggregate registry stats computed from skill sources at build time.
+   * @returns {{ skillCount: number, stateCount: number, measuredSkillCount: number, medianStepShare: number|null }}
+   */
+  getStats() {
+    throw new Error('IRegistryContentSource.getStats must be implemented');
+  }
 }
