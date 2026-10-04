@@ -58,7 +58,7 @@ export const quickstart = {
     },
     {
       id: 'mcp-bridge',
-      heading: '2. Connect MCP for host-integrated workflows',
+      heading: 'Optional: connect MCP for host-integrated workflows',
       blocks: [
         { type: 'text', text: 'When the host uses MCP tool integration, run the stdio server from the same package. The MCP transport exposes the same reactive runtime through host-managed tools.' },
         { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi mcp', explanation: 'Starts the stdio MCP server, exposing 9 tools and 3 resources to MCP clients.', expectedOutput: 'reactive-skills-axi mcp · listening on stdio\nregistered 9 tools · 3 resources\nready' } },

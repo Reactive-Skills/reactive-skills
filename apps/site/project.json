@@ -27,6 +27,13 @@
         "command": "pnpm exec tsx scripts/generate-docs-reference.ts"
       },
       "outputs": ["{workspaceRoot}/.docs/generated/reference-docs.json"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm test",
+        "cwd": "{projectRoot}"
+      }
     }
   }
 }

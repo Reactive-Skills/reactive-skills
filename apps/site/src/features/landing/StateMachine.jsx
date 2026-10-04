@@ -976,7 +976,7 @@ export function StateMachine({ machine }) {
                 >
                   {item.guard}
                 </span>
-                <span className="text-white/70 text-xs">— {item.note}</span>
+                <span className="text-white/70 text-xs">· {item.note}</span>
               </li>
             ))}
           </ol>

@@ -5,15 +5,15 @@ export function SeriesBanner({ series }) {
   if (!series) return null;
 
   return (
-    <div className="my-6 rounded-lg border border-phino-border-strong bg-phino-surface-raised p-4 sm:p-5">
-      <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-phino-signal-text">
-        <Layers className="h-4 w-4" aria-hidden="true" />
+    <div className="mt-6 rounded-lg border border-phino-border bg-phino-surface-raised px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-mono uppercase tracking-wider text-phino-signal-text">
+        <Layers className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span>Series: {series.title}</span>
-        <span className="text-phino-text-subtle">·</span>
-        <span>Part {series.part} of {series.total}</span>
+        <span className="text-phino-text-subtle" aria-hidden="true">·</span>
+        <span className="whitespace-nowrap">Part {series.part} of {series.total}</span>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-sm">
         {series.prevSlug ? (
           <Link
             href={`/blog/${series.prevSlug}`}
