@@ -5,18 +5,16 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.1)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.2)
 
 ---
 
-> 🚀 **What's New in v0.17.1:**
-> - A model outage no longer lets a semantic gate pass on the agent's own success report: when a configured model adapter fails, a natural-language judgment refuses the signal and the run stays in its state. Jev counts as configured whenever `TYPESAFE_API_KEY` is set, even if the SDK is broken.
-> - Refused signals return `refusal_reason`, and decisions made without a model are labeled `judgment_basis: self_reported`.
-> - A criterion written as a JavaScript expression is always evaluated; if it throws, for example on a missing payload field, it rejects instead of passing on `exit_code: 0`.
-> - `validate` warns on exact predicates without `adapter_hint: script`, on criteria that look like code but do not compile, and on adapter names other than `script` or `jev`.
-> - Test runs no longer leave `.docs` or `.reactive` output in the repository.
+> 🚀 **What's New in v0.17.2:**
+> - A rejected or expired Jev key (HTTP 401 or 403) still refuses Jev-judged steps, but the refusal now says the key was rejected and to fix or replace it, or unset `TYPESAFE_API_KEY` to continue with self-reported decisions, instead of suggesting a retry.
+> - Refusals keep that reason while the circuit breaker is open; timeouts and other failures keep the retry message.
+> - The test output guard now notes that leaked folders may be another agent's concurrent skill run in the same checkout.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.1) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.2) · [View Changelog](CHANGELOG.md)
 
 ---
 

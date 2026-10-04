@@ -1,4 +1,12 @@
 
+## [0.17.2] - 2026-10-04
+
+- Merge pull request #50 from Reactive-Skills/fix/r2b-auth-message (2ade4ca)
+- test: prove a success or another failure clears a stored credential rejection (4537a06)
+- fix(runtime): forget a credential rejection when its adapter is replaced (0f6d42d)
+- fix(runtime): keep the rejected-credentials reason while the circuit is open (5e9d216)
+- fix(runtime): say when a model rejects its credentials (1c044c0)
+
 ## [0.17.1] - 2026-10-04
 
 - Merge pull request #48 from Reactive-Skills/fix/r2-gate-integrity (bd275d7)
