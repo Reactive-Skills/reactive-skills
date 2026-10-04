@@ -5,18 +5,18 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.0)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.1)
 
 ---
 
-> 🚀 **What's New in v0.17.0:**
-> - Judgment thresholds can be written as plain probabilities: `min_probability` compares directly with P(yes) for predicates and with the picked label's probability for categorical judgments.
-> - An `escalate` band routes grey-zone results to its own target state instead of the fallback target.
-> - `validate` checks `guards/*.yaml` contracts against the judgments the runtime enforces. Mismatches in type, threshold, escalate block, or accept and escalate bands are now errors, so skills that passed before can fail, and semantic judgments still on `min_confidence` get migration warnings.
-> - `min_confidence` is unchanged. Skills that adopt the new fields should require the `judgment.probability_thresholds` capability, because older runtimes silently ignore them and fall back to `min_confidence: 0.75`.
-> - A security policy explains how to report vulnerabilities and lists known issues, including guard code running with full process privileges.
+> 🚀 **What's New in v0.17.1:**
+> - A model outage no longer lets a semantic gate pass on the agent's own success report: when a configured model adapter fails, a natural-language judgment refuses the signal and the run stays in its state. Jev counts as configured whenever `TYPESAFE_API_KEY` is set, even if the SDK is broken.
+> - Refused signals return `refusal_reason`, and decisions made without a model are labeled `judgment_basis: self_reported`.
+> - A criterion written as a JavaScript expression is always evaluated; if it throws, for example on a missing payload field, it rejects instead of passing on `exit_code: 0`.
+> - `validate` warns on exact predicates without `adapter_hint: script`, on criteria that look like code but do not compile, and on adapter names other than `script` or `jev`.
+> - Test runs no longer leave `.docs` or `.reactive` output in the repository.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.0) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.1) · [View Changelog](CHANGELOG.md)
 
 ---
 

@@ -2,11 +2,11 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.17.0:**
-> - `validate` reads `guards/*.yaml` and errors when a contract and its linked judgment disagree on type, threshold, escalate block, or accept or escalate band. Skills that passed before can now fail; resume-manager and ameliorate are known and migrate next.
-> - `validate` warns when a semantic judgment relies on `min_confidence`, names the equivalent `min_probability` for predicates, and warns when new fields are used without the `judgment.probability_thresholds` capability.
+> 🚀 **What's New in v0.17.1:**
+> - `emit` prints `refusal_reason` when a guard or judgment refuses a signal, and `judgment_basis: self_reported` when a judgment was decided from the agent's payload because no model is configured.
+> - `validate` warns on exact predicates without `adapter_hint: script`, on criteria that look like code but do not compile, and on adapter names other than `script` or `jev`.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

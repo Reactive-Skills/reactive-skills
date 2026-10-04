@@ -2,11 +2,11 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.17.0:**
-> - Judgments accept `min_probability` and `escalate: { min_probability, target }`; `min_confidence` keeps its formula and its 0.75 default.
-> - The judgment result in `GUARD_EVALUATED` records `probability`, `threshold`, and `band`, and the runtime advertises the `judgment.probability_thresholds` capability.
+> 🚀 **What's New in v0.17.1:**
+> - During a model outage, judgments the script adapter cannot evaluate return band `unevaluable` and refuse without fallback routing; signal results carry `refusalReason` and `judgmentBasis`, and replays return the stored refusal.
+> - Executable criteria fail closed when they throw, `JudgmentAdapter` gains optional `isConfigured`, and `EventStore.query` accepts `causationId`.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.1) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

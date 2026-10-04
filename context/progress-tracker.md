@@ -6,6 +6,7 @@
 | :--- | :--- | :--- |
 | `@reactive-skills/runtime` | v0.17.0 | ✅ Published |
 | `@reactive-skills/axi` | v0.17.0 | ✅ Published |
+| `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.17.1 | 🧪 Candidate prepared (`docs/specs/0016-v0.17.1-release-preparation.md`) |
 
 ---
 
@@ -62,8 +63,8 @@
 | :--- | :--- | :--- | :--- |
 | R1 | v0.17.0 | Probability thresholds, guard contract lint, security policy (#23, #25) | ✅ Published |
 | R1b | skill releases | ameliorate and resume-manager migrate to `min_probability` | 🟡 ameliorate 2.2.0 done; resume-manager in progress separately |
-| R2 | v0.17.1 | #28, #22 part 1, #15 (`docs/specs/0015-gate-integrity.md`, ADR 0011) | 🔨 Feature work in review |
-| R3 | v0.18.0 | #32, #22 part 2, #29, #10, #39, #42, #44 | ⏳ Queued |
+| R2 | v0.17.1 | #28, #22 part 1, #15 (`docs/specs/0015-gate-integrity.md`, ADR 0011) | 🧪 Candidate prepared |
+| R3 | v0.18.0 | #32, #22 part 2, #29, #10, #39, #42, #44, #47 | ⏳ Queued |
 | R4 | v0.19.0 | #14, #26, #43, #45 | ⏳ Queued |
 | R5 | v0.20.0 | #31, #24 | ⏳ Queued |
 | R6 | v0.21.0 | #34 phase 1, #33, #40 | ⏳ Queued |

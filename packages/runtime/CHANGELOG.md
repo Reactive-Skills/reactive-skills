@@ -1,4 +1,23 @@
 
+## [0.17.1] - 2026-10-04
+
+- Merge pull request #48 from Reactive-Skills/fix/r2-gate-integrity (bd275d7)
+- test: give every test engine a temp workspace (4a7d0d6)
+- fix(runtime): write zero-width joiners and the NFD test case as escapes (b50ccb2)
+- fix(runtime): cover combining marks in lone words and optional chaining in criterion lint (85fee8a)
+- fix(runtime): scope replay to its signal and flag silent gate typos (c9b362e)
+- fix(runtime): close gate gaps found in review (2357634)
+- docs(context): record gate integrity slice in progress tracker (5f8c838)
+- feat(axi): warn when an exact predicate can be judged by Jev (1ce0465)
+- test: widen timeouts for CLI and release tests on slow Windows runs (103f058)
+- fix(runtime): refuse judgments a failing model leaves unevaluable (59be306)
+- test: keep test output out of the repository and fail runs that leak it (f5f8f1c)
+- docs: scope, spec, and ADR 0011 for v0.17.1 gate integrity (40094d8)
+- Merge pull request #46 from Reactive-Skills/docs/roadmap-slot-new-issues (ba1c6fe)
+- docs(scope): slot issues #39, #40, #42 to #45 into release trains (b17eb8d)
+- Merge pull request #41 from Reactive-Skills/docs/roadmap-r1-shipped (a487df6)
+- docs: record v0.17.0 release and R1b ameliorate migration (52e3f61)
+
 ## [0.17.0] - 2026-10-04
 
 - Merge pull request #37 from Reactive-Skills/docs/roadmap-jev-policy (bfe44a7)
