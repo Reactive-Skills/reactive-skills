@@ -10,8 +10,8 @@ const VERSION = packageMetadata.version ?? 'unknown';
 const DESCRIPTION = 'AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format';
 
 export const TOP_HELP = `usage: reactive-skills-axi [command] [args] [flags]
-commands[22]:
-  (none)=home, init, upgrade, inspect, validate, preflight, capabilities, context-route, bootloader, events, invoke, state, emit, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard
+commands[23]:
+  (none)=home, init, upgrade, inspect, validate, preflight, capabilities, context-route, bootloader, events, invoke, state, emit, approve, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard
 flags[2]:
   --help, --version
 examples:
@@ -31,6 +31,7 @@ examples:
   reactive-skills-axi invoke my-skill [--job <alias>]
   reactive-skills-axi state my-skill [--job <alias>]
   reactive-skills-axi emit my-skill <signal> [--payload '{"key":"value"}'] [--job <alias>] [--idempotency-key <key>]
+  reactive-skills-axi approve my-skill [--job <alias>] [--allow-self-reported | --revoke-self-reported]
   reactive-skills-axi jobs my-skill
   reactive-skills-axi jobs switch my-skill <alias-or-run-id>
   reactive-skills-axi reset my-skill
@@ -138,6 +139,11 @@ export async function main() {
       case 'emit': {
         const { emitCommand } = await import('../commands/emit.js');
         output = await emitCommand(args.slice(1));
+        break;
+      }
+      case 'approve': {
+        const { approveCommand } = await import('../commands/approve.js');
+        output = await approveCommand(args.slice(1));
         break;
       }
       case 'setup': {

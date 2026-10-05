@@ -29,6 +29,14 @@ describe('Reactive MCP Server Integration', () => {
     expect(server).toBeDefined();
   });
 
+  it('registers no tool that decides a pending approval (spec 0019 criterion 9)', () => {
+    const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
+    const names = Object.keys((server as any)._registeredTools);
+
+    expect(names.length).toBeGreaterThan(0);
+    expect(names.filter((name) => /approv|grant|self_report/i.test(name))).toEqual([]);
+  });
+
   it('should expose local runtime capabilities for INIT negotiation', async () => {
     const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
     const tools = (server as any)._registeredTools;

@@ -159,6 +159,24 @@ describe('emitCommand', () => {
     expect(output).not.toContain('refusal_reason');
   });
 
+  it('shows the self-report warning and a human decision basis (spec 0019 criteria 13 and 15)', async () => {
+    const skillDir = path.join(tmpDir, 'skills', 'test-skill');
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(path.join(skillDir, 'skill.yaml'), 'name: test-skill\n');
+    const base = { transitioned: true, previousState: 'REVIEW', newState: 'DONE', event: { id: '01a06e96-basis-event-id' }, deliverablesWritten: [] };
+    mockHandleSignal
+      .mockResolvedValueOnce({ ...base, judgmentBasis: 'self_reported', warning: 'Decided from the agent report.' })
+      .mockResolvedValueOnce({ ...base, judgmentBasis: 'human' });
+    const { emitCommand } = await import('../../src/commands/emit.js');
+
+    const selfReported = await emitCommand(['test-skill', 'SUBMIT']);
+    const human = await emitCommand(['test-skill', 'SUBMIT']);
+
+    expect(selfReported).toContain('warning: Decided from the agent report.');
+    expect(human).toContain('judgment_basis: human');
+    expect(human).not.toContain('warning');
+  });
+
   it('supports 2-arg syntax: emit <skill> <signal> with auto-resolved eventId', async () => {
     const skillDir = path.join(process.cwd(), 'skills', 'test-skill');
     fs.mkdirSync(skillDir, { recursive: true });

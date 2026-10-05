@@ -33,8 +33,55 @@ npm install @reactive-skills/runtime
 The adapter supports predicate, categorical, and ordered score judgments.
 Score judgments accept an array such as `rubric: ["weak", "acceptable", "strong"]`, or a string separated by `|`.
 A criterion written as a JavaScript expression always runs in the Script adapter.
-Without `TYPESAFE_API_KEY`, a natural-language criterion is decided from the signal payload and labeled self-reported.
 With the key set, a failed or rejected Jev request refuses the signal for a natural-language criterion, and the run stays in its state (ADR 0011).
+When Jev rejects its credentials or a judgment is misconfigured, the refusal says that retrying will not help.
+
+### Approval for Gates No Model Can Judge
+
+A natural-language criterion that no model can judge refuses the signal and waits for a person (ADR 0012).
+That happens when no model is configured, during a model outage, and when Jev rejects its key.
+The runtime records an `APPROVAL_REQUESTED` event, and the refusal reason tells the agent to stop and ask the user to run `reactive-skills-axi approve <skill> --job <id>` in their own terminal.
+
+`approve` runs only in an interactive terminal.
+It shows each waiting gate with the agent's payload and asks the user to type back a one-time code.
+The code approves the gate, and typing `reject` rejects it; any other answer asks again.
+The runtime records `APPROVAL_DECIDED` and re-sends the original signal.
+An approval passes the judgment with `decidedBy: "human"`, and a rejection routes to `fallback_target` or refuses.
+Each decision applies once, to the same state and signal.
+MCP has no tool that approves a gate.
+
+Within one OS account this channel stops an agent from approving by accident.
+It does not stop an agent that drives a terminal session, for example through an MCP server that provides one, or that calls the runtime library directly.
+An agent that writes into your home folder can still create a grant.
+
+### Self-Reported Decisions
+
+Self-reported decisions let the signal payload decide natural-language criteria when no model is configured.
+They are off by default, and only the user can turn them on, by running `reactive-skills-axi approve <skill> --allow-self-reported` in an interactive terminal and typing back the code.
+The grant applies to the whole workspace and is stored in your home folder at `~/.reactive-skills/grants/`, keyed by the workspace path, never in the workspace.
+A file copied, committed, or restored into a workspace does not count, so a revoke stays revoked.
+The runtime records the first decision each grant allows in a run as `SELF_REPORT_GRANT_USED`.
+A grant applies only to processes that use the same home folder, so a runtime in a container or under another account does not see it.
+`reactive-skills-axi approve <skill> --revoke-self-reported` removes it.
+
+Every self-reported transition reports `judgment_basis: self_reported` with a warning in the emit output.
+A grant never applies during an outage of a configured model, so a broken Jev setup still waits for a person.
+Every judgment result records `decidedBy` as `model`, `expression`, `human`, or `self_reported` in `GUARD_EVALUATED`.
+
+### Guard Refusal Reasons
+
+A refused guard returns a reason, so the agent can see what to fix.
+A guard function may return `{ passed, reason }` instead of a boolean, and a falsy `passed` refuses with `reason`.
+An inline guard may declare `guard_message`, which is returned when it refuses.
+Without a message, the refusal names the guard expression or the guard function file.
+
+```yaml
+transitions:
+  USER_APPROVED:
+    target: DEVELOP
+    guard: "payload.dod_record?.criteria?.length > 0"
+    guard_message: "Send dod_record with at least one criterion."
+```
 
 ### Judgment Thresholds
 

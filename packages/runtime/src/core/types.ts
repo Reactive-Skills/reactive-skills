@@ -147,7 +147,11 @@ export interface JudgmentResult {
    * `choice`, or `score`) because the criterion is not an executable expression.
    */
   selfReported?: boolean;
+  /** Who decided the judgment (ADR 0012), set by the judgment engine. */
+  decidedBy?: JudgmentDecisionSource;
 }
+
+export type JudgmentDecisionSource = 'model' | 'expression' | 'human' | 'self_reported';
 
 export interface JudgmentAdapter {
   readonly id: string;
@@ -180,6 +184,7 @@ export interface TransitionDefinition {
   target: string;
   guard?: string; // JavaScript expression returning boolean, e.g. "event.payload.exit_code != 0"
   guardFunction?: string; // Relative path to JS function file in guards/
+  guard_message?: string; // Refusal reason returned when the inline guard refuses (#32)
   judgment?: JudgmentDefinition; // Decoupled snap-on judgment evaluation
   description?: string;
   invoke?: string;
@@ -369,6 +374,7 @@ export const TransitionSchema = z.union([
     target: z.string(),
     guard: z.string().optional(),
     guardFunction: z.string().optional(),
+    guard_message: z.string().optional(),
     judgment: JudgmentDefinitionSchema.optional(),
     description: z.string().optional(),
     invoke: z.string().optional(),

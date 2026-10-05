@@ -2,6 +2,7 @@ export * from './core/types.js';
 export * from './core/event-store.js';
 export * from './core/guard-evaluator.js';
 export * from './core/judgment-engine.js';
+export * from './core/approval-grants.js';
 export * from './core/judgment-thresholds.js';
 export * from './core/context-router.js';
 export { discoverContextCandidates } from './core/context-candidate-discovery.js';

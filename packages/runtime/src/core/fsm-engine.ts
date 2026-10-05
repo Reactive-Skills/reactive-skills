@@ -19,6 +19,7 @@ import {
 } from './types.js';
 import { EventStore, createSortableId } from './event-store.js';
 import { GuardEvaluator } from './guard-evaluator.js';
+import { readSelfReportGrant, type SelfReportGrant } from './approval-grants.js';
 import { LegacySkillAdapter } from './legacy-adapter.js';
 import { ProjectionEngine } from './projection-engine.js';
 import { JobManager, isJobTerminal } from './job-manager.js';
@@ -57,9 +58,26 @@ type SignalHandlingResult = {
   metrics?: ExecutionMetrics;
   /** Error from the last guard or judgment that refused the signal, when it reported one. */
   refusalReason?: string;
-  /** Set when the deciding judgment came from the agent's own payload (ADR 0011). */
-  judgmentBasis?: 'self_reported';
+  /** Set when a person (ADR 0012) or the agent's own payload (ADR 0011) decided the judgment. */
+  judgmentBasis?: 'self_reported' | 'human';
+  /** Shown with every self-reported decision so the operator and the agent can see it (ADR 0012). */
+  warning?: string;
 };
+
+/** A gate no adapter could judge, waiting for a person to decide it (ADR 0012). */
+export interface PendingApproval {
+  id: string;
+  state: string;
+  signal: string;
+  target: string;
+  criterion: string;
+  judgmentType: string;
+  payload: Record<string, any>;
+  reason?: string;
+  requestedAt: string;
+}
+
+const SELF_REPORT_WARNING = "Decided from the agent's own report because self-reported decisions are enabled for this workspace; reactive-skills-axi approve --revoke-self-reported turns them off.";
 
 export class FSMEngine {
   private skillDir: string;
@@ -728,9 +746,15 @@ export class FSMEngine {
     payload: Record<string, any> = {},
     metadata: { source?: string; causationId?: string; requestId?: string; idempotencyKey?: string } = {}
   ): Promise<SignalHandlingResult> {
+    // Checked once on entry; lifecycle signals drained inside this call belong to the same change.
+    return this.serialized(() => this.processSignal(signalName, payload, metadata, true));
+  }
+
+  /** Runs signal work for this run one at a time within the process. */
+  private serialized<T>(work: () => Promise<T>): Promise<T> {
     const key = `${this.workspaceDir}\u0000${this.manifest.name}\u0000${this.jobId || 'default'}`;
     const previous = signalSerialByRun.get(key) || Promise.resolve();
-    const operation = previous.then(() => this.processSignal(signalName, payload, metadata));
+    const operation = previous.then(work);
     const settled = operation.then(() => undefined, () => undefined);
     signalSerialByRun.set(key, settled);
     void settled.then(() => {
@@ -767,7 +791,8 @@ export class FSMEngine {
   private async processSignal(
     signalName: string,
     payload: Record<string, any> = {},
-    metadata: { source?: string; causationId?: string; requestId?: string; idempotencyKey?: string } = {}
+    metadata: { source?: string; causationId?: string; requestId?: string; idempotencyKey?: string } = {},
+    checkCurrent = false
   ): Promise<SignalHandlingResult> {
     const startTime = performance.now();
     const previousState = this.getCurrentState();
@@ -779,11 +804,14 @@ export class FSMEngine {
         // The key identifies that submission, so a replay reports why it was refused (ADR 0011).
         const caused = this.eventStore.query({ causationId: existing.id });
         const accepted = caused.some((e) => e.type === 'STATE_TRANSITION');
+        const refusedEvent = caused.find((e) => e.type === 'SIGNAL_REFUSED');
         const refusal = accepted
           ? undefined
-          : caused
-            .filter((e) => e.type === 'GUARD_EVALUATED' && !e.payload?.passed && !e.payload?.fallbackTarget && e.payload?.error)
-            .at(-1);
+          : refusedEvent
+            ? { payload: { error: refusedEvent.payload?.reason } }
+            : caused
+              .filter((e) => e.type === 'GUARD_EVALUATED' && !e.payload?.passed && !e.payload?.fallbackTarget && e.payload?.error)
+              .at(-1);
         return {
           transitioned: false,
           previousState,
@@ -794,6 +822,8 @@ export class FSMEngine {
         };
       }
     }
+    // After the idempotency lookup, so a replay returns its stored result even on a stale engine.
+    if (checkCurrent) this.assertCurrent();
     const expectedRunVersion = this.eventStore.getRunVersion();
 
     const event = this.eventStore.append(
@@ -822,6 +852,10 @@ export class FSMEngine {
     }
 
     let refusalReason: string | undefined;
+    // Read once, so the decision and its SELF_REPORT_GRANT_USED record see the same grant.
+    const grant = readSelfReportGrant(this.workspaceDir);
+    const selfReportAllowed = grant !== undefined;
+    const humanApproval = this.resolveHumanDecision(signalName, payload, metadata.causationId);
 
     // Bubble search: test from deepest leaf substate up to root
     for (let depth = this.activeStatePath.length; depth >= 1; depth--) {
@@ -851,8 +885,16 @@ export class FSMEngine {
             context: this.context,
             currentState: testPath.join('.'),
             skillDir: this.skillDir,
+            selfReportAllowed,
+            humanDecision: transDef.judgment
+              && humanApproval?.state === testPath.join('.')
+              && humanApproval.target === transDef.target
+              && humanApproval.criterion === transDef.judgment.criterion
+              ? humanApproval.decision
+              : undefined,
           },
-          transDef.judgment
+          transDef.judgment,
+          transDef.guard_message
         );
 
         this.eventStore.assertRunVersion(guardRunVersion);
@@ -872,10 +914,17 @@ export class FSMEngine {
           { state: testPath.join('.'), causationId: event.id }
         );
 
+        if (guardResult.judgmentResult?.selfReported) this.recordGrantUse(grant, event.id);
+
         let effectiveTarget = transDef.target;
         let isTransitioning = guardResult.passed;
         if (!guardResult.passed && !guardResult.fallbackTarget && guardResult.error) {
           refusalReason = guardResult.error;
+        }
+        if (transDef.judgment && guardResult.judgmentResult?.band === 'unevaluable') {
+          this.recordApprovalRequest(testPath.join('.'), signalName, transDef.target, transDef.judgment, payload, event.id, guardResult.error);
+          const job = this.getJobName() || this.getJobId() || 'default';
+          refusalReason = `${guardResult.error ?? 'Judgment could not be evaluated.'} This gate is waiting for a person: stop and ask the user to run \`reactive-skills-axi approve ${this.manifest.name} --job ${job}\` in their own terminal, from ${this.workspaceDir}.`;
         }
 
         if (!guardResult.passed && guardResult.fallbackTarget) {
@@ -985,13 +1034,18 @@ export class FSMEngine {
             handledAtDepth: depth,
             deliverablesWritten,
             metrics,
-            ...(guardResult.judgmentResult?.selfReported ? { judgmentBasis: 'self_reported' as const } : {}),
+            ...(guardResult.judgmentResult?.decidedBy === 'human' ? { judgmentBasis: 'human' as const } : {}),
+            ...(guardResult.judgmentResult?.selfReported ? { judgmentBasis: 'self_reported' as const, warning: SELF_REPORT_WARNING } : {}),
           };
         }
       }
     }
 
     this.context = contextBeforeSignal;
+    if (refusalReason) {
+      // The full reason, including any approval instruction, so an idempotent replay returns it as sent.
+      this.eventStore.append('SIGNAL_REFUSED', { signal: signalName, reason: refusalReason }, { state: previousState, causationId: event.id });
+    }
     return {
       transitioned: false,
       previousState,
@@ -1146,6 +1200,122 @@ export class FSMEngine {
         });
       }
     }
+  }
+
+  /**
+   * True when another process, such as `reactive-skills-axi approve`, wrote to this run after this
+   * engine loaded it, so a long-lived holder should rebuild the engine before using it.
+   */
+  public hasExternalChanges(): boolean {
+    return this.eventStore.hasExternalAppends();
+  }
+
+  /**
+   * A stale engine would decide or transition from a state the run already left, so it refuses
+   * instead; the caller reloads the run and tries again.
+   */
+  private assertCurrent(): void {
+    if (!this.eventStore.hasExternalAppends()) return;
+    const error = new Error('This run changed in another process after it was loaded, so nothing was applied. Reload the run and try again.') as Error & { code: string };
+    error.code = 'RUN_VERSION_CONFLICT';
+    throw error;
+  }
+
+  /** Gates in the active state path that no adapter could judge and no person has decided yet. */
+  public getPendingApprovals(): PendingApproval[] {
+    const decided = new Set(this.eventStore.query({ type: 'APPROVAL_DECIDED' }).map((e) => e.payload?.requestId));
+    const active = new Set(this.activeStatePath.map((_, i) => this.activeStatePath.slice(0, i + 1).join('.')));
+    // A newer request for the same state and signal, such as one with corrected evidence, replaces older ones.
+    const latest = new Map<string, SignalEvent>();
+    for (const e of this.eventStore.query({ type: 'APPROVAL_REQUESTED' })) {
+      latest.set(JSON.stringify([e.payload?.state, e.payload?.signal]), e);
+    }
+    return [...latest.values()]
+      .filter((e) => !decided.has(e.id) && active.has(e.payload?.state))
+      .map((e) => ({
+        id: e.id,
+        state: e.payload.state,
+        signal: e.payload.signal,
+        target: e.payload.target,
+        criterion: e.payload.criterion,
+        judgmentType: e.payload.judgmentType,
+        payload: e.payload.payload ?? {},
+        reason: e.payload.reason,
+        requestedAt: e.timestamp,
+      }));
+  }
+
+  /**
+   * Records a person's decision on a pending gate and re-sends its signal. Only
+   * `reactive-skills-axi approve` calls this, after the user confirms a code in an interactive
+   * terminal (ADR 0012).
+   */
+  public decideApproval(requestId: string, decision: 'approve' | 'reject', channel: string): Promise<SignalHandlingResult> {
+    // Check, record, and re-send in one step, so a conflict at the check means nothing was recorded.
+    return this.serialized(async () => {
+      this.assertCurrent();
+      const request = this.getPendingApprovals().find((r) => r.id === requestId);
+      if (!request) throw new Error(`No pending approval ${requestId} in this run`);
+      const decided = this.eventStore.append(
+        'APPROVAL_DECIDED',
+        { requestId, decision, channel, state: request.state, signal: request.signal },
+        { state: this.getCurrentState(), causationId: requestId }
+      );
+      return this.processSignal(request.signal, request.payload, { source: 'human_approval', causationId: decided.id });
+    });
+  }
+
+  /**
+   * A decision counts only for its own request's signal and the exact payload the person saw, and
+   * only for the first signal it causes.
+   */
+  private resolveHumanDecision(
+    signalName: string,
+    payload: Record<string, any>,
+    causationId?: string
+  ): { state: string; target: string; criterion: string; decision: 'approve' | 'reject' } | undefined {
+    if (!causationId) return undefined;
+    const decided = this.eventStore.query({ type: 'APPROVAL_DECIDED' }).find((e) => e.id === causationId);
+    if (!decided || decided.payload?.signal !== signalName) return undefined;
+    const request = this.eventStore.query({ type: 'APPROVAL_REQUESTED' }).find((e) => e.id === decided.payload?.requestId);
+    if (!request || request.payload?.signal !== signalName) return undefined;
+    if (JSON.stringify(request.payload.payload ?? {}) !== JSON.stringify(payload ?? {})) return undefined;
+    const signalsCaused = this.eventStore.query({ causationId: decided.id }).filter((e) => e.type === 'SIGNAL_EMITTED');
+    if (signalsCaused.length !== 1) return undefined;
+    const decision = decided.payload?.decision === 'approve' ? 'approve' : 'reject';
+    return { state: request.payload.state, target: request.payload.target, criterion: request.payload.criterion, decision };
+  }
+
+  /** Makes the first decision each grant allows in a run visible in the ledger (ADR 0012). */
+  private recordGrantUse(grant: SelfReportGrant | undefined, causationId: string): void {
+    if (!grant) return;
+    const seen = this.eventStore.query({ type: 'SELF_REPORT_GRANT_USED' }).some((e) => e.payload?.grantedAt === grant.grantedAt);
+    if (seen) return;
+    this.eventStore.append(
+      'SELF_REPORT_GRANT_USED',
+      { grantedAt: grant.grantedAt, channel: grant.channel },
+      { state: this.getCurrentState(), causationId }
+    );
+  }
+
+  private recordApprovalRequest(
+    state: string,
+    signal: string,
+    target: string,
+    judgment: { type: string; criterion: string },
+    payload: Record<string, any>,
+    causationId: string,
+    reason?: string
+  ): void {
+    const samePending = this.getPendingApprovals().some(
+      (r) => r.state === state && r.signal === signal && JSON.stringify(r.payload) === JSON.stringify(payload)
+    );
+    if (samePending) return;
+    this.eventStore.append(
+      'APPROVAL_REQUESTED',
+      { state, signal, target, criterion: judgment.criterion, judgmentType: judgment.type, payload, reason },
+      { state, causationId }
+    );
   }
 
   public getJobId(): string | undefined {

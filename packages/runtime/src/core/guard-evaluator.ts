@@ -10,9 +10,22 @@ export interface GuardEvaluationContext {
   context: Record<string, any>;
   currentState: string;
   skillDir?: string;
+  /** True when an operator granted self-reported decisions for this workspace (ADR 0012). */
+  selfReportAllowed?: boolean;
+  /** A validated human decision for this transition's judgment (ADR 0012). */
+  humanDecision?: 'approve' | 'reject';
 }
 
 const ALLOWED_GUARD_EXTENSIONS = ['.js', '.mjs', '.cjs'];
+
+/** A guard function may return a boolean or `{ passed, reason }` so a refusal can say why (#32). */
+function readGuardFunctionResult(result: unknown): { passed: boolean; reason?: string } {
+  if (result !== null && typeof result === 'object' && 'passed' in result) {
+    const { passed, reason } = result as { passed: unknown; reason?: unknown };
+    return { passed: Boolean(passed), reason: typeof reason === 'string' && reason.trim() ? reason : undefined };
+  }
+  return { passed: Boolean(result) };
+}
 
 function describeJudgmentFailure(judgment: JudgmentDefinition, result: JudgmentResult): string {
   if (result.threshold?.field !== 'min_probability') {
@@ -33,7 +46,8 @@ export class GuardEvaluator {
     guardExpr: string | undefined,
     guardFunctionPath: string | undefined,
     evalContext: GuardEvaluationContext,
-    judgment?: JudgmentDefinition
+    judgment?: JudgmentDefinition,
+    guardMessage?: string
   ): Promise<{
     passed: boolean;
     error?: string;
@@ -103,9 +117,10 @@ export class GuardEvaluator {
           const module = await import(fileUrl);
           const fn = module.default || module.guard || module.check;
           if (typeof fn === 'function') {
-            const result = await fn(evalContext);
+            const { passed, reason } = readGuardFunctionResult(await fn(evalContext));
             return {
-              passed: Boolean(result),
+              passed,
+              ...(passed ? {} : { error: reason ?? `Guard function ${guardFunctionPath} refused` }),
               judgmentResult,
               fallbackTriggered,
               fallbackTarget,
@@ -156,10 +171,11 @@ export class GuardEvaluator {
 
         // Wrap expression safely with 100ms timeout
         const script = new vm.Script(`"use strict"; Boolean(${guardExpr})`);
-        const result = script.runInContext(vmContext, { timeout: 100 });
+        const passed = Boolean(script.runInContext(vmContext, { timeout: 100 }));
 
         return {
-          passed: Boolean(result),
+          passed,
+          ...(passed ? {} : { error: guardMessage?.trim() ? guardMessage : `Guard refused: ${guardExpr}` }),
           judgmentResult,
           fallbackTriggered,
           fallbackTarget,

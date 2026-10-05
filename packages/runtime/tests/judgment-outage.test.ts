@@ -5,6 +5,7 @@ import path from 'node:path';
 import { JudgmentEngine, JevJudgmentAdapter, isExecutableCriterion } from '../src/core/judgment-engine.js';
 import { FSMEngine } from '../src/core/fsm-engine.js';
 import { createReactiveMcpServer } from '../src/mcp/server.js';
+import { grantSelfReport } from '../src/core/approval-grants.js';
 import { JudgmentAdapter } from '../src/core/types.js';
 
 // Issue #22 part 1 and ADR 0011: a model outage must not let a semantic gate pass on the
@@ -93,10 +94,13 @@ function throwingJev(): JudgmentAdapter & { calls: number } {
 describe('Judgment outage refusal and self-reported decisions (#22)', () => {
   let tmpDir: string;
   let originalKey: string | undefined;
+  let originalHome: { HOME?: string; USERPROFILE?: string };
   let engines: FSMEngine[] = [];
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsa-judgment-outage-'));
+    originalHome = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+    process.env.HOME = process.env.USERPROFILE = path.join(tmpDir, 'home');
     fs.writeFileSync(path.join(tmpDir, 'skill.yaml'), skillYaml);
     originalKey = process.env.TYPESAFE_API_KEY;
     delete process.env.TYPESAFE_API_KEY;
@@ -114,6 +118,10 @@ describe('Judgment outage refusal and self-reported decisions (#22)', () => {
     }
     if (originalKey === undefined) delete process.env.TYPESAFE_API_KEY;
     else process.env.TYPESAFE_API_KEY = originalKey;
+    for (const [name, value] of Object.entries(originalHome)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
   });
 
   const newEngine = (workspaceDir = tmpDir) => {
@@ -199,7 +207,8 @@ describe('Judgment outage refusal and self-reported decisions (#22)', () => {
   });
 
   describe('no model configured', () => {
-    it('keeps the payload decision for a natural-language predicate and labels it self-reported', async () => {
+    it('with a self-report grant, keeps the payload decision and labels it self-reported', async () => {
+      grantSelfReport(tmpDir, 'interactive_terminal');
       const engine = newEngine();
 
       const result = await engine.handleSignal('SUBMIT_DEFAULT', { exit_code: 0 });
@@ -212,11 +221,17 @@ describe('Judgment outage refusal and self-reported decisions (#22)', () => {
       expect(guard.payload.judgment.adapterSelectionReason).toBe('jev_unavailable');
     });
 
-    it('treats an unconfigured Jev named by adapter_hint as not configured, not as an outage', async () => {
-      const engine = newEngine();
-      const result = await engine.handleSignal('SUBMIT', { exit_code: 0 });
-      expect(result.transitioned).toBe(true);
-      expect(result.judgmentBasis).toBe('self_reported');
+    it('treats an unconfigured Jev named by adapter_hint as no model, not as an outage', async () => {
+      const refused = await newEngine().handleSignal('SUBMIT', { exit_code: 0 });
+      expect(refused.transitioned).toBe(false);
+      expect(refused.refusalReason).toMatch(/no model is configured/);
+      expect(refused.refusalReason).not.toMatch(/jev is unavailable/);
+
+      const grantedDir = fs.mkdtempSync(path.join(tmpDir, 'granted-'));
+      grantSelfReport(grantedDir, 'interactive_terminal');
+      const granted = await newEngine(grantedDir).handleSignal('SUBMIT', { exit_code: 0 });
+      expect(granted.transitioned).toBe(true);
+      expect(granted.judgmentBasis).toBe('self_reported');
     });
   });
 
@@ -585,8 +600,9 @@ states:
   });
 
   describe('MCP emit result', () => {
-    const emitViaMcp = async (signal: string, payload: Record<string, unknown>) => {
+    const emitViaMcp = async (signal: string, payload: Record<string, unknown>, grant = false) => {
       const workspaceDir = fs.mkdtempSync(path.join(tmpDir, 'mcp-'));
+      if (grant) grantSelfReport(workspaceDir, 'interactive_terminal');
       fs.mkdirSync(path.join(workspaceDir, 'skills', 'outage-skill'), { recursive: true });
       fs.writeFileSync(path.join(workspaceDir, 'skills', 'outage-skill', 'skill.yaml'), skillYaml);
       const server = createReactiveMcpServer({ workspaceDir, defaultSkill: 'outage-skill' });
@@ -603,7 +619,7 @@ states:
     });
 
     it('includes judgmentBasis when the deciding judgment was self-reported', async () => {
-      const parsed = await emitViaMcp('SUBMIT_DEFAULT', { exit_code: 0 });
+      const parsed = await emitViaMcp('SUBMIT_DEFAULT', { exit_code: 0 }, true);
       expect(parsed.transitioned).toBe(true);
       expect(parsed.judgmentBasis).toBe('self_reported');
     });

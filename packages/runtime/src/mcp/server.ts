@@ -116,9 +116,12 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
     if (engines.has(cacheKey)) {
       const cached = engines.get(cacheKey)!;
-      if (fs.existsSync(cached.getSkillDir())) {
+      // Rebuild when another process moved the run, for example an approval in the user's terminal.
+      if (fs.existsSync(cached.getSkillDir()) && !cached.hasExternalChanges()) {
         return cached;
       }
+      // Not closed: an in-flight call may still be using it, and it refuses stale writes itself.
+      // ponytail: a replaced engine's SQLite handle stays open until it is collected; refcount if churn grows.
       engines.delete(cacheKey);
     }
 
@@ -463,6 +466,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
                   projectionsWritten: result.deliverablesWritten,
                   refusalReason: result.refusalReason,
                   judgmentBasis: result.judgmentBasis,
+                  warning: result.warning,
                 },
                 null,
                 2
