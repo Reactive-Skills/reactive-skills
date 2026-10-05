@@ -38,7 +38,7 @@ const IGNORED_DIRS = new Set([
 
 export function extractMermaid(statechartContent) {
   if (!statechartContent) return null;
-  const match = statechartContent.replace(/\r\n?/g, '\n').match(/```mermaid\s*([\s\S]*?)```/);
+  const match = statechartContent.replace(/\r\n/g, '\n').match(/```mermaid\s*([\s\S]*?)```/);
   return match ? match[1].trim() : null;
 }
 
