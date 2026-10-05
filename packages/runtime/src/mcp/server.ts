@@ -286,7 +286,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
                     status: 'unavailable',
                     source: 'reactive_state',
                     reason: 'bypass_detected',
-                    recovery: `Run reactive-skills-axi reset ${engine.getManifest().name} then re-invoke.`,
+                    recovery: `Run reactive-skills-axi reset ${engine.cliSkillReference()} then re-invoke.`,
                   },
                 }, null, 2),
               }],
@@ -372,7 +372,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
                 text: JSON.stringify(
                   {
                     error: 'BYPASS_DETECTED: The runtime has auto-aborted this skill. Agent exceeded idle turns without emitting a signal.',
-                    recovery: 'Run reactive-skills-axi reset ' + engine.getManifest().name + ' then re-invoke.',
+                    recovery: 'Run reactive-skills-axi reset ' + engine.cliSkillReference() + ' then re-invoke.',
                     strict_execution: engine.isStrictExecution(),
                     turns_since_last_signal: engine.getTurnsSinceLastSignal(),
                   },
@@ -422,7 +422,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       } catch (err: any) {
         if (err.message?.startsWith('BYPASS_DETECTED')) {
           return {
-            content: [{ type: 'text', text: JSON.stringify({ error: err.message, recovery: 'Run reactive-skills-axi reset ' + (err.message.split('reset ')[1]?.split(' ')[0] || 'skill') + ' then re-invoke.' }) }],
+            content: [{ type: 'text', text: JSON.stringify({ error: err.message, recovery: 'Run reactive-skills-axi reset ' + (err.message.match(/reset (.+) then re-invoke/)?.[1] || 'skill') + ' then re-invoke.' }) }],
             isError: true,
           };
         }

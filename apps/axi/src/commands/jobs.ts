@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { JobManager } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderList, renderDetail, renderOutput } from '../toon.js';
-import { resolveWorkspaceDir, resolveSkillPath } from '../args.js';
+import { resolveWorkspaceDir, resolveSkillPath, resolveSkillId, findSkillByManifestName } from '../args.js';
 
 
 export async function jobsCommand(args: string[]): Promise<string> {
@@ -41,7 +41,8 @@ export async function jobsCommand(args: string[]): Promise<string> {
     return renderOutput([renderError(error.message, error.code, error.suggestions)]);
   }
 
-  const skillPath = resolveSkillPath(skillName);
+  const resolvedPath = resolveSkillPath(skillName);
+  const skillPath = resolvedPath ?? findSkillByManifestName(skillName);
   if (!skillPath) {
     const error = new AxiError(
       `Skill '${skillName}' not found in any known location`,
@@ -51,7 +52,9 @@ export async function jobsCommand(args: string[]): Promise<string> {
     return renderOutput([renderError(error.message, error.code, error.suggestions)]);
   }
 
+  const skillRef = resolvedPath ? skillName : path.basename(skillPath);
   const workspaceDir = resolveWorkspaceDir(skillPath);
+  const skillId = resolveSkillId(skillPath);
   const jobManager = new JobManager(workspaceDir);
 
   switch (subCommand) {
@@ -65,8 +68,8 @@ export async function jobsCommand(args: string[]): Promise<string> {
         return renderOutput([renderError(error.message, error.code, error.suggestions)]);
       }
 
-      const resolvedRunId = jobManager.resolveRunId(skillName, targetJobId) || targetJobId;
-      const job = jobManager.getJob(skillName, resolvedRunId);
+      const resolvedRunId = jobManager.resolveRunId(skillId, targetJobId) || targetJobId;
+      const job = jobManager.getJob(skillId, resolvedRunId);
       if (!job) {
         const error = new AxiError(
           `Job '${targetJobId}' not found for skill '${skillName}'`,
@@ -76,10 +79,10 @@ export async function jobsCommand(args: string[]): Promise<string> {
         return renderOutput([renderError(error.message, error.code, error.suggestions)]);
       }
 
-      jobManager.setActiveJobId(skillName, resolvedRunId);
+      jobManager.setActiveJobId(skillId, resolvedRunId);
 
       // Re-mirror deliverables: copy archive deliverables to root if they exist
-      const docsDir = path.join(workspaceDir, '.docs', skillName);
+      const docsDir = path.join(workspaceDir, '.docs', skillId);
       const archiveDir = path.join(docsDir, 'jobs', job.name || targetJobId);
       let mirroredCount = 0;
 
@@ -111,15 +114,15 @@ export async function jobsCommand(args: string[]): Promise<string> {
       ]));
       lines.push(renderHelp([
         `Switched active job to '${targetJobId}'.`,
-        `Canonical deliverables in .docs/${skillName}/ synchronized.`,
+        `Canonical deliverables in .docs/${skillId}/ synchronized.`,
       ]));
       return renderOutput(lines);
     }
 
     case 'archive': {
-      const archiveReference = targetJobId || jobManager.getActiveJobId(skillName);
-      const archiveJobId = jobManager.resolveRunId(skillName, archiveReference) || archiveReference;
-      const job = jobManager.getJob(skillName, archiveJobId);
+      const archiveReference = targetJobId || jobManager.getActiveJobId(skillId);
+      const archiveJobId = jobManager.resolveRunId(skillId, archiveReference) || archiveReference;
+      const job = jobManager.getJob(skillId, archiveJobId);
       if (!job) {
         const error = new AxiError(
           `Job '${archiveJobId}' not found to archive`,
@@ -129,20 +132,20 @@ export async function jobsCommand(args: string[]): Promise<string> {
         return renderOutput([renderError(error.message, error.code, error.suggestions)]);
       }
 
-      jobManager.updateJob(skillName, archiveJobId, {
+      jobManager.updateJob(skillId, archiveJobId, {
         status: 'archived',
         completedAt: new Date().toISOString(),
       });
 
       // Rotate pointer if active job was archived
-      const currentActive = jobManager.getActiveJobId(skillName);
+      const currentActive = jobManager.getActiveJobId(skillId);
       let freshJobId = currentActive;
       if (currentActive === archiveJobId) {
-        const freshJob = jobManager.createJob(skillName, { setActive: true });
+        const freshJob = jobManager.createJob(skillId, { setActive: true });
         freshJobId = freshJob.id;
       }
 
-      const activeJob = freshJobId ? jobManager.getJob(skillName, freshJobId) : undefined;
+      const activeJob = freshJobId ? jobManager.getJob(skillId, freshJobId) : undefined;
       const lines: string[] = [];
       lines.push(renderDetail('jobs_archive', {
         skill_id: skillName,
@@ -166,8 +169,8 @@ export async function jobsCommand(args: string[]): Promise<string> {
 
     case 'list':
     default: {
-      const jobs = jobManager.listJobs(skillName);
-      const activeJobId = jobManager.resolveRunId(skillName, jobManager.getActiveJobId(skillName)) || jobManager.getActiveJobId(skillName);
+      const jobs = jobManager.listJobs(skillId);
+      const activeJobId = jobManager.resolveRunId(skillId, jobManager.getActiveJobId(skillId)) || jobManager.getActiveJobId(skillId);
 
       if (jobs.length === 0) {
         const lines: string[] = [];
@@ -182,7 +185,7 @@ export async function jobsCommand(args: string[]): Promise<string> {
         ]));
         lines.push(renderHelp([
           `No historical jobs found for skill '${skillName}'.`,
-          `Run \`reactive-skills-axi state ${skillName}\` to start execution.`,
+          `Run \`reactive-skills-axi state ${skillRef}\` to start execution.`,
         ]));
         return renderOutput(lines);
       }
@@ -209,7 +212,7 @@ export async function jobsCommand(args: string[]): Promise<string> {
       lines.push(renderHelp([
         `Active job is '${activeJobId}'.`,
         `Run \`reactive-skills-axi jobs switch ${skillName} <job-id>\` to switch active job.`,
-        `Run \`reactive-skills-axi state ${skillName} --job <job-id>\` to inspect a specific job.`,
+        `Run \`reactive-skills-axi state ${skillRef} --job <job-id>\` to inspect a specific job.`,
       ]));
 
       return renderOutput(lines);

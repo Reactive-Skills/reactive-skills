@@ -133,6 +133,24 @@ describe('approveCommand (#22 part 2)', () => {
     });
   });
 
+  it('names the skill in the refusal so the approve command resolves it when the directory differs from the manifest name (#65)', async () => {
+    const renamedDir = path.join(tmpDir, 'skills', '_approval_dir');
+    fs.renameSync(skillDir, renamedDir);
+    const engine = new FSMEngine({ skillDir: renamedDir, workspaceDir: tmpDir, jobId: 'review-run', eventContext: { run_id: 'review-run' } });
+    let reason: string | undefined;
+    try {
+      reason = (await engine.handleSignal('SUBMIT', { summary: 'done' })).refusalReason;
+    } finally {
+      engine.close();
+    }
+    const hint = reason?.match(/`reactive-skills-axi approve (\S+) --job (\S+)`/);
+    expect(hint?.[1]).toBe('_approval_dir');
+
+    const output = await approveCommand([hint![1], '--job', hint![2]], terminal(['abcd']), { generateCode: () => 'ABCD' });
+
+    expect(output).toContain('current_state: DONE');
+  });
+
   it('asks again on a wrong code and approves once the code matches (criterion 7, DoD H6)', async () => {
     await refuseSubmit();
     const io = terminal(['WXYZ', 'abcd']);

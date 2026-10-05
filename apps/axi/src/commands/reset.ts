@@ -5,7 +5,7 @@ import { JobManager } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
-import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.js';
+import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath, resolveSkillId, findSkillByManifestName } from '../args.js';
 
 
 function deleteRecursive(dirPath: string): { deleted: string[]; errors: string[] } {
@@ -60,7 +60,8 @@ export async function resetCommand(args: string[]): Promise<string> {
     ]);
   }
 
-  const skillPath = resolveSkillPath(skillName);
+  const resolvedPath = resolveSkillPath(skillName);
+  const skillPath = resolvedPath ?? findSkillByManifestName(skillName);
   if (!skillPath) {
     const error = new AxiError(
       `Skill '${skillName}' not found in any known location`,
@@ -72,12 +73,21 @@ export async function resetCommand(args: string[]): Promise<string> {
     ]);
   }
 
+  const skillRef = resolvedPath ? skillName : path.basename(skillPath);
   const workspaceDir = resolveWorkspaceDir(skillPath);
-  const reactiveDir = path.join(workspaceDir, '.reactive', 'skills', skillName);
-  const skillParentReactiveDir = path.join(path.dirname(skillPath), '.reactive', 'skills', skillName);
+  const skillId = resolveSkillId(skillPath);
+  const jobManager = new JobManager(workspaceDir);
+  const reactiveDir = jobManager.getSkillDir(skillId);
+  const skillParentReactiveDir = path.join(path.dirname(skillPath), '.reactive', 'skills', skillId);
+  const unknownJob = () => new AxiError(
+    `No run '${jobId}' of ${skillId} to reset in ${reactiveDir}`,
+    'NOT_FOUND',
+    [`Run \`reactive-skills-axi jobs ${skillName}\` to list runs`]
+  );
 
   if (!fs.existsSync(reactiveDir) && !fs.existsSync(skillParentReactiveDir)) {
-    const suggestions = getSuggestions({ domain: 'reset', action: 'call', skillName });
+    if (jobId) throw unknownJob();
+    const suggestions = getSuggestions({ domain: 'reset', action: 'call', skillName: skillRef });
     return renderOutput([
       renderDetail('reset', {
         skill_id: skillName,
@@ -95,8 +105,6 @@ export async function resetCommand(args: string[]): Promise<string> {
       ]),
     ]);
   }
-
-  const jobManager = new JobManager(workspaceDir);
 
   if (isPurge) {
     const { deleted, errors } = deleteRecursive(reactiveDir);
@@ -121,22 +129,24 @@ export async function resetCommand(args: string[]): Promise<string> {
     ]));
     lines.push(renderHelp([
       `All event stores, snapshots, and jobs at ${reactiveDir} were completely purged.`,
-      `Run \`reactive-skills-axi invoke ${skillName}\` to start a fresh run.`,
+      `Run \`reactive-skills-axi invoke ${skillRef}\` to start a fresh run.`,
     ]));
     return renderOutput(lines);
   }
 
-  // Non-destructive reset: archive the target and rotate only when it owns the active pointer
-  const activeReference = jobId || jobManager.getActiveJobId(skillName);
-  const activeJobId = jobManager.resolveRunId(skillName, activeReference) || activeReference;
-  const currentActiveId = jobManager.resolveRunId(skillName, jobManager.getActiveJobId(skillName)) || jobManager.getActiveJobId(skillName);
+  // Non-destructive reset: archive the target and rotate only when it owns the active pointer.
+  // `updateJob` creates a missing job, so an unknown `--job` fails here instead of archiving a new one.
+  if (jobId && !jobManager.getJob(skillId, jobId)) throw unknownJob();
+  const activeReference = jobId || jobManager.getActiveJobId(skillId);
+  const activeJobId = jobManager.resolveRunId(skillId, activeReference) || activeReference;
+  const currentActiveId = jobManager.resolveRunId(skillId, jobManager.getActiveJobId(skillId)) || jobManager.getActiveJobId(skillId);
   const rotatesGlobalPointer = activeJobId === currentActiveId;
-  jobManager.updateJob(skillName, activeJobId, {
+  jobManager.updateJob(skillId, activeJobId, {
     status: 'archived',
     completedAt: new Date().toISOString(),
   });
 
-  const freshJob = jobManager.createJob(skillName, {
+  const freshJob = jobManager.createJob(skillId, {
     setActive: rotatesGlobalPointer,
   });
 
@@ -161,8 +171,8 @@ export async function resetCommand(args: string[]): Promise<string> {
       ? `Active job rotated to fresh job '${freshJob.id}'.`
       : `Isolated job replaced with fresh job '${freshJob.id}'.`,
     rotatesGlobalPointer
-      ? `Run \`reactive-skills-axi state ${skillName}\` to inspect initial state.`
-      : `Run \`reactive-skills-axi state ${skillName} --job ${freshJob.id}\` to inspect initial state.`,
+      ? `Run \`reactive-skills-axi state ${skillRef}\` to inspect initial state.`
+      : `Run \`reactive-skills-axi state ${skillRef} --job ${freshJob.id}\` to inspect initial state.`,
     `Pass \`--purge\` to permanently delete all historical jobs and event data.`,
   ];
   lines.push(renderHelp(helpLines));
