@@ -413,6 +413,34 @@ states:
     expect(signalJson.transition.newState).toBe('DONE');
   });
 
+  it('falls back to the stored snapshot when reopening fails, and closes engines it replaced (review 5)', async () => {
+    const viewEngine = new FSMEngine({ skillDir: tempSkillDir, workspaceDir, jobId: 'view-run-2' });
+    server = new TelemetryServer({ eventStore: viewEngine.getEventStore(), fsmEngine: viewEngine, port: 0 });
+    const { url } = await server.start();
+    const cli = () => new FSMEngine({ skillDir: tempSkillDir, workspaceDir, jobId: 'view-run-2' });
+
+    // Each outside write followed by a poll replaces the engine; replaced engines the server opened are closed.
+    for (const signal of ['START', 'FINISH']) {
+      const other = cli();
+      await other.handleSignal(signal, {});
+      other.close();
+      expect((await fetch(`${url}/state`)).status).toBe(200);
+    }
+    expect((server as any).retiredEngines).toHaveLength(0);
+
+    // A half-saved skill.yaml makes reopening throw; the dashboard keeps serving the snapshot.
+    cli().getEventStore().append('NOTE', {});
+    fs.writeFileSync(path.join(tempSkillDir, 'skill.yaml'), 'states: [unterminated', 'utf8');
+    const res = await fetch(`${url}/state`);
+    expect(res.status).toBe(200);
+    expect((await res.json()).activeState).toBe('DONE');
+  });
+
+  it('refuses to reopen an engine built on an injected event store', () => {
+    const engine = new FSMEngine({ skillDir: tempSkillDir, workspaceDir, eventStore });
+    expect(() => engine.reopen()).toThrow(/injected/);
+  });
+
   it('should serve standalone live web dashboard at GET / and GET /index.html', async () => {
     server = new TelemetryServer({
       eventStore,

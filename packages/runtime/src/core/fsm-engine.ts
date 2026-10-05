@@ -82,6 +82,9 @@ const SELF_REPORT_WARNING = "Decided from the agent's own report because self-re
 export class FSMEngine {
   private skillDir: string;
   private workspaceDir: string;
+  /** Constructor options that reopen() can safely reuse for the same run. */
+  private readonly reopenOptions: FSMEngineOptions;
+  private readonly usesInjectedStore: boolean;
   private manifest: SkillManifest;
   private activeStatePath: string[] = [];
   private context: Record<string, any>;
@@ -107,6 +110,8 @@ export class FSMEngine {
   constructor(options: FSMEngineOptions) {
     this.skillDir = path.resolve(options.skillDir);
     this.workspaceDir = options.workspaceDir || process.cwd();
+    this.reopenOptions = { skillDir: this.skillDir, workspaceDir: this.workspaceDir, eventContext: options.eventContext, perfThresholds: options.perfThresholds };
+    this.usesInjectedStore = Boolean(options.eventStore);
     this.manifest = this.loadManifest();
     this.strictExecution = this.manifest.strict_execution === true;
     this.turnsSinceLastSignal = 0;
@@ -1226,7 +1231,9 @@ export class FSMEngine {
    * use it when `hasExternalChanges()` reports that another process moved the run.
    */
   public reopen(): FSMEngine {
-    return new FSMEngine({ skillDir: this.skillDir, workspaceDir: this.workspaceDir, jobId: this.jobId });
+    // An injected store's location is unknown here, and reopening elsewhere would switch ledgers.
+    if (this.usesInjectedStore) throw new Error('reopen() needs an engine that opened its own event store; rebuild an engine on an injected store yourself.');
+    return new FSMEngine({ ...this.reopenOptions, jobId: this.jobId });
   }
 
   /** Gates in the active state path that no adapter could judge and no person has decided yet. */
