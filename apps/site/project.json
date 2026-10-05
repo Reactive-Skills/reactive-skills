@@ -28,6 +28,13 @@
       },
       "outputs": ["{workspaceRoot}/.docs/generated/reference-docs.json"]
     },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm lint",
+        "cwd": "{projectRoot}"
+      }
+    },
     "test": {
       "executor": "nx:run-commands",
       "options": {
