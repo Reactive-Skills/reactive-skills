@@ -79,7 +79,7 @@ function ListBlock({ items, prose }) {
   );
 }
 
-function StepsBlock({ steps }) {
+function StepsBlock({ steps, prose }) {
   return (
     <ol className="my-5 space-y-4">
       {steps.map((s, i) => (
@@ -87,7 +87,7 @@ function StepsBlock({ steps }) {
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-phino-border bg-phino-surface-raised font-mono text-xs text-phino-text">{i + 1}</span>
           <div>
             <p className="font-display text-sm font-semibold text-phino-text">{s.title}</p>
-            <p className="mt-0.5 text-sm leading-relaxed text-phino-text-muted">{renderDocText(s.text)}</p>
+            <p className={`mt-0.5 ${prose.stepText}`}>{renderDocText(s.text)}</p>
           </div>
         </li>
       ))}
@@ -128,7 +128,7 @@ function Block({ block, prose }) {
     case 'list':
       return <ListBlock items={block.items} prose={prose} />;
     case 'steps':
-      return <StepsBlock steps={block.steps} />;
+      return <StepsBlock steps={block.steps} prose={prose} />;
     case 'code':
       return <CodeBlock example={block.example} />;
     case 'callout':
