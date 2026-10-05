@@ -38,7 +38,7 @@ export const axi = {
           'axi emit <skill> <signal> — dispatches a typed signal to evaluate guards and advance.',
           'axi jobs [list|switch|archive] <skill> — manages isolated execution runs, active pointer resolution, and deliverable mirroring.',
           'axi inspect <path> — displays complete statechart hierarchy and guard rules.',
-          'axi events <skill> [limit] — tails the immutable append-only event ledger.',
+          'axi events [limit] <skill> — tails the immutable append-only event ledger.',
           'axi view <skill> [--job <id>] [--port <number>]: launches a job-scoped real-time telemetry server and live visual viewer.',
           'axi dashboard [--host <host>] [--port <port>]: launches one read-only broker for multiple skills and jobs.',
           'axi init <name> — scaffolds a modular reactive skill directory.',

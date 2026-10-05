@@ -19,7 +19,7 @@ export const mcp = {
       id: 'start',
       heading: 'Start the stdio server',
       blocks: [
-        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi mcp', explanation: 'Launches the Reactive Skills MCP server over stdio using the unified package entrypoint.', expectedOutput: 'reactive-skills-axi mcp · listening on stdio\nregistered 10 tools · 3 resources\nready' } },
+        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi mcp', explanation: 'Launches the Reactive Skills MCP server over stdio using the unified package entrypoint. It prints nothing and waits for an MCP client to connect over stdin and stdout.' } },
       ],
     },
     {

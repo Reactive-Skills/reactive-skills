@@ -21,7 +21,7 @@ export const overview = {
       blocks: [
         { type: 'list', items: [
           'AXI: Direct, token-lean CLI interface with TOON output and zero daemon overhead when selected by the runtime.',
-          'Quickstart — Scaffold, inspect, and advance a skill in under five minutes.',
+          'Quickstart — Run a published skill, then scaffold, inspect, and advance your own in under five minutes.',
           'Authoring Skills — Design, customize, and verify domain states, guards, and projections.',
           'Syncing Skills — Distribute skills across agent runtimes with zero-drift junctions or physical mirroring.',
           'Concepts — Understand states, signals, guards, bubbling, and event sourcing.',

@@ -14,7 +14,7 @@ export const troubleshooting = {
         { type: 'callout', variant: 'warn', title: 'Root cause', text: 'The guard expression in skill.yaml evaluates a context key that is undefined, type-mismatched (e.g. comparing string "0" to numeric 0), or unsatisfied by current facts.' },
         { type: 'steps', steps: [
           { title: 'Inspect the guard contract', text: 'Run `npx -y @reactive-skills/axi inspect skills/<skill>` to review defined transitions and guard predicates.' },
-          { title: 'Check evaluated context snapshot', text: 'Run `npx -y @reactive-skills/axi events <skill> 5` to inspect the exact context facts evaluated during the failure.' },
+          { title: 'Check evaluated context snapshot', text: 'Run `npx -y @reactive-skills/axi events 5 <skill>` to inspect the exact context facts evaluated during the failure.' },
           { title: 'Correct assertions and re-emit', text: 'Resolve code assertions or supply missing context payload, then re-dispatch the signal.' },
         ] },
         { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi emit my-skill RECOVER_STATE', explanation: 'Dispatches a recovery signal to resume workflow from a known checkpoint.' } },
@@ -39,7 +39,7 @@ export const troubleshooting = {
       blocks: [
         { type: 'text', text: 'Symptom: After an abrupt process termination, inspecting the skill shows initial state instead of the last active state.' },
         { type: 'text', text: 'Because the event store is authoritative, the runtime rehydrates state by replaying all append-only events. If a process died before flushing, replay deterministically halts at the last committed event.' },
-        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi events my-skill 50', explanation: 'Inspects the full event stream to identify the last durable event and decide which signal to resume with.' } },
+        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi events 50 my-skill', explanation: 'Inspects the full event stream to identify the last durable event and decide which signal to resume with.' } },
       ],
     },
   ],
