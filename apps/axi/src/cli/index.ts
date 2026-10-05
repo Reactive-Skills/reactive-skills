@@ -2,6 +2,7 @@
 import { createRequire } from 'node:module';
 import { AxiError, mapRuntimeError, exitCodeForError } from '../errors.js';
 import { renderError } from '../toon.js';
+import { COMMANDS, wantsHelp } from './commands.js';
 
 const require = createRequire(import.meta.url);
 const packageMetadata = require('../../package.json') as { version?: string };
@@ -58,124 +59,22 @@ export async function main() {
     return;
   }
 
+  const spec = Object.hasOwn(COMMANDS, command) ? COMMANDS[command] : undefined;
+  if (!spec) {
+    process.stderr.write(renderError('Unknown command: ' + command, 'UNKNOWN_COMMAND', ['Run `reactive-skills-axi` with no args for dashboard', 'Run `reactive-skills-axi --help` for command reference']) + '\n');
+    process.exit(2);
+    return;
+  }
+
+  const commandArgs = args.slice(1);
+  if (spec.usage && wantsHelp(commandArgs)) {
+    process.stdout.write(spec.usage + '\n');
+    return;
+  }
+
   try {
-    let output: string;
-    switch (command) {
-      case 'dashboard': {
-        const { dashboardCommand } = await import('../commands/dashboard.js');
-        output = await dashboardCommand(args.slice(1));
-        break;
-      }
-      case 'init': {
-        const { initCommand } = await import('../commands/init.js');
-        output = await initCommand(args.slice(1));
-        break;
-      }
-      case 'upgrade': {
-        const { upgradeCommand } = await import('../commands/upgrade.js');
-        output = await upgradeCommand(args.slice(1));
-        break;
-      }
-      case 'inspect': {
-        const { inspectCommand } = await import('../commands/inspect.js');
-        output = await inspectCommand(args.slice(1));
-        break;
-      }
-      case 'validate': {
-        const { validateCommand } = await import('../commands/validate.js');
-        output = await validateCommand(args.slice(1));
-        break;
-      }
-      case 'capabilities': {
-        const { capabilitiesCommand } = await import('../commands/capabilities.js');
-        output = await capabilitiesCommand(args.slice(1));
-        break;
-      }
-      case 'preflight': {
-        const { preflightCommand } = await import('../commands/preflight.js');
-        output = await preflightCommand(args.slice(1));
-        break;
-      }
-      case 'context-route': {
-        const { contextRouteCommand } = await import('../commands/context-route.js');
-        output = await contextRouteCommand(args.slice(1));
-        break;
-      }
-      case 'bootloader': {
-        const { bootloaderCommand } = await import('../commands/bootloader.js');
-        output = await bootloaderCommand(args.slice(1));
-        break;
-      }
-      case 'events': {
-        const { eventsCommand } = await import('../commands/events.js');
-        output = await eventsCommand(args.slice(1));
-        break;
-      }
-      case 'invoke': {
-        const { invokeCommand } = await import('../commands/invoke.js');
-        output = await invokeCommand(args.slice(1));
-        break;
-      }
-      case 'state': {
-        const { stateCommand } = await import('../commands/state.js');
-        output = await stateCommand(args.slice(1));
-        break;
-      }
-      case 'reset': {
-        const { resetCommand } = await import('../commands/reset.js');
-        output = await resetCommand(args.slice(1));
-        break;
-      }
-      case 'jobs': {
-        const { jobsCommand } = await import('../commands/jobs.js');
-        output = await jobsCommand(args.slice(1));
-        break;
-      }
-      case 'rebuild-sqlite': {
-        const { rebuildSqliteCommand } = await import('../commands/rebuild-sqlite.js');
-        output = await rebuildSqliteCommand(args.slice(1));
-        break;
-      }
-      case 'emit': {
-        const { emitCommand } = await import('../commands/emit.js');
-        output = await emitCommand(args.slice(1));
-        break;
-      }
-      case 'approve': {
-        const { approveCommand } = await import('../commands/approve.js');
-        output = await approveCommand(args.slice(1));
-        break;
-      }
-      case 'setup': {
-        const { setupCommand } = await import('../commands/setup.js');
-        output = await setupCommand(args.slice(1));
-        break;
-      }
-      case 'view':
-      case 'watch': {
-        const { viewCommand } = await import('../commands/view.js');
-        output = await viewCommand(args.slice(1));
-        break;
-      }
-      case 'mcp': {
-        const { runMcpServer } = await import('@reactive-skills/runtime');
-        await runMcpServer();
-        return;
-      }
-      case 'sync': {
-        const { syncCommand } = await import('../commands/sync.js');
-        const result = await syncCommand(args.slice(1));
-        process.stdout.write(result.output + '\n');
-        if (result.exitCode !== 0) process.exitCode = result.exitCode;
-        return;
-      }
-      default: {
-        process.stderr.write(renderError('Unknown command: ' + command, 'UNKNOWN_COMMAND', ['Run `reactive-skills-axi` with no args for dashboard', 'Run `reactive-skills-axi --help` for command reference']) + '\n');
-        process.exit(2);
-        return;
-      }
-    }
-    process.stdout.write(output + '\n');
+    const output = await spec.run(commandArgs);
+    if (typeof output === 'string') process.stdout.write(output + '\n');
   } catch (err) {
     const axiErr = err instanceof AxiError ? err : mapRuntimeError(err);
     process.stderr.write(renderError(axiErr.message, axiErr.code, axiErr.suggestions) + '\n');
