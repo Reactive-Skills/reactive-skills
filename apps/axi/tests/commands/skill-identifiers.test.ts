@@ -6,6 +6,7 @@ import { JobManager } from '@reactive-skills/runtime';
 import { invokeCommand } from '../../src/commands/invoke.js';
 import { jobsCommand } from '../../src/commands/jobs.js';
 import { resetCommand } from '../../src/commands/reset.js';
+import { stateCommand } from '../../src/commands/state.js';
 
 // #45: jobs and reset accept the same skill identifiers as invoke and resolve the same run store,
 // which the runtime keys by manifest name even when the skill directory is named differently.
@@ -64,6 +65,16 @@ describe('skill identifiers for jobs and reset (#45)', () => {
 
     expect(await resetCommand(['test-fsm'])).toContain('archived_and_rotated');
     expect(await jobsCommand(['missing-skill'])).toContain('NOT_FOUND');
+  });
+
+  it('prints state hints that resolve after jobs and reset by manifest name', async () => {
+    await invokeCommand([skillDir, '--job', 'demo']);
+
+    for (const output of [await jobsCommand(['test-fsm']), await resetCommand(['test-fsm'])]) {
+      const hint = plain(output).match(/`reactive-skills-axi state ([^\s`]+)/);
+      expect(hint?.[1]).toBe('_test_fsm_skill');
+      expect(await stateCommand([hint![1]])).toContain('current_state: INIT');
+    }
   });
 
   it('resolves a manifest name through a linked workspace skill directory', async () => {

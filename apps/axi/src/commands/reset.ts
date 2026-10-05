@@ -60,7 +60,8 @@ export async function resetCommand(args: string[]): Promise<string> {
     ]);
   }
 
-  const skillPath = resolveSkillPath(skillName) ?? findSkillByManifestName(skillName);
+  const resolvedPath = resolveSkillPath(skillName);
+  const skillPath = resolvedPath ?? findSkillByManifestName(skillName);
   if (!skillPath) {
     const error = new AxiError(
       `Skill '${skillName}' not found in any known location`,
@@ -72,6 +73,7 @@ export async function resetCommand(args: string[]): Promise<string> {
     ]);
   }
 
+  const skillRef = resolvedPath ? skillName : path.basename(skillPath);
   const workspaceDir = resolveWorkspaceDir(skillPath);
   const skillId = resolveSkillId(skillPath);
   const jobManager = new JobManager(workspaceDir);
@@ -85,7 +87,7 @@ export async function resetCommand(args: string[]): Promise<string> {
 
   if (!fs.existsSync(reactiveDir) && !fs.existsSync(skillParentReactiveDir)) {
     if (jobId) throw unknownJob();
-    const suggestions = getSuggestions({ domain: 'reset', action: 'call', skillName });
+    const suggestions = getSuggestions({ domain: 'reset', action: 'call', skillName: skillRef });
     return renderOutput([
       renderDetail('reset', {
         skill_id: skillName,
@@ -127,7 +129,7 @@ export async function resetCommand(args: string[]): Promise<string> {
     ]));
     lines.push(renderHelp([
       `All event stores, snapshots, and jobs at ${reactiveDir} were completely purged.`,
-      `Run \`reactive-skills-axi invoke ${skillName}\` to start a fresh run.`,
+      `Run \`reactive-skills-axi invoke ${skillRef}\` to start a fresh run.`,
     ]));
     return renderOutput(lines);
   }
@@ -169,8 +171,8 @@ export async function resetCommand(args: string[]): Promise<string> {
       ? `Active job rotated to fresh job '${freshJob.id}'.`
       : `Isolated job replaced with fresh job '${freshJob.id}'.`,
     rotatesGlobalPointer
-      ? `Run \`reactive-skills-axi state ${skillName}\` to inspect initial state.`
-      : `Run \`reactive-skills-axi state ${skillName} --job ${freshJob.id}\` to inspect initial state.`,
+      ? `Run \`reactive-skills-axi state ${skillRef}\` to inspect initial state.`
+      : `Run \`reactive-skills-axi state ${skillRef} --job ${freshJob.id}\` to inspect initial state.`,
     `Pass \`--purge\` to permanently delete all historical jobs and event data.`,
   ];
   lines.push(renderHelp(helpLines));

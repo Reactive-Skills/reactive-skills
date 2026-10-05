@@ -41,7 +41,8 @@ export async function jobsCommand(args: string[]): Promise<string> {
     return renderOutput([renderError(error.message, error.code, error.suggestions)]);
   }
 
-  const skillPath = resolveSkillPath(skillName) ?? findSkillByManifestName(skillName);
+  const resolvedPath = resolveSkillPath(skillName);
+  const skillPath = resolvedPath ?? findSkillByManifestName(skillName);
   if (!skillPath) {
     const error = new AxiError(
       `Skill '${skillName}' not found in any known location`,
@@ -51,6 +52,7 @@ export async function jobsCommand(args: string[]): Promise<string> {
     return renderOutput([renderError(error.message, error.code, error.suggestions)]);
   }
 
+  const skillRef = resolvedPath ? skillName : path.basename(skillPath);
   const workspaceDir = resolveWorkspaceDir(skillPath);
   const skillId = resolveSkillId(skillPath);
   const jobManager = new JobManager(workspaceDir);
@@ -183,7 +185,7 @@ export async function jobsCommand(args: string[]): Promise<string> {
         ]));
         lines.push(renderHelp([
           `No historical jobs found for skill '${skillName}'.`,
-          `Run \`reactive-skills-axi state ${skillName}\` to start execution.`,
+          `Run \`reactive-skills-axi state ${skillRef}\` to start execution.`,
         ]));
         return renderOutput(lines);
       }
@@ -210,7 +212,7 @@ export async function jobsCommand(args: string[]): Promise<string> {
       lines.push(renderHelp([
         `Active job is '${activeJobId}'.`,
         `Run \`reactive-skills-axi jobs switch ${skillName} <job-id>\` to switch active job.`,
-        `Run \`reactive-skills-axi state ${skillName} --job <job-id>\` to inspect a specific job.`,
+        `Run \`reactive-skills-axi state ${skillRef} --job <job-id>\` to inspect a specific job.`,
       ]));
 
       return renderOutput(lines);
