@@ -86,7 +86,7 @@ function StepsBlock({ steps, prose }) {
         <li key={i} className="flex gap-3">
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-phino-border bg-phino-surface-raised font-mono text-xs text-phino-text">{i + 1}</span>
           <div>
-            <p className="font-display text-sm font-semibold text-phino-text">{s.title}</p>
+            <p className={`font-display ${prose.stepTitle} font-semibold text-phino-text`}>{s.title}</p>
             <p className={`mt-0.5 ${prose.stepText}`}>{renderDocText(s.text)}</p>
           </div>
         </li>
