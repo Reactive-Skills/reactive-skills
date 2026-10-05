@@ -450,6 +450,8 @@ export class TelemetryServer {
             transition = await engine.handleSignal(parsed.signal, parsed.payload || {});
           } finally {
             this.signalsInFlight -= 1;
+            // Engines retired while this signal ran can close once nothing uses them.
+            if (this.signalsInFlight === 0) for (const retired of this.retiredEngines.splice(0)) retired.close();
           }
           const response: TelemetrySignalResponse = {
             success: true,
