@@ -47,6 +47,17 @@ describe('Strict Execution Mode', () => {
       expect(engine.isBypassDetected()).toBe(true);
     });
 
+    it('names the skill directory in the recovery command, which can differ from the manifest name (#65)', () => {
+      const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
+      const eventStore = new EventStore({ inMemory: true });
+      const engine = new FSMEngine({ skillDir, eventStore, workspaceDir: tempDir });
+
+      engine.recordTurnStart();
+      engine.recordTurnStart();
+
+      expect(() => engine.recordTurnStart()).toThrow('To recover, run: reactive-skills-axi reset _test_fsm_skill then re-invoke.');
+    });
+
     it('should reset turn counter when emitting any signal', async () => {
       const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
       const eventStore = new EventStore({ inMemory: true });
@@ -196,7 +207,27 @@ describe('Strict Execution Mode', () => {
       expect(res3.isError).toBe(true);
       const parsed = JSON.parse(res3.content[0].text);
       expect(parsed.error).toContain('BYPASS_DETECTED');
-      expect(parsed.recovery).toContain('reset');
+      expect(parsed.recovery).toBe('Run reactive-skills-axi reset _test_fsm_skill then re-invoke.');
+    });
+
+    it('keeps a quoted skill path whole in the recovery command, during and after bypass (#65)', async () => {
+      const workspaceDir = path.join(tempDir, 'my workspace');
+      const skillDir = path.join(workspaceDir, 'rooted');
+      fs.mkdirSync(workspaceDir);
+      fs.cpSync(path.join(tempDir, 'skills', '_test_fsm_skill'), skillDir, { recursive: true });
+      const server = createReactiveMcpServer({ workspaceDir, defaultSkill: 'rooted' });
+      const handler = (server as any)._registeredTools['reactive_state'];
+      const call = async () => JSON.parse((await handler.handler({ job_id: 'stuck' }, {} as any)).content[0].text);
+
+      await call();
+      await call();
+      const bypassed = await call();
+      const stillBypassed = await call();
+
+      const recovery = `Run reactive-skills-axi reset "${skillDir}" then re-invoke.`;
+      expect(bypassed.error).toContain('BYPASS_DETECTED');
+      expect(bypassed.recovery).toBe(recovery);
+      expect(stillBypassed.recovery).toBe(recovery);
     });
   });
 

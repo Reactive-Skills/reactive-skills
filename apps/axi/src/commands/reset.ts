@@ -5,7 +5,7 @@ import { JobManager } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
-import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath, resolveSkillId } from '../args.js';
+import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath, resolveSkillId, findSkillByManifestName } from '../args.js';
 
 
 function deleteRecursive(dirPath: string): { deleted: string[]; errors: string[] } {
@@ -60,7 +60,7 @@ export async function resetCommand(args: string[]): Promise<string> {
     ]);
   }
 
-  const skillPath = resolveSkillPath(skillName);
+  const skillPath = resolveSkillPath(skillName) ?? findSkillByManifestName(skillName);
   if (!skillPath) {
     const error = new AxiError(
       `Skill '${skillName}' not found in any known location`,

@@ -365,7 +365,7 @@ export class FSMEngine {
    * the directory name for a skill in `<workspace>/skills/`, otherwise the absolute skill path.
    * The manifest name can differ from the directory name, so it may not resolve.
    */
-  private cliSkillReference(): string {
+  public cliSkillReference(): string {
     const workspaceSkill = path.relative(path.resolve(this.workspaceDir, 'skills'), this.skillDir);
     const reference = workspaceSkill && !workspaceSkill.startsWith('..') && !path.isAbsolute(workspaceSkill) && !workspaceSkill.includes(path.sep)
       ? workspaceSkill
@@ -427,7 +427,7 @@ export class FSMEngine {
       throw new Error(
         `BYPASS_DETECTED: Agent exceeded ${maxIdleTurns} idle turns without emitting a signal. ` +
         `The runtime has entered the BYPASS_DETECTED state. ` +
-        `To recover, run: reactive-skills-axi reset ${this.manifest.name} then re-invoke.`
+        `To recover, run: reactive-skills-axi reset ${this.cliSkillReference()} then re-invoke.`
       );
     }
   }

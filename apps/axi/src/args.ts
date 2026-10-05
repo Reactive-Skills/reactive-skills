@@ -64,7 +64,6 @@ export function resolveSkillId(skillPath: string): string {
 
 /**
  * Resolves a skill directory path from workspace or global agent registries.
- * As a last resort, a manifest name matches the one `./skills/*` directory whose `skill.yaml` declares it.
  */
 export function resolveSkillPath(skillName: string): string | null {
   const candidates = [
@@ -82,20 +81,22 @@ export function resolveSkillPath(skillName: string): string | null {
       return candidate;
     }
   }
-  return findSkillByManifestName(skillName);
+  return null;
 }
 
-function findSkillByManifestName(skillName: string): string | null {
+/**
+ * Finds the one `./skills/*` directory whose `skill.yaml` declares this manifest name.
+ */
+export function findSkillByManifestName(skillName: string): string | null {
   const skillsDir = path.resolve(process.cwd(), 'skills');
-  let entries: fs.Dirent[];
+  let entries: string[];
   try {
-    entries = fs.readdirSync(skillsDir, { withFileTypes: true });
+    entries = fs.readdirSync(skillsDir);
   } catch {
     return null;
   }
   const matches = entries
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => path.join(skillsDir, entry.name))
+    .map((entry) => path.join(skillsDir, entry))
     .filter((candidate) => fs.existsSync(path.join(candidate, 'skill.yaml')) && readManifestName(candidate) === skillName);
   if (matches.length > 1) {
     throw new AxiError(

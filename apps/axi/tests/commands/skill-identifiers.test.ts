@@ -6,7 +6,6 @@ import { JobManager } from '@reactive-skills/runtime';
 import { invokeCommand } from '../../src/commands/invoke.js';
 import { jobsCommand } from '../../src/commands/jobs.js';
 import { resetCommand } from '../../src/commands/reset.js';
-import { resolveSkillPath } from '../../src/args.js';
 
 // #45: jobs and reset accept the same skill identifiers as invoke and resolve the same run store,
 // which the runtime keys by manifest name even when the skill directory is named differently.
@@ -60,17 +59,39 @@ describe('skill identifiers for jobs and reset (#45)', () => {
     }
   });
 
-  it('resolves a manifest name to the one workspace skill that declares it', () => {
-    expect(resolveSkillPath('test-fsm')).toBe(skillDir);
-    expect(resolveSkillPath('missing-skill')).toBeNull();
+  it('resets the active run by manifest name', async () => {
+    await invokeCommand([skillDir, '--job', 'demo']);
+
+    expect(await resetCommand(['test-fsm'])).toContain('archived_and_rotated');
+    expect(await jobsCommand(['missing-skill'])).toContain('NOT_FOUND');
   });
 
-  it('refuses a manifest name that more than one workspace skill declares', () => {
+  it('resolves a manifest name through a linked workspace skill directory', async () => {
+    const realDir = path.join(tmpDir, 'elsewhere', 'real');
+    fs.mkdirSync(realDir, { recursive: true });
+    fs.writeFileSync(path.join(realDir, 'skill.yaml'), skillYaml.replace('"test-fsm"', '"linked-fsm"'));
+    fs.symlinkSync(realDir, path.join(tmpDir, 'skills', 'linked'), 'junction');
+
+    const output = await jobsCommand(['linked-fsm']);
+
+    expect(output).not.toContain('NOT_FOUND');
+    expect(output).toContain('no_jobs_found');
+  });
+
+  it('refuses a manifest name that more than one workspace skill declares', async () => {
     const twin = path.join(tmpDir, 'skills', 'twin');
     fs.mkdirSync(twin);
     fs.writeFileSync(path.join(twin, 'skill.yaml'), skillYaml);
 
-    expect(() => resolveSkillPath('test-fsm')).toThrow(/matches more than one skill directory/);
+    await expect(jobsCommand(['test-fsm'])).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    await expect(resetCommand(['test-fsm'])).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+
+  it('keeps manifest-name lookup out of invoke', async () => {
+    const output = await invokeCommand(['test-fsm']);
+
+    expect(output).toContain('NOT_FOUND');
+    expect(fs.existsSync(path.join(tmpDir, '.reactive'))).toBe(false);
   });
 
   it("archives the run named by invoke's own reset hint", async () => {

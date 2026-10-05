@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { JobManager } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderList, renderDetail, renderOutput } from '../toon.js';
-import { resolveWorkspaceDir, resolveSkillPath, resolveSkillId } from '../args.js';
+import { resolveWorkspaceDir, resolveSkillPath, resolveSkillId, findSkillByManifestName } from '../args.js';
 
 
 export async function jobsCommand(args: string[]): Promise<string> {
@@ -41,7 +41,7 @@ export async function jobsCommand(args: string[]): Promise<string> {
     return renderOutput([renderError(error.message, error.code, error.suggestions)]);
   }
 
-  const skillPath = resolveSkillPath(skillName);
+  const skillPath = resolveSkillPath(skillName) ?? findSkillByManifestName(skillName);
   if (!skillPath) {
     const error = new AxiError(
       `Skill '${skillName}' not found in any known location`,
