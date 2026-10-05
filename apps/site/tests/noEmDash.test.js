@@ -1,8 +1,10 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const EM_DASH = String.fromCharCode(0x2014);
+const SITE_ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 const SCANNED = [
   'src/app/page.js',
@@ -20,10 +22,11 @@ const listFiles = (target) =>
 
 describe('site UI copy', () => {
   it('contains no em dashes', () => {
-    const offenders = SCANNED.flatMap(listFiles)
+    const offenders = SCANNED.map((path) => join(SITE_ROOT, path))
+      .flatMap(listFiles)
       .filter((file) => /\.(js|jsx|mjs)$/.test(file))
       .filter((file) => readFileSync(file, 'utf8').includes(EM_DASH))
-      .map((file) => relative(process.cwd(), file));
+      .map((file) => relative(SITE_ROOT, file));
     expect(offenders).toEqual([]);
   });
 });
