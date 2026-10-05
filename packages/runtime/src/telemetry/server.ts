@@ -20,6 +20,8 @@ export class TelemetryServer {
   private server: http.Server | null = null;
   private eventStore: EventStore;
   private fsmEngine?: FSMEngine;
+  /** Engines this server opened to replace a stale one; the caller owns the original. */
+  private reopenedEngines: FSMEngine[] = [];
   private requestedPort?: number;
   private preferredPort?: number;
   private port?: number;
@@ -110,7 +112,18 @@ export class TelemetryServer {
     return server;
   }
 
+  /** The attached engine, reopened when another process, such as the agent's CLI, moved its run. */
+  private currentEngine(): FSMEngine | undefined {
+    if (this.fsmEngine?.hasExternalChanges()) {
+      // The stale engine is not closed: its event store still feeds the live event tail.
+      this.fsmEngine = this.fsmEngine.reopen();
+      this.reopenedEngines.push(this.fsmEngine);
+    }
+    return this.fsmEngine;
+  }
+
   public async stop(): Promise<void> {
+    for (const engine of this.reopenedEngines.splice(0)) engine.close();
     if (this.unsubscribeEventStore) {
       this.unsubscribeEventStore();
       this.unsubscribeEventStore = undefined;
@@ -249,8 +262,9 @@ export class TelemetryServer {
   private handleState(req: http.IncomingMessage, res: http.ServerResponse): void {
     const latestSeq = this.eventStore.getLatestSequence();
     const snapshot = this.eventStore.getLatestSnapshot();
-    const activeState = this.fsmEngine ? this.fsmEngine.getCurrentState() : snapshot?.state;
-    const context = this.fsmEngine ? this.fsmEngine.getContext() : snapshot?.context;
+    const engine = this.currentEngine();
+    const activeState = engine ? engine.getCurrentState() : snapshot?.state;
+    const context = engine ? engine.getContext() : snapshot?.context;
 
     const payload: TelemetryStateResponse = {
       skillName: this.skillName,
@@ -413,8 +427,9 @@ export class TelemetryServer {
           return;
         }
 
-        if (this.fsmEngine) {
-          const transition = await this.fsmEngine.handleSignal(parsed.signal, parsed.payload || {});
+        const engine = this.currentEngine();
+        if (engine) {
+          const transition = await engine.handleSignal(parsed.signal, parsed.payload || {});
           const response: TelemetrySignalResponse = {
             success: true,
             transition,

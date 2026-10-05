@@ -389,6 +389,30 @@ states:
     expect(engine.getCurrentState()).toBe('RUNNING');
   });
 
+  it('reopens its engine when another process moved the run, instead of refusing signals', async () => {
+    const viewEngine = new FSMEngine({ skillDir: tempSkillDir, workspaceDir, jobId: 'view-run' });
+    server = new TelemetryServer({ eventStore: viewEngine.getEventStore(), fsmEngine: viewEngine, port: 0 });
+    const { url } = await server.start();
+
+    // The agent's CLI emit in another process moves the run while the dashboard is open.
+    const cli = new FSMEngine({ skillDir: tempSkillDir, workspaceDir, jobId: 'view-run' });
+    await cli.handleSignal('START', {});
+    cli.close();
+
+    const stateJson = await (await fetch(`${url}/state`)).json();
+    expect(stateJson.activeState).toBe('RUNNING');
+
+    const signalRes = await fetch(`${url}/signal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signal: 'FINISH', payload: {} }),
+    });
+    expect(signalRes.status).toBe(200);
+    const signalJson = await signalRes.json();
+    expect(signalJson.transition.previousState).toBe('RUNNING');
+    expect(signalJson.transition.newState).toBe('DONE');
+  });
+
   it('should serve standalone live web dashboard at GET / and GET /index.html', async () => {
     server = new TelemetryServer({
       eventStore,

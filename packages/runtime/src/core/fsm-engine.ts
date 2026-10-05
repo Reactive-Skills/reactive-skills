@@ -1221,6 +1221,14 @@ export class FSMEngine {
     throw error;
   }
 
+  /**
+   * A fresh engine for the same skill, workspace, and run, loaded from the ledger. Long-lived holders
+   * use it when `hasExternalChanges()` reports that another process moved the run.
+   */
+  public reopen(): FSMEngine {
+    return new FSMEngine({ skillDir: this.skillDir, workspaceDir: this.workspaceDir, jobId: this.jobId });
+  }
+
   /** Gates in the active state path that no adapter could judge and no person has decided yet. */
   public getPendingApprovals(): PendingApproval[] {
     const decided = new Set(this.eventStore.query({ type: 'APPROVAL_DECIDED' }).map((e) => e.payload?.requestId));
