@@ -746,9 +746,18 @@ export class FSMEngine {
     payload: Record<string, any> = {},
     metadata: { source?: string; causationId?: string; requestId?: string; idempotencyKey?: string } = {}
   ): Promise<SignalHandlingResult> {
+    // Checked once on entry; lifecycle signals drained inside this call belong to the same change.
+    return this.serialized(() => {
+      this.assertCurrent();
+      return this.processSignal(signalName, payload, metadata);
+    });
+  }
+
+  /** Runs signal work for this run one at a time within the process. */
+  private serialized<T>(work: () => Promise<T>): Promise<T> {
     const key = `${this.workspaceDir}\u0000${this.manifest.name}\u0000${this.jobId || 'default'}`;
     const previous = signalSerialByRun.get(key) || Promise.resolve();
-    const operation = previous.then(() => this.processSignal(signalName, payload, metadata));
+    const operation = previous.then(work);
     const settled = operation.then(() => undefined, () => undefined);
     signalSerialByRun.set(key, settled);
     void settled.then(() => {
@@ -787,7 +796,6 @@ export class FSMEngine {
     payload: Record<string, any> = {},
     metadata: { source?: string; causationId?: string; requestId?: string; idempotencyKey?: string } = {}
   ): Promise<SignalHandlingResult> {
-    this.assertCurrent();
     const startTime = performance.now();
     const previousState = this.getCurrentState();
     const prevPath = [...this.activeStatePath];
@@ -1240,16 +1248,19 @@ export class FSMEngine {
    * `reactive-skills-axi approve` calls this, after the user confirms a code in an interactive
    * terminal (ADR 0012).
    */
-  public async decideApproval(requestId: string, decision: 'approve' | 'reject', channel: string): Promise<SignalHandlingResult> {
-    this.assertCurrent();
-    const request = this.getPendingApprovals().find((r) => r.id === requestId);
-    if (!request) throw new Error(`No pending approval ${requestId} in this run`);
-    const decided = this.eventStore.append(
-      'APPROVAL_DECIDED',
-      { requestId, decision, channel, state: request.state, signal: request.signal },
-      { state: this.getCurrentState(), causationId: requestId }
-    );
-    return this.handleSignal(request.signal, request.payload, { source: 'human_approval', causationId: decided.id });
+  public decideApproval(requestId: string, decision: 'approve' | 'reject', channel: string): Promise<SignalHandlingResult> {
+    // Check, record, and re-send in one step, so a conflict always means nothing was recorded.
+    return this.serialized(async () => {
+      this.assertCurrent();
+      const request = this.getPendingApprovals().find((r) => r.id === requestId);
+      if (!request) throw new Error(`No pending approval ${requestId} in this run`);
+      const decided = this.eventStore.append(
+        'APPROVAL_DECIDED',
+        { requestId, decision, channel, state: request.state, signal: request.signal },
+        { state: this.getCurrentState(), causationId: requestId }
+      );
+      return this.processSignal(request.signal, request.payload, { source: 'human_approval', causationId: decided.id });
+    });
   }
 
   /**

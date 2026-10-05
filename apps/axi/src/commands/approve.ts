@@ -220,7 +220,8 @@ async function decidePending(
       `Run \`reactive-skills-axi jobs ${skillName}\` there to list runs`,
     ]);
   }
-  const engine = new FSMEngine({ skillDir: skillPath, workspaceDir, jobId, eventContext: { run_id: jobId } });
+  const openEngine = () => new FSMEngine({ skillDir: skillPath, workspaceDir, jobId, eventContext: { run_id: jobId } });
+  let engine = openEngine();
   try {
     const decisions: string[] = [];
     let cancelled = false;
@@ -242,12 +243,25 @@ async function decidePending(
         break;
       }
       let result;
-      try {
-        result = await engine.decideApproval(request.id, decision, 'interactive_terminal');
-      } catch (err) {
-        const stale = (err as { code?: string }).code === 'RUN_VERSION_CONFLICT' || /^No pending approval/.test((err as Error).message);
-        if (!stale) throw err;
-        throw new AxiError('The run changed while you were deciding, so this decision was not applied. Run approve again to see the current gates.', 'VALIDATION_ERROR');
+      for (let attempt = 1; ; attempt++) {
+        try {
+          result = await engine.decideApproval(request.id, decision, 'interactive_terminal');
+          break;
+        } catch (err) {
+          const stale = (err as { code?: string }).code === 'RUN_VERSION_CONFLICT' || /^No pending approval/.test((err as Error).message);
+          if (!stale) throw err;
+          // Another process appended, often the agent re-sending the refused signal. Reload, and apply the
+          // confirmed decision only if the same request, with the evidence the person saw, is still pending.
+          engine.close();
+          engine = openEngine();
+          const unchanged = engine.getPendingApprovals().some((r) => r.id === request.id);
+          if (!unchanged || attempt >= 3) {
+            throw new AxiError(
+              'The gate changed while you were deciding (the run moved or the agent sent new evidence), so this decision was not applied. Run approve again to see the current gates.',
+              'VALIDATION_ERROR'
+            );
+          }
+        }
       }
       const outcome = result.transitioned ? `moved to ${result.newState}` : `refused: ${result.refusalReason ?? 'no transition'}`;
       decisions.push(printable(`${request.state} / ${request.signal}: ${decision}, ${outcome}`));

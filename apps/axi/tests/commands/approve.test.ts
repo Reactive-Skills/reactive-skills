@@ -166,10 +166,44 @@ describe('approveCommand (#22 part 2)', () => {
     await withEngine((engine) => engine.handleSignal('SUBMIT_ALT', { exit_code: 0 }));
     input.end('ABCD\n');
 
-    await expect(pending).rejects.toThrow('The run changed while you were deciding');
+    await expect(pending).rejects.toThrow('changed while you were deciding');
     await withEngine((engine) => {
       expect(engine.getEventStore().query({ type: 'APPROVAL_DECIDED' })).toHaveLength(0);
       expect(engine.getCurrentState()).toBe('DONE');
+    });
+  });
+
+  it('applies the decision when the agent only re-sent the same refused signal meanwhile (review F1)', async () => {
+    await refuseSubmit();
+    const input = Object.assign(new PassThrough(), { isTTY: true });
+    const output = Object.assign(new PassThrough(), { isTTY: true });
+    let written = '';
+    output.on('data', (chunk) => (written += chunk.toString()));
+
+    const pending = approveCommand(['approval-skill', '--job', 'review-run'], { input, output }, { generateCode: () => 'ABCD' });
+    await vi.waitFor(() => expect(written).toContain('Type ABCD to approve'));
+    await withEngine((engine) => engine.handleSignal('SUBMIT', { summary: 'done' }));
+    input.end('ABCD\n');
+
+    expect(await pending).toContain('current_state: DONE');
+  });
+
+  it('applies nothing when the agent sent different evidence meanwhile (review F1)', async () => {
+    await refuseSubmit();
+    const input = Object.assign(new PassThrough(), { isTTY: true });
+    const output = Object.assign(new PassThrough(), { isTTY: true });
+    let written = '';
+    output.on('data', (chunk) => (written += chunk.toString()));
+
+    const pending = approveCommand(['approval-skill', '--job', 'review-run'], { input, output }, { generateCode: () => 'ABCD' });
+    await vi.waitFor(() => expect(written).toContain('Type ABCD to approve'));
+    await withEngine((engine) => engine.handleSignal('SUBMIT', { summary: 'new evidence' }));
+    input.end('ABCD\n');
+
+    await expect(pending).rejects.toThrow('changed while you were deciding');
+    await withEngine((engine) => {
+      expect(engine.getEventStore().query({ type: 'APPROVAL_DECIDED' })).toHaveLength(0);
+      expect(engine.getCurrentState()).toBe('REVIEW');
     });
   });
 

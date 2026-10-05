@@ -131,4 +131,41 @@ describe('Writes from another process', () => {
     expect(result.error).toMatch(/changed in another process|RUN_VERSION_CONFLICT/);
     expect(other.getEventStore().query({ type: 'STATE_TRANSITION' })).toHaveLength(0);
   });
+
+  it('finishes queued lifecycle signals of a committed transition (review F2)', async () => {
+    const lifecycleDir = path.join(workspaceDir, 'skills', 'lifecycle-skill');
+    fs.mkdirSync(lifecycleDir, { recursive: true });
+    fs.writeFileSync(path.join(lifecycleDir, 'skill.yaml'), [
+      'schema_version: "2.0.0"',
+      'name: lifecycle-skill',
+      'description: "Lifecycle drain fixture"',
+      'initial_state: START',
+      'states:',
+      '  START:',
+      '    description: "Start"',
+      '    transitions:',
+      '      GO: MID',
+      '  MID:',
+      '    description: "Mid"',
+      '    on_enter:',
+      '      - emit_signal: NEXT',
+      '    transitions:',
+      '      NEXT: END',
+      '  END:',
+      '    description: "End"',
+      '',
+    ].join('\n'));
+    const engine = new FSMEngine({ skillDir: lifecycleDir, workspaceDir });
+    closers.push(engine);
+    // Report another process's append only after the entry check, as if it landed mid-transition.
+    const store = engine.getEventStore();
+    const original = store.hasExternalAppends.bind(store);
+    let checks = 0;
+    store.hasExternalAppends = () => (++checks > 1 ? true : original());
+
+    const result = await engine.handleSignal('GO', {});
+
+    expect(result.transitioned).toBe(true);
+    expect(engine.getCurrentState()).toBe('END');
+  });
 });
