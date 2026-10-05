@@ -19,7 +19,7 @@ function usage(lines: string[]): string {
 }
 
 const viewUsage = (name: string) => usage([
-  `Usage: ${BIN} ${name} <skill-name> [--job <job-id>] [--port <number>] [--preferred-port <number>] [--host <host>] [--once]`,
+  `Usage: ${BIN} ${name} [skill-name] [--job <job-id>] [--port <number>] [--preferred-port <number>] [--host <host>] [--once]`,
   '',
   'Serve a live telemetry view for one skill run over HTTP and SSE.',
   `Example: ${BIN} ${name} my-skill --job feature-a`,
@@ -63,9 +63,10 @@ export const COMMANDS: Record<string, CommandSpec> = {
   },
   preflight: {
     usage: usage([
-      `Usage: ${BIN} preflight [path-to-skill]`,
+      `Usage: ${BIN} preflight [path-to-skill] [--json]`,
       '',
       'Check that one skill, or every skill under ./skills/, is compatible with this runtime.',
+      '--json  Print machine-readable JSON.',
       `Example: ${BIN} preflight skills/my-skill`,
     ]),
     run: async (args) => (await import('../commands/preflight.js')).preflightCommand(args),
@@ -119,8 +120,8 @@ export const COMMANDS: Record<string, CommandSpec> = {
   },
   emit: {
     usage: usage([
-      `Usage: ${BIN} emit <skill-name> <signal-name> [--payload <JSON|@file>] [--job <job-id>] [--idempotency-key <key>]`,
-      `Or:    ${BIN} emit <skill-name> <event-id> <signal-name> [--payload <JSON|@file>] [--job <job-id>]`,
+      `Usage: ${BIN} emit <skill-name> <signal-name> [<JSON|@file> | --payload <JSON|@file>] [--job <job-id>] [--idempotency-key <key>]`,
+      `Or:    ${BIN} emit <skill-name> <event-id> <signal-name> [<JSON|@file> | --payload <JSON|@file>] [--job <job-id>] [--idempotency-key <key>]`,
       '',
       'Send a signal to a skill run.',
       `Example: ${BIN} emit my-skill TEST_RAN --payload '{"exit_code":0}'`,
@@ -184,12 +185,6 @@ export const COMMANDS: Record<string, CommandSpec> = {
     run: async (args) => (await import('../commands/jobs.js')).jobsCommand(args),
   },
   sync: {
-    usage: usage([
-      `Usage: ${BIN} sync [skill-name] [--link|--copy] [--dry-run]`,
-      `Usage: ${BIN} sync --skill <name>[,<name>...] [--skill <name>[,<name>...] ...] [--link|--copy] [--dry-run]`,
-      '',
-      'Distribute skills to agent skill directories.',
-    ]),
     run: async (args) => {
       const { syncCommand } = await import('../commands/sync.js');
       const result = await syncCommand(args);

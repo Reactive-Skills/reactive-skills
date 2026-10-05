@@ -32,6 +32,10 @@ function inSandbox(check: (workspace: string, home: string) => void) {
   }
 }
 
+/** sync hands help to the sync engine, whose full flag reference opens with its own banner. */
+const helpPrefix = (command: string) =>
+  command === 'sync' ? '\nreactive-skills sync-engine:' : `Usage: reactive-skills-axi ${command}`;
+
 const cases = Object.keys(COMMANDS).flatMap((command) => [
   [command, '--help'],
   [command, '-h'],
@@ -51,8 +55,8 @@ describe('every registered command honors help flags', () => {
       expect(result.error, 'command did not exit; help must not start servers or prompts').toBeUndefined();
       expect(result.status, result.stderr).toBe(0);
       expect(result.stderr).toBe('');
-      // Usage must lead the output; an error block that merely suggests usage is not help.
-      expect(result.stdout.startsWith(`Usage: reactive-skills-axi ${command}`), result.stdout).toBe(true);
+      // Help must lead the output; an error block that merely suggests usage is not help.
+      expect(result.stdout.startsWith(helpPrefix(command)), result.stdout).toBe(true);
       expect(result.stdout).not.toMatch(/^(error|code):/m);
       expect(listTree(workspace)).toEqual(workspaceBefore);
       expect(listTree(home)).toEqual([]);
