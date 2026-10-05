@@ -65,10 +65,10 @@ function lineReader(io: ApproveIO) {
 }
 
 /**
- * Control, bidirectional, invisible, line-separator, and tag characters could fake or hide text in
- * the terminal, so they print as spaces.
+ * Control, format (bidirectional, zero-width, tag), line-separator, and default-ignorable
+ * characters could fake or hide text in the terminal, so they print as spaces.
  */
-const UNSAFE_TEXT = /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2069\u3164\ufe00-\ufe0f\ufeff\uffa0\u{e0000}-\u{e007f}]/gu;
+const UNSAFE_TEXT = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Default_Ignorable_Code_Point}\u2800]/gu;
 
 function printable(text: string): string {
   return text.replace(UNSAFE_TEXT, ' ');
@@ -257,7 +257,9 @@ async function decidePending(
           const unchanged = engine.getPendingApprovals().some((r) => r.id === request.id);
           if (!unchanged || attempt >= 3) {
             throw new AxiError(
-              'The gate changed while you were deciding (the run moved or the agent sent new evidence), so this decision was not applied. Run approve again to see the current gates.',
+              unchanged
+                ? 'The run kept changing while you were deciding, so this decision was not applied. Run approve again.'
+                : 'The gate changed while you were deciding (the run moved or the agent sent new evidence), so this decision was not applied. Run approve again to see the current gates.',
               'VALIDATION_ERROR',
               decisions.length > 0 ? [`Already applied in this session: ${decisions.join('; ')}`] : []
             );

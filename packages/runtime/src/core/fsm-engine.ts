@@ -1251,7 +1251,7 @@ export class FSMEngine {
    * terminal (ADR 0012).
    */
   public decideApproval(requestId: string, decision: 'approve' | 'reject', channel: string): Promise<SignalHandlingResult> {
-    // Check, record, and re-send in one step, so a conflict always means nothing was recorded.
+    // Check, record, and re-send in one step, so a conflict at the check means nothing was recorded.
     return this.serialized(async () => {
       this.assertCurrent();
       const request = this.getPendingApprovals().find((r) => r.id === requestId);
