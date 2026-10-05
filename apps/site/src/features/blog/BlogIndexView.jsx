@@ -15,7 +15,6 @@ export function BlogIndexView({ posts, tags }) {
     ? posts.filter((p) => p.tags.includes(selectedTag))
     : posts;
 
-  const featuredPost = posts.find((p) => p.featured) || posts[0];
   const seriesStart = posts.find((post) => post.series?.part === 1) || null;
   const showTopicFilter = posts.length >= MIN_POSTS_FOR_TOPIC_FILTER && tags?.length > 0;
 

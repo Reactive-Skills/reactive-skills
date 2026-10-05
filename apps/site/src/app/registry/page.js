@@ -14,7 +14,7 @@ function GithubIcon({ className, ...props }) {
 }
 
 export const metadata = {
-  title: 'Public Skill Registry',
+  title: 'Skill Registry',
   description:
     'Published reactive workflows for coding agents from Reactive-Skills/skills, ready to install with skills.sh.',
 };
