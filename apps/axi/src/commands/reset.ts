@@ -5,7 +5,7 @@ import { JobManager } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
-import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.js';
+import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath, resolveSkillId } from '../args.js';
 
 
 function deleteRecursive(dirPath: string): { deleted: string[]; errors: string[] } {
@@ -73,10 +73,18 @@ export async function resetCommand(args: string[]): Promise<string> {
   }
 
   const workspaceDir = resolveWorkspaceDir(skillPath);
-  const reactiveDir = path.join(workspaceDir, '.reactive', 'skills', skillName);
-  const skillParentReactiveDir = path.join(path.dirname(skillPath), '.reactive', 'skills', skillName);
+  const skillId = resolveSkillId(skillPath);
+  const jobManager = new JobManager(workspaceDir);
+  const reactiveDir = jobManager.getSkillDir(skillId);
+  const skillParentReactiveDir = path.join(path.dirname(skillPath), '.reactive', 'skills', skillId);
+  const unknownJob = () => new AxiError(
+    `No run '${jobId}' of ${skillId} to reset in ${reactiveDir}`,
+    'NOT_FOUND',
+    [`Run \`reactive-skills-axi jobs ${skillName}\` to list runs`]
+  );
 
   if (!fs.existsSync(reactiveDir) && !fs.existsSync(skillParentReactiveDir)) {
+    if (jobId) throw unknownJob();
     const suggestions = getSuggestions({ domain: 'reset', action: 'call', skillName });
     return renderOutput([
       renderDetail('reset', {
@@ -95,8 +103,6 @@ export async function resetCommand(args: string[]): Promise<string> {
       ]),
     ]);
   }
-
-  const jobManager = new JobManager(workspaceDir);
 
   if (isPurge) {
     const { deleted, errors } = deleteRecursive(reactiveDir);
@@ -126,17 +132,19 @@ export async function resetCommand(args: string[]): Promise<string> {
     return renderOutput(lines);
   }
 
-  // Non-destructive reset: archive the target and rotate only when it owns the active pointer
-  const activeReference = jobId || jobManager.getActiveJobId(skillName);
-  const activeJobId = jobManager.resolveRunId(skillName, activeReference) || activeReference;
-  const currentActiveId = jobManager.resolveRunId(skillName, jobManager.getActiveJobId(skillName)) || jobManager.getActiveJobId(skillName);
+  // Non-destructive reset: archive the target and rotate only when it owns the active pointer.
+  // `updateJob` creates a missing job, so an unknown `--job` fails here instead of archiving a new one.
+  if (jobId && !jobManager.getJob(skillId, jobId)) throw unknownJob();
+  const activeReference = jobId || jobManager.getActiveJobId(skillId);
+  const activeJobId = jobManager.resolveRunId(skillId, activeReference) || activeReference;
+  const currentActiveId = jobManager.resolveRunId(skillId, jobManager.getActiveJobId(skillId)) || jobManager.getActiveJobId(skillId);
   const rotatesGlobalPointer = activeJobId === currentActiveId;
-  jobManager.updateJob(skillName, activeJobId, {
+  jobManager.updateJob(skillId, activeJobId, {
     status: 'archived',
     completedAt: new Date().toISOString(),
   });
 
-  const freshJob = jobManager.createJob(skillName, {
+  const freshJob = jobManager.createJob(skillId, {
     setActive: rotatesGlobalPointer,
   });
 

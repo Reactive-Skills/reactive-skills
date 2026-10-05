@@ -47,6 +47,7 @@
 | TSDoc `@Tier / @Complexity / @CRAPScore` annotations on hot-path methods | Quality | ⏳ Queued |
 | Automated CC/CRAP gate in CI (`check:complexity` script) | Quality | ⏳ Queued |
 | Context doc synchronization (architecture, progress tracker, project overview) | Docs | ✅ Done |
+| Skill identifiers: `jobs` and `reset` resolve a skill path, directory name, or manifest name to the manifest-keyed run store; `reset --job` fails for an unknown run; approve hint names a resolvable skill (#45, #65 item 1) | AXI | ✅ Done |
 
 ---
 
