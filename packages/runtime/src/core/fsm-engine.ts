@@ -19,7 +19,7 @@ import {
 } from './types.js';
 import { EventStore, createSortableId } from './event-store.js';
 import { GuardEvaluator } from './guard-evaluator.js';
-import { hasSelfReportGrant, readSelfReportGrant } from './approval-grants.js';
+import { readSelfReportGrant, type SelfReportGrant } from './approval-grants.js';
 import { LegacySkillAdapter } from './legacy-adapter.js';
 import { ProjectionEngine } from './projection-engine.js';
 import { JobManager, isJobTerminal } from './job-manager.js';
@@ -747,10 +747,7 @@ export class FSMEngine {
     metadata: { source?: string; causationId?: string; requestId?: string; idempotencyKey?: string } = {}
   ): Promise<SignalHandlingResult> {
     // Checked once on entry; lifecycle signals drained inside this call belong to the same change.
-    return this.serialized(() => {
-      this.assertCurrent();
-      return this.processSignal(signalName, payload, metadata);
-    });
+    return this.serialized(() => this.processSignal(signalName, payload, metadata, true));
   }
 
   /** Runs signal work for this run one at a time within the process. */
@@ -794,7 +791,8 @@ export class FSMEngine {
   private async processSignal(
     signalName: string,
     payload: Record<string, any> = {},
-    metadata: { source?: string; causationId?: string; requestId?: string; idempotencyKey?: string } = {}
+    metadata: { source?: string; causationId?: string; requestId?: string; idempotencyKey?: string } = {},
+    checkCurrent = false
   ): Promise<SignalHandlingResult> {
     const startTime = performance.now();
     const previousState = this.getCurrentState();
@@ -824,6 +822,8 @@ export class FSMEngine {
         };
       }
     }
+    // After the idempotency lookup, so a replay returns its stored result even on a stale engine.
+    if (checkCurrent) this.assertCurrent();
     const expectedRunVersion = this.eventStore.getRunVersion();
 
     const event = this.eventStore.append(
@@ -852,7 +852,9 @@ export class FSMEngine {
     }
 
     let refusalReason: string | undefined;
-    const selfReportAllowed = hasSelfReportGrant(this.workspaceDir);
+    // Read once, so the decision and its SELF_REPORT_GRANT_USED record see the same grant.
+    const grant = readSelfReportGrant(this.workspaceDir);
+    const selfReportAllowed = grant !== undefined;
     const humanApproval = this.resolveHumanDecision(signalName, payload, metadata.causationId);
 
     // Bubble search: test from deepest leaf substate up to root
@@ -912,7 +914,7 @@ export class FSMEngine {
           { state: testPath.join('.'), causationId: event.id }
         );
 
-        if (guardResult.judgmentResult?.selfReported) this.recordGrantUse(event.id);
+        if (guardResult.judgmentResult?.selfReported) this.recordGrantUse(grant, event.id);
 
         let effectiveTarget = transDef.target;
         let isTransitioning = guardResult.passed;
@@ -1285,8 +1287,7 @@ export class FSMEngine {
   }
 
   /** Makes the first decision each grant allows in a run visible in the ledger (ADR 0012). */
-  private recordGrantUse(causationId: string): void {
-    const grant = readSelfReportGrant(this.workspaceDir);
+  private recordGrantUse(grant: SelfReportGrant | undefined, causationId: string): void {
     if (!grant) return;
     const seen = this.eventStore.query({ type: 'SELF_REPORT_GRANT_USED' }).some((e) => e.payload?.grantedAt === grant.grantedAt);
     if (seen) return;

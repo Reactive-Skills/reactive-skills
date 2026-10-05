@@ -222,6 +222,17 @@ describe('Human approval for unjudgeable gates (#22 part 2)', () => {
       expect(other.getEventStore().query({ type: 'STATE_TRANSITION' }).map((e) => e.payload.to)).toEqual(['DONE']);
     });
 
+    it('replays an idempotent signal from the ledger even on an engine another process moved (review F4)', async () => {
+      const engine = newEngine();
+      const first = await engine.handleSignal('SUBMIT_STRICT', { exit_code: 0 }, { idempotencyKey: 'submit-1' });
+      newEngine().getEventStore().append('NOTE', { from: 'another process' });
+
+      const replay = await engine.handleSignal('SUBMIT_STRICT', { exit_code: 0 }, { idempotencyKey: 'submit-1' });
+
+      expect(replay.event.id).toBe(first.event.id);
+      expect(replay.refusalReason).toBe(first.refusalReason);
+    });
+
     it('rejects an unknown request id', async () => {
       const engine = newEngine();
       await expect(engine.decideApproval('missing-request', 'approve', 'interactive_terminal')).rejects.toThrow(/no pending approval/i);
@@ -297,6 +308,19 @@ describe('Human approval for unjudgeable gates (#22 part 2)', () => {
       const used = engine.getEventStore().query({ type: 'SELF_REPORT_GRANT_USED' });
       expect(used).toHaveLength(1);
       expect(used[0].payload).toMatchObject({ channel: 'interactive_terminal' });
+    });
+
+    it('records grant use for a decision even if the grant is revoked mid-signal (review F6)', async () => {
+      grantSelfReport(workspaceDir, 'interactive_terminal');
+      const engine = newEngine();
+      engine.getEventStore().subscribe((e) => {
+        if (e.type === 'GUARD_EVALUATED') revokeSelfReport(workspaceDir);
+      });
+
+      const result = await engine.handleSignal('SUBMIT', { exit_code: 0 });
+
+      expect(result.judgmentBasis).toBe('self_reported');
+      expect(engine.getEventStore().query({ type: 'SELF_REPORT_GRANT_USED' })).toHaveLength(1);
     });
 
     it('reports whether a grant was removed, and throws when removal fails', () => {

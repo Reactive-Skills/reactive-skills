@@ -335,7 +335,7 @@ describe('approveCommand (#22 part 2)', () => {
   });
 
   it('shows the start and end of long evidence with size and hash, and strips characters that could fake or hide text (review m6, N7)', async () => {
-    const hidden = [0x202e, 0x9b, 0x200b, 0xfeff, 0x2028].map((code) => String.fromCharCode(code));
+    const hidden = [0x202e, 0x9b, 0x200b, 0xfeff, 0x2028, 0xad, 0x34f, 0x3164, 0xfe0f].map((code) => String.fromCharCode(code));
     const tag = String.fromCodePoint(0xe0041);
     await withEngine((engine) => engine.handleSignal('SUBMIT', { note: `looks fine${hidden.join('')}${tag}`, filler: 'x'.repeat(900), tail: 'IMPORTANT TAIL' }));
     const io = terminal(['ABCD']);

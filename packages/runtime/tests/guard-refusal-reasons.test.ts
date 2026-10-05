@@ -121,6 +121,17 @@ describe('Guard refusal reasons (#32)', () => {
     expect(fn.refusalReason).toBeUndefined();
   });
 
+  it('returns a guard function reason through MCP reactive_emit_signal (H14)', async () => {
+    const server = createReactiveMcpServer({ workspaceDir, defaultSkill: 'guard-skill' });
+    const emit = (server as any)._registeredTools['reactive_emit_signal'];
+
+    const response = await emit.handler({ signal: 'CHECK_REASON', skill: 'guard-skill', payload: {} }, {} as any);
+    const parsed = JSON.parse(response.content[0].text);
+
+    expect(parsed.transitioned).toBe(false);
+    expect(parsed.refusalReason).toBe('criterion C2 has no evidence_method');
+  });
+
   it('returns guard_message through MCP reactive_emit_signal', async () => {
     const server = createReactiveMcpServer({ workspaceDir, defaultSkill: 'guard-skill' });
     const emit = (server as any)._registeredTools['reactive_emit_signal'];
