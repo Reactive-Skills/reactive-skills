@@ -214,7 +214,7 @@ describe('approveCommand (#22 part 2)', () => {
     process.chdir(elsewhere);
     try {
       await expect(approveCommand([skillDir, '--job', 'review-run'], terminal(['ABCD']), { generateCode: () => 'ABCD' }))
-        .rejects.toThrow(`No run 'review-run' of approval-skill in ${elsewhere}`);
+        .rejects.toThrow(`No run of approval-skill named 'review-run' in ${elsewhere}`);
       expect(fs.existsSync(path.join(elsewhere, '.reactive'))).toBe(false);
     } finally {
       process.chdir(tmpDir);
@@ -300,18 +300,56 @@ describe('approveCommand (#22 part 2)', () => {
     });
   });
 
-  it('shows evidence size and hash and strips characters that could fake terminal lines (review m6)', async () => {
-    const rlo = String.fromCharCode(0x202e);
-    const csi = String.fromCharCode(0x9b);
-    await withEngine((engine) => engine.handleSignal('SUBMIT', { note: `looks fine${rlo}${csi}`, filler: 'x'.repeat(700) }));
+  it('shows the start and end of long evidence with size and hash, and strips characters that could fake or hide text (review m6, N7)', async () => {
+    const hidden = [0x202e, 0x9b, 0x200b, 0xfeff, 0x2028].map((code) => String.fromCharCode(code));
+    const tag = String.fromCodePoint(0xe0041);
+    await withEngine((engine) => engine.handleSignal('SUBMIT', { note: `looks fine${hidden.join('')}${tag}`, filler: 'x'.repeat(900), tail: 'IMPORTANT TAIL' }));
     const io = terminal(['ABCD']);
 
     await approveCommand(['approval-skill', '--job', 'review-run'], io, { generateCode: () => 'ABCD' });
 
     const written = io.written();
-    expect(written).toMatch(/\(truncated\) \[\d+ bytes, sha256 [0-9a-f]{16}\]/);
-    expect(written).not.toContain(rlo);
-    expect(written).not.toContain(csi);
+    expect(written).toMatch(/characters hidden; rerun with --full to see all\) \.\.\. .*IMPORTANT TAIL.* \[\d+ bytes, sha256 [0-9a-f]{16}\]/);
+    for (const char of [...hidden, tag]) expect(written).not.toContain(char);
+  });
+
+  it('does not count blank lines as wrong answers (review N11)', async () => {
+    await refuseSubmit();
+
+    const output = await approveCommand(['approval-skill', '--job', 'review-run'], terminal(['', '', '', '', '', '', 'ABCD']), { generateCode: () => 'ABCD' });
+
+    expect(output).toContain('current_state: DONE');
+  });
+
+  it('flags a cancel at a later gate after an earlier decision was applied (review N12)', async () => {
+    await withEngine((engine) => engine.handleSignal('SUBMIT_ALT', { summary: 'alt' }));
+    await refuseSubmit();
+
+    const output = await approveCommand(['approval-skill', '--job', 'review-run'], terminal(['reject']), { generateCode: () => 'ABCD' });
+
+    expect(output).toContain('REVIEW / SUBMIT_ALT: reject, refused');
+    expect(output).toContain('cancelled: "true"');
+  });
+
+  it('prints the whole evidence with --full', async () => {
+    await withEngine((engine) => engine.handleSignal('SUBMIT', { filler: 'x'.repeat(900), middle: 'MIDDLE MARKER', more: 'y'.repeat(900) }));
+    const io = terminal(['ABCD']);
+
+    await approveCommand(['approval-skill', '--job', 'review-run', '--full'], io, { generateCode: () => 'ABCD' });
+
+    expect(io.written()).toContain('MIDDLE MARKER');
+    expect(io.written()).not.toContain('characters hidden');
+  });
+
+  it('lists each decision with its outcome and reports where the grant is stored (review N5, N6)', async () => {
+    await refuseSubmit();
+
+    const decided = await approveCommand(['approval-skill', '--job', 'review-run'], terminal(['reject']), { generateCode: () => 'ABCD' });
+    const granted = await approveCommand(['approval-skill', '--allow-self-reported'], terminal(['ABCD']), { generateCode: () => 'ABCD' });
+
+    expect(decided).toContain('REVIEW / SUBMIT: reject, moved to REPAIR');
+    expect(decided).not.toContain('[object Object]');
+    expect(plain(granted)).toContain(`grant: ${path.join(tmpDir, 'home', '.reactive-skills', 'grants')}`);
   });
 
   it('generates codes from the unambiguous alphabet', () => {

@@ -3,13 +3,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import yaml from 'js-yaml';
-import { FSMEngine, JobManager, grantSelfReport, revokeSelfReport, type PendingApproval } from '@reactive-skills/runtime';
+import { FSMEngine, JobManager, grantSelfReport, revokeSelfReport, selfReportGrantPath, type PendingApproval } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderOutput, renderDetail } from '../toon.js';
 import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.js';
 
 const USAGE = [
-  'Usage: reactive-skills-axi approve <skill> [--job <alias-or-run-id>]',
+  'Usage: reactive-skills-axi approve <skill> [--job <alias-or-run-id>] [--full]',
   'Usage: reactive-skills-axi approve <skill> --allow-self-reported',
   'Usage: reactive-skills-axi approve <skill> --revoke-self-reported',
 ];
@@ -64,18 +64,27 @@ function lineReader(io: ApproveIO) {
   };
 }
 
-/** Control and bidirectional formatting characters could fake or hide lines in the terminal. */
-const UNSAFE_TEXT = /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+/**
+ * Control, bidirectional, invisible, line-separator, and tag characters could fake or hide text in
+ * the terminal, so they print as spaces.
+ */
+const UNSAFE_TEXT = /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff\u{e0000}-\u{e007f}]/gu;
 
 function printable(text: string): string {
   return text.replace(UNSAFE_TEXT, ' ');
 }
 
-/** The person approves the whole payload, so show its size and a hash even when the text is cut. */
-function describeEvidence(payload: Record<string, any>): string {
+/**
+ * The person approves the whole payload, so long evidence shows its start and its end with the size
+ * and a hash, and `--full` prints all of it. Cuts fall on whole characters.
+ */
+function describeEvidence(payload: Record<string, any>, full: boolean): string {
   const text = JSON.stringify(payload ?? {});
   const digest = crypto.createHash('sha256').update(text).digest('hex').slice(0, 16);
-  const shown = text.length > 600 ? `${text.slice(0, 600)}... (truncated)` : text;
+  const chars = Array.from(text);
+  const shown = full || chars.length <= 800
+    ? text
+    : `${chars.slice(0, 600).join('')} ... (${chars.length - 800} characters hidden; rerun with --full to see all) ... ${chars.slice(-200).join('')}`;
   return `${printable(shown)} [${Buffer.byteLength(text)} bytes, sha256 ${digest}]`;
 }
 
@@ -84,16 +93,20 @@ const CANCELLED = 'Cancelled without a decision: input ended or five answers did
 const MAX_ATTEMPTS = 5;
 
 /**
- * The code approves and `reject` rejects. Anything else asks again, up to five tries, so a typo or
- * a stray Enter never reroutes the run. Returns null when input ends or the tries run out.
+ * The code approves and `reject` rejects. A wrong answer asks again, up to five times, so a typo
+ * never reroutes the run; a blank line, such as an Enter pressed while the command started, does not
+ * count. Returns null when input ends or the tries run out.
  */
 async function askDecision(reader: LineReader, io: ApproveIO, expected: string): Promise<'approve' | 'reject' | null> {
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+  let wrong = 0;
+  while (wrong < MAX_ATTEMPTS) {
     const answer = await reader.ask(`Type ${expected} to approve or reject to reject: `);
     if (answer === null) return null;
     const typed = answer.trim().toUpperCase();
+    if (typed === '') continue;
     if (typed === expected) return 'approve';
     if (typed === 'REJECT') return 'reject';
+    wrong += 1;
     io.output.write('That did not match. ');
   }
   return null;
@@ -116,7 +129,9 @@ export async function approveCommand(
   }
   const allowSelfReported = filteredArgs.includes('--allow-self-reported');
   const revokeSelfReported = filteredArgs.includes('--revoke-self-reported');
-  const unknown = filteredArgs.filter((a) => a.startsWith('-') && a !== '--allow-self-reported' && a !== '--revoke-self-reported');
+  const full = filteredArgs.includes('--full');
+  const flags = ['--allow-self-reported', '--revoke-self-reported', '--full'];
+  const unknown = filteredArgs.filter((a) => a.startsWith('-') && !flags.includes(a));
   const skillName = filteredArgs.find((a) => !a.startsWith('-'));
   const code = options.generateCode ?? (() => generateApprovalCode());
 
@@ -131,9 +146,10 @@ export async function approveCommand(
 
   if (revokeSelfReported) {
     const removed = revokeSelfReport(workspaceDir);
-    return renderOutput([renderDetail('approve', { skill_id: skillName, workspace: workspaceDir, self_reported: 'disabled', changed: removed }, [
+    return renderOutput([renderDetail('approve', { skill_id: skillName, workspace: workspaceDir, grant: selfReportGrantPath(workspaceDir), self_reported: 'disabled', changed: removed }, [
       { type: 'field', key: 'skill_id' },
       { type: 'field', key: 'workspace' },
+      { type: 'field', key: 'grant' },
       { type: 'field', key: 'self_reported' },
       { type: 'field', key: 'changed' },
     ])]);
@@ -143,7 +159,11 @@ export async function approveCommand(
     throw new AxiError(
       'approve needs an interactive terminal: run it yourself in a terminal window, not through an agent, a pipe, or a script',
       'VALIDATION_ERROR',
-      ['Open a terminal and run the same command there', ...USAGE]
+      [
+        'Open a terminal and run the same command there',
+        'In Git Bash (mintty), prefix the command with winpty, or use PowerShell or Windows Terminal',
+        ...USAGE,
+      ]
     );
   }
 
@@ -151,7 +171,7 @@ export async function approveCommand(
   try {
     return allowSelfReported
       ? await grantInteractively(reader, io, skillName, workspaceDir, code)
-      : await decidePending(reader, io, skillName, skillPath, workspaceDir, jobId, code);
+      : await decidePending(reader, io, skillName, skillPath, workspaceDir, jobId, code, full);
   } finally {
     reader.close();
   }
@@ -163,16 +183,18 @@ async function grantInteractively(reader: LineReader, io: ApproveIO, skillName: 
   io.output.write(
     "Self-reported decisions let the agent's own report decide natural-language gates when no model is configured.\n" +
       'Every such decision is flagged. This applies to the whole workspace until you revoke it.\n' +
-      `Workspace: ${workspaceDir}\n`
+      `Workspace: ${workspaceDir}\n` +
+      `The grant is stored in your home folder at ${selfReportGrantPath(workspaceDir)}; the agent's runtime must use the same home folder.\n`
   );
   const expected = code();
   const answer = await reader.ask(`Type ${expected} to enable self-reported decisions, anything else to cancel: `);
   if (answer === null) throw new AxiError(CANCELLED, 'VALIDATION_ERROR');
   const granted = answer.trim().toUpperCase() === expected;
   if (granted) grantSelfReport(workspaceDir, 'interactive_terminal');
-  return renderOutput([renderDetail('approve', { skill_id: skillName, workspace: workspaceDir, self_reported: granted ? 'enabled' : 'unchanged' }, [
+  return renderOutput([renderDetail('approve', { skill_id: skillName, workspace: workspaceDir, grant: selfReportGrantPath(workspaceDir), self_reported: granted ? 'enabled' : 'unchanged' }, [
     { type: 'field', key: 'skill_id' },
     { type: 'field', key: 'workspace' },
+    { type: 'field', key: 'grant' },
     { type: 'field', key: 'self_reported' },
   ])]);
 }
@@ -184,7 +206,8 @@ async function decidePending(
   skillPath: string,
   workspaceDir: string,
   jobId: string | undefined,
-  code: () => string
+  code: () => string,
+  full: boolean
 ): Promise<string> {
   // Opening an engine on a missing run would create one, so a wrong folder fails loudly instead.
   const manifest = yaml.load(fs.readFileSync(path.join(skillPath, 'skill.yaml'), 'utf8')) as { name?: string } | undefined;
@@ -192,14 +215,15 @@ async function decidePending(
   const jobs = new JobManager(workspaceDir);
   const runRef = jobId || jobs.getActiveJobId(skillId);
   if (!jobs.getJob(skillId, runRef)) {
-    throw new AxiError(`No run '${runRef}' of ${skillId} in ${workspaceDir}`, 'NOT_FOUND', [
+    throw new AxiError(`No run of ${skillId}${jobId ? ` named '${jobId}'` : ''} in ${workspaceDir}`, 'NOT_FOUND', [
       'Run approve from the folder named in the agent message',
       `Run \`reactive-skills-axi jobs ${skillName}\` there to list runs`,
     ]);
   }
   const engine = new FSMEngine({ skillDir: skillPath, workspaceDir, jobId, eventContext: { run_id: jobId } });
   try {
-    const decisions: Array<Record<string, unknown>> = [];
+    const decisions: string[] = [];
+    let cancelled = false;
     // Re-list after each decision: a transition can leave other requests outside the active state.
     const seen = new Set<string>();
     const next = (): PendingApproval | undefined => engine.getPendingApprovals().find((r) => !seen.has(r.id));
@@ -209,28 +233,33 @@ async function decidePending(
         printable(`Pending gate: ${request.state} / ${request.signal} -> ${request.target}`) + '\n' +
           printable(`Criterion: ${request.criterion}`) + '\n' +
           (request.reason ? printable(`Why it needs you: ${request.reason}`) + '\n' : '') +
-          `Agent evidence: ${describeEvidence(request.payload)}\n`
+          `Agent evidence: ${describeEvidence(request.payload, full)}\n`
       );
       const decision = await askDecision(reader, io, code());
       if (decision === null) {
         if (decisions.length === 0) throw new AxiError(CANCELLED, 'VALIDATION_ERROR');
+        cancelled = true;
         break;
       }
       let result;
       try {
         result = await engine.decideApproval(request.id, decision, 'interactive_terminal');
       } catch (err) {
-        if ((err as { code?: string }).code !== 'RUN_VERSION_CONFLICT') throw err;
+        const stale = (err as { code?: string }).code === 'RUN_VERSION_CONFLICT' || /^No pending approval/.test((err as Error).message);
+        if (!stale) throw err;
         throw new AxiError('The run changed while you were deciding, so this decision was not applied. Run approve again to see the current gates.', 'VALIDATION_ERROR');
       }
-      decisions.push({ signal: request.signal, decision, transitioned: result.transitioned, current_state: result.newState });
+      const outcome = result.transitioned ? `moved to ${result.newState}` : `refused: ${result.refusalReason ?? 'no transition'}`;
+      decisions.push(printable(`${request.state} / ${request.signal}: ${decision}, ${outcome}`));
     }
-    return renderOutput([renderDetail('approve', { skill_id: skillName, workspace: workspaceDir, decided: decisions.length, current_state: engine.getCurrentState(), decisions }, [
+    return renderOutput([renderDetail('approve', { skill_id: skillName, workspace: workspaceDir, decided: decisions.length, current_state: engine.getCurrentState(), decisions, cancelled }, [
       { type: 'field', key: 'skill_id' },
       { type: 'field', key: 'workspace' },
       { type: 'field', key: 'decided' },
       { type: 'field', key: 'current_state' },
       ...(decisions.length > 0 ? [{ type: 'field' as const, key: 'decisions' }] : []),
+      // Input ended at a later gate after earlier decisions were applied.
+      ...(cancelled ? [{ type: 'field' as const, key: 'cancelled' }] : []),
     ])]);
   } finally {
     engine.close();

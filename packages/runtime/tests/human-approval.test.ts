@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { JudgmentEngine } from '../src/core/judgment-engine.js';
 import { FSMEngine } from '../src/core/fsm-engine.js';
-import { grantSelfReport, hasSelfReportGrant, revokeSelfReport } from '../src/core/approval-grants.js';
+import { grantSelfReport, hasSelfReportGrant, revokeSelfReport, selfReportGrantPath } from '../src/core/approval-grants.js';
 import { STATIC_RUNTIME_CAPABILITIES } from '../src/core/runtime-capabilities.js';
 
 // Spec 0019 and ADR 0012: gates no adapter can judge wait for a person, and self-report needs a grant.
@@ -259,22 +259,27 @@ describe('Human approval for unjudgeable gates (#22 part 2)', () => {
       expect(result.transitioned).toBe(false);
     });
 
-    it('ignores a hand-written, copied, or edited grant (DoD H26)', async () => {
-      const grantFile = path.join(workspaceDir, '.reactive', 'self-report-grant.json');
-      fs.mkdirSync(path.dirname(grantFile), { recursive: true });
-      fs.writeFileSync(grantFile, JSON.stringify({ grantedAt: new Date().toISOString(), channel: 'interactive_terminal' }));
+    it('honors only the grant approve stored in the home folder, so revokes stay revoked (DoD H26)', async () => {
+      // A grant-shaped file inside the workspace never counts.
+      const workspaceFile = path.join(workspaceDir, '.reactive', 'self-report-grant.json');
+      fs.mkdirSync(path.dirname(workspaceFile), { recursive: true });
+      fs.writeFileSync(workspaceFile, JSON.stringify({ workspace: workspaceDir, grantedAt: new Date().toISOString(), channel: 'interactive_terminal' }));
       expect(hasSelfReportGrant(workspaceDir)).toBe(false);
 
+      // A grant for another workspace does not apply here, even when its record is copied over this one.
       const elsewhere = fs.mkdtempSync(path.join(workspaceDir, 'elsewhere-'));
       grantSelfReport(elsewhere, 'interactive_terminal');
-      fs.copyFileSync(path.join(elsewhere, '.reactive', 'self-report-grant.json'), grantFile);
       expect(hasSelfReportGrant(elsewhere)).toBe(true);
+      fs.mkdirSync(path.dirname(selfReportGrantPath(workspaceDir)), { recursive: true });
+      fs.copyFileSync(selfReportGrantPath(elsewhere), selfReportGrantPath(workspaceDir));
       expect(hasSelfReportGrant(workspaceDir)).toBe(false);
 
+      // Restoring the old grant contents into the workspace after a revoke changes nothing.
       grantSelfReport(workspaceDir, 'interactive_terminal');
       expect(hasSelfReportGrant(workspaceDir)).toBe(true);
-      const edited = { ...JSON.parse(fs.readFileSync(grantFile, 'utf8')), channel: 'agent' };
-      fs.writeFileSync(grantFile, JSON.stringify(edited));
+      const oldGrant = fs.readFileSync(selfReportGrantPath(workspaceDir), 'utf8');
+      expect(revokeSelfReport(workspaceDir)).toBe(true);
+      fs.writeFileSync(workspaceFile, oldGrant);
       expect(hasSelfReportGrant(workspaceDir)).toBe(false);
 
       const refused = await newEngine().handleSignal('SUBMIT', { exit_code: 0 });
@@ -300,7 +305,7 @@ describe('Human approval for unjudgeable gates (#22 part 2)', () => {
       expect(revokeSelfReport(workspaceDir)).toBe(true);
 
       // A grant path that cannot be removed must not read as a successful revoke.
-      fs.mkdirSync(path.join(workspaceDir, '.reactive', 'self-report-grant.json', 'locked'), { recursive: true });
+      fs.mkdirSync(path.join(selfReportGrantPath(workspaceDir), 'locked'), { recursive: true });
       expect(() => revokeSelfReport(workspaceDir)).toThrow();
     });
   });

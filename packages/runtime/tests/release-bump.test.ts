@@ -28,13 +28,14 @@ afterEach(() => {
  */
 function run(command: string, args: string[], options: { cwd: string; env?: NodeJS.ProcessEnv }) {
   return new Promise<{ status: number | null; stdout: string; stderr: string }>((resolve, reject) => {
-    const child = spawn(command, args, { cwd: options.cwd, env: options.env ?? process.env, timeout: 30_000 });
+    const child = spawn(command, args, { cwd: options.cwd, env: options.env ?? process.env, timeout: 30_000, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
     child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
     child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
     child.on('error', reject);
-    child.on('close', (status) => resolve({ status, stdout, stderr }));
+    // A timeout kill has no exit status, and treating it as a failure would let negative assertions pass.
+    child.on('close', (status, signal) => (signal ? reject(new Error(`${command} was killed by ${signal}`)) : resolve({ status, stdout, stderr })));
   });
 }
 

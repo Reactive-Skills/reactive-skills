@@ -29,7 +29,7 @@ Decision record: `docs/adr/0012-human-approval-for-unjudgeable-gates.md`, buildi
 
 ## 4. Self-report grant
 
-14. `approve --allow-self-reported` requires the same terminal and code check and writes `.reactive/self-report-grant.json` with `grantedAt`, `channel`, and an HMAC signature over the workspace path, time, and channel, keyed by `~/.reactive-skills/approval-key`; the runtime ignores a grant whose signature does not verify. `approve --revoke-self-reported` deletes it without a code (signature amended 2026-10-04 after review).
+14. `approve --allow-self-reported` requires the same terminal and code check and writes the grant, with `workspace`, `grantedAt`, and `channel`, to `~/.reactive-skills/grants/<hash of the workspace path>.json`; nothing in the workspace counts as a grant. `approve --revoke-self-reported` deletes it without a code (home-folder store amended 2026-10-04 after review).
 15. With a grant and no configured model, natural-language criteria are decided from the payload, labeled self-reported, and the emit output carries a warning line.
 16. A grant never applies when a configured model is in an outage.
 16a. The first self-reported decision each grant allows in a run appends `SELF_REPORT_GRANT_USED` with the grant's `grantedAt` and `channel`.

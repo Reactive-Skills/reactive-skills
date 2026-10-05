@@ -23,6 +23,13 @@ states:
         judgment:
           type: predicate
           criterion: "Does the delivered output satisfy the approved assertion?"
+      SUBMIT_MODEL:
+        target: DONE
+        judgment:
+          type: predicate
+          criterion: "Does the delivered output satisfy the approved assertion?"
+          adapter_hint: jev
+          min_probability: 0.8
   DONE:
     description: "Done"
 `;
@@ -88,5 +95,40 @@ describe('Writes from another process', () => {
     const again = await call('reactive_emit_signal', { signal: 'SUBMIT', skill: 'approval-skill', job_id: 'review-run', payload: {} });
     expect(again.previousState).toBe('DONE');
     expect(approver.getEventStore().query({ type: 'APPROVAL_REQUESTED' })).toHaveLength(1);
+  });
+
+  it('keeps an in-flight MCP call usable when another call replaces its stale engine (review N2)', async () => {
+    let release!: () => void;
+    let started!: () => void;
+    const evaluating = new Promise<void>((resolve) => (started = resolve));
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    JudgmentEngine.registerAdapter({
+      id: 'jev', supports: () => true, isConfigured: () => true, isAvailable: async () => true,
+      evaluate: async () => {
+        started();
+        await gate;
+        return { verdict: true, confidence: 0.9, probability: 0.95, passed: true, adapterName: 'jev', latencyMs: 1 };
+      },
+    });
+    const server = createReactiveMcpServer({ workspaceDir, defaultSkill: 'approval-skill' });
+    const tools = (server as any)._registeredTools;
+    const call = async (tool: string, args: Record<string, unknown>) =>
+      JSON.parse((await tools[tool].handler(args, {} as any)).content[0].text);
+
+    await call('reactive_state', { skill: 'approval-skill', job_id: 'busy-run' });
+    const inFlight = call('reactive_emit_signal', { signal: 'SUBMIT_MODEL', skill: 'approval-skill', job_id: 'busy-run', payload: {} });
+    await evaluating;
+
+    const other = new FSMEngine({ skillDir: path.join(workspaceDir, 'skills', 'approval-skill'), workspaceDir, jobId: 'busy-run' });
+    closers.push(other);
+    // A direct append stands in for another process; in one process, signals on a run are serialized.
+    other.getEventStore().append('NOTE', { from: 'another process' });
+    await call('reactive_state', { skill: 'approval-skill', job_id: 'busy-run' });
+    release();
+
+    const result = await inFlight;
+    expect(JSON.stringify(result)).not.toMatch(/database is not open/i);
+    expect(result.error).toMatch(/changed in another process|RUN_VERSION_CONFLICT/);
+    expect(other.getEventStore().query({ type: 'STATE_TRANSITION' })).toHaveLength(0);
   });
 });

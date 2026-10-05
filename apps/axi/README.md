@@ -284,13 +284,14 @@ npx -y @reactive-skills/axi approve my-skill --revoke-self-reported
 ```
 
 For each waiting gate, `approve` shows the state, signal, criterion, and the agent's payload with its size and hash, then prints a four-character code.
+Long payloads show their start and end; add `--full` to print all of it.
 Typing the code approves the gate, and typing `reject` rejects it.
 Any other answer asks again, up to five times, and ending input with Ctrl+D cancels without deciding.
 An approval re-sends the original signal, and the transition reports `judgment_basis: human`.
 A rejection routes to `fallback_target` when one is declared and otherwise leaves the run in its state.
 
-`--allow-self-reported` asks for a code the same way and writes `.reactive/self-report-grant.json`, signed with a key kept in `~/.reactive-skills/approval-key`.
-The runtime ignores a grant that `approve` did not sign for that workspace.
+`--allow-self-reported` asks for a code the same way and stores the grant in your home folder under `~/.reactive-skills/grants/`, keyed by the workspace path, and prints where.
+Nothing inside the workspace counts as a grant, and the agent's runtime must use the same home folder to see it.
 `--revoke-self-reported` deletes it without a code.
 
 ### sync

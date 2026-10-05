@@ -52,14 +52,16 @@ MCP has no tool that approves a gate.
 
 Within one OS account this channel stops an agent from approving by accident.
 It does not stop an agent that drives a terminal session, for example through an MCP server that provides one, or that calls the runtime library directly.
-An agent that reads the signing key can still forge a grant.
+An agent that writes into your home folder can still create a grant.
 
 ### Self-Reported Decisions
 
 Self-reported decisions let the signal payload decide natural-language criteria when no model is configured.
 They are off by default, and only the user can turn them on, by running `reactive-skills-axi approve <skill> --allow-self-reported` in an interactive terminal and typing back the code.
-The grant applies to the whole workspace and is stored in `.reactive/self-report-grant.json`, signed with a key in `~/.reactive-skills/approval-key` and bound to the workspace path.
-The runtime ignores a hand-written, edited, or copied grant, and records the first decision each grant allows in a run as `SELF_REPORT_GRANT_USED`.
+The grant applies to the whole workspace and is stored in your home folder at `~/.reactive-skills/grants/`, keyed by the workspace path, never in the workspace.
+A file copied, committed, or restored into a workspace does not count, so a revoke stays revoked.
+The runtime records the first decision each grant allows in a run as `SELF_REPORT_GRANT_USED`.
+A grant applies only to processes that use the same home folder, so a runtime in a container or under another account does not see it.
 `reactive-skills-axi approve <skill> --revoke-self-reported` removes it.
 
 Every self-reported transition reports `judgment_basis: self_reported` with a warning in the emit output.

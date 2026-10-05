@@ -23,7 +23,7 @@ The agent-facing reason tells the agent to stop and ask the user to run `reactiv
 
 `reactive-skills-axi approve` refuses to run unless both standard input and standard output are an interactive terminal.
 It shows each pending gate with its criterion and the agent's evidence, prints a one-time code drawn from a cryptographic random source, and asks the user to type it back.
-A matching code approves the gate and anything else rejects it.
+A matching code approves the gate and typing `reject` rejects it; any other answer asks again, up to five times, and end of input cancels without deciding (amended 2026-10-04 after review).
 The command records an `APPROVAL_DECIDED` event with the decision and the channel `interactive_terminal`, then re-sends the original signal with that event as its cause.
 
 When the engine evaluates a judgment for a signal caused by an `APPROVAL_DECIDED` event, it validates that the decision names a pending request for the same state and signal and that no earlier signal consumed it.
@@ -33,7 +33,7 @@ MCP exposes no tool that approves a pending gate, and `reactive_respond_human` k
 
 Self-reported decisions require a grant.
 `reactive-skills-axi approve --allow-self-reported` uses the same terminal and code check and writes a workspace grant with its time and channel; `--revoke-self-reported` removes it without a code.
-The grant is signed with a key in the user's home folder and bound to the workspace path, so a hand-written, edited, or copied grant does not count, and the first decision each grant allows in a run is recorded as `SELF_REPORT_GRANT_USED` (amended 2026-10-04 after review).
+The grant lives in the user's home folder at `~/.reactive-skills/grants/`, keyed by the workspace path, and never in the workspace, so a file copied, committed, or restored into a workspace does not count and a revoke stays revoked. The first decision each grant allows in a run is recorded as `SELF_REPORT_GRANT_USED` (amended 2026-10-04 after review).
 With a grant and no model configured, natural-language criteria are decided from the payload as in ADR 0011, and every such emit carries a warning.
 The grant never applies during an outage of a configured model.
 
@@ -50,7 +50,9 @@ Every judgment result records who decided it: `model`, `expression`, `human`, or
 
 - Users without a model now approve semantic gates by hand in a terminal unless they grant self-report.
 - Agents in harnesses whose shell tools are not interactive cannot approve gates themselves; the user runs `approve` in a separate terminal window.
-- An agent that emulates a terminal, reads the signing key to forge a grant, or drives the runtime library directly can still bypass the channel; the ledger records the channel of every decision, and self-reported emits stay flagged.
+- An agent that emulates a terminal, writes a grant into the user's home folder, or drives the runtime library directly can still bypass the channel; the ledger records the channel of every decision, and self-reported emits stay flagged.
 - Some agent setups include tools that drive an interactive terminal session, such as an MCP server with process interaction tools. With those tools an agent can run `approve` and type the code without special effort, so the channel protects against accidental approval rather than a determined agent in such setups.
 - Skills and tests that relied on self-reported passes without a model need a grant or a model.
+- A grant applies only to processes that use the same home folder as the `approve` run that wrote it, so a runtime under another account, a container, or WSL does not see it.
+- Unattended runs, such as CI, cloud sessions, and scheduled loops, have no terminal for a person, so a gate no model can judge stays refused there until someone runs `approve` on that machine; those runs need a working model.
 - The runtime advertises the capability `judgment.human_approval`.

@@ -120,7 +120,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       if (fs.existsSync(cached.getSkillDir()) && !cached.hasExternalChanges()) {
         return cached;
       }
-      cached.close();
+      // Not closed: an in-flight call may still be using it, and it refuses stale writes itself.
+      // ponytail: a replaced engine's SQLite handle stays open until it is collected; refcount if churn grows.
       engines.delete(cacheKey);
     }
 
