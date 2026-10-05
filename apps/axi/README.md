@@ -29,6 +29,7 @@ npm install -g @reactive-skills/axi
 # Zero-install via npx:
 npx -y @reactive-skills/axi                          # dashboard
 npx -y @reactive-skills/axi --version                # print the installed package version
+npx -y @reactive-skills/axi <command> --help         # print a command's usage without running it (-h also works)
 npx -y @reactive-skills/axi capabilities --json      # report runtime capabilities
 npx -y @reactive-skills/axi preflight <skill> --json # check skill runtime requirements
 npx -y @reactive-skills/axi invoke <skill>           # start fresh run (auto-generates unique job ID)
