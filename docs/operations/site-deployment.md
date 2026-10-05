@@ -20,7 +20,7 @@ The notifier sends a `source-updated` repository dispatch event to the root Page
 
 The event includes the source commit so the root workflow builds the exact revision that changed the site.
 
-The root Pages workflow checks out that source commit, builds the site with root-site mode enabled, uploads `apps/site/out`, and deploys it to [`https://reactive-skills.github.io/`](https://reactive-skills.github.io/).
+The root Pages workflow checks out that source commit, builds the site with root-site mode enabled, uploads `apps/site/out`, and deploys it to the root Pages site, served at [`https://reactive-skills.com/`](https://reactive-skills.com/).
 
 ```mermaid
 flowchart LR
@@ -57,7 +57,7 @@ The source repository still contains the legacy [project Pages workflow](https:/
 
 ## CMS maintenance
 
-Production CMS access is available at [`https://reactive-skills.github.io/admin/`](https://reactive-skills.github.io/admin/).
+Production CMS access is available at [`https://reactive-skills.com/admin/`](https://reactive-skills.com/admin/).
 
 Decap CMS is configured to write to the `main` branch of `Reactive-Skills/reactive-skills`.
 
@@ -73,9 +73,11 @@ The local CMS backend is enabled by `apps/site/public/admin/config.yml`.
 
 The site supports both root-site mode and the legacy project base path.
 
-The current production URL is [`https://reactive-skills.github.io/`](https://reactive-skills.github.io/).
+The current production URL is [`https://reactive-skills.com/`](https://reactive-skills.com/).
 
-The legacy project URL remains available at [`https://reactive-skills.github.io/reactive-skills/`](https://reactive-skills.github.io/reactive-skills/).
+The legacy project URL remains available at [`https://reactive-skills.com/reactive-skills/`](https://reactive-skills.com/reactive-skills/).
+
+The old `https://reactive-skills.github.io/` and `https://reactive-skills.github.io/reactive-skills/` URLs redirect to these addresses.
 
 Keep the legacy workflow and base-path fallback until the root deployment has completed an intentional deprecation period.
 
@@ -87,7 +89,7 @@ Use the legacy project URL as a comparison point while diagnosing path, asset, o
 
 After a deployment, verify the home page, `/admin/`, `/sitemap.xml`, `/robots.txt`, and one blog page.
 
-Confirm that navigation, canonical URLs, RSS links, and sitemap entries use the root URL.
+Confirm that navigation, canonical URLs, RSS links, and sitemap entries use `https://reactive-skills.com/`.
 
 Confirm that the CMS still targets `Reactive-Skills/reactive-skills`.
 
