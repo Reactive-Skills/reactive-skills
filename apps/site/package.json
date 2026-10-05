@@ -1,6 +1,6 @@
 {
   "name": "@reactive-skills/site",
-  "version": "0.17.3",
+  "version": "0.18.0",
   "private": true,
   "scripts": {
     "build": "next build",

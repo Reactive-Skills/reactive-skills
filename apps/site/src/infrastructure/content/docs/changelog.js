@@ -8,6 +8,40 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-18-0",
+    "heading": "v0.18.0 (2026-10-05)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "Merge pull request #69 from Reactive-Skills/fix/r3a-view-retired-close",
+          "fix(runtime): close engines view retired once in-flight signals finish (#22)",
+          "Merge pull request #68 from Reactive-Skills/fix/r3a-view-reopen",
+          "fix(runtime): keep view serving when a reopen fails and close replaced engines (#22)",
+          "fix(runtime): remove the temporary grant file when writing a grant fails (#22)",
+          "fix(runtime): view reopens its engine when another process moves the run (#22)",
+          "Merge pull request #67 from Reactive-Skills/feat/r3a-human-approval",
+          "fix(axi): strip all format and default-ignorable characters from approve output (#22)",
+          "fix: remaining third review findings (#22)",
+          "fix: third review findings on run-change detection (#22)",
+          "fix: second review findings; keep self-report grants in the home folder (#22)",
+          "fix: refuse decisions and signals on a run another process moved (#22)",
+          "fix(axi): accurate cancel message when approve ends without a decision (#22)",
+          "feat: signed self-report grants and re-prompt on a wrong code (#22)",
+          "test: run release-bump processes asynchronously",
+          "fix: harden approval decisions from review (#22, #47)",
+          "fix: approval flow review findings (#22)",
+          "fix(axi): approve exits non-zero when it refuses to run (#22)",
+          "docs: approval, self-report grant, and guard refusal reasons",
+          "feat(runtime): return a reason when a guard refuses a signal (#32)",
+          "feat(runtime,axi): human approval for gates no model can judge (#22)",
+          "fix(runtime): report Jev authoring errors as misconfiguration, not outages (#47)",
+          "docs: scope, spec, and ADR 0012 for v0.18.0 human approval"
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-17-3",
     "heading": "v0.17.3 (2026-10-04)",
     "blocks": [
