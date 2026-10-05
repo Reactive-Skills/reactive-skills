@@ -52,7 +52,7 @@ export async function main() {
     return;
   }
 
-  if (!command || command === '--help' || command === '-h' || command === 'help') {
+  if (!command || command === '--help' || command === 'help') {
     const { homeCommand } = await import('../commands/home.js');
     const output = await homeCommand();
     process.stdout.write(output + '\n');
