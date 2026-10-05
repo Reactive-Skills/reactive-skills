@@ -360,6 +360,19 @@ export class FSMEngine {
     return this.skillDir;
   }
 
+  /**
+   * The skill argument `reactive-skills-axi` resolves to this skill when run from the workspace:
+   * the directory name for a skill in `<workspace>/skills/`, otherwise the absolute skill path.
+   * The manifest name can differ from the directory name, so it may not resolve.
+   */
+  public cliSkillReference(): string {
+    const workspaceSkill = path.relative(path.resolve(this.workspaceDir, 'skills'), this.skillDir);
+    const reference = workspaceSkill && !workspaceSkill.startsWith('..') && !path.isAbsolute(workspaceSkill) && !workspaceSkill.includes(path.sep)
+      ? workspaceSkill
+      : this.skillDir;
+    return /\s/.test(reference) ? `"${reference}"` : reference;
+  }
+
   public getEventStore(): EventStore {
     return this.eventStore;
   }
@@ -414,7 +427,7 @@ export class FSMEngine {
       throw new Error(
         `BYPASS_DETECTED: Agent exceeded ${maxIdleTurns} idle turns without emitting a signal. ` +
         `The runtime has entered the BYPASS_DETECTED state. ` +
-        `To recover, run: reactive-skills-axi reset ${this.manifest.name} then re-invoke.`
+        `To recover, run: reactive-skills-axi reset ${this.cliSkillReference()} then re-invoke.`
       );
     }
   }
@@ -929,7 +942,7 @@ export class FSMEngine {
         if (transDef.judgment && guardResult.judgmentResult?.band === 'unevaluable') {
           this.recordApprovalRequest(testPath.join('.'), signalName, transDef.target, transDef.judgment, payload, event.id, guardResult.error);
           const job = this.getJobName() || this.getJobId() || 'default';
-          refusalReason = `${guardResult.error ?? 'Judgment could not be evaluated.'} This gate is waiting for a person: stop and ask the user to run \`reactive-skills-axi approve ${this.manifest.name} --job ${job}\` in their own terminal, from ${this.workspaceDir}.`;
+          refusalReason = `${guardResult.error ?? 'Judgment could not be evaluated.'} This gate is waiting for a person: stop and ask the user to run \`reactive-skills-axi approve ${this.cliSkillReference()} --job ${job}\` in their own terminal, from ${this.workspaceDir}.`;
         }
 
         if (!guardResult.passed && guardResult.fallbackTarget) {

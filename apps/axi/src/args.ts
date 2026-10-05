@@ -40,8 +40,27 @@ export function extractJobFlag(args: string[]): { jobId?: string; parentJobId?: 
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs';
+import yaml from 'js-yaml';
+import { AxiError } from './errors.js';
 
 const HOME_DIR = os.homedir();
+
+function readManifestName(skillPath: string): string | undefined {
+  try {
+    const manifest = yaml.load(fs.readFileSync(path.join(skillPath, 'skill.yaml'), 'utf8')) as { name?: unknown } | undefined;
+    return typeof manifest?.name === 'string' && manifest.name ? manifest.name : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The id the runtime keys a skill's run store by: the manifest name, as `FSMEngine` uses it,
+ * so a skill passed by path or by directory name reaches the same `.reactive/skills/<id>/` store.
+ */
+export function resolveSkillId(skillPath: string): string {
+  return readManifestName(skillPath) || path.basename(skillPath);
+}
 
 /**
  * Resolves a skill directory path from workspace or global agent registries.
@@ -63,6 +82,30 @@ export function resolveSkillPath(skillName: string): string | null {
     }
   }
   return null;
+}
+
+/**
+ * Finds the one `./skills/*` directory whose `skill.yaml` declares this manifest name.
+ */
+export function findSkillByManifestName(skillName: string): string | null {
+  const skillsDir = path.resolve(process.cwd(), 'skills');
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(skillsDir);
+  } catch {
+    return null;
+  }
+  const matches = entries
+    .map((entry) => path.join(skillsDir, entry))
+    .filter((candidate) => fs.existsSync(path.join(candidate, 'skill.yaml')) && readManifestName(candidate) === skillName);
+  if (matches.length > 1) {
+    throw new AxiError(
+      `Skill name '${skillName}' matches more than one skill directory`,
+      'VALIDATION_ERROR',
+      matches.map((match) => `Pass the skill path instead: ${match}`)
+    );
+  }
+  return matches[0] ?? null;
 }
 
 /**

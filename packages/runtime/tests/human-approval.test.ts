@@ -104,9 +104,23 @@ describe('Human approval for unjudgeable gates (#22 part 2)', () => {
       expect(pending).toHaveLength(1);
       expect(pending[0]).toMatchObject({ state: 'REVIEW', signal: 'SUBMIT', target: 'DONE', criterion: SEMANTIC });
       expect(result.refusalReason).toMatch(/no model is configured/i);
-      expect(result.refusalReason).toMatch(/ask the user to run `reactive-skills-axi approve approval-skill --job [^`]+` in their own terminal/);
+      // The skill sits at the workspace root, so only its path resolves; its manifest name does not (#65).
+      const skillArg = /\s/.test(workspaceDir) ? `"${workspaceDir}"` : workspaceDir;
+      expect(result.refusalReason).toContain(`ask the user to run \`reactive-skills-axi approve ${skillArg} --job `);
       // The user's terminal may start elsewhere, so the reason names the workspace to run it from.
       expect(result.refusalReason).toContain(`from ${workspaceDir}`);
+    });
+
+    it('names a workspace skill by its directory, which can differ from the manifest name (#65)', async () => {
+      const skillDir = path.join(workspaceDir, 'skills', '_approval_dir');
+      fs.mkdirSync(skillDir, { recursive: true });
+      fs.writeFileSync(path.join(skillDir, 'skill.yaml'), skillYaml);
+      const engine = new FSMEngine({ skillDir, workspaceDir });
+      engines.push(engine);
+
+      const result = await engine.handleSignal('SUBMIT', { exit_code: 0 });
+
+      expect(result.refusalReason).toMatch(/ask the user to run `reactive-skills-axi approve _approval_dir --job [^`]+` in their own terminal/);
     });
 
     it('records an approval request during a model outage', async () => {

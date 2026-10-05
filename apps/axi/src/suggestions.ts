@@ -94,7 +94,7 @@ export function getSuggestions(ctx: SuggestionContext): string[] {
           'Read the state prompt above and execute the instructed tasks',
           'Run `reactive-skills-axi emit ' + skillName + ' <signal>' + jobFlag + '` to advance to the next state',
           'Run `reactive-skills-axi state ' + skillName + jobFlag + '` to re-read the active state prompt',
-          'Run `reactive-skills-axi reset ' + skillName + '` to clear this run and start fresh',
+          'Run `reactive-skills-axi reset ' + skillName + jobFlag + '` to clear this run and start fresh',
         ];
       }
       return [

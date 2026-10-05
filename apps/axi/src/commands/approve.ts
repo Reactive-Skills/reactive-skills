@@ -1,12 +1,9 @@
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
 import readline from 'node:readline';
-import yaml from 'js-yaml';
 import { FSMEngine, JobManager, grantSelfReport, revokeSelfReport, selfReportGrantPath, type PendingApproval } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderOutput, renderDetail } from '../toon.js';
-import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.js';
+import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath, resolveSkillId } from '../args.js';
 
 const USAGE = [
   'Usage: reactive-skills-axi approve <skill> [--job <alias-or-run-id>] [--full]',
@@ -210,8 +207,7 @@ async function decidePending(
   full: boolean
 ): Promise<string> {
   // Opening an engine on a missing run would create one, so a wrong folder fails loudly instead.
-  const manifest = yaml.load(fs.readFileSync(path.join(skillPath, 'skill.yaml'), 'utf8')) as { name?: string } | undefined;
-  const skillId = manifest?.name || path.basename(skillPath);
+  const skillId = resolveSkillId(skillPath);
   const jobs = new JobManager(workspaceDir);
   const runRef = jobId || jobs.getActiveJobId(skillId);
   if (!jobs.getJob(skillId, runRef)) {
