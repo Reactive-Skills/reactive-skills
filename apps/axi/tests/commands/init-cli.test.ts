@@ -59,3 +59,25 @@ it('still scaffolds a valid named skill through the compiled CLI', () => {
     expect(validation.stdout).toContain('status: valid');
   });
 });
+
+it('advances a scaffolded skill from INIT to START and honors a positional events limit', () => {
+  inWorkspace(workspace => {
+    const succeed = (...args: string[]) => {
+      const result = run(workspace, ...args);
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).not.toContain('error:');
+      return result.stdout;
+    };
+    const eventCount = (output: string) => Number(/count: (\d+) events shown/.exec(output)?.[1]);
+
+    succeed('init', 'my-feature-flow');
+    expect(succeed('inspect', 'skills/my-feature-flow')).toContain('initial_state: INIT');
+    const emitted = succeed('emit', 'my-feature-flow', 'RUNTIME_READY');
+    expect(emitted).toContain('transitioned: "true"');
+    expect(emitted).toContain('previous_state: INIT');
+    expect(emitted).toContain('current_state: START');
+
+    expect(eventCount(succeed('events', 'my-feature-flow'))).toBeGreaterThan(5);
+    expect(eventCount(succeed('events', '5', 'my-feature-flow'))).toBe(5);
+  });
+}, 30_000);

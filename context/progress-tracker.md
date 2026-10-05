@@ -56,6 +56,7 @@
 | Slice | Archetype | Status |
 | :--- | :--- | :--- |
 | Adoption homepage, measured registry stats, registry and blog layout, telemetry nav, guide merge (`docs/specs/0013-site-adoption-ux.md`) | Site | ✅ Done |
+| Quickstart opens with a published skill (#61), Node engine floor raised to >=22.13.0 for `node:sqlite`, quickstart expected outputs matched to the CLI | Site | ✅ Done |
 
 ---
 

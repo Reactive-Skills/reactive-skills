@@ -12,14 +12,14 @@ export const mcp = {
       blocks: [
         { type: 'text', text: 'The Model Context Protocol (MCP) enables GUI agent hosts to interact with external tools over JSON-RPC. Use it when the host provides MCP tool integration or when a persistent stdio bridge fits the workflow.' },
         { type: 'callout', variant: 'signal', title: 'Local-first runtime selection', text: 'During INIT, Reactive Skills checks MCP and AXI capabilities and versions, then selects one compatible local transport for the run. AXI remains available through a direct command or its npx zero-install launcher.' },
-        { type: 'text', text: 'When attached, the Reactive Skills MCP server exposes 10 tools for state inspection, signal emission, query execution, sync distribution, and migration, alongside append-only event resources.' },
+        { type: 'text', text: 'When attached, the Reactive Skills MCP server exposes tools for state inspection, signal emission, query execution, sync distribution, and migration, alongside append-only event resources.' },
       ],
     },
     {
       id: 'start',
       heading: 'Start the stdio server',
       blocks: [
-        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi mcp', explanation: 'Launches the Reactive Skills MCP server over stdio using the unified package entrypoint.', expectedOutput: 'reactive-skills-axi mcp · listening on stdio\nregistered 10 tools · 3 resources\nready' } },
+        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi mcp', explanation: 'Launches the Reactive Skills MCP server over stdio using the unified package entrypoint. It prints nothing and waits for an MCP client to connect over stdin and stdout.' } },
       ],
     },
     {

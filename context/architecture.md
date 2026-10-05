@@ -6,7 +6,7 @@
 
 | Concern | Technology |
 |---|---|
-| Language & Runtime | TypeScript (ES2022 / NodeNext modules), Node.js ≥ 22.5 |
+| Language & Runtime | TypeScript (ES2022 / NodeNext modules), Node.js ≥ 22.13 |
 | Schema Validation | Zod v3.23+ |
 | Manifest Parsing | js-yaml v4.1+ |
 | Deliverable Projections | Handlebars v4.7+ |

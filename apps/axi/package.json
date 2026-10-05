@@ -17,7 +17,7 @@
     "directory": "apps/axi"
   },
   "engines": {
-    "node": ">=22.5.0"
+    "node": ">=22.13.0"
   },
   "publishConfig": {
     "access": "public"
