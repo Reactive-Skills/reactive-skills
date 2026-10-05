@@ -36,9 +36,9 @@ const IGNORED_DIRS = new Set([
   'tmp'
 ]);
 
-function extractMermaid(statechartContent) {
+export function extractMermaid(statechartContent) {
   if (!statechartContent) return null;
-  const match = statechartContent.match(/```mermaid\s*([\s\S]*?)```/);
+  const match = statechartContent.replace(/\r\n/g, '\n').match(/```mermaid\s*([\s\S]*?)```/);
   return match ? match[1].trim() : null;
 }
 
@@ -89,12 +89,13 @@ function categoryForSkill(name, rawCat) {
   return 'General';
 }
 
-function measureInstructionBytes(dir) {
+export function measureInstructionBytes(dir) {
   const fileBytes = (filePath) => normalizedByteLength(fs.readFileSync(filePath, 'utf8'));
   const statesDir = path.join(dir, 'states');
   const stateBytes = fs.existsSync(statesDir)
     ? fs.readdirSync(statesDir, { recursive: true })
-        .map(String)
+        // Normalize separators so nested state files sort identically on every OS.
+        .map((entry) => String(entry).split(path.sep).join('/'))
         .filter((entry) => entry.endsWith('.md'))
         .sort()
         .map((entry) => fileBytes(path.join(statesDir, entry)))
