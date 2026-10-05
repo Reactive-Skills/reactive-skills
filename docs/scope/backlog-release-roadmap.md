@@ -14,6 +14,8 @@ Baseline: v0.16.2 on npm, 15 open issues, 2 open PRs (both CI green, mergeable).
 - New issues slotted on 2026-10-04: #39, #42, #44, #47 into R3; #43, #45 into R4; #40 into R6. Skill-side findings filed as Reactive-Skills/skills#24 and #25 stay out of scope.
 - After v0.17.1: a rejected or expired Jev key refuses every Jev-judged step, so v0.17.2 (R2b) makes that refusal actionable, and R3 starts with #22 part 2 as the manual override.
 - After v0.17.2: its reason told the agent it could unset the key to continue with self-reported decisions, so v0.17.3 (R2c) addresses the user through the agent instead, and #22 part 2 makes self-report an operator opt-in.
+- R3 split on 2026-10-04: R3a (v0.18.0) ships #22 part 2, #47, and #32; R3b (v0.19.0) takes #29, #10, #39, #42, #44, plus review follow-ups #65 and #66 (unattended runs). Later trains move up one minor version.
+- R3a decisions: approval needs an interactive terminal and a one-time code; self-report grants live in the user's home folder; an engine refuses signals once another process writes to its run.
 
 ## Release trains
 
@@ -24,11 +26,12 @@ Baseline: v0.16.2 on npm, 15 open issues, 2 open PRs (both CI green, mergeable).
 | R2 | v0.17.1 | Gate integrity | #28 test leak, #22 part 1 (Jev outage refuses and stays in state; no-Jev self-approval labeled), #15 adapter_hint tests, docs, validate warning | S-M |
 | R2b | v0.17.2 | Rejected credentials | Actionable refusal when a model rejects its key (401/403); test guard hint about concurrent agent runs | S |
 | R2c | v0.17.3 | Agent-facing credentials reason | The rejected-key reason tells the agent to stop and ask the user, never to unset the key; escape hatch moves to operator docs | S |
-| R3 | v0.18.0 | Authoring diagnostics | #22 part 2 first (human approval for gates no adapter can judge, the override while a model is down; self-report becomes an explicit operator opt-in with human approval as the default), #32 refusal reasons, #29 unknown-key lint, #10 guard module-format preflight, #39 categorical accept subset, #42 `--help` everywhere, #44 invoke and emit payload shape, #47 Jev authoring errors are not outages | M-L |
-| R4 | v0.19.0 | Workspace binding | #14 + #26 (same root cause: cwd-scoped store), #43 legacy store migration, #45 skill name and path resolve the same store | M-L |
-| R5 | v0.20.0 | Guard context | #31 run-history view for guards, #24 Jev `context_keys` | M |
-| R6 | v0.21.0 | Sandbox opt-in | #34 phase 1 (isolate behind `guard_execution`, default `trusted`), #33 `vet` + trust record, #40 sync from a git ref with provenance and downgrade refusal | L |
-| R7 | v0.22.0 | Sandbox default | #34 phase 3 flip to `sandboxed`, #33 strict hash refusal | M |
+| R3a | v0.18.0 | Human approval | #22 part 2 (human approval for gates no adapter can judge; self-report as an operator grant), #32 refusal reasons, #47 Jev authoring errors are not outages | M-L |
+| R3b | v0.19.0 | Authoring diagnostics | #29 unknown-key lint, #10 guard module-format preflight, #39 categorical accept subset, #42 `--help` everywhere, #44 invoke and emit payload shape, #65 approval follow-ups, #66 unattended runs | M |
+| R4 | v0.20.0 | Workspace binding | #14 + #26 (same root cause: cwd-scoped store), #43 legacy store migration, #45 skill name and path resolve the same store | M-L |
+| R5 | v0.21.0 | Guard context | #31 run-history view for guards, #24 Jev `context_keys` | M |
+| R6 | v0.22.0 | Sandbox opt-in | #34 phase 1 (isolate behind `guard_execution`, default `trusted`), #33 `vet` + trust record, #40 sync from a git ref with provenance and downgrade refusal | L |
+| R7 | v0.23.0 | Sandbox default | #34 phase 3 flip to `sandboxed`, #33 strict hash refusal | M |
 | Triage | n/a | Synthesis report scoping | #12: run bug-hunt-triage first; likely skill/template side, may transfer to a skills repo | ? |
 
 ## Ordering rationale
@@ -66,10 +69,10 @@ Today, the script adapter decides any criterion it cannot compile from the paylo
 This happens as the fallback during a Jev outage and as the primary adapter whenever `TYPESAFE_API_KEY` is not set, so the agent approves its own semantic gates.
 Making the script adapter fail closed everywhere would block every semantic gate for users without Jev and could loop through `fallback_target` states.
 
-| Case | v0.17.1 (R2) | v0.18.0 (R3) |
+| Case | v0.17.1 (R2) | v0.18.0 (R3a) |
 | --- | --- | --- |
-| Jev configured, but it fails (outage, timeout, open circuit) | Refuse the signal and stay in the current state; no `fallback_target` routing; the reason says Jev is unavailable and to retry | Unchanged |
-| Jev not configured | Keep today's decision, but label it in the emit result and the `GUARD_EVALUATED` event as self-reported | Ask the human to approve the gate, with a clear message |
+| Jev configured, but it fails (outage, timeout, open circuit) | Refuse the signal and stay in the current state; no `fallback_target` routing; the reason says Jev is unavailable and to retry | Refuse and wait for a person, who can decide it with `reactive-skills-axi approve` |
+| Jev not configured | Keep today's decision, but label it in the emit result and the `GUARD_EVALUATED` event as self-reported | Wait for a person to approve the gate; self-report only with an operator grant |
 | Executable JavaScript criterion | Evaluated normally by the script adapter | Unchanged |
 
 Predicate, categorical, and evaluation judgments all follow this policy.

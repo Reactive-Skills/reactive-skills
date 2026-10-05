@@ -2,10 +2,12 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.17.3:**
-> - The rejected-credentials reason addresses the user through the agent: stop and ask the user to fix the credentials; it never suggests removing the key.
+> 🚀 **What's New in v0.18.0:**
+> - Gates no model can judge record `APPROVAL_REQUESTED` and wait for a person; decisions are validated by causation and recorded with `decidedBy`.
+> - Self-reported decisions need an operator grant stored in the user's home folder, and guards return refusal reasons.
+> - Breaking: an engine refuses signals once another process writes to its run; use `hasExternalChanges()` and `reopen()` for long-lived engines.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.3) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.18.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

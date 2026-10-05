@@ -1,4 +1,30 @@
 
+## [0.18.0] - 2026-10-05
+
+- Merge pull request #69 from Reactive-Skills/fix/r3a-view-retired-close (285ad6e)
+- fix(runtime): close engines view retired once in-flight signals finish (#22) (b3bdd73)
+- Merge pull request #68 from Reactive-Skills/fix/r3a-view-reopen (6ab3215)
+- fix(runtime): keep view serving when a reopen fails and close replaced engines (#22) (4d7d529)
+- fix(runtime): remove the temporary grant file when writing a grant fails (#22) (7476ba3)
+- fix(runtime): view reopens its engine when another process moves the run (#22) (f912f87)
+- Merge pull request #67 from Reactive-Skills/feat/r3a-human-approval (f17c001)
+- fix(axi): strip all format and default-ignorable characters from approve output (#22) (ebb470b)
+- fix: remaining third review findings (#22) (893eb65)
+- fix: third review findings on run-change detection (#22) (d051a9f)
+- fix: second review findings; keep self-report grants in the home folder (#22) (00c6d84)
+- fix: refuse decisions and signals on a run another process moved (#22) (690b599)
+- fix(axi): accurate cancel message when approve ends without a decision (#22) (383a23c)
+- feat: signed self-report grants and re-prompt on a wrong code (#22) (29cfae1)
+- test: run release-bump processes asynchronously (faadf97)
+- fix: harden approval decisions from review (#22, #47) (4c4c968)
+- fix: approval flow review findings (#22) (648dff0)
+- fix(axi): approve exits non-zero when it refuses to run (#22) (00e6e05)
+- docs: approval, self-report grant, and guard refusal reasons (88a5584)
+- feat(runtime): return a reason when a guard refuses a signal (#32) (88ff14f)
+- feat(runtime,axi): human approval for gates no model can judge (#22) (547b860)
+- fix(runtime): report Jev authoring errors as misconfiguration, not outages (#47) (e61984a)
+- docs: scope, spec, and ADR 0012 for v0.18.0 human approval (6567a86)
+
 ## [0.17.3] - 2026-10-04
 
 - Merge pull request #52 from Reactive-Skills/fix/r2c-agent-message (c491b5e)

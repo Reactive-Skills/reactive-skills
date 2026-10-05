@@ -5,15 +5,18 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.3)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.18.0)
 
 ---
 
-> 🚀 **What's New in v0.17.3:**
-> - When Jev rejects `TYPESAFE_API_KEY` (HTTP 401 or 403), the refusal now tells the agent to stop and ask the user to fix or replace the key, and not to remove it to get past the gate. The step is still refused until the key works.
-> - Removing the key is an operator decision that makes these judgments self-reported; v0.18.0 plans human approval as the default instead.
+> 🚀 **What's New in v0.18.0:**
+> - A gate that no model can judge now waits for you: the agent asks you to run `reactive-skills-axi approve` in your own terminal and type back a one-time code.
+> - Self-reported decisions are off by default and need an operator grant from `approve --allow-self-reported`, stored in your home folder; every such decision is flagged.
+> - Guards say why they refused (`guard_message`, or `{ passed, reason }` from a guard function), and Jev authoring errors no longer trip the circuit breaker.
+> - Breaking: without a model or a grant, natural-language gates no longer pass on the agent's own report, and unattended runs need a working model.
+> - Behavior change for library users: an engine refuses signals once another process writes to its run; long-lived holders call `hasExternalChanges()` and `reopen()`.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.17.3) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.18.0) · [View Changelog](CHANGELOG.md)
 
 ---
 
