@@ -1,6 +1,7 @@
 import { CodeBlock } from '@/components/common/CodeBlock';
 import { Callout } from '@/components/common/Callout';
 import { TableOfContents } from './TableOfContents';
+import { getProseVariant } from '@/lib/docs/proseVariants';
 
 function renderDocText(text) {
   if (typeof text !== 'string') return text;
@@ -61,16 +62,16 @@ function renderDocText(text) {
   });
 }
 
-function TextBlock({ text }) {
-  return <p className="my-4 text-[15px] leading-7 text-phino-text-muted">{renderDocText(text)}</p>;
+function TextBlock({ text, prose }) {
+  return <p className={`my-4 ${prose.text}`}>{renderDocText(text)}</p>;
 }
 
-function ListBlock({ items }) {
+function ListBlock({ items, prose }) {
   return (
     <ul className="my-4 space-y-2">
       {items.map((item, i) => (
-        <li key={i} className="flex gap-2.5 text-[15px] leading-7 text-phino-text-muted">
-          <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-phino-signal" aria-hidden="true" />
+        <li key={i} className={`flex gap-2.5 ${prose.text}`}>
+          <span className={`${prose.bullet} h-1.5 w-1.5 shrink-0 rounded-full bg-phino-signal`} aria-hidden="true" />
           <span>{renderDocText(item)}</span>
         </li>
       ))}
@@ -78,15 +79,15 @@ function ListBlock({ items }) {
   );
 }
 
-function StepsBlock({ steps }) {
+function StepsBlock({ steps, prose }) {
   return (
     <ol className="my-5 space-y-4">
       {steps.map((s, i) => (
         <li key={i} className="flex gap-3">
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-phino-border bg-phino-surface-raised font-mono text-xs text-phino-text">{i + 1}</span>
           <div>
-            <p className="font-display text-sm font-semibold text-phino-text">{s.title}</p>
-            <p className="mt-0.5 text-sm leading-relaxed text-phino-text-muted">{renderDocText(s.text)}</p>
+            <p className={`font-display ${prose.stepTitle} font-semibold text-phino-text`}>{s.title}</p>
+            <p className={`mt-0.5 ${prose.stepText}`}>{renderDocText(s.text)}</p>
           </div>
         </li>
       ))}
@@ -120,14 +121,14 @@ function TableBlock({ columns, rows, caption }) {
   );
 }
 
-function Block({ block }) {
+function Block({ block, prose }) {
   switch (block.type) {
     case 'text':
-      return <TextBlock text={block.text} />;
+      return <TextBlock text={block.text} prose={prose} />;
     case 'list':
-      return <ListBlock items={block.items} />;
+      return <ListBlock items={block.items} prose={prose} />;
     case 'steps':
-      return <StepsBlock steps={block.steps} />;
+      return <StepsBlock steps={block.steps} prose={prose} />;
     case 'code':
       return <CodeBlock example={block.example} />;
     case 'callout':
@@ -139,24 +140,25 @@ function Block({ block }) {
   }
 }
 
-export function DocBlocks({ blocks }) {
+export function DocBlocks({ blocks, variant }) {
   if (!blocks || blocks.length === 0) return null;
+  const prose = getProseVariant(variant);
   return (
     <>
       {blocks.map((block, i) => (
-        <Block key={i} block={block} />
+        <Block key={i} block={block} prose={prose} />
       ))}
     </>
   );
 }
 
-export function DocSections({ sections }) {
+export function DocSections({ sections, variant }) {
   return (
     <div>
       {(sections || []).map((section) => (
         <section key={section.id} id={section.id} className="scroll-mt-24 pt-8 first:pt-0">
           <h2 className="font-display text-xl font-semibold tracking-tight text-phino-text sm:text-2xl">{section.heading}</h2>
-          <DocBlocks blocks={section.blocks} />
+          <DocBlocks blocks={section.blocks} variant={variant} />
         </section>
       ))}
     </div>

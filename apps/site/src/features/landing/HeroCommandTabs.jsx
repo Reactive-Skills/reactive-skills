@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { CopyButton } from '@/components/common/CopyButton';
+import { getTabIndexForKey } from '@/lib/a11y/tabKeyboard';
 import { cn } from '@/lib/utils';
 
 const MODES = [
@@ -12,20 +13,35 @@ const MODES = [
 export function HeroCommandTabs() {
   const [modeId, setModeId] = useState(MODES[0].id);
   const mode = MODES.find((entry) => entry.id === modeId) ?? MODES[0];
+  const tabRefs = useRef([]);
+
+  const handleKeyDown = (event) => {
+    const currentIndex = MODES.findIndex((entry) => entry.id === mode.id);
+    const nextIndex = getTabIndexForKey(event.key, currentIndex, MODES.length);
+    if (nextIndex === null) return;
+    event.preventDefault();
+    setModeId(MODES[nextIndex].id);
+    tabRefs.current[nextIndex]?.focus();
+  };
 
   return (
     <div className="max-w-2xl rounded-xl border border-phino-border bg-phino-surface p-3 sm:p-3.5">
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-1.5" role="tablist" aria-label="Getting started command">
-          {MODES.map((entry) => (
+          {MODES.map((entry, index) => (
             <button
               key={entry.id}
+              ref={(node) => {
+                tabRefs.current[index] = node;
+              }}
               id={`hero-tab-${entry.id}`}
               type="button"
               role="tab"
               aria-selected={entry.id === mode.id}
               aria-controls="hero-command-panel"
+              tabIndex={entry.id === mode.id ? 0 : -1}
               onClick={() => setModeId(entry.id)}
+              onKeyDown={handleKeyDown}
               className={cn(
                 'rounded px-2.5 py-1 font-mono text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus',
                 entry.id === mode.id

@@ -53,7 +53,7 @@ export function BlogPostView({ post, nextPost, prevPost }) {
 
           {/* Main Body Sections */}
           <div className="prose prose-invert max-w-none">
-            <DocSections sections={post.sections} />
+            <DocSections sections={post.sections} variant="blog" />
           </div>
 
           {post.tags.length > 0 && (
