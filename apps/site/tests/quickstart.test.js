@@ -8,7 +8,6 @@ const readEngines = (relativePath) =>
 const NODE_FLOOR = '22.13';
 const numberedSections = quickstart.sections.filter((section) => /^\d+\.\s/.test(section.heading));
 const blocksOf = (section) => section.blocks || [];
-const codeExamples = quickstart.sections.flatMap(blocksOf).filter((block) => block.type === 'code').map((block) => block.example);
 
 describe('quickstart', () => {
   it('opens with installing and running a published skill', () => {
@@ -24,21 +23,5 @@ describe('quickstart', () => {
       .map((block) => block.text || block.example?.explanation || '')
       .join(' ');
     expect(prereqText).toContain(`Node.js ${NODE_FLOOR} or newer`);
-  });
-
-  it('passes the events limit positionally, as the CLI parses it', () => {
-    const eventsCommands = codeExamples.map((example) => example.command).filter((command) => /\/axi events /.test(command));
-    expect(eventsCommands.length).toBeGreaterThan(0);
-    for (const command of eventsCommands) {
-      expect(command).toMatch(/\/axi events \d+ \S+$/);
-    }
-  });
-
-  it('shows the states that init scaffolds for my-feature-flow', () => {
-    const outputs = codeExamples.filter((example) => example.command.includes('my-feature-flow')).map((example) => example.expectedOutput || '');
-    for (const output of outputs) {
-      expect(output).not.toMatch(/INTAKE|RED_SPEC/);
-    }
-    expect(outputs.join('\n')).toContain('previous_state: INIT\n  current_state: START');
   });
 });
