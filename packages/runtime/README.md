@@ -50,6 +50,9 @@ An approval passes the judgment with `decidedBy: "human"`, and a rejection route
 Each decision applies once, to the same state and signal.
 MCP has no tool that approves a gate.
 
+An engine refuses `handleSignal` and `decideApproval` with `RUN_VERSION_CONFLICT` when another process wrote to its run after the engine loaded it, so it never acts on a state the run already left.
+Code that keeps an engine open for a long time checks `engine.hasExternalChanges()` and switches to `engine.reopen()`, as the MCP server and the `view` dashboard do.
+
 Within one OS account this channel stops an agent from approving by accident.
 It does not stop an agent that drives a terminal session, for example through an MCP server that provides one, or that calls the runtime library directly.
 An agent that writes into your home folder can still create a grant.

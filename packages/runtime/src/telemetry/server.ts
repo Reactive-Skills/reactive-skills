@@ -20,6 +20,11 @@ export class TelemetryServer {
   private server: http.Server | null = null;
   private eventStore: EventStore;
   private fsmEngine?: FSMEngine;
+  /** The caller owns this engine; the server only closes engines it reopened itself. */
+  private readonly originalEngine?: FSMEngine;
+  /** Reopened engines replaced while a signal was still using them; closed on stop. */
+  private retiredEngines: FSMEngine[] = [];
+  private signalsInFlight = 0;
   private requestedPort?: number;
   private preferredPort?: number;
   private port?: number;
@@ -40,6 +45,7 @@ export class TelemetryServer {
   constructor(options: TelemetryServerOptions) {
     this.eventStore = options.eventStore;
     this.fsmEngine = options.fsmEngine;
+    this.originalEngine = options.fsmEngine;
     this.requestedPort = options.port;
     this.preferredPort = options.preferredPort;
     this.port = options.port;
@@ -110,7 +116,23 @@ export class TelemetryServer {
     return server;
   }
 
+  /** The attached engine, reopened when another process, such as the agent's CLI, moved its run. */
+  private currentEngine(): FSMEngine | undefined {
+    if (!this.fsmEngine?.hasExternalChanges()) return this.fsmEngine;
+    const previous = this.fsmEngine;
+    this.fsmEngine = previous.reopen();
+    if (previous !== this.originalEngine) {
+      // Close a replaced engine this server opened, unless a signal may still be using it.
+      if (this.signalsInFlight === 0) previous.close();
+      else this.retiredEngines.push(previous);
+    }
+    return this.fsmEngine;
+  }
+
   public async stop(): Promise<void> {
+    for (const engine of this.retiredEngines.splice(0)) engine.close();
+    if (this.fsmEngine && this.fsmEngine !== this.originalEngine) this.fsmEngine.close();
+    this.fsmEngine = this.originalEngine;
     if (this.unsubscribeEventStore) {
       this.unsubscribeEventStore();
       this.unsubscribeEventStore = undefined;
@@ -249,8 +271,15 @@ export class TelemetryServer {
   private handleState(req: http.IncomingMessage, res: http.ServerResponse): void {
     const latestSeq = this.eventStore.getLatestSequence();
     const snapshot = this.eventStore.getLatestSnapshot();
-    const activeState = this.fsmEngine ? this.fsmEngine.getCurrentState() : snapshot?.state;
-    const context = this.fsmEngine ? this.fsmEngine.getContext() : snapshot?.context;
+    let engine: FSMEngine | undefined;
+    try {
+      engine = this.currentEngine();
+    } catch {
+      // An unreadable skill or busy store must not crash the dashboard; show the stored snapshot instead.
+      engine = undefined;
+    }
+    const activeState = engine ? engine.getCurrentState() : snapshot?.state;
+    const context = engine ? engine.getContext() : snapshot?.context;
 
     const payload: TelemetryStateResponse = {
       skillName: this.skillName,
@@ -413,8 +442,15 @@ export class TelemetryServer {
           return;
         }
 
-        if (this.fsmEngine) {
-          const transition = await this.fsmEngine.handleSignal(parsed.signal, parsed.payload || {});
+        const engine = this.currentEngine();
+        if (engine) {
+          this.signalsInFlight += 1;
+          let transition;
+          try {
+            transition = await engine.handleSignal(parsed.signal, parsed.payload || {});
+          } finally {
+            this.signalsInFlight -= 1;
+          }
           const response: TelemetrySignalResponse = {
             success: true,
             transition,

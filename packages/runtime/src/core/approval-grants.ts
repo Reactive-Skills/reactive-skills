@@ -57,8 +57,13 @@ export function grantSelfReport(workspaceDir: string, channel: string): SelfRepo
   fs.mkdirSync(path.dirname(file), { recursive: true });
   // Write then rename, so a concurrent reader never sees a partial grant.
   const temp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(temp, `${JSON.stringify(grant, null, 2)}\n`, 'utf8');
-  fs.renameSync(temp, file);
+  try {
+    fs.writeFileSync(temp, `${JSON.stringify(grant, null, 2)}\n`, 'utf8');
+    fs.renameSync(temp, file);
+  } catch (err) {
+    fs.rmSync(temp, { force: true });
+    throw err;
+  }
   return grant;
 }
 

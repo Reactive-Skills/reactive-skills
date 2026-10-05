@@ -323,6 +323,14 @@ describe('Human approval for unjudgeable gates (#22 part 2)', () => {
       expect(engine.getEventStore().query({ type: 'SELF_REPORT_GRANT_USED' })).toHaveLength(1);
     });
 
+    it('leaves no temporary file behind when a grant cannot be written', () => {
+      // A directory where the grant file belongs makes the final rename fail.
+      fs.mkdirSync(path.join(selfReportGrantPath(workspaceDir), 'blocked'), { recursive: true });
+
+      expect(() => grantSelfReport(workspaceDir, 'interactive_terminal')).toThrow();
+      expect(fs.readdirSync(path.dirname(selfReportGrantPath(workspaceDir))).filter((name) => name.endsWith('.tmp'))).toEqual([]);
+    });
+
     it('reports whether a grant was removed, and throws when removal fails', () => {
       expect(revokeSelfReport(workspaceDir)).toBe(false);
       grantSelfReport(workspaceDir, 'interactive_terminal');
