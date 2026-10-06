@@ -3,6 +3,7 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import {
   DEFAULT_MIN_CONFIDENCE,
+  JUDGMENT_CONTEXT_PATHS_CAPABILITY,
   PROBABILITY_THRESHOLDS_CAPABILITY,
   isExecutableCriterion,
   predicateProbabilityForConfidence,
@@ -174,6 +175,18 @@ export function lintJudgmentThresholds(manifest: Record<string, any>): JudgmentL
   if (usesProbabilityFields && !requiresCapability) {
     warnings.push(
       `Judgments use min_probability or escalate, but runtime_requirements.required_capabilities does not include ${PROBABILITY_THRESHOLDS_CAPABILITY}; older runtimes drop these fields and fall back to min_confidence ${DEFAULT_MIN_CONFIDENCE}`
+    );
+  }
+
+  const usesContextScope = judgments.some(
+    ({ judgment }) => judgment.context_paths !== undefined || judgment.include_payload !== undefined
+  );
+  if (
+    usesContextScope
+    && !(Array.isArray(requiredCapabilities) && requiredCapabilities.includes(JUDGMENT_CONTEXT_PATHS_CAPABILITY))
+  ) {
+    warnings.push(
+      `Judgments use context_paths or include_payload, but runtime_requirements.required_capabilities does not include ${JUDGMENT_CONTEXT_PATHS_CAPABILITY}; older runtimes drop these fields and send the whole run context and the payload`
     );
   }
 

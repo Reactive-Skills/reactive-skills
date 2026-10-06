@@ -34,3 +34,9 @@ In the reported case the same content scored P(yes) 0.38 with the payload copy a
 
 14. The manifest schema rejects a `context_paths` entry that breaks rule 4 and a `context_paths` or `include_payload` of the wrong type. `validate` reports these as errors.
 15. `validate` warns when a path starts with `context.`, and when `context_paths` or `include_payload` is set with `adapter_hint: script`.
+
+## 6. Capability
+
+16. The runtime advertises `judgment.context_paths`.
+17. A runtime without it drops `context_paths` and `include_payload` and sends the whole run context and the payload, so a skill that depends on scoped context requires the capability in `runtime_requirements.required_capabilities` and an older runtime refuses it instead of judging with extra context.
+18. `validate` warns when a manifest uses `context_paths` or `include_payload` without requiring `judgment.context_paths`.

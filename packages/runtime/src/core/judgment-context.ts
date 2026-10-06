@@ -1,3 +1,6 @@
+/** Runtime capability advertised by runtimes that enforce `context_paths` and `include_payload`. */
+export const JUDGMENT_CONTEXT_PATHS_CAPABILITY = 'judgment.context_paths';
+
 /** Path segments that would reach an object's prototype instead of data the run recorded. */
 const FORBIDDEN_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
 

@@ -6,6 +6,8 @@ import { JudgmentEngine, JevJudgmentAdapter } from '../src/core/judgment-engine.
 import { scopeJudgmentContext, validateContextPath } from '../src/core/judgment-context.js';
 import { FSMEngine } from '../src/core/fsm-engine.js';
 import { JudgmentDefinitionSchema } from '../src/core/types.js';
+import { STATIC_RUNTIME_CAPABILITIES } from '../src/core/runtime-capabilities.js';
+import { JUDGMENT_CONTEXT_PATHS_CAPABILITY } from '../src/core/judgment-context.js';
 
 const sdkMock = vi.hoisted(() => ({
   systemOne: vi.fn(),
@@ -281,6 +283,11 @@ states:
       expect(JudgmentDefinitionSchema.safeParse({ ...base, include_payload: 'no' }).success).toBe(false);
       expect(JudgmentDefinitionSchema.safeParse({ ...base, context_paths: 'write_side' }).success).toBe(false);
     });
+  });
+
+  it('advertises the judgment.context_paths capability', () => {
+    expect(JUDGMENT_CONTEXT_PATHS_CAPABILITY).toBe('judgment.context_paths');
+    expect(STATIC_RUNTIME_CAPABILITIES).toContain('judgment.context_paths');
   });
 
   describe('scopeJudgmentContext', () => {

@@ -471,7 +471,7 @@ snap_on:
     expect(result.warnings).toEqual([]);
   });
   describe('context_paths and include_payload (#24)', () => {
-    const CAPABILITY = { header: CAPABILITY_REQUIREMENT };
+    const CAPABILITY = { header: 'runtime_requirements:\n  required_capabilities: [judgment.probability_thresholds, judgment.context_paths]\n' };
 
     it('accepts valid context paths without warnings', () => {
       const result = validateSkill(writeSkill(tmpDir, `
@@ -542,6 +542,28 @@ include_payload: false
       expect(result.warnings).toContain(
         'State "REVIEW" transition on "SUBMIT" sets context_paths or include_payload with adapter_hint: script; only the Jev adapter sends context to a model, so the script adapter ignores them'
       );
+    });
+    it('warns when context_paths or include_payload is used without requiring judgment.context_paths', () => {
+      const unrequired = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "Is it ready?"
+min_probability: 0.8
+context_paths: [write_side]
+`, { header: CAPABILITY_REQUIREMENT }));
+
+      expect(unrequired.valid).toBe(true);
+      expect(unrequired.warnings).toContain(
+        'Judgments use context_paths or include_payload, but runtime_requirements.required_capabilities does not include judgment.context_paths; older runtimes drop these fields and send the whole run context and the payload'
+      );
+
+      fs.rmSync(path.join(tmpDir, 'judgment-skill'), { recursive: true, force: true });
+      const required = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "Is it ready?"
+min_probability: 0.8
+include_payload: false
+`, CAPABILITY));
+      expect(required.warnings.some((w) => w.includes('judgment.context_paths'))).toBe(false);
     });
   });
 });

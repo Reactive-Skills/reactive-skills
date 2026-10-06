@@ -113,6 +113,16 @@ A path with no value in the run context is not sent and does not fail the judgme
 A judgment that sets neither field records no `contextSent`.
 `validate` rejects an invalid path and warns when a path starts with `context.`.
 
+Runtimes without the `judgment.context_paths` capability drop both fields and send the whole run context and the payload.
+A skill that depends on scoped context requires the capability so those runtimes refuse it:
+
+```yaml
+runtime_requirements:
+  required_capabilities: [judgment.context_paths]
+```
+
+`validate` warns when a manifest uses either field without requiring it.
+
 ### Judgment Thresholds
 
 `min_probability` states the probability a judgment needs.

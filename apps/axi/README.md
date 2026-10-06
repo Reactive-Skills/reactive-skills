@@ -148,7 +148,7 @@ Validate a reactive skill's manifest, prompt templates, transition targets, and 
 
 Judgment checks warn when a semantic predicate or categorical judgment relies on `min_confidence` instead of `min_probability`, and name the equivalent `min_probability` for predicates.
 They warn when `min_probability` or `escalate` is used without requiring the `judgment.probability_thresholds` capability.
-They fail on an invalid `context_paths` entry or a wrongly typed `context_paths` or `include_payload`, and warn on a `context_paths` entry that starts with `context.` and on either field combined with `adapter_hint: script`.
+They fail on an invalid `context_paths` entry or a wrongly typed `context_paths` or `include_payload`, and warn on a `context_paths` entry that starts with `context.`, on either field combined with `adapter_hint: script`, and on either field used without requiring the `judgment.context_paths` capability.
 Guard contract checks read `guards/*.yaml` and link each contract to the `skill.yaml` judgment with the same `snap_on.judgment.criterion`.
 They fail validation when a linked pair disagrees on type, threshold, escalate band, or accept band, and warn on unlinked contracts, inverted accept polarity, unenforced escalate bands, and `TODO` thresholds.
 
