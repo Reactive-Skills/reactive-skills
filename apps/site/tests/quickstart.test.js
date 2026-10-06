@@ -16,6 +16,19 @@ describe('quickstart', () => {
     expect(commands.some((command) => /@reactive-skills\/axi invoke \S+/.test(command))).toBe(true);
   });
 
+  it('warns about trusting skill guard code before the install command', () => {
+    const blocks = blocksOf(numberedSections[0]);
+    const noteIndex = blocks.findIndex((block) => block.type === 'callout' && /trust/i.test(block.title));
+    const installIndex = blocks.findIndex((block) => block.type === 'code' && /^npx skills add /.test(block.example.command));
+    expect(noteIndex).toBeGreaterThanOrEqual(0);
+    expect(noteIndex).toBeLessThan(installIndex);
+    const { text } = blocks[noteIndex];
+    expect(text).toContain('SECURITY.md');
+    expect(text).toMatch(/guard/);
+    expect(text).toMatch(/does not sandbox/);
+    expect(text).not.toMatch(/(?<!not )(sandboxed|vetted)\b/);
+  });
+
   it('states the Node floor declared by both package engines', () => {
     expect(readEngines('../../axi/package.json')).toBe(`>=${NODE_FLOOR}.0`);
     expect(readEngines('../../../packages/runtime/package.json')).toBe(`>=${NODE_FLOOR}.0`);
