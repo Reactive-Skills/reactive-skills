@@ -58,6 +58,7 @@
 | Adoption homepage, measured registry stats, registry and blog layout, telemetry nav, guide merge (`docs/specs/0013-site-adoption-ux.md`) | Site | ✅ Done |
 | Quickstart opens with a published skill (#61), Node engine floor raised to >=22.13.0 for `node:sqlite`, quickstart expected outputs matched to the CLI | Site | ✅ Done |
 | Hero command tabs keyboard support (arrow keys, Home/End, roving tab stop) and a long-form blog prose variant (#55, #63) | Site | ✅ Done |
+| Quickstart install step carries a skill trust note pointing to `SECURITY.md` (guard code runs with full process privileges; #34, #33) | Site | ✅ Done |
 
 ---
 
