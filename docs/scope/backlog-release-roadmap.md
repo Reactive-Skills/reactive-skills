@@ -14,7 +14,7 @@ Baseline: v0.16.2 on npm, 15 open issues, 2 open PRs (both CI green, mergeable).
 - New issues slotted on 2026-10-04: #39, #42, #44, #47 into R3; #43, #45 into R4; #40 into R6. Skill-side findings filed as Reactive-Skills/skills#24 and #25 stay out of scope.
 - After v0.17.1: a rejected or expired Jev key refuses every Jev-judged step, so v0.17.2 (R2b) makes that refusal actionable, and R3 starts with #22 part 2 as the manual override.
 - After v0.17.2: its reason told the agent it could unset the key to continue with self-reported decisions, so v0.17.3 (R2c) addresses the user through the agent instead, and #22 part 2 makes self-report an operator opt-in.
-- R3 split on 2026-10-04: R3a (v0.18.0) ships #22 part 2, #47, and #32; R3b (v0.19.0) takes #29, #10, #39, #42, #44, plus review follow-ups #65 and #66 (unattended runs). Later trains move up one minor version.
+- R3 split on 2026-10-04: R3a (v0.18.0) ships #22 part 2, #47, and #32; R3b (v0.19.0) takes #29, #10, #39, #42, #44, plus review follow-up #65. #66 (unattended runs) is unscheduled; see Unscheduled work. Later trains move up one minor version.
 - R3a decisions: approval needs an interactive terminal and a one-time code; self-report grants live in the user's home folder; an engine refuses signals once another process writes to its run.
 
 ## Release trains
@@ -27,12 +27,16 @@ Baseline: v0.16.2 on npm, 15 open issues, 2 open PRs (both CI green, mergeable).
 | R2b | v0.17.2 | Rejected credentials | Actionable refusal when a model rejects its key (401/403); test guard hint about concurrent agent runs | S |
 | R2c | v0.17.3 | Agent-facing credentials reason | The rejected-key reason tells the agent to stop and ask the user, never to unset the key; escape hatch moves to operator docs | S |
 | R3a | v0.18.0 | Human approval | #22 part 2 (human approval for gates no adapter can judge; self-report as an operator grant), #32 refusal reasons, #47 Jev authoring errors are not outages | M-L |
-| R3b | v0.19.0 | Authoring diagnostics | #29 unknown-key lint, #10 guard module-format preflight, #39 categorical accept subset, #42 `--help` everywhere, #44 invoke and emit payload shape, #65 approval follow-ups, #66 unattended runs | M |
+| R3b | v0.19.0 | Authoring diagnostics | #29 unknown-key lint, #10 guard module-format preflight, #39 categorical accept subset, #42 `--help` everywhere, #44 invoke and emit payload shape, #65 approval follow-ups | M |
 | R4 | v0.20.0 | Workspace binding | #14 + #26 (same root cause: cwd-scoped store), #43 legacy store migration, #45 skill name and path resolve the same store | M-L |
 | R5 | v0.21.0 | Guard context | #31 run-history view for guards, #24 Jev `context_keys` | M |
 | R6 | v0.22.0 | Sandbox opt-in | #34 phase 1 (isolate behind `guard_execution`, default `trusted`), #33 `vet` + trust record, #40 sync from a git ref with provenance and downgrade refusal | L |
 | R7 | v0.23.0 | Sandbox default | #34 phase 3 flip to `sandboxed`, #33 strict hash refusal | M |
 | Triage | n/a | Synthesis report scoping | #12: run bug-hunt-triage first; likely skill/template side, may transfer to a skills repo | ? |
+
+## Unscheduled work
+
+- #66 Unattended runs (CI, cloud, loops) cannot get past gates no model can judge. Not assigned to a train or version. It needs a design decision first on who may authorize unjudgeable gates in an unattended run (an operator-provisioned grant, a remote approval link, or a run-level policy) and how an outage behaves.
 
 ## Ordering rationale
 
