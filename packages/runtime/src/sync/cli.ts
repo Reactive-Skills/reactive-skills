@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { runDistribution } from './distribution.js';
-import { DistributionOptions, DistributionReport, SyncCommandResult } from './types.js';
+import { validateRefName } from './git-source.js';
+import { DistributionOptions, DistributionReport, SkillProvenance, SourceSpec, SyncCommandResult } from './types.js';
 
 class MissingSkillNameError extends Error {}
 
@@ -33,6 +34,8 @@ function parseArgs(args: string[]): {
   noBackup: boolean;
   link?: boolean;
   allSources?: boolean;
+  ref?: string;
+  allowDowngrade: boolean;
   json: boolean;
   showConfig: boolean;
   help: boolean;
@@ -49,6 +52,8 @@ function parseArgs(args: string[]): {
     noBackup: boolean;
     link?: boolean;
     allSources?: boolean;
+    ref?: string;
+    allowDowngrade: boolean;
     json: boolean;
     showConfig: boolean;
     help: boolean;
@@ -59,6 +64,7 @@ function parseArgs(args: string[]): {
     dryRun: false,
     noBackup: false,
     allSources: false,
+    allowDowngrade: false,
     json: false,
     showConfig: false,
     help: false,
@@ -90,6 +96,17 @@ function parseArgs(args: string[]): {
       case '--no-backup':
         result.noBackup = true;
         break;
+      case '--allow-downgrade':
+        result.allowDowngrade = true;
+        break;
+      case '--ref': {
+        const ref = args[i + 1];
+        if (ref === undefined) throw new Error('--ref requires a branch, tag or commit');
+        validateRefName(ref);
+        result.ref = ref;
+        i++;
+        break;
+      }
       case '--json':
         result.json = true;
         break;
@@ -177,6 +194,9 @@ Flags:
   --skill <name>[,<name>...]
                        Select one or more skills (repeatable; default: all skills)
   --all-sources         Add configured sources to explicit --source paths
+  --ref <ref>          Read skills from this committed branch, tag or commit of every
+                       git source instead of its working tree (overrides configured refs)
+  --allow-downgrade    Replace an installed skill even when the source version is older
   --dry-run             Preview changes without writing
   --link                Accepted for compatibility; linked satellites are the default
   --copy                Use physical copies for all selected satellites
@@ -199,6 +219,8 @@ Default satellites (installed agent directories only):
 
 Examples:
   reactive-skills-axi sync --show-config
+  reactive-skills-axi sync --ref main --dry-run
+  reactive-skills-axi sync --skill synthesis --allow-downgrade
   reactive-skills-axi sync --central ~/work/skill-registry --dry-run
   reactive-skills-axi sync --source ~/work/public,~/work/private --target ~/.codex/skills,~/.claude/skills --physical-target ~/.gemini/config/skills --dry-run
 `);
@@ -222,7 +244,8 @@ function defaultTargets(central: string): string[] {
 }
 
 interface FileConfig {
-  sources?: string[];
+  /** Source folders; an object entry can pin a git ref to read committed content from. */
+  sources?: Array<string | SourceSpec>;
   central?: string;
   satellites?: string[];
   physicalSatellites?: string[];
@@ -235,7 +258,18 @@ function loadConfig(configPath: string, required: boolean): FileConfig {
   }
   const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8')) as FileConfig;
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error(`Invalid sync config: ${configPath}`);
-  for (const field of ['sources', 'satellites', 'physicalSatellites'] as const) {
+  if (parsed.sources !== undefined) {
+    const valid = Array.isArray(parsed.sources) && parsed.sources.every(entry =>
+      typeof entry === 'string' ||
+      (entry && typeof entry === 'object' && !Array.isArray(entry) &&
+        typeof (entry as SourceSpec).path === 'string' &&
+        ((entry as SourceSpec).ref === undefined || typeof (entry as SourceSpec).ref === 'string')));
+    if (!valid) throw new Error(`Invalid sources in sync config: ${configPath}`);
+    for (const entry of parsed.sources) {
+      if (typeof entry !== 'string' && entry.ref !== undefined) validateRefName(entry.ref);
+    }
+  }
+  for (const field of ['satellites', 'physicalSatellites'] as const) {
     const value = parsed[field];
     if (value !== undefined && (!Array.isArray(value) || value.some(item => typeof item !== 'string'))) {
       throw new Error(`Invalid ${field} in sync config: ${configPath}`);
@@ -243,6 +277,26 @@ function loadConfig(configPath: string, required: boolean): FileConfig {
   }
   if (parsed.central !== undefined && typeof parsed.central !== 'string') throw new Error(`Invalid central in sync config: ${configPath}`);
   return parsed;
+}
+
+function describeProvenance(record: SkillProvenance): string {
+  const origin = record.ref ? `ref ${record.ref}` : record.branch ? `branch ${record.branch}` : undefined;
+  const details = [
+    origin,
+    record.commit ? `commit ${record.commit.slice(0, 12)}` : undefined,
+    record.dirty ? 'uncommitted changes' : undefined,
+    record.version ? `version ${record.version}` : undefined,
+  ].filter(Boolean);
+  return details.length > 0 ? `${record.source} (${details.join(', ')})` : record.source;
+}
+
+function readProvenance(statePath: string): Record<string, SkillProvenance> {
+  try {
+    const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    return state && typeof state.skills === 'object' && !Array.isArray(state.skills) ? state.skills : {};
+  } catch {
+    return {};
+  }
 }
 
 function formatReport(report: DistributionReport, json: boolean): string {
@@ -267,7 +321,8 @@ function formatReport(report: DistributionReport, json: boolean): string {
       r.action === 'skipped_invalid' ? '!' :
       r.action === 'backed_up' ? '~' :
       r.action === 'skipped_overlap' ? '⊘' :
-      r.action === 'removed_link' ? '−' : '?';
+      r.action === 'removed_link' ? '−' :
+      r.action === 'refused_downgrade' ? '✗' : '?';
     const detail = r.reason || r.backupPath || '';
     lines.push(`  ${icon} ${r.skill} -> ${path.basename(r.target)} ${detail}`);
   }
@@ -287,6 +342,33 @@ function formatReport(report: DistributionReport, json: boolean): string {
     }
   }
 
+  const warnings = report.warnings ?? [];
+  if (warnings.length > 0) {
+    lines.push('');
+    lines.push('Warnings:');
+    for (const warning of warnings) {
+      lines.push(`  ? ${warning}`);
+    }
+  }
+
+  const refusals = report.refusals ?? [];
+  if (refusals.length > 0) {
+    lines.push('');
+    lines.push('Refused downgrades (installed copy left unchanged; pass --allow-downgrade to replace it):');
+    for (const refusal of refusals) {
+      lines.push(`  ✗ ${refusal.skill}: installed ${refusal.installedVersion}, ${refusal.source} has ${refusal.sourceVersion}`);
+    }
+  }
+
+  const provenance = Object.entries(report.provenance ?? {});
+  if (provenance.length > 0) {
+    lines.push('');
+    lines.push(`${prefix}Provenance:`);
+    for (const [skill, record] of provenance) {
+      lines.push(`  ${skill} <- ${describeProvenance(record)}`);
+    }
+  }
+
   if (report.errors.length > 0) {
     lines.push('');
     lines.push('Errors:');
@@ -296,8 +378,13 @@ function formatReport(report: DistributionReport, json: boolean): string {
   }
 
   lines.push('');
+  const status = report.errors.length > 0 ? 'ERRORS' : refusals.length > 0 ? 'REFUSED' : 'OK';
+  const extras = [
+    warnings.length > 0 ? `${warnings.length} warning${warnings.length === 1 ? '' : 's'}` : '',
+    refusals.length > 0 ? `${refusals.length} refused` : '',
+  ].filter(Boolean);
   lines.push(
-    `${report.errors.length === 0 ? 'OK' : 'ERRORS'}: ${report.results.length} results, ${report.errors.length} errors`,
+    `${status}: ${report.results.length} results, ${report.errors.length} errors${extras.map(extra => `, ${extra}`).join('')}`,
   );
   return lines.join('\n');
 }
@@ -322,7 +409,10 @@ export async function executeSyncEngineCommand(args: string[]): Promise<SyncComm
   try {
     const configPath = opts.configPath ?? path.join(os.homedir(), '.agents', 'sync.json');
     const config = loadConfig(configPath, !!opts.configPath);
-    let configuredSources = (config.sources ?? []).map(expandPath);
+    const toSpec = (entry: string | SourceSpec): SourceSpec => typeof entry === 'string'
+      ? { path: expandPath(entry) }
+      : { path: expandPath(entry.path), ...(entry.ref ? { ref: entry.ref } : {}) };
+    let configuredSources: SourceSpec[] = (config.sources ?? []).map(toSpec);
     if (!fs.existsSync(configPath)) {
       const legacySourcesPath = path.join(os.homedir(), '.agents', 'sources.json');
       if (fs.existsSync(legacySourcesPath)) {
@@ -331,16 +421,20 @@ export async function executeSyncEngineCommand(args: string[]): Promise<SyncComm
           if (Array.isArray(legacyConfig.sources)) {
             configuredSources = legacyConfig.sources
               .filter((source: unknown): source is string => typeof source === 'string')
-              .map(expandPath);
+              .map((source: string) => ({ path: expandPath(source) }));
           }
         } catch {
           // Preserve the former best-effort behavior for the legacy source list.
         }
       }
     }
-    const sources = opts.sourceDirs.length > 0
-      ? [...opts.sourceDirs, ...(opts.allSources ? configuredSources : [])]
+    const selectedSources: SourceSpec[] = opts.sourceDirs.length > 0
+      ? [...opts.sourceDirs.map(source => ({ path: source })), ...(opts.allSources ? configuredSources : [])]
       : configuredSources;
+    const sources: SourceSpec[] = opts.ref
+      ? selectedSources.map(source => ({ path: source.path, ref: opts.ref }))
+      : selectedSources;
+    const statePath = path.join(path.dirname(configPath), 'sync-state.json');
     const central = opts.central ?? expandPath(config.central ?? '~/.agents/skills');
     const satellites = opts.targetDirs.length > 0
       ? opts.targetDirs
@@ -360,11 +454,15 @@ export async function executeSyncEngineCommand(args: string[]): Promise<SyncComm
       return {
         output: JSON.stringify({
           configPath,
-          sources,
+          sources: sources.map(source => source.path),
+          ...(sources.some(source => source.ref)
+            ? { refs: Object.fromEntries(sources.filter(source => source.ref).map(source => [source.path, source.ref])) }
+            : {}),
           central,
           satellites: satellites.filter(target => path.resolve(target) !== centralPath && !physical.has(path.resolve(target))),
           physicalSatellites: physicalSatellites.filter(target => path.resolve(target) !== centralPath),
-          statePath: path.join(path.dirname(configPath), 'sync-state.json'),
+          statePath,
+          provenance: readProvenance(statePath),
         }, null, 2),
         exitCode: 0,
       };
@@ -375,7 +473,8 @@ export async function executeSyncEngineCommand(args: string[]): Promise<SyncComm
       central,
       satellites,
       physicalSatellites,
-      statePath: path.join(path.dirname(configPath), 'sync-state.json'),
+      statePath,
+      allowDowngrade: opts.allowDowngrade,
       targetSkills: opts.targetSkills,
       dryRun: opts.dryRun,
       backup: !opts.noBackup,
@@ -384,7 +483,7 @@ export async function executeSyncEngineCommand(args: string[]): Promise<SyncComm
     const report = runDistribution(distributionOptions);
     return {
       output: formatReport(report, opts.json),
-      exitCode: (report.selectionErrors?.length ?? 0) > 0 ? 1 : 0,
+      exitCode: (report.selectionErrors?.length ?? 0) > 0 || (report.refusals?.length ?? 0) > 0 ? 1 : 0,
     };
   } catch (err: any) {
     const message = err instanceof Error ? err.message : String(err);

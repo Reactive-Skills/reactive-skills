@@ -1058,8 +1058,10 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       config: z.string().optional().describe('Sync config file (optional)'),
       physicalTargets: z.array(z.string()).optional().describe('Satellites that require physical copies'),
       showConfig: z.boolean().optional().describe('Show resolved sync configuration without writing'),
+      ref: z.string().optional().describe('Read skills from this committed git branch, tag or commit of each source instead of its working tree'),
+      allowDowngrade: z.boolean().optional().describe('Replace an installed skill even when the source skill.yaml version is older (default: false)'),
     },
-    async ({ skill, link = true, copy = false, dryRun = false, source, target, central, config, physicalTargets, showConfig = false }) => {
+    async ({ skill, link = true, copy = false, dryRun = false, source, target, central, config, physicalTargets, showConfig = false, ref, allowDowngrade = false }) => {
       try {
         const syncArgs: string[] = [];
         if (skill) {
@@ -1083,6 +1085,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
         if (config) syncArgs.push('--config', config);
         for (const physicalTarget of physicalTargets ?? []) syncArgs.push('--physical-target', physicalTarget);
         if (showConfig) syncArgs.push('--show-config');
+        if (ref) syncArgs.push('--ref', ref);
+        if (allowDowngrade) syncArgs.push('--allow-downgrade');
         syncArgs.push('--json');
 
         const { syncEngineCommand } = await import('../sync/cli.js');

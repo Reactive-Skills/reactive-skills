@@ -16,7 +16,7 @@ export async function syncCommand(args: string[]): Promise<SyncCommandResponse> 
       'Cannot combine a positional skill name with --skill',
       'VALIDATION_ERROR',
       [
-        'Usage: reactive-skills-axi sync [skill-name] [--link|--copy] [--dry-run]',
+        'Usage: reactive-skills-axi sync [skill-name] [--link|--copy] [--dry-run] [--ref <ref>] [--allow-downgrade]',
         'Usage: reactive-skills-axi sync --skill <name>[,<name>...] [--skill <name>[,<name>...] ...] [--link|--copy] [--dry-run]',
         'Example: reactive-skills-axi sync --skill synthesis,onboarding-map',
       ],
@@ -51,12 +51,13 @@ export async function syncCommand(args: string[]): Promise<SyncCommandResponse> 
       err.message || 'Sync failed',
       'RUNTIME_ERROR',
       [
-        'Usage: reactive-skills-axi sync [skill-name] [--link|--copy] [--dry-run]',
+        'Usage: reactive-skills-axi sync [skill-name] [--link|--copy] [--dry-run] [--ref <ref>] [--allow-downgrade]',
         'Usage: reactive-skills-axi sync --skill <name>[,<name>...] [--skill <name>[,<name>...] ...] [--link|--copy] [--dry-run]',
         'Example: reactive-skills-axi sync synthesis',
         'Example: reactive-skills-axi sync --skill synthesis,onboarding-map',
         'Example: reactive-skills-axi sync --skill synthesis --skill onboarding-map',
         'Example: reactive-skills-axi sync --dry-run',
+        'Example: reactive-skills-axi sync --ref main --dry-run',
       ]
     );
     return {
