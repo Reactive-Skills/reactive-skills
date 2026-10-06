@@ -61,6 +61,10 @@ SQLite enables foreign keys, WAL mode, a busy timeout, and bounded retry behavio
 
 Existing v1 and v2 databases are rebuilt transactionally into the v3 tables.
 
+Legacy snapshots, projections, and watermarks carry no `run_id`. They move to the run that owns the legacy events; when the events span several runs, they are dropped and rebuilt from the events.
+
+A ledger that cannot be opened or migrated raises `EventStoreOpenError` (code `EVENT_STORE_OPEN_FAILED`) before any run directory or job is created. Its message names the store path and the recovery command: move `events.db` (and any `-wal`/`-shm` files) aside, and the store is rebuilt from the `events.jsonl` beside it.
+
 Existing per-job stores are imported by the runtime into UUID-backed `runs/` directories and the shared skill database.
 
 Legacy files remain in place for operator rollback and audit until explicitly removed.
