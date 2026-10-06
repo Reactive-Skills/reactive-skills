@@ -52,6 +52,24 @@ axi emit <skill> <signal>
 
 ## Commands
 
+### setup
+
+Register the MCP server with every detected agent client (Claude Desktop, Cursor, Antigravity, Cline, Roo Code, `~/.agents`).
+
+```bash
+npx -y @reactive-skills/axi setup [--client <id|all>] [--dry-run] [--force] [--local]
+```
+
+Each client gets an entry that runs the scoped package pinned to the CLI's own exact version, never the bare `reactive-skills-axi` name and never an unpinned version:
+
+```json
+{ "mcpServers": { "reactive-skills-axi": { "command": "npx", "args": ["-y", "@reactive-skills/axi@<version>", "mcp"] } } }
+```
+
+When setup runs from a global install, the entry instead points at the installed script by absolute path (`node <path>/dist/cli/index.js mcp`). Existing entries that launch this package through the bare alias, an unpinned name, or an older pin are rewritten to the current pinned form and reported as `updated`. `--dry-run` reports `would_configure` / `would_update` without touching any file.
+
+A pinned entry never moves on its own: after upgrading, re-run `setup` to re-pin existing entries to the new version.
+
 ### init
 
 Scaffold a new reactive skill in `skills/<name>/`.

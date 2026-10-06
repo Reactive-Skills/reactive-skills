@@ -1,10 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { encode } from '@toon-format/toon';
 import { renderHelp, renderOutput } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
 import { AxiError } from '../errors.js';
+import { AXI_PACKAGE_NAME, pinnedAxiPackageSpec } from '@reactive-skills/runtime';
+
+const require = createRequire(import.meta.url);
+const packageMetadata = require('../../package.json') as { version?: string };
+const SERVER_NAME = 'reactive-skills-axi';
+const LEGACY_PACKAGE_NAME = 'reactive-skills-axi';
 
 export interface ClientTarget {
   id: string;
@@ -106,13 +114,70 @@ export function getClientTargets(): ClientTarget[] {
 
 export interface SetupResult {
   client: string;
-  status: 'configured' | 'already_configured' | 'would_configure' | 'not_detected' | 'error';
+  status: 'configured' | 'updated' | 'already_configured' | 'would_configure' | 'would_update' | 'not_detected' | 'error';
   path: string;
   details?: string;
 }
 
-export function buildServerEntry(useLocal = false): { command: string; args: string[] } {
-  if (useLocal) {
+export interface ServerEntry {
+  command: string;
+  args: string[];
+}
+
+export interface ServerEntryOptions {
+  useLocal?: boolean;
+  /** Version of the running CLI; defaults to this package's own version. */
+  version?: string;
+  /** Absolute path of an installed (global) CLI entry script, when setup runs from one. */
+  installedScript?: string | null;
+}
+
+function realpathOrSelf(p: string): string {
+  try {
+    return fs.realpathSync(p);
+  } catch {
+    return path.resolve(p);
+  }
+}
+
+function isInside(child: string, parent: string): boolean {
+  const rel = path.relative(parent, child);
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
+/**
+ * Returns the absolute CLI entry script when this CLI runs from a global npm install
+ * (a package under the Node prefix's global node_modules), otherwise null. Project-local
+ * node_modules and the transient npx cache do not count.
+ */
+export function detectGlobalInstallScript(): string | null {
+  const packageRoot = realpathOrSelf(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..'));
+  const script = path.join(packageRoot, 'dist', 'cli', 'index.js');
+  if (!fs.existsSync(script)) return null;
+
+  const prefixes = new Set<string>();
+  if (process.env.npm_config_prefix) prefixes.add(process.env.npm_config_prefix);
+  prefixes.add(path.dirname(process.execPath));
+  prefixes.add(path.dirname(path.dirname(process.execPath)));
+
+  for (const prefix of prefixes) {
+    const globalRoots = [path.join(prefix, 'lib', 'node_modules'), path.join(prefix, 'node_modules')];
+    for (const root of globalRoots) {
+      if (isInside(packageRoot, realpathOrSelf(root)) && !packageRoot.split(path.sep).includes('_npx')) {
+        return script;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * The MCP server entry setup registers: the scoped package pinned to this CLI's exact version
+ * via npx, or the absolute installed script for a global install. Never the bare alias name.
+ */
+export function buildServerEntry(options: ServerEntryOptions | boolean = {}): ServerEntry {
+  const opts: ServerEntryOptions = typeof options === 'boolean' ? { useLocal: options } : options;
+  if (opts.useLocal) {
     const localCli = fs.existsSync(path.resolve(process.cwd(), 'apps/axi/dist/cli/index.js'))
       ? path.resolve(process.cwd(), 'apps/axi/dist/cli/index.js')
       : path.resolve(process.cwd(), 'apps/reactive-skills-axi/dist/cli/index.js');
@@ -121,10 +186,43 @@ export function buildServerEntry(useLocal = false): { command: string; args: str
       args: [localCli, 'mcp'],
     };
   }
+  const installedScript = opts.installedScript === undefined ? detectGlobalInstallScript() : opts.installedScript;
+  if (installedScript) {
+    return {
+      command: 'node',
+      args: [installedScript, 'mcp'],
+    };
+  }
   return {
     command: 'npx',
-    args: ['-y', 'reactive-skills-axi', 'mcp'],
+    args: ['-y', pinnedAxiPackageSpec(opts.version ?? packageMetadata.version), 'mcp'],
   };
+}
+
+function entriesEqual(a: any, b: ServerEntry): boolean {
+  return Boolean(a) &&
+    a.command === b.command &&
+    Array.isArray(a.args) &&
+    JSON.stringify(a.args) === JSON.stringify(b.args);
+}
+
+/** True when an existing MCP entry launches this package through npx, whatever its spelling or version. */
+export function isNpxLaunchOfAxi(entry: any): boolean {
+  if (!entry || typeof entry !== 'object' || typeof entry.command !== 'string' || !Array.isArray(entry.args)) {
+    return false;
+  }
+  const launcher = path.basename(entry.command).toLowerCase().replace(/\.(cmd|exe)$/, '');
+  if (launcher !== 'npx') return false;
+  return entry.args.some((arg: unknown) => {
+    if (typeof arg !== 'string') return false;
+    const name = arg.startsWith('@') ? arg.slice(0, arg.indexOf('@', 1) === -1 ? undefined : arg.indexOf('@', 1)) : arg.split('@')[0];
+    return name === LEGACY_PACKAGE_NAME || name === AXI_PACKAGE_NAME;
+  });
+}
+
+function describeEntry(entry: any): string {
+  if (!entry || typeof entry !== 'object') return String(entry);
+  return [entry.command, ...(Array.isArray(entry.args) ? entry.args : [])].join(' ');
 }
 
 export async function setupCommand(args: string[]): Promise<string> {
@@ -151,7 +249,7 @@ export async function setupCommand(args: string[]): Promise<string> {
     );
   }
 
-  const serverEntry = buildServerEntry(isLocal);
+  const serverEntry = buildServerEntry({ useLocal: isLocal });
   const results: SetupResult[] = [];
 
   for (const target of selectedTargets) {
@@ -191,13 +289,25 @@ export async function setupCommand(args: string[]): Promise<string> {
         config[target.serverKey] = {};
       }
 
-      const existingEntry = config[target.serverKey]['reactive-skills-axi'];
-      const alreadyMatches = existingEntry &&
-        existingEntry.command === serverEntry.command &&
-        Array.isArray(existingEntry.args) &&
-        JSON.stringify(existingEntry.args) === JSON.stringify(serverEntry.args);
+      const servers = config[target.serverKey] as Record<string, any>;
 
-      if (alreadyMatches) {
+      // Existing npx launches of this package (bare alias, unpinned, or stale pin) under any key
+      // are rewritten in place so a user's chosen server name survives.
+      const staleKeys = Object.keys(servers).filter(
+        key => isNpxLaunchOfAxi(servers[key]) && !entriesEqual(servers[key], serverEntry)
+      );
+      const hasCurrentLaunch = Object.values(servers).some(entry => entriesEqual(entry, serverEntry));
+      const canonical = servers[SERVER_NAME];
+
+      const updates = new Set(staleKeys);
+      if (canonical !== undefined && !entriesEqual(canonical, serverEntry)) {
+        updates.add(SERVER_NAME);
+      }
+      if (canonical === undefined && staleKeys.length === 0 && !hasCurrentLaunch) {
+        updates.add(SERVER_NAME);
+      }
+
+      if (updates.size === 0) {
         results.push({
           client: target.name,
           status: 'already_configured',
@@ -206,17 +316,26 @@ export async function setupCommand(args: string[]): Promise<string> {
         continue;
       }
 
+      const isUpdate = [...updates].some(key => servers[key] !== undefined);
+      const details = [...updates]
+        .filter(key => servers[key] !== undefined)
+        .map(key => `${key}: ${describeEntry(servers[key])} -> ${describeEntry(serverEntry)}`)
+        .join('; ');
+
       if (isDryRun) {
         results.push({
           client: target.name,
-          status: 'would_configure',
+          status: isUpdate ? 'would_update' : 'would_configure',
           path: target.configPath,
+          ...(details ? { details } : {}),
         });
         continue;
       }
 
       // Write changes
-      config[target.serverKey]['reactive-skills-axi'] = serverEntry;
+      for (const key of updates) {
+        servers[key] = { ...serverEntry, args: [...serverEntry.args] };
+      }
 
       if (!fs.existsSync(target.parentDir)) {
         fs.mkdirSync(target.parentDir, { recursive: true });
@@ -226,8 +345,9 @@ export async function setupCommand(args: string[]): Promise<string> {
 
       results.push({
         client: target.name,
-        status: 'configured',
+        status: isUpdate ? 'updated' : 'configured',
         path: target.configPath,
+        ...(details ? { details } : {}),
       });
     } catch (err: any) {
       results.push({

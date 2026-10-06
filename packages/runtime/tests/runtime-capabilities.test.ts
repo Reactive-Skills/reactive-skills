@@ -1,10 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import {
   compareRuntimeVersions,
+  pinnedAxiPackageSpec,
+  RUNTIME_VERSION,
   evaluateRuntimeRequirements,
   selectRuntimeCandidate,
   STATIC_RUNTIME_CAPABILITIES,
 } from '../src/core/runtime-capabilities.js';
+
+describe('pinned AXI package spec', () => {
+  it('pins the scoped package to an exact version', () => {
+    expect(pinnedAxiPackageSpec('1.2.3')).toBe('@reactive-skills/axi@1.2.3');
+    expect(pinnedAxiPackageSpec()).toBe(`@reactive-skills/axi@${RUNTIME_VERSION}`);
+  });
+
+  it('refuses unpinned or non-exact versions', () => {
+    for (const version of ['latest', '^1.2.3', '1.2', 'unknown', '']) {
+      expect(() => pinnedAxiPackageSpec(version)).toThrow(/non-exact version/);
+    }
+  });
+});
 
 describe('runtime capability contracts', () => {
   it('compares semantic runtime versions', () => {

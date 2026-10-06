@@ -26,8 +26,8 @@ export const mcp = {
       id: 'cursor',
       heading: 'Configure Cursor or VS Code',
       blocks: [
-        { type: 'text', text: 'Add the server definition to your client’s MCP settings configuration file.' },
-        { type: 'code', example: { language: 'json', command: '{\n  "mcpServers": {\n    "reactive-skills": {\n      "command": "npx",\n      "args": ["-y", "@reactive-skills/axi", "mcp"]\n    }\n  }\n}', explanation: 'Add to client MCP settings and reload. The reactive runtime tools will be registered automatically.' } },
+        { type: 'text', text: 'The easiest route is `npx -y @reactive-skills/axi setup`, which writes the entry below into every detected client, pinned to the exact installed version (or the absolute script path for a global install). It also rewrites older entries that use the bare `reactive-skills-axi` name or an unpinned version, and `--dry-run` previews the changes. A pinned entry never moves on its own, so re-run `setup` after upgrading to re-pin it. To configure by hand, add the server definition to your client’s MCP settings, replacing `<version>` with the version you want to run.' },
+        { type: 'code', example: { language: 'json', command: '{\n  "mcpServers": {\n    "reactive-skills-axi": {\n      "command": "npx",\n      "args": ["-y", "@reactive-skills/axi@<version>", "mcp"]\n    }\n  }\n}', explanation: 'Add to client MCP settings and reload. Always pin the scoped package to an exact version; the unscoped `reactive-skills-axi` alias is not a supported way to launch the server.' } },
       ],
     },
     {
@@ -35,7 +35,7 @@ export const mcp = {
       heading: 'Configure Claude Desktop',
       blocks: [
         { type: 'text', text: 'Claude Desktop consumes the same stdio server definition inside its config file.' },
-        { type: 'code', example: { language: 'json', command: '{\n  "mcpServers": {\n    "reactive-skills": {\n      "command": "npx",\n      "args": ["-y", "@reactive-skills/axi", "mcp"]\n    }\n  }\n}', explanation: 'Save configuration and restart Claude Desktop to enable reactive state and signal tools.' } },
+        { type: 'code', example: { language: 'json', command: '{\n  "mcpServers": {\n    "reactive-skills-axi": {\n      "command": "npx",\n      "args": ["-y", "@reactive-skills/axi@<version>", "mcp"]\n    }\n  }\n}', explanation: 'Save configuration and restart Claude Desktop to enable reactive state and signal tools.' } },
       ],
     },
     {
