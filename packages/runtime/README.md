@@ -88,6 +88,31 @@ transitions:
     guard_message: "Send dod_record with at least one criterion."
 ```
 
+### Scoped Judgment Context
+
+By default the Jev adapter sends the whole run context and the event payload with every judgment, so a criterion about two fields is judged against everything else in the run.
+A judgment can list the context it needs:
+
+```yaml
+judgment:
+  type: predicate
+  criterion: "Does every decider in write_side.deciders have a projection in read_projections?"
+  min_probability: 0.8
+  context_paths: [write_side.deciders, read_projections]
+  include_payload: false
+```
+
+`context_paths` lists paths relative to the run context, such as `write_side.deciders`, where a numeric segment indexes an array.
+The adapter sends only those paths, each under its own name, plus the payload and the current state.
+`include_payload: false` leaves the payload out, for criteria that read only the context; on its own it still sends the whole context.
+A judgment with neither field sends exactly what it did before.
+Only the Jev adapter sends context, so the script adapter ignores both fields.
+
+A path with no value in the run context is not sent and does not fail the judgment.
+`GUARD_EVALUATED` records what was sent under `judgment.contextSent`: `paths` (those found and sent), `missing`, `includePayload`, and `inputTokens` when the model reports it.
+A judgment that sets neither field records no `contextSent`.
+`validate` rejects an invalid path and warns when a path starts with `context.`.
+
 ### Judgment Thresholds
 
 `min_probability` states the probability a judgment needs.

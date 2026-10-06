@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { validateContextPath } from './judgment-context.js';
 
 /**
  * Signal Event Schema: Immutable envelope for all events in the reactive skill bus
@@ -97,6 +98,15 @@ export interface JudgmentDefinition {
   fallback_adapter?: string;
   fallback_target?: string;
   timeout_ms?: number;
+  /**
+   * Run-context paths the Jev adapter sends to the model, such as `write_side.deciders`, relative
+   * to the run context. Each found path is sent under its own name beside the payload. A path with
+   * no value is left out and reported in `contextSent.missing`. Without this field the adapter
+   * sends the whole run context.
+   */
+  context_paths?: string[];
+  /** Set to `false` to leave the event payload out of what the Jev adapter sends. Defaults to `true`. */
+  include_payload?: boolean;
 }
 
 export interface RuntimeRequirements {
@@ -110,6 +120,22 @@ export interface JudgmentRequest {
   contextSnapshot: Record<string, any>;
   options?: string[];
   rubric?: string | string[];
+  /** From the judgment's `context_paths`; selects what an adapter that sends context includes. */
+  contextPaths?: string[];
+  /** From the judgment's `include_payload`. */
+  includePayload?: boolean;
+}
+
+/** What the Jev adapter sent when a judgment declared `context_paths` or `include_payload`. */
+export interface JudgmentContextSent {
+  /** Declared paths that were found and sent. `undefined` means the whole run context was sent. */
+  paths?: string[];
+  /** Declared paths with no value in the run context, which were not sent. */
+  missing: string[];
+  /** Whether the event payload was sent. */
+  includePayload: boolean;
+  /** Input tokens the model reported for the request, when its usage says so. */
+  inputTokens?: number;
 }
 
 export type JudgmentThresholdField = 'min_probability' | 'min_confidence';
@@ -149,6 +175,8 @@ export interface JudgmentResult {
   selfReported?: boolean;
   /** Who decided the judgment (ADR 0012), set by the judgment engine. */
   decidedBy?: JudgmentDecisionSource;
+  /** Set by the Jev adapter only when the judgment declared `context_paths` or `include_payload`. */
+  contextSent?: JudgmentContextSent;
 }
 
 export type JudgmentDecisionSource = 'model' | 'expression' | 'human' | 'self_reported';
@@ -321,6 +349,11 @@ export const JudgmentDefinitionSchema = z.object({
   fallback_adapter: z.string().optional(),
   fallback_target: z.string().optional(),
   timeout_ms: z.number().positive().optional(),
+  context_paths: z.array(z.string().superRefine((path, ctx) => {
+    const problem = validateContextPath(path);
+    if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem });
+  })).optional(),
+  include_payload: z.boolean().optional(),
 }).superRefine((judgment, ctx) => {
   if (judgment.min_probability !== undefined && judgment.min_confidence !== undefined) {
     ctx.addIssue({

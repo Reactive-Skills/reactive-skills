@@ -7,6 +7,7 @@
 - `packages/runtime/src/core/judgment-engine.ts`: Decoupled Ports-and-Adapters judgment engine with snap-on adapters and circuit breaking.
 - `packages/runtime/src/core/approval-grants.ts`: Per-workspace self-report grant stored in the user's home folder; the engine reads it and only `reactive-skills-axi approve` writes or revokes it (ADR 0012).
 - `packages/runtime/src/core/judgment-thresholds.ts`: Pure judgment threshold resolution and accept, escalate, or reject band decisions.
+- `packages/runtime/src/core/judgment-context.ts`: Context path syntax and scoping for the context a judgment sends to a model adapter.
 - `packages/runtime/src/core/context-router.ts`: Bounded Jev-backed skill and context routing before prompt assembly.
 - `packages/runtime/src/core/context-candidate-discovery.ts`: Bounded local skill metadata discovery for automatic context routing.
 - `packages/runtime/src/core/bootloader.ts`: Versioned authoritative runtime bootloader and stable skill reference helpers.

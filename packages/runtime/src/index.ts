@@ -4,6 +4,7 @@ export * from './core/guard-evaluator.js';
 export * from './core/judgment-engine.js';
 export * from './core/approval-grants.js';
 export * from './core/judgment-thresholds.js';
+export * from './core/judgment-context.js';
 export * from './core/context-router.js';
 export { discoverContextCandidates } from './core/context-candidate-discovery.js';
 export * from './core/bootloader.js';
