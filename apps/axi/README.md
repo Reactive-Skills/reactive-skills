@@ -151,6 +151,20 @@ They warn when `min_probability` or `escalate` is used without requiring the `ju
 Guard contract checks read `guards/*.yaml` and link each contract to the `skill.yaml` judgment with the same `snap_on.judgment.criterion`.
 They fail validation when a linked pair disagrees on type, threshold, escalate band, or accept band, and warn on unlinked contracts, inverted accept polarity, unenforced escalate bands, and `TODO` thresholds.
 
+`guardFunction` checks keep the path inside the skill directory, require a `.js`, `.mjs`, or `.cjs` extension, and require the file to exist.
+They also read each guard file as text, never importing or running it, and fail validation when its syntax does not match the module format Node will load it as:
+
+| File | Loads as | Fails when |
+| :--- | :--- | :--- |
+| `.mjs` | ES module | it uses `require` or `module.exports` |
+| `.cjs` | CommonJS | it uses `import` or `export` |
+| `.js` | the `"type"` of the nearest `package.json` at or above the file (`"module"` or `"commonjs"`) | it uses the other style |
+| `.js` with no `"type"` | detected from syntax on Node 20.19+ and 22.7+ | it uses `import`/`export` on an older Node |
+
+The runtime loads every guard with dynamic `import()`, so a `.js` guard with ESM syntax under `"type": "commonjs"` fails with `Unexpected token 'export'`.
+The error names the guard file and the fix: rename it to `.mjs` or `.cjs`, or set `"type"` in the nearest `package.json`.
+Prefer an explicit `.mjs` or `.cjs` extension so the format does not depend on a `package.json`.
+
 ```bash
 # Validate a specific skill directory:
 npx -y @reactive-skills/axi validate skills/my-skill

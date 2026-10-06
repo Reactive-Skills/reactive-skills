@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import { pathToFileURL } from 'node:url';
 import { SignalEvent, JudgmentDefinition, JudgmentResult } from './types.js';
 import { JudgmentEngine } from './judgment-engine.js';
+import { inspectGuardModuleFormat } from './guard-module-format.js';
 
 export interface GuardEvaluationContext {
   event: SignalEvent;
@@ -114,7 +115,21 @@ export class GuardEvaluator {
           }
 
           const fileUrl = pathToFileURL(realFullPath).href;
-          const module = await import(fileUrl);
+          let module: any;
+          try {
+            module = await import(fileUrl);
+          } catch (importErr: any) {
+            const hint = inspectGuardModuleFormat(realFullPath, guardFunctionPath).problem;
+            return {
+              passed: false,
+              error: `Guard function ${guardFunctionPath} failed to load: ${importErr.message}. ${
+                hint ?? 'Check the file for syntax errors, and that its module format (.js, .mjs, .cjs) matches how it is written.'
+              }`,
+              judgmentResult,
+              fallbackTriggered,
+              fallbackTarget,
+            };
+          }
           const fn = module.default || module.guard || module.check;
           if (typeof fn === 'function') {
             const { passed, reason } = readGuardFunctionResult(await fn(evalContext));
