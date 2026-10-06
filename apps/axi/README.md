@@ -272,6 +272,11 @@ npx -y @reactive-skills/axi jobs my-skill switch <job-id>
 # Archive a run:
 npx -y @reactive-skills/axi jobs my-skill archive <job-id>
 
+# Payload shapes differ between the two commands:
+npx -y @reactive-skills/axi invoke my-skill --payload '{"mission":"ship"}'                       # flat object becomes the initial context
+npx -y @reactive-skills/axi emit my-skill <signal> --payload '{"contextUpdates":{"mission":"ship"}}'  # contextUpdates is merged into context
+# invoke rejects a {"contextUpdates":{...}} payload and names the flat shape to use instead.
+
 # Target a specific job explicitly without switching:
 npx -y @reactive-skills/axi state my-skill --job <job-id>
 npx -y @reactive-skills/axi emit my-skill <signal> --job <job-id>
