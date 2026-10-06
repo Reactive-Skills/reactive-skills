@@ -7,6 +7,7 @@ import {
   createReactiveBootloaderReference,
   ensureReactiveBootloaderReference,
 } from './bootloader.js';
+import { pinnedAxiPackageSpec } from './runtime-capabilities.js';
 
 export interface MigrationResult {
   migrated: boolean;
@@ -263,7 +264,7 @@ Configure host harness with \`@reactive-skills/axi\` MCP server when no compatib
 
 ## Instructions
 1. Run shell command via \`run_command\`:
-   \`npx -y @reactive-skills/axi setup\`
+   \`npx -y ${pinnedAxiPackageSpec()} setup\`
 2. When command completes:
    - If exit code 0, emit signal \`SETUP_COMPLETE\` with payload \`{"exit_code": 0}\`.
    - If non-zero exit code, emit signal \`SETUP_FAILED\` with payload \`{"exit_code": 1}\`.

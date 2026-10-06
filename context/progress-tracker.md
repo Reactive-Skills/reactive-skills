@@ -72,6 +72,8 @@
 
 ## 🗺️ Backlog Release Roadmap (`docs/scope/backlog-release-roadmap.md`)
 
+> `setup` now registers `@reactive-skills/axi@<installed version>` (or the global install's absolute script) and rewrites bare-alias, unpinned, and stale entries; bootloader and scaffold text pin the same spec.
+
 | Train | Version | Scope | Status |
 | :--- | :--- | :--- | :--- |
 | R1 | v0.17.0 | Probability thresholds, guard contract lint, security policy (#23, #25) | ✅ Published |

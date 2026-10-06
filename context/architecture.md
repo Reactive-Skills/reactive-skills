@@ -160,16 +160,16 @@ Three modes exist — choose based on portability requirements. The runtime itse
 
 ### Mode 1 — AXI CLI (recommended, no-install)
 
-`reactive-skills-axi` is the recommended integration path. It requires **no installation** — agents run it directly via `npx reactive-skills-axi@latest <command>`, making it the most accessible option across any agent harness or CI environment without configuration overhead.
+`reactive-skills-axi` is the recommended integration path. It requires **no installation** — agents run it directly via `npx -y @reactive-skills/axi <command>`, making it the most accessible option across any agent harness or CI environment without configuration overhead.
 
 ```
 Agent Turn
   │
-  ├─► npx reactive-skills-axi state    → TOON-formatted prompt slice + allowed_tools
+  ├─► npx -y @reactive-skills/axi state    → TOON-formatted prompt slice + allowed_tools
   │
   │   [Agent reasons, executes allowed tools]
   │
-  └─► npx reactive-skills-axi emit <SIGNAL> [payload]
+  └─► npx -y @reactive-skills/axi emit <SIGNAL> [payload]
         │
         ├─ GuardEvaluator.evaluate()   → passes/fails
         ├─ on_exit hooks (skill.yaml)  → executed by FSMEngine on leaving state

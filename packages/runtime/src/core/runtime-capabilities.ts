@@ -6,6 +6,18 @@ const packageMetadata = require('../../package.json') as { version?: string };
 
 export const RUNTIME_VERSION = packageMetadata.version ?? 'unknown';
 
+export const AXI_PACKAGE_NAME = '@reactive-skills/axi';
+
+const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+/** Scoped package spec pinned to an exact version, e.g. `@reactive-skills/axi@0.19.0`. */
+export function pinnedAxiPackageSpec(version: string = RUNTIME_VERSION): string {
+  if (!EXACT_VERSION.test(version)) {
+    throw new Error(`Cannot pin ${AXI_PACKAGE_NAME} to non-exact version '${version}'.`);
+  }
+  return `${AXI_PACKAGE_NAME}@${version}`;
+}
+
 export const STATIC_RUNTIME_CAPABILITIES = [
   'runtime.preflight',
   'runtime.transport_handshake',
