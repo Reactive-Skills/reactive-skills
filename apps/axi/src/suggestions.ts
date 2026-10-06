@@ -156,6 +156,8 @@ export function getSuggestions(ctx: SuggestionContext): string[] {
         'Run `reactive-skills-axi sync <skill>` to copy a skill into the central directory and update satellites',
         'Run `reactive-skills-axi sync --dry-run` to preview sync operations without writing',
         'Run `reactive-skills-axi sync --copy` to use physical copies for all satellites on this run',
+        'Run `reactive-skills-axi sync --ref <branch>` to install a branch\'s committed skills regardless of what the source has checked out',
+        'Run `reactive-skills-axi sync --allow-downgrade` to replace an installed skill with an older source version',
         'Run `reactive-skills-axi` to return to the dashboard',
       ];
 

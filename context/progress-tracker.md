@@ -30,6 +30,7 @@
 | Migration Engine (retroactive schema upgrader) | Core | ✅ Done |
 | Telemetry Server (SSE, dashboard) | Ops | ✅ Done |
 | Workspace Sync Engine | Ops | ✅ Done |
+| Sync from a git ref (`ref` in `sync.json`, `--ref`), SemVer downgrade refusal (`--allow-downgrade`), working-tree branch and dirty warnings, per-skill source provenance in `sync-state.json` (#40) | Ops | ✅ Done |
 | Context Scoping & Delta Delivery | Core | ✅ Done |
 | Strict Execution Mode (bypass detection, idle-turn limit) | Core | ✅ Done |
 | Performance Budget Tests (P0/P1 latency assertions) | Quality | ✅ Done |

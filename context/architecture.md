@@ -50,6 +50,9 @@ reactive-skills/                          # Repo root
 │       │   ├── sync/
 │       │   │   ├── engine.ts             # Workspace sync engine
 │       │   │   ├── cli.ts                # Sync CLI entry (reactive-skills-sync binary)
+│       │   │   ├── distribution.ts       # Source → central → satellite distribution, provenance state
+│       │   │   ├── git-source.ts         # Read-only git plumbing: ref export, branch and dirty state
+│       │   │   ├── versions.ts           # SemVer parsing and skill.yaml version comparison
 │       │   │   └── types.ts              # Sync types
 │       │   └── cli/
 │       │       ├── index.ts              # AXI CLI runner (legacy, dev mode)
