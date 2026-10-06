@@ -1,0 +1,9 @@
+{
+  "name": "bq-vitals",
+  "version": "0.1.0",
+  "description": "Status line with context, cost and rate limits, plus a live state-machine map and query-plan style trace for reactive skill runs.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Reactive-Skills"
+  }
+}

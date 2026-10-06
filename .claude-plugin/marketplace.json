@@ -1,0 +1,8 @@
+{
+  "name": "reactive-skills",
+  "owner": { "name": "Reactive-Skills" },
+  "description": "Claude Code mods for working with Reactive Skills runs.",
+  "plugins": [
+    { "name": "bq-vitals", "source": "./mods/bq-vitals" }
+  ]
+}
