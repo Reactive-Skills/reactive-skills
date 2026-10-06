@@ -94,11 +94,17 @@ export class SQLiteStorageDriver {
     this.db = this.readOnly
       ? new DatabaseSync(dbPath, { readOnly: true } as any)
       : new DatabaseSync(dbPath);
-    this.db.exec('PRAGMA busy_timeout = 5000');
-    this.db.exec('PRAGMA foreign_keys = ON');
-    if (!this.readOnly) {
-      this.db.exec('PRAGMA journal_mode = WAL');
-      this.initTables();
+    try {
+      this.db.exec('PRAGMA busy_timeout = 5000');
+      this.db.exec('PRAGMA foreign_keys = ON');
+      if (!this.readOnly) {
+        this.db.exec('PRAGMA journal_mode = WAL');
+        this.initTables();
+      }
+    } catch (error) {
+      // The constructor never returns, so nothing else can close this connection.
+      try { this.db.close(); } catch { /* already closed */ }
+      throw error;
     }
   }
 
@@ -284,17 +290,28 @@ export class SQLiteStorageDriver {
         this.db.prepare('UPDATE runs SET version = ?, updated_at = ? WHERE run_id = ?').run(seq, new Date().toISOString(), runId);
       }
       this.db.prepare('UPDATE ledger_counter SET last_seq = ? WHERE id = 1').run(ledgerSeq);
-      for (const row of legacyProjections) {
-        this.db.prepare('INSERT OR REPLACE INTO projections (run_id, name, content, updated_at) VALUES (?, ?, ?, ?)')
-          .run(this.defaultRunId, row.name, row.content, row.updated_at || new Date().toISOString());
-      }
-      for (const row of legacySnapshots) {
-        this.db.prepare('INSERT OR REPLACE INTO state_snapshots (run_id, seq, state, context, created_at) VALUES (?, ?, ?, ?, ?)')
-          .run(this.defaultRunId, row.seq, row.state, row.context, row.created_at || new Date().toISOString());
-      }
-      for (const row of legacyWatermarks) {
-        this.db.prepare('INSERT OR REPLACE INTO projection_watermarks (run_id, name, event_seq, projection_version, updated_at) VALUES (?, ?, ?, ?, ?)')
-          .run(this.defaultRunId, row.name, row.event_seq, row.projection_version, row.updated_at || new Date().toISOString());
+      // Legacy projections, snapshots and watermarks carry no run_id. They belong to the run that owns the
+      // legacy events, never to whichever run happens to be opening the store: a snapshot grafted onto a
+      // fresh run makes it rehydrate from foreign state, and a run with no `runs` row fails the foreign key.
+      // When the events span several runs the ownership is ambiguous, so the derived caches are dropped
+      // and rebuilt from the events instead.
+      const derivedOwner = perRunSeq.size === 0
+        ? this.defaultRunId
+        : perRunSeq.size === 1 ? [...perRunSeq.keys()][0] : null;
+      if (derivedOwner) {
+        this.ensureRunInternal(derivedOwner, { skillId: this.defaultSkillId });
+        for (const row of legacyProjections) {
+          this.db.prepare('INSERT OR REPLACE INTO projections (run_id, name, content, updated_at) VALUES (?, ?, ?, ?)')
+            .run(derivedOwner, row.name, row.content, row.updated_at || new Date().toISOString());
+        }
+        for (const row of legacySnapshots) {
+          this.db.prepare('INSERT OR REPLACE INTO state_snapshots (run_id, seq, state, context, created_at) VALUES (?, ?, ?, ?, ?)')
+            .run(derivedOwner, row.seq, row.state, row.context, row.created_at || new Date().toISOString());
+        }
+        for (const row of legacyWatermarks) {
+          this.db.prepare('INSERT OR REPLACE INTO projection_watermarks (run_id, name, event_seq, projection_version, updated_at) VALUES (?, ?, ?, ?, ?)')
+            .run(derivedOwner, row.name, row.event_seq, row.projection_version, row.updated_at || new Date().toISOString());
+        }
       }
       for (const table of ['events', 'projections', 'state_snapshots', 'projection_watermarks']) {
         if (this.tableExists(`${table}_legacy_v2`)) this.db.exec(`DROP TABLE ${table}_legacy_v2`);
@@ -637,6 +654,24 @@ export class SQLiteStorageDriver {
   }
 }
 
+/** Raised when the ledger on disk cannot be opened or migrated, naming the file and how to recover. */
+export class EventStoreOpenError extends Error {
+  readonly code = 'EVENT_STORE_OPEN_FAILED';
+  readonly recovery: string;
+
+  constructor(readonly storePath: string, cause: unknown) {
+    const reason = cause instanceof Error ? cause.message : String(cause);
+    // A stale -wal or -shm file left beside a fresh database could be replayed onto it, so they move together.
+    const moves = [storePath, `${storePath}-wal`, `${storePath}-shm`]
+      .filter((file, index) => index === 0 || fs.existsSync(file))
+      .map(file => `mv "${file}" "${file}.bak"`);
+    const recovery = `Move the store aside and retry; it is rebuilt from events.jsonl next to it: ${moves.join(' && ')}`;
+    super(`Cannot open event store at ${storePath}: ${reason}. Recovery: ${recovery}`, { cause });
+    this.name = 'EventStoreOpenError';
+    this.recovery = recovery;
+  }
+}
+
 /** Immutable append-only event store. SQLite is canonical when enabled. */
 export class EventStore {
   private events: SignalEvent[] = [];
@@ -691,22 +726,41 @@ export class EventStore {
     const workspaceDir = options.workspaceDir || process.cwd();
     const scopeDir = options.skillId ? path.join(workspaceDir, '.reactive', 'skills', options.skillId) : path.join(workspaceDir, '.reactive');
     this.runDir = options.skillId ? path.join(scopeDir, 'runs', runId) : path.join(scopeDir, runId);
-    fs.mkdirSync(path.join(this.runDir, 'artifacts'), { recursive: true });
-    fs.mkdirSync(path.join(this.runDir, 'logs'), { recursive: true });
-      this.storagePath = options.storagePath
-        || (options.sqlitePath ? `${options.sqlitePath}.jsonl` : path.join(scopeDir, 'events.jsonl'));
-    if (options.enableSqlite || options.sqlitePath) {
-      this.sqlitePath = options.sqlitePath || path.join(scopeDir, 'events.db');
-      this.sqliteDriver = new SQLiteStorageDriver(this.sqlitePath, {
-        runId,
-        skillId: options.skillId,
-        readOnly: this.readOnly,
-      });
-      this.sqliteDriver.ensureRun(runId, { name: options.runName || options.run_name, skillId: options.skillId, parentRunId: options.parentRunId || options.parent_run_id });
-      if (options.skillId) this.importLegacyRunStores(scopeDir, options.skillId);
+    const runDirExisted = fs.existsSync(this.runDir);
+    this.storagePath = options.storagePath
+      || (options.sqlitePath ? `${options.sqlitePath}.jsonl` : path.join(scopeDir, 'events.jsonl'));
+    this.sqlitePath = options.enableSqlite || options.sqlitePath
+      ? options.sqlitePath || path.join(scopeDir, 'events.db')
+      : null;
+    try {
+      // Open and migrate the ledger before creating the run directory, so a store that cannot be opened
+      // leaves no run behind.
+      if (this.sqlitePath) {
+        try {
+          this.sqliteDriver = new SQLiteStorageDriver(this.sqlitePath, {
+            runId,
+            skillId: options.skillId,
+            readOnly: this.readOnly,
+          });
+        } catch (error) {
+          // A busy ledger is another process at work, not damage: moving it aside would split the ledger.
+          throw isBusyError(error) ? error : new EventStoreOpenError(this.sqlitePath, error);
+        }
+        this.sqliteDriver.ensureRun(runId, { name: options.runName || options.run_name, skillId: options.skillId, parentRunId: options.parentRunId || options.parent_run_id });
+        if (options.skillId) this.importLegacyRunStores(scopeDir, options.skillId);
+      }
+      fs.mkdirSync(path.join(this.runDir, 'artifacts'), { recursive: true });
+      fs.mkdirSync(path.join(this.runDir, 'logs'), { recursive: true });
+      if (options.acquireLock) this.acquireRunLock(this.runDir);
+      this.initializeStorage();
+    } catch (error) {
+      // Only release a lock this instance took: on contention lockPath names the other holder's file.
+      if (this.lockFd !== null) this.releaseRunLock();
+      this.sqliteDriver?.close();
+      this.sqliteDriver = null;
+      if (!runDirExisted) fs.rmSync(this.runDir, { recursive: true, force: true });
+      throw error;
     }
-    if (options.acquireLock && this.runDir) this.acquireRunLock(this.runDir);
-    this.initializeStorage();
   }
 
   private acquireRunLock(dir: string): void {
