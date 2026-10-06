@@ -116,6 +116,13 @@ transitions:
       ],
     },
     {
+      id: 'mods',
+      heading: 'Mods',
+      blocks: [
+        { type: 'text', text: 'Skills define the workflow. Mods are separate: small Claude Code plugins that change what you can see and do while a skill runs, such as a status line or a live state-machine pane. They read the same event ledger and statechart the runtime writes, and they never change a run. See the [Mods page](/mods).' },
+      ],
+    },
+    {
       id: 'interactive-simulator',
       heading: 'Interactive State Machine Simulator',
       blocks: [
@@ -128,5 +135,6 @@ transitions:
     { title: 'AXI CLI reference', href: '/docs/axi' },
     { title: 'Quickstart', href: '/docs/quickstart' },
     { title: 'Model Context Protocol (MCP)', href: '/docs/mcp' },
+    { title: 'Mods for Claude Code', href: '/mods' },
   ],
 };

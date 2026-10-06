@@ -9,9 +9,12 @@ const SITE_ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SCANNED = [
   'src/app/page.js',
   'src/app/registry',
+  'src/app/mods',
   'src/components/site',
   'src/features/blog',
   'src/features/landing',
+  'src/features/mods',
+  'src/infrastructure/content/mods',
   'src/features/registry',
   'src/features/telemetry',
   'src/infrastructure/content/landing',
