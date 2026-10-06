@@ -112,8 +112,8 @@ If Jev is unavailable, it returns `route: none` and the agent can continue its d
 | Command | Usage | Description |
 | :--- | :--- | :--- |
 | `state` | `npx -y @reactive-skills/axi state <skill>` | Display current active state, unabridged prompt slice, and allowed tools |
-| `emit` | `npx -y @reactive-skills/axi emit <skill> <signal>` | Emit a signal to evaluate guards and advance to the next state |
-| `invoke` | `npx -y @reactive-skills/axi invoke <skill> [--payload JSON]` | Initialize and start a skill run |
+| `emit` | `npx -y @reactive-skills/axi emit <skill> <signal>` | Emit a signal to evaluate guards and advance to the next state; `--payload` is the signal payload, with context changes under `contextUpdates` |
+| `invoke` | `npx -y @reactive-skills/axi invoke <skill> [--payload JSON]` | Initialize and start a skill run; `--payload` is a flat object that becomes the initial context (a `{"contextUpdates":{...}}` wrapper is rejected) |
 | `events` | `npx -y @reactive-skills/axi events [limit] <skill>` | Tail recent events from the append-only event store |
 | `inspect` | `npx -y @reactive-skills/axi inspect <skill>` | Print statechart topology, substates, and guard rules |
 | `validate` | `npx -y @reactive-skills/axi validate [path]` | Validate skill manifest, prompt templates, transition targets, and bootloader |
