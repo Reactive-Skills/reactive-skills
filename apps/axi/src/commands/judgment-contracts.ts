@@ -3,6 +3,7 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import {
   DEFAULT_MIN_CONFIDENCE,
+  JUDGMENT_CONTEXT_PATHS_CAPABILITY,
   PROBABILITY_THRESHOLDS_CAPABILITY,
   isExecutableCriterion,
   predicateProbabilityForConfidence,
@@ -91,15 +92,40 @@ function looksLikeExpression(criterion: string): boolean {
  */
 export function lintJudgmentThresholds(manifest: Record<string, any>): JudgmentLintResult {
   const warnings: string[] = [];
+  const errors: string[] = [];
   const judgments = collectTransitionJudgments(manifest.states);
 
   for (const { location, judgment } of judgments) {
+    // The manifest schema reports a wrong type on a transition only as "Invalid input", so name the field here.
+    if (judgment.context_paths !== undefined && !(Array.isArray(judgment.context_paths) && judgment.context_paths.every((p: unknown) => typeof p === 'string'))) {
+      errors.push(`${location} context_paths must be a list of context paths such as [write_side.deciders]`);
+    }
+    if (judgment.include_payload !== undefined && typeof judgment.include_payload !== 'boolean') {
+      errors.push(`${location} include_payload must be true or false`);
+    }
     for (const field of ['adapter_hint', 'fallback_adapter'] as const) {
       const name = judgment[field];
       if (typeof name === 'string' && !BUILT_IN_ADAPTERS.includes(name)) {
         warnings.push(
           `${location} ${field} '${name}' is not a built-in adapter (${BUILT_IN_ADAPTERS.join(', ')}); unless it is registered at runtime, the judgment cannot use it`
         );
+      }
+    }
+
+    // Only the Jev adapter sends context, and paths are read from the run context itself.
+    const scopesContext = judgment.context_paths !== undefined || judgment.include_payload !== undefined;
+    if (scopesContext && judgment.adapter_hint === 'script') {
+      warnings.push(
+        `${location} sets context_paths or include_payload with adapter_hint: script; only the Jev adapter sends context to a model, so the script adapter ignores them`
+      );
+    }
+    if (Array.isArray(judgment.context_paths)) {
+      for (const path of judgment.context_paths) {
+        if (typeof path === 'string' && /^context\./.test(path)) {
+          warnings.push(
+            `${location} context_paths entry '${path}' starts with 'context.'; paths are relative to the run context, so write '${path.slice('context.'.length)}', or the path is reported missing`
+          );
+        }
       }
     }
 
@@ -152,7 +178,19 @@ export function lintJudgmentThresholds(manifest: Record<string, any>): JudgmentL
     );
   }
 
-  return { errors: [], warnings };
+  const usesContextScope = judgments.some(
+    ({ judgment }) => judgment.context_paths !== undefined || judgment.include_payload !== undefined
+  );
+  if (
+    usesContextScope
+    && !(Array.isArray(requiredCapabilities) && requiredCapabilities.includes(JUDGMENT_CONTEXT_PATHS_CAPABILITY))
+  ) {
+    warnings.push(
+      `Judgments use context_paths or include_payload, but runtime_requirements.required_capabilities does not include ${JUDGMENT_CONTEXT_PATHS_CAPABILITY}; older runtimes drop these fields and send the whole run context and the payload`
+    );
+  }
+
+  return { errors, warnings };
 }
 
 function parseBand(raw: unknown): Band | undefined {

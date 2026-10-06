@@ -470,4 +470,100 @@ snap_on:
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
   });
+  describe('context_paths and include_payload (#24)', () => {
+    const CAPABILITY = { header: 'runtime_requirements:\n  required_capabilities: [judgment.probability_thresholds, judgment.context_paths]\n' };
+
+    it('accepts valid context paths without warnings', () => {
+      const result = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "Does every decider have a read projection?"
+min_probability: 0.8
+context_paths: [write_side.deciders, read_projections, plans.0.name]
+include_payload: false
+`, CAPABILITY));
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+      expect(result.warnings).toEqual([]);
+    });
+
+    it.each([
+      ['write_side.', 'empty segment'],
+      ['plans[0]', 'whitespace or brackets'],
+      ['a.__proto__', "cannot use '__proto__'"],
+    ])('rejects the invalid context path %j', (contextPath, message) => {
+      const result = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "Is it ready?"
+min_probability: 0.8
+context_paths: ["${contextPath}"]
+`, CAPABILITY));
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => e.includes('context_paths') && e.includes(message))).toBe(true);
+    });
+
+    it('rejects a context_paths that is not a list and an include_payload that is not a boolean', () => {
+      const result = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "Is it ready?"
+min_probability: 0.8
+context_paths: write_side
+include_payload: "no"
+`, CAPABILITY));
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('State "REVIEW" transition on "SUBMIT" context_paths must be a list of context paths such as [write_side.deciders]');
+      expect(result.errors).toContain('State "REVIEW" transition on "SUBMIT" include_payload must be true or false');
+    });
+
+    it('warns when a path starts with context. because paths are relative to the run context', () => {
+      const result = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "Is it ready?"
+min_probability: 0.8
+context_paths: [context.write_side]
+`, CAPABILITY));
+
+      expect(result.valid).toBe(true);
+      expect(result.warnings).toContain(
+        `State "REVIEW" transition on "SUBMIT" context_paths entry 'context.write_side' starts with 'context.'; paths are relative to the run context, so write 'write_side', or the path is reported missing`
+      );
+    });
+
+    it('warns that the script adapter ignores context_paths and include_payload', () => {
+      const result = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "payload.ok === true"
+adapter_hint: script
+include_payload: false
+`));
+
+      expect(result.warnings).toContain(
+        'State "REVIEW" transition on "SUBMIT" sets context_paths or include_payload with adapter_hint: script; only the Jev adapter sends context to a model, so the script adapter ignores them'
+      );
+    });
+    it('warns when context_paths or include_payload is used without requiring judgment.context_paths', () => {
+      const unrequired = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "Is it ready?"
+min_probability: 0.8
+context_paths: [write_side]
+`, { header: CAPABILITY_REQUIREMENT }));
+
+      expect(unrequired.valid).toBe(true);
+      expect(unrequired.warnings).toContain(
+        'Judgments use context_paths or include_payload, but runtime_requirements.required_capabilities does not include judgment.context_paths; older runtimes drop these fields and send the whole run context and the payload'
+      );
+
+      fs.rmSync(path.join(tmpDir, 'judgment-skill'), { recursive: true, force: true });
+      const required = validateSkill(writeSkill(tmpDir, `
+type: predicate
+criterion: "Is it ready?"
+min_probability: 0.8
+include_payload: false
+`, CAPABILITY));
+      expect(required.warnings.some((w) => w.includes('judgment.context_paths'))).toBe(false);
+    });
+  });
 });

@@ -14,6 +14,7 @@ export const STATIC_RUNTIME_CAPABILITIES = [
   'judgment.adapter_evidence',
   'judgment.probability_thresholds',
   'judgment.human_approval',
+  'judgment.context_paths',
   'context.routing',
   'context.preparation',
   'runtime.bootloader',

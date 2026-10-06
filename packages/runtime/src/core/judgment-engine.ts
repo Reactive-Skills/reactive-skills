@@ -5,9 +5,11 @@ import {
   JudgmentRequest,
   JudgmentResult,
   JudgmentAdapter,
+  JudgmentContextSent,
 } from './types.js';
 import { GuardEvaluationContext } from './guard-evaluator.js';
 import { decideJudgment, resolveJudgmentThreshold } from './judgment-thresholds.js';
+import { scopeJudgmentContext } from './judgment-context.js';
 
 interface TypeSafeClientLike {
   systemOne(
@@ -243,9 +245,15 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
       throw new Error('TypeSafe SDK is unavailable; install @typesafe-ai/sdk and configure TYPESAFE_API_KEY');
     }
 
-    const state = {
-      event: evalContext.event?.payload || {},
-      context: evalContext.context || {},
+    // A judgment that declares neither field sends the whole run context and the payload.
+    const scoped = req.contextPaths !== undefined || req.includePayload !== undefined;
+    const includePayload = req.includePayload !== false;
+    const selection = req.contextPaths !== undefined
+      ? scopeJudgmentContext(evalContext.context || {}, req.contextPaths)
+      : undefined;
+    const state: Record<string, unknown> = {
+      ...(includePayload ? { event: evalContext.event?.payload || {} } : {}),
+      context: selection ? selection.context : evalContext.context || {},
       currentState: evalContext.currentState,
     };
 
@@ -288,6 +296,16 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
         answers: response.answers,
         usage: response.usage,
       };
+      const inputTokens = (response.usage as { input_tokens?: unknown } | null | undefined)?.input_tokens;
+      const contextSent: JudgmentContextSent | undefined = scoped
+        ? {
+            ...(selection ? { paths: selection.sent } : {}),
+            missing: selection ? selection.missing : [],
+            includePayload,
+            ...(typeof inputTokens === 'number' && Number.isFinite(inputTokens) ? { inputTokens } : {}),
+          }
+        : undefined;
+      const scope = contextSent ? { contextSent } : {};
 
       if (req.type === 'predicate') {
         const probability = (answer as { type?: string; noul?: number }).noul;
@@ -304,6 +322,7 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
           adapterName: this.id,
           latencyMs,
           raw,
+          ...scope,
         };
       }
 
@@ -323,6 +342,7 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
           adapterName: this.id,
           latencyMs,
           raw,
+          ...scope,
         };
       }
 
@@ -340,6 +360,7 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
         adapterName: this.id,
         latencyMs,
         raw,
+        ...scope,
       };
     } finally {
       if (timer) clearTimeout(timer);
@@ -442,6 +463,8 @@ export class JudgmentEngine {
       contextSnapshot: evalContext.context || {},
       options: judgment.options,
       rubric: judgment.rubric,
+      ...(judgment.context_paths !== undefined ? { contextPaths: judgment.context_paths } : {}),
+      ...(judgment.include_payload !== undefined ? { includePayload: judgment.include_payload } : {}),
     };
 
     // A person decided this gate in an interactive terminal (ADR 0012); the engine validated it.
