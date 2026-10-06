@@ -1,12 +1,38 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { directoriesEqual, discoverSkills, runSync } from './engine.js';
-import { DistributionOptions, DistributionReport, SkillEntry, SyncReport } from './types.js';
+import {
+  detectGitRepo,
+  GitRepoInfo,
+  GitSourceError,
+  inspectWorkingTree,
+  materializeRef,
+  resolveRef,
+} from './git-source.js';
+import {
+  DistributionOptions,
+  DistributionReport,
+  SkillEntry,
+  SkillProvenance,
+  SourceSpec,
+  SyncReport,
+} from './types.js';
+import { readSkillVersion } from './versions.js';
 
 interface ManagedState {
   version: 1;
   central: string;
   links: Record<string, string>;
+  /** Where each installed skill was copied from; absent in state written by older releases. */
+  skills?: Record<string, SkillProvenance>;
+}
+
+interface SourceContext {
+  /** Directory discovery reads: the source itself, or a temporary export of its ref. */
+  readPath: string;
+  ref?: string;
+  commit?: string;
+  repo?: GitRepoInfo;
 }
 
 function lstat(entry: string): fs.Stats | undefined {
@@ -53,6 +79,20 @@ function uniquePaths(entries: string[]): string[] {
   });
 }
 
+function uniqueSources(entries: Array<string | SourceSpec>): SourceSpec[] {
+  const seen = new Set<string>();
+  const specs: SourceSpec[] = [];
+  for (const entry of entries) {
+    const spec = typeof entry === 'string' ? { path: entry } : entry;
+    const resolved = path.resolve(spec.path);
+    const canonical = canonicalPath(resolved);
+    if (seen.has(canonical)) continue;
+    seen.add(canonical);
+    specs.push({ path: resolved, ...(spec.ref ? { ref: spec.ref } : {}) });
+  }
+  return specs;
+}
+
 function discoveredSkills(root: string): SkillEntry[] {
   return fs.existsSync(root) ? discoverSkills(root) : [];
 }
@@ -84,6 +124,9 @@ function readState(statePath: string): ManagedState {
   if (Object.entries(value.links).some(([linkPath, target]) => typeof linkPath !== 'string' || typeof target !== 'string')) {
     throw new Error(`Invalid managed links in sync state: ${statePath}`);
   }
+  if (value.skills !== undefined && (!value.skills || typeof value.skills !== 'object' || Array.isArray(value.skills))) {
+    throw new Error(`Invalid skill provenance in sync state: ${statePath}`);
+  }
   return value;
 }
 
@@ -109,14 +152,32 @@ function linkPointsTo(linkPath: string, expected: string): boolean {
   return normalize(resolved) === normalize(expected);
 }
 
-function appendStage(report: DistributionReport, stage: SyncReport): void {
+function appendStage(report: DistributionReport, stage: SyncReport, originalSource?: (skill: string) => string | undefined): void {
   report.results.push(...stage.results);
   report.orphans.push(...stage.orphans);
   report.errors.push(...stage.errors);
   report.selectionErrors?.push(...(stage.selectionErrors ?? []));
+  report.warnings?.push(...(stage.warnings ?? []));
+  for (const refusal of stage.refusals ?? []) {
+    report.refusals?.push({ ...refusal, source: originalSource?.(refusal.skill) ?? refusal.source });
+  }
 }
 
+function shortCommit(commit: string | undefined): string {
+  return commit ? commit.slice(0, 7) : 'unknown commit';
+}
+
+/** Runs a distribution; temporary exports of git refs are removed whether or not it succeeds. */
 export function runDistribution(options: DistributionOptions): DistributionReport {
+  const temporaryDirs: string[] = [];
+  try {
+    return distribute(options, temporaryDirs);
+  } finally {
+    for (const dir of temporaryDirs) fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function distribute(options: DistributionOptions, temporaryDirs: string[]): DistributionReport {
   const dryRun = options.dryRun ?? false;
   const backup = options.backup ?? true;
   const targetSkills = options.targetSkills?.length
@@ -124,7 +185,8 @@ export function runDistribution(options: DistributionOptions): DistributionRepor
     : options.targetSkill
       ? [options.targetSkill]
       : undefined;
-  const sources = uniquePaths(options.sources);
+  const sourceSpecs = uniqueSources(options.sources);
+  const sources = sourceSpecs.map(spec => spec.path);
   const central = path.resolve(options.central);
   const centralKey = canonicalPath(central);
   const physicalSatellites = uniquePaths(options.physicalSatellites).filter(target => canonicalPath(target) !== centralKey);
@@ -149,6 +211,9 @@ export function runDistribution(options: DistributionOptions): DistributionRepor
     selectionErrors: [],
     collisions: [],
     removedLinks: [],
+    warnings: [],
+    refusals: [],
+    provenance: {},
   };
 
   let previous: ManagedState;
@@ -180,15 +245,41 @@ export function runDistribution(options: DistributionOptions): DistributionRepor
   }
   if (report.errors.length > 0) return report;
 
+  const contexts = new Map<string, SourceContext>();
+  for (const spec of sourceSpecs) {
+    try {
+      const repo = detectGitRepo(spec.path);
+      if (spec.ref) {
+        if (!repo) throw new GitSourceError(`Source ${spec.path} is not a git repository, so ref "${spec.ref}" cannot be read`);
+        const commit = resolveRef(spec.path, spec.ref);
+        const readPath = materializeRef(spec.path, repo, commit, spec.ref);
+        temporaryDirs.push(readPath);
+        contexts.set(spec.path, { readPath, ref: spec.ref, commit, repo });
+      } else {
+        contexts.set(spec.path, { readPath: spec.path, repo });
+      }
+    } catch (err: any) {
+      if (err instanceof GitSourceError && !spec.ref) {
+        report.warnings?.push(err.message);
+        contexts.set(spec.path, { readPath: spec.path });
+      } else {
+        report.errors.push(err.message);
+        report.selectionErrors?.push(err.message);
+      }
+    }
+  }
+  if (report.errors.length > 0) return report;
+  const readPathOf = (source: string): string => contexts.get(source)?.readPath ?? source;
+
   // An old central directory is a fallback during migration so existing skills survive a move.
   const fallback = previous.central && canonicalPath(previous.central) !== canonicalPath(central) && fs.existsSync(previous.central)
     ? path.resolve(previous.central)
     : undefined;
-  const importSources = [...sources, ...(fallback && !sources.some(source => canonicalPath(source) === canonicalPath(fallback)) ? [fallback] : [])];
+  const importSources = [...sources.map(readPathOf), ...(fallback && !sources.some(source => canonicalPath(source) === canonicalPath(fallback)) ? [fallback] : [])];
 
   if (targetSkills) {
     const known = new Set<string>();
-    for (const root of [...sources, central, ...(fallback ? [fallback] : [])]) {
+    for (const root of [...sources.map(readPathOf), central, ...(fallback ? [fallback] : [])]) {
       for (const skill of discoveredSkills(root)) known.add(skill.name);
     }
     const unknown = targetSkills.filter(name => !known.has(name));
@@ -202,14 +293,63 @@ export function runDistribution(options: DistributionOptions): DistributionRepor
 
   const winners = new Map<string, SkillEntry>();
   const selectedNames = targetSkills ? new Set(targetSkills) : undefined;
+  const winnerSource = new Map<string, string>();
   for (const source of sources) {
-    for (const skill of discoveredSkills(source).filter(entry => !selectedNames || selectedNames.has(entry.name))) {
+    for (const skill of discoveredSkills(readPathOf(source)).filter(entry => !selectedNames || selectedNames.has(entry.name))) {
       const winner = winners.get(skill.name);
       if (winner) {
-        report.collisions.push({ skill: skill.name, winner: winner.path, shadowed: skill.path });
+        report.collisions.push({
+          skill: skill.name,
+          winner: path.join(winnerSource.get(skill.name)!, skill.name),
+          shadowed: path.join(source, skill.name),
+        });
       } else {
         winners.set(skill.name, skill);
+        winnerSource.set(skill.name, source);
       }
+    }
+  }
+  const originalSource = (skill: string): string | undefined => winnerSource.get(skill);
+
+  const provenance = new Map<string, SkillProvenance>();
+  for (const source of sources) {
+    const context = contexts.get(source)!;
+    const names = [...winners.values()].filter(skill => skill.isValid && winnerSource.get(skill.name) === source).map(skill => skill.name);
+    if (names.length === 0) continue;
+    let tree: ReturnType<typeof inspectWorkingTree> | undefined;
+    if (context.repo && !context.ref) {
+      try {
+        tree = inspectWorkingTree(source, context.repo, names);
+      } catch (err: any) {
+        report.warnings?.push(err.message);
+      }
+    }
+    if (tree) {
+      const branchLabel = tree.branch ? `branch "${tree.branch}"` : `detached HEAD at ${shortCommit(tree.commit)}`;
+      if (tree.commit && (!tree.branch || (tree.defaultBranch && tree.branch !== tree.defaultBranch))) {
+        const differing = tree.skillsDifferingFromDefault.length > 0
+          ? `; ${tree.skillsDifferingFromDefault.join(', ')} differ from ${tree.defaultBranch}`
+          : '';
+        report.warnings?.push(
+          `Source ${source} is on ${branchLabel}${tree.defaultBranch ? `, not the default branch "${tree.defaultBranch}"` : ''}${differing}`,
+        );
+      }
+      if (tree.dirtySkills.length > 0) {
+        report.warnings?.push(
+          `Source ${source} (${tree.branch ? `branch "${tree.branch}"` : branchLabel}) has uncommitted changes in: ${tree.dirtySkills.join(', ')}`,
+        );
+      }
+    }
+    for (const name of names) {
+      const version = readSkillVersion(winners.get(name)!.path);
+      provenance.set(name, {
+        source,
+        ...(context.ref ? { ref: context.ref } : {}),
+        ...(!context.ref && tree?.branch ? { branch: tree.branch } : {}),
+        ...((context.commit ?? tree?.commit) ? { commit: context.commit ?? tree?.commit } : {}),
+        ...(tree?.dirtySkills.includes(name) ? { dirty: true } : {}),
+        ...(version ? { version } : {}),
+      });
     }
   }
 
@@ -247,11 +387,20 @@ export function runDistribution(options: DistributionOptions): DistributionRepor
     dryRun,
     backup,
     link: false,
+    versionGuard: true,
+    allowDowngrade: options.allowDowngrade ?? false,
   } : undefined;
+  let importStage: SyncReport | undefined;
 
   if (dryRun) {
     if (importOptions) {
-      appendStage(report, runSync(importOptions));
+      importStage = runSync(importOptions);
+      appendStage(report, importStage, originalSource);
+      // A refused skill keeps its installed copy, so satellites would still mirror that copy.
+      for (const refusal of importStage.refusals ?? []) {
+        const installed = validSkills(central).find(skill => skill.name === refusal.skill);
+        if (installed) planned.set(refusal.skill, installed);
+      }
     }
     for (const target of satellites) {
       for (const name of planned.keys()) {
@@ -271,7 +420,8 @@ export function runDistribution(options: DistributionOptions): DistributionRepor
     }
   } else {
     if (importOptions) {
-      appendStage(report, runSync(importOptions));
+      importStage = runSync(importOptions);
+      appendStage(report, importStage, originalSource);
       if (report.errors.length > 0) return report;
     } else {
       fs.mkdirSync(central, { recursive: true });
@@ -289,6 +439,15 @@ export function runDistribution(options: DistributionOptions): DistributionRepor
       appendStage(report, runSync({ sourceDir: central, targetDirs: physicalSatellites, targetSkills, backup, link: false }));
     }
     if (report.errors.length > 0) return report;
+  }
+
+  const copied = new Set(
+    (importStage?.results ?? [])
+      .filter(result => result.action === 'mirrored' || result.action === 'unchanged')
+      .map(result => result.skill),
+  );
+  for (const [name, record] of provenance) {
+    if (copied.has(name)) report.provenance[name] = record;
   }
 
   const names = dryRun ? [...planned.keys()] : validSkills(central, targetSkills).map(skill => skill.name);
@@ -327,7 +486,17 @@ export function runDistribution(options: DistributionOptions): DistributionRepor
   }
   if (!dryRun) {
     const verifiedLinks = Object.fromEntries([...desiredLinks].filter(([linkPath, expected]) => linkPointsTo(linkPath, expected)));
-    writeState(options.statePath, { version: 1, central, links: verifiedLinks });
+    const skills: Record<string, SkillProvenance> = {};
+    for (const [name, record] of Object.entries(previous.skills ?? {})) {
+      if (fs.existsSync(path.join(central, name))) skills[name] = record;
+    }
+    Object.assign(skills, report.provenance);
+    writeState(options.statePath, {
+      version: 1,
+      central,
+      links: verifiedLinks,
+      ...(Object.keys(skills).length > 0 ? { skills } : {}),
+    });
   }
   return report;
 }

@@ -355,6 +355,16 @@ When prior sync state records the old central path, the next sync can use that d
 The old central directory remains on disk.
 If creating `sync.json` for the first time, include the needed source paths because the legacy source fallback applies only when that file is absent.
 
+A `sources` entry can be an object with a git `ref` (branch, tag, or commit), for example `{ "path": "~/work/public-skills", "ref": "main" }`.
+Sync then reads the committed skills at that ref, whatever branch the source has checked out, and never modifies the source repository.
+`--ref <ref>` sets the ref for every source in one run and overrides configured refs.
+Before replacing an installed skill whose content differs, sync compares the `skill.yaml` versions with SemVer.
+A lower source version is refused: the installed copy stays unchanged, the report names the skill and both versions, and the command exits with status 1.
+Pass `--allow-downgrade` to replace it anyway; the usual backup is still made.
+A same-version content change, or a version that is missing or not SemVer, produces a warning.
+For a git source without a ref, sync warns when the source is off its default branch or on a detached HEAD, and when the selected skills have uncommitted changes.
+Sync records the source path, ref or branch, commit SHA, and version of each installed skill under `skills` in `~/.agents/sync-state.json`; `--show-config` prints them.
+
 ```bash
 # Show effective paths and source precedence:
 npx -y @reactive-skills/axi sync --show-config
@@ -376,6 +386,12 @@ npx -y @reactive-skills/axi sync --skill skill-one,skill-two
 
 # Repeated --skill flags remain supported:
 npx -y @reactive-skills/axi sync --skill skill-one --skill skill-two
+
+# Install the committed skills of main, whatever the sources have checked out:
+npx -y @reactive-skills/axi sync --ref main
+
+# Replace an installed skill with an older source version:
+npx -y @reactive-skills/axi sync my-skill --allow-downgrade
 
 # Choose ordered sources and satellite paths:
 npx -y @reactive-skills/axi sync --source ~/work/public-skills,~/work/private-skills --target ~/.codex/skills,~/.claude/skills --physical-target ~/.gemini/config/skills --dry-run

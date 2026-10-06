@@ -193,7 +193,7 @@ skills/<skill-name>/
 
 The synchronizer copies skills from ordered local source directories into a physical central directory (default `~/.agents/skills`). The first source containing a skill name wins. Agent satellite directories then link to the central copy. Changes in a source repository reach the central directory on the next sync; linked satellites see those central changes immediately. Satellites that cannot read links receive physical copies, refreshed on each sync when their content changes.
 
-Only immediate child folders containing `SKILL.md`, `skill.md`, or `skill.yaml` are distributed. Unrelated folders at a source root are ignored. Sync reads local files; it does not fetch Git updates.
+Only immediate child folders containing `SKILL.md`, `skill.md`, or `skill.yaml` are distributed. Unrelated folders at a source root are ignored. Sync reads local files, or committed files when a `ref` is set; it never fetches Git updates.
 Within a selected skill, sync preserves every file and directory, including scripts, tests, hidden files and empty directories.
 Nested symbolic links remain links; sync does not traverse their targets.
 Repository-folder exclusions apply only when discovering skills at the source root.
@@ -217,6 +217,32 @@ The old central directory remains on disk.
 Sources are optional. Without them, sync distributes valid skills already in the central directory. Without a config file, it uses the default central path and existing agent directories as satellites; the physical satellite list is empty. If a directory appears in both satellite lists, the physical copy takes precedence. If the central path appears in either satellite list, sync omits it.
 When `sync.json` is absent, existing sources from `~/.agents/sources.json` remain a fallback.
 If creating `sync.json` for the first time, copy any needed source paths into its `sources` array because the legacy source fallback applies only when `sync.json` is absent.
+
+### Git Sources, Refs, and Downgrade Protection
+
+By default, sync copies each skill from the source folder's working tree as it is at that moment.
+That means checking out an older branch in a source repository changes what the next sync installs.
+Three safeguards keep that from replacing newer installed skills silently.
+
+- **Pin a ref.** A source entry can be an object with a `ref` (branch, tag, or commit). Sync then reads the committed files at that ref with `git ls-tree` and `git cat-file`, so the source can have any branch checked out, dirty or not. Nothing is checked out and the source repository is never modified. The `--ref <ref>` flag does the same for every source in one run and overrides configured refs. A ref on a source that is not a git repository, or one that does not resolve, stops the sync with an error.
+- **Downgrade protection.** Before replacing an installed skill whose content differs, sync compares the `version` in each `skill.yaml` using SemVer. A source version lower than the installed one is refused: the installed copy stays unchanged, the report names the skill and both versions, and the command exits with status 1. Other skills still sync. Pass `--allow-downgrade` to replace it anyway; the usual backup is still made. A same-version content change and a skill whose version is missing or not SemVer (for example `1.0` or a legacy `SKILL.md` skill) produce a warning and are replaced. The check applies to `--dry-run` and to sources that are not git repositories.
+- **Working-tree warnings.** When a git source has no ref, sync warns if it is on a branch other than the default branch (the `origin/HEAD` branch, else `main` or `master`) or is on a detached HEAD, and warns if the selected skills have uncommitted or untracked changes. Each warning names the source, the branch, and the skills involved. Warnings do not stop the sync.
+
+```json
+{
+  "sources": [
+    "~/work/private-skills",
+    { "path": "~/work/public-skills", "ref": "main" }
+  ]
+}
+```
+
+Sync records where each installed skill came from under `skills` in `~/.agents/sync-state.json`: the source path, the `ref` or checked-out `branch`, the commit SHA, the `skill.yaml` version, and `dirty: true` when the working-tree copy had uncommitted changes.
+For a working-tree sync the SHA is the source's HEAD, so check `dirty` as well.
+Sources that are not git repositories record only the source path and version.
+The record is merged on each run, so syncing one skill keeps the others, and a skill that is refused keeps its previous record.
+`sync --show-config` prints the configured refs and the recorded provenance, and a sync prints the provenance of the skills it copied.
+Empty directories are not part of a commit, so they are not copied when a ref is used.
 
 ### CLI Synchronization
 
@@ -249,6 +275,12 @@ npx -y @reactive-skills/axi sync --source ~/work/public-skills --all-sources --d
 
 # Choose linked and physical satellite directories:
 npx -y @reactive-skills/axi sync --target ~/.codex/skills,~/.claude/skills --physical-target ~/.gemini/config/skills,~/.copilot/skills --dry-run
+
+# Install the committed skills of main, whatever the sources have checked out:
+npx -y @reactive-skills/axi sync --ref main
+
+# Replace an installed skill with an older source version:
+npx -y @reactive-skills/axi sync <skill-name> --allow-downgrade
 
 # Preview changes without modifying files:
 npx -y @reactive-skills/axi sync <skill-name> --dry-run

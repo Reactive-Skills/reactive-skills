@@ -7,8 +7,9 @@ import {
   SyncResult,
   SyncReport,
 } from './types.js';
+import { compareSkillVersions, readSkillVersion } from './versions.js';
 
-const NEVER_SKILLS = new Set([
+export const NEVER_SKILLS = new Set([
   '.git', '.docs', '.reactive', '.playwright-mcp', '.backup', '.sync-backups',
   'tests', 'scripts', 'node_modules', 'dist', 'axi',
   '.cache', '.tmp', '.idea', '.vscode', '.github', 'docs', 'tmp', 'coverage',
@@ -257,6 +258,8 @@ export function runSync(options: SyncOptions): SyncReport {
     dryRun = false,
     backup = true,
     link = false,
+    allowDowngrade = false,
+    versionGuard = false,
   } = options;
 
   const sources = sourceDirs && sourceDirs.length > 0
@@ -277,6 +280,8 @@ export function runSync(options: SyncOptions): SyncReport {
     orphans: [],
     errors: [],
     selectionErrors: [],
+    warnings: [],
+    refusals: [],
   };
 
   if (sources.length === 0) {
@@ -449,6 +454,37 @@ export function runSync(options: SyncOptions): SyncReport {
           action: 'unchanged',
         });
         continue;
+      }
+
+      if (versionGuard && destStat) {
+        const installed = readSkillVersion(destPath);
+        const incoming = readSkillVersion(skill.path);
+        const verdict = compareSkillVersions(installed, incoming);
+        if (verdict.kind === 'downgrade') {
+          const detail = `installed ${verdict.installed}, source ${verdict.incoming}`;
+          if (!allowDowngrade) {
+            report.refusals?.push({
+              skill: skill.name,
+              installedVersion: verdict.installed,
+              sourceVersion: verdict.incoming,
+              source: skill.path,
+            });
+            report.results.push({
+              skill: skill.name,
+              target: targetDir,
+              action: 'refused_downgrade',
+              reason: `${detail}; use --allow-downgrade to replace it`,
+            });
+            continue;
+          }
+          report.warnings?.push(`Downgrading ${skill.name} (${detail}) because --allow-downgrade was given`);
+        } else if (verdict.kind === 'same') {
+          report.warnings?.push(`${skill.name} content changed without a version bump (still ${incoming})`);
+        } else if (verdict.kind === 'unknown') {
+          report.warnings?.push(
+            `Cannot compare versions of ${skill.name} (installed ${installed ?? 'unknown'}, source ${incoming ?? 'unknown'}); replacing the installed copy`,
+          );
+        }
       }
 
       if (dryRun) {

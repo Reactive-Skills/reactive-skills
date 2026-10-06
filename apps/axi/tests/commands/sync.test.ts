@@ -55,6 +55,21 @@ describe('syncCommand', () => {
     );
   });
 
+  it('passes --ref and --allow-downgrade through to the runtime', async () => {
+    const { output } = await syncCommand(['my-skill', '--ref', 'main', '--allow-downgrade', '--dry-run']);
+    expect(output).toContain('SYNCED: --skill my-skill --ref main --allow-downgrade --dry-run --link');
+  });
+
+  it('preserves a refused downgrade report and its nonzero status', async () => {
+    vi.mocked(executeSyncEngineCommand).mockResolvedValueOnce({
+      output: 'REFUSED: alpha: installed 2.0.0, /src has 1.0.0',
+      exitCode: 1,
+    });
+    const { output, exitCode } = await syncCommand(['--ref', 'old']);
+    expect(exitCode).toBe(1);
+    expect(output).toBe('REFUSED: alpha: installed 2.0.0, /src has 1.0.0');
+  });
+
   it('preserves output and nonzero status for rejected selections', async () => {
     vi.mocked(executeSyncEngineCommand).mockResolvedValueOnce({
       output: '{"errors":["Unknown skill: missing"]}',
