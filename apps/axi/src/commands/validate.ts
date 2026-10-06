@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import { createReactiveBootloaderReference, SkillManifestSchema, SkillManifest } from '@reactive-skills/runtime';
+import {
+  createReactiveBootloaderReference,
+  inspectGuardModuleFormat,
+  SkillManifestSchema,
+  SkillManifest,
+} from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { lintGuardContracts, lintJudgmentThresholds } from './judgment-contracts.js';
 import { renderDetail, renderList, renderHelp, renderOutput } from '../toon.js';
@@ -97,6 +102,40 @@ function lintGuardExpression(guard: string, contextKeys: string[], stateName: st
   }
 
   return warnings;
+}
+
+const GUARD_EXTENSIONS = ['.js', '.mjs', '.cjs'];
+
+/**
+ * Statically check a transition's guardFunction file: extension, containment, and that its
+ * module syntax matches the format Node will load it as. The file is read, never imported.
+ */
+function lintGuardFunction(skillDir: string, guardFunction: string, stateName: string, signal: string): string[] {
+  const where = `State "${stateName}" transition on "${signal}" guardFunction "${guardFunction}"`;
+  if (!GUARD_EXTENSIONS.includes(path.extname(guardFunction).toLowerCase())) {
+    return [`${where} must be a JavaScript file (.js, .mjs, .cjs)`];
+  }
+
+  const skillRoot = path.resolve(skillDir);
+  const fullPath = path.resolve(skillRoot, guardFunction);
+  const escapes = (rel: string) => rel.startsWith('..') || path.isAbsolute(rel);
+  if (escapes(path.relative(skillRoot, fullPath))) {
+    return [`${where} escapes the skill directory`];
+  }
+  if (!fs.existsSync(fullPath)) {
+    return [`${where} not found on disk`];
+  }
+  const realFullPath = fs.realpathSync(fullPath);
+  if (escapes(path.relative(fs.realpathSync(skillRoot), realFullPath))) {
+    return [`${where} escapes the skill directory`];
+  }
+
+  try {
+    const { problem } = inspectGuardModuleFormat(realFullPath, guardFunction);
+    return problem ? [`${where}: ${problem}`] : [];
+  } catch (err: any) {
+    return [`${where} could not be read: ${err.message}`];
+  }
 }
 
 /**
@@ -346,6 +385,11 @@ export function validateSkill(skillDir: string): SkillValidationResult {
           const escalateTarget = typeof trans === 'object' ? (trans as any)?.judgment?.escalate?.target : undefined;
           if (typeof escalateTarget === 'string' && !allStateNames.has(escalateTarget)) {
             errors.push(`State "${fullName}" transition on "${signal}" judgment escalates to unknown state "${escalateTarget}"`);
+          }
+
+          const guardFunction = typeof trans === 'object' ? (trans as any)?.guardFunction : undefined;
+          if (guardFunction && typeof guardFunction === 'string') {
+            errors.push(...lintGuardFunction(skillDir, guardFunction, fullName, signal));
           }
 
           if (guard && typeof guard === 'string') {

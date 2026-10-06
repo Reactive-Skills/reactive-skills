@@ -31,6 +31,7 @@ reactive-skills/                          # Repo root
 │       │   │   ├── types.ts              # Zod schemas & TypeScript interfaces
 │       │   │   ├── event-store.ts        # Append-only JSONL + SQLite event ledger
 │       │   │   ├── guard-evaluator.ts    # node:vm sandbox invariant evaluator
+│       │   │   ├── guard-module-format.ts # Static ESM/CommonJS check for guardFunction files
 │       │   │   ├── judgment-engine.ts    # Decoupled snap-on judgment engine & circuit breaker
 │       │   │   ├── judgment-thresholds.ts # Pure threshold resolution & accept/escalate/reject bands
 │       │   │   ├── projection-engine.ts  # Handlebars deliverable generator
