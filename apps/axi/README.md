@@ -2,12 +2,12 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.18.0:**
-> - New `approve` command: decide gates no model could judge in your own terminal with a one-time code, and grant or revoke self-reported decisions.
-> - `emit` shows `judgment_basis: human` for approved gates, a warning for self-reported ones, and the reason a guard refused.
-> - Breaking: without a model or a grant, natural-language gates wait for `approve` instead of passing on the agent's report.
+> 🚀 **What's New in v0.19.0:**
+> - New `vet` command: static checks of a skill's guard code, text, and dependencies, using the same rule set the skills catalog CI can call.
+> - `<command> --help` and `-h` print usage on every command, and `validate` checks `guardFunction` module format.
+> - `invoke` rejects a wrapped `contextUpdates` payload; `jobs` and `reset` accept a skill path or manifest name.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.18.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.19.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

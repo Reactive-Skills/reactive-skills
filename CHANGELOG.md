@@ -1,4 +1,22 @@
 
+## [0.19.0] - 2026-10-06
+
+- feat(axi): add `reactive-skills-axi vet <skill|dir>`, backed by a shared static rule set in the runtime for code, skill text, and supply chain; trust model documented in `docs/vetting.md` and `SECURITY.md` (#85, part of #33; the trust record and hardened mode remain open)
+- feat(runtime): add the static vetting rule set and source collector exported from the runtime index (#85, part of #33)
+- feat(axi): `validate` checks each `guardFunction` file's module format without importing it; runtime guard load failures name the file and the fix (#81, #10)
+- fix(axi): `invoke` rejects a wrapped `contextUpdates` payload with the expected flat shape, and `invoke` and `emit` usage text documents each payload shape (#84, #44)
+- fix(axi): every command prints usage for `--help` and `-h` without running (#74, #42)
+- fix(axi): `jobs` and `reset` resolve runs by skill path, directory name, or manifest name; `reset --job` reports `NOT_FOUND` for an unknown run; the approve and reset hints print a reference the CLI can resolve (#75, #45, part of #65; the `decidedBy` on unevaluable results and replay after approval items remain open)
+- feat(runtime): judgments accept `context_paths` and `include_payload` to scope what the Jev adapter sees; new `judgment.context_paths` capability; `GUARD_EVALUATED` records `contextSent` (#80, #24)
+- fix(runtime): migrate legacy mixed stores and fail cleanly with `EVENT_STORE_OPEN_FAILED`, the store path, and a recovery command when a store cannot be opened (#82, #43)
+- fix(site): canonical, sitemap, and robots URLs use https://reactive-skills.com (#71, refs #62; the deploy workflow change in the Pages repository is still needed)
+- fix(site): make registry generator output identical across operating systems (#72, #57)
+- fix(site): repair site lint, and fix the registry page title, unused blog index variable, and the cwd-dependent em dash test (#73, #54, #56, #59)
+- fix(site): quickstart opens with a published skill and matches current CLI output; Node engine floor raised to 22.13.0 (#76, #61)
+- fix(site): arrow-key, Home, and End navigation for the hero command tabs, and a long-form blog prose variant (#77, #55, #63)
+- docs(site): add a skill trust note to the quickstart install step (#78, refs #33, #34)
+- docs(roadmap): move #66 (unattended runs) out of R3b to unscheduled work (#83)
+
 ## [0.18.0] - 2026-10-05
 
 - Merge pull request #69 from Reactive-Skills/fix/r3a-view-retired-close (285ad6e)
