@@ -168,6 +168,19 @@ export class FSMEngine {
       : {};
     this.parentRunId = resolvedParentRunId;
 
+    // Open the ledger before registering a new job so a store that cannot be opened leaves no job behind.
+    this.eventStore = options.eventStore || new EventStore({
+      ...options.eventContext,
+      skillId: this.manifest.name,
+      workspaceDir: this.workspaceDir,
+      jobId: this.jobId,
+      runId: this.jobId,
+      runName: effectiveJobId || undefined,
+      parentRunId: resolvedParentRunId,
+      parent_run_id: resolvedParentRunId,
+      enableSqlite: true,
+    });
+
     if (this.jobId) {
       if (!existingJob) {
         this.jobManager.createJob(this.manifest.name, {
@@ -181,17 +194,6 @@ export class FSMEngine {
       this.jobName = this.jobManager.getJob(this.manifest.name, this.jobId)?.name;
     }
 
-    this.eventStore = options.eventStore || new EventStore({
-      ...options.eventContext,
-      skillId: this.manifest.name,
-      workspaceDir: this.workspaceDir,
-      jobId: this.jobId,
-      runId: this.jobId,
-      runName: effectiveJobId || undefined,
-      parentRunId: resolvedParentRunId,
-      parent_run_id: resolvedParentRunId,
-      enableSqlite: true,
-    });
     this.context = {
       ...(this.manifest.default_context || {}),
       ...inheritedContext,
