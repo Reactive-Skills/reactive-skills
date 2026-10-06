@@ -282,9 +282,8 @@ export class JobManager {
       for (const entry of entries) {
         if (entry.isDirectory()) {
           const job = this.getJob(skillId, entry.name);
-          if (job) {
-            jobs.push(job);
-          }
+          // A legacy directory such as runs/default resolves to its migrated run, which has its own entry.
+          if (job && !jobs.some(existing => existing.id === job.id)) jobs.push(job);
         }
       }
     }
@@ -300,12 +299,10 @@ export class JobManager {
       }
     }
 
-    const activeJobId = this.getActiveJobId(skillId);
-    if (!jobs.some(j => j.id === activeJobId)) {
-      const activeJob = this.getJob(skillId, activeJobId);
-      if (activeJob) {
-        jobs.push(activeJob);
-      }
+    // The pointer may name a legacy id such as 'default' whose job is listed under its migrated run id.
+    const activeJob = this.getJob(skillId, this.getActiveJobId(skillId));
+    if (activeJob && !jobs.some(j => j.id === activeJob.id)) {
+      jobs.push(activeJob);
     }
 
     // Check for legacy root event store if no jobs found

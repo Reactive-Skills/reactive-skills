@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { FSMEngine } from '@reactive-skills/runtime';
-import { AxiError } from '../errors.js';
+import { AxiError, storeOpenError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
 import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.js';
@@ -210,7 +210,7 @@ export async function emitCommand(args: string[]): Promise<string> {
   } catch (err) {
     const error = err instanceof AxiError
       ? err
-      : new AxiError(
+      : storeOpenError(err) ?? new AxiError(
           err instanceof Error ? err.message : 'Failed to emit signal',
           'RUNTIME_ERROR',
           ['Check the skill name and signal name', 'Usage: reactive-skills-axi emit <skill> <event-id> <signal> \'{"key":"value"}\'']

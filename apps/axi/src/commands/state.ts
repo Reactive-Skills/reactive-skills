@@ -2,7 +2,7 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs';
 import { FSMEngine } from '@reactive-skills/runtime';
-import { AxiError } from '../errors.js';
+import { AxiError, storeOpenError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
 import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.js';
@@ -94,7 +94,7 @@ export async function stateCommand(args: string[]): Promise<string> {
   } catch (err) {
     const error = err instanceof AxiError
       ? err
-      : new AxiError(
+      : storeOpenError(err) ?? new AxiError(
           err instanceof Error ? err.message : 'Failed to retrieve skill state',
           'RUNTIME_ERROR',
           ['Check the skill name and ensure it exists in skills/ or global registry', 'Usage: reactive-skills-axi state <skill-name> [--job <job-id>]']
