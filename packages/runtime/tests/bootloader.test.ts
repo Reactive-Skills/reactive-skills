@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pinnedAxiPackageSpec } from '../src/core/runtime-capabilities.js';
 import {
-  createAxiFirstInitState,
-  createReactiveBootloader,
   createReactiveBootloaderReference,
   ensureReactiveBootloaderReference,
   getReactiveBootloader,
@@ -25,20 +22,5 @@ describe('central reactive bootloader', () => {
     expect(updated).toContain(createReactiveBootloaderReference('example-skill'));
     expect(updated).not.toContain('old instructions');
     expect(updated).toContain('# Skill');
-  });
-
-  it('only emits npx launches of the scoped package pinned to the runtime version', () => {
-    const pinned = pinnedAxiPackageSpec();
-    for (const text of [
-      createReactiveBootloader('example-skill'),
-      createReactiveBootloaderReference('example-skill'),
-      createAxiFirstInitState('example-skill'),
-    ]) {
-      const launches = text.match(/npx -y \S+/g) ?? [];
-      for (const launch of launches) {
-        expect(launch).toBe(`npx -y ${pinned}`);
-      }
-    }
-    expect(createReactiveBootloader('example-skill')).toContain(`npx -y ${pinned} capabilities --json`);
   });
 });

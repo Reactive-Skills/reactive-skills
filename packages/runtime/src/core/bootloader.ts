@@ -1,4 +1,4 @@
-import { RUNTIME_VERSION, pinnedAxiPackageSpec } from './runtime-capabilities.js';
+import { RUNTIME_VERSION } from './runtime-capabilities.js';
 
 export const REACTIVE_BOOTLOADER_VERSION = '1.0.0';
 
@@ -36,10 +36,10 @@ export function createReactiveBootloader(skillName: string): string {
 > Use selected MCP or AXI path for every state and signal command.
 > First check \`reactive_capabilities\` when this MCP tool is available.
 > Otherwise check \`reactive-skills-axi capabilities --json\`, then use direct AXI.
-> Otherwise use \`npx -y ${pinnedAxiPackageSpec()} capabilities --json\`, then use zero-install AXI.
+> Otherwise use \`npx -y @reactive-skills/axi capabilities --json\`, then use zero-install AXI.
 > MCP uses \`reactive_state\` and \`reactive_emit_signal\`.
 > Direct AXI uses \`reactive-skills-axi state|emit ${name}\`.
-> Zero-install AXI uses \`npx -y ${pinnedAxiPackageSpec()} state|emit ${name}\`.
+> Zero-install AXI uses \`npx -y @reactive-skills/axi state|emit ${name}\`.
 > Emit \`RUNTIME_READY\` with \`transport\`, \`launcher\`, \`runtime_version\`, \`axi_version\`, \`compatible\`, and \`capabilities\`.
 > Persist the selected runtime in \`payload.contextUpdates\` so later states reuse it.
 > AXI remains the runtime interface. \`npx\` is only its zero-install launcher.
@@ -71,7 +71,7 @@ export function createReactiveBootloaderReference(skillName: string): string {
 > Retrieve it before loading full skill context:
 > - MCP: call \`reactive_bootloader\` with \`skill_name: "${name}"\`.
 > - AXI: run \`reactive-skills-axi bootloader ${name} --json\`.
-> - Zero-install AXI: run \`npx -y ${pinnedAxiPackageSpec()} bootloader ${name} --json\`.
+> - Zero-install AXI: run \`npx -y @reactive-skills/axi bootloader ${name} --json\`.
 > Follow the returned \`instructions\`, then call \`reactive_context_prepare\` before assembling prompt context when MCP is available.
 > If bootloader retrieval is unavailable, continue with the directly requested runtime path and do not preload unrelated skill context.
 <!-- END REACTIVE BOOTLOADER -->`;
@@ -128,7 +128,7 @@ Verify reactive runtime compatibility and select lowest-latency local access.
 ## Instructions
 1. If \`reactive_capabilities\` is available, call it once.
 2. Otherwise run \`reactive-skills-axi capabilities --json\` once when direct AXI exists.
-3. Otherwise run \`npx -y ${pinnedAxiPackageSpec()} capabilities --json\` once.
+3. Otherwise run \`npx -y @reactive-skills/axi capabilities --json\` once.
 4. Check reported \`runtime_version\` and \`capabilities\` against this skill's \`runtime_requirements\`, when declared.
 5. Select compatible MCP or direct AXI before zero-install AXI. Use \`npx\` only when no compatible direct path exists.
 6. Before loading full skill context, call MCP \`reactive_context_prepare\` with the current user message when available.

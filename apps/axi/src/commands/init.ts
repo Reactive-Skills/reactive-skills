@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import { pinnedAxiPackageSpec } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderOutput } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
@@ -106,7 +105,7 @@ Configure host harness with the \`@reactive-skills/axi\` MCP server when no comp
 
 ## Instructions
 1. Run shell command via \`run_command\`:
-   \`npx -y ${pinnedAxiPackageSpec()} setup\`
+   \`npx -y @reactive-skills/axi setup\`
 2. When command completes:
    - If exit code 0, emit signal \`SETUP_COMPLETE\` with payload \`{"exit_code": 0}\`.
    - If non-zero exit code, emit signal \`SETUP_FAILED\` with payload \`{"exit_code": 1}\`.
