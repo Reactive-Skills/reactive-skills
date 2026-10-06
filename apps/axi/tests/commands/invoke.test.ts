@@ -129,4 +129,48 @@ states:
       child.close();
     }
   });
+
+  it('rejects a wrapped contextUpdates payload and creates no job', async () => {
+    const { invokeCommand } = await import('../../src/commands/invoke.js');
+    for (const payload of [
+      '{"contextUpdates":{"mission":"Wrapped"}}',
+      '{"contextUpdates":{"mission":"Wrapped"},"notes":["x"]}',
+    ]) {
+      const output = await invokeCommand(['invoke-skill', '--job', 'wrapped', '--payload', payload]);
+      expect(output).toContain('VALIDATION_ERROR');
+      expect(output).toContain('flat object');
+      expect(output).toContain(`--payload '{"mission":"Wrapped"}'`);
+      expect(output).not.toContain('run_id:');
+    }
+
+    const jobManager = new JobManager(tmpDir);
+    expect(jobManager.resolveRunId('invoke-skill', 'wrapped')).toBeFalsy();
+    expect(jobManager.getActiveJobId('invoke-skill')).toBe('default');
+  });
+
+  it('rejects a wrapped payload read from a file', async () => {
+    const { invokeCommand } = await import('../../src/commands/invoke.js');
+    fs.writeFileSync(path.join(tmpDir, 'wrapped.json'), '{"contextUpdates":{"mission":"Wrapped"}}');
+    const output = await invokeCommand(['invoke-skill', '--payload', '@wrapped.json']);
+    expect(output).toContain('flat object');
+    expect(output).not.toContain('run_id:');
+  });
+
+  it('keeps a flat payload as the initial context', async () => {
+    const { invokeCommand } = await import('../../src/commands/invoke.js');
+    const output = await invokeCommand(['invoke-skill', '--job', 'flat', '--payload', '{"mission":"Flat"}']);
+    expect(output).toContain('run_id:');
+
+    const jobManager = new JobManager(tmpDir);
+    const engine = new FSMEngine({
+      skillDir,
+      workspaceDir: tmpDir,
+      jobId: jobManager.resolveRunId('invoke-skill', 'flat')!,
+    });
+    try {
+      expect(engine.getContext()).toMatchObject({ mission: 'Flat' });
+    } finally {
+      engine.close();
+    }
+  });
 });

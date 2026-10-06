@@ -5,6 +5,26 @@ import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js'
 import { getSuggestions } from '../suggestions.js';
 import { extractJobFlag, resolveSkillPath, resolveWorkspaceDir } from '../args.js';
 
+const PAYLOAD_USAGE = 'Usage: --payload \'{"key":"value"}\' or --payload @filepath.json';
+
+function rejectWrappedPayload(payload: unknown): AxiError | null {
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return null;
+  if (!Object.prototype.hasOwnProperty.call(payload, 'contextUpdates')) return null;
+
+  const inner = (payload as Record<string, unknown>).contextUpdates;
+  const corrected = typeof inner === 'object' && inner !== null && !Array.isArray(inner)
+    ? JSON.stringify(inner)
+    : '{"key":"value"}';
+  return new AxiError(
+    'invoke --payload takes a flat object that becomes the initial context, not a {"contextUpdates":{...}} wrapper',
+    'VALIDATION_ERROR',
+    [
+      `Pass the context values at the top level: --payload '${corrected}'`,
+      'The contextUpdates wrapper is the emit payload shape; invoke stores the payload object as context as-is.',
+    ]
+  );
+}
+
 function parsePayload(args: string[]): Record<string, any> | AxiError {
   let initialContext: Record<string, any> = {};
   const payloadIdx = args.indexOf('--payload');
@@ -17,26 +37,22 @@ function parsePayload(args: string[]): Record<string, any> | AxiError {
     const filePath = payloadStr.startsWith('@') ? payloadStr.slice(1) : payloadStr;
     try {
       initialContext = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      return initialContext;
     } catch {
       return new AxiError(
         'Invalid JSON payload file: ' + filePath,
         'VALIDATION_ERROR',
-        ['Usage: --payload \'{"key":"value"}\' or --payload @filepath.json']
+        [PAYLOAD_USAGE]
       );
     }
+    return rejectWrappedPayload(initialContext) ?? initialContext;
   }
 
   try {
     initialContext = JSON.parse(payloadStr);
-    return initialContext;
   } catch {
-    return new AxiError(
-      'Invalid JSON payload',
-      'VALIDATION_ERROR',
-      ['Usage: --payload \'{"key":"value"}\' or --payload @filepath.json']
-    );
+    return new AxiError('Invalid JSON payload', 'VALIDATION_ERROR', [PAYLOAD_USAGE]);
   }
+  return rejectWrappedPayload(initialContext) ?? initialContext;
 }
 
 export async function invokeCommand(args: string[]): Promise<string> {
