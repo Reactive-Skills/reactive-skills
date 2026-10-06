@@ -18,6 +18,7 @@ export default function sitemap() {
   const routes = new Set([
     '/',
     '/registry',
+    '/mods',
     '/blog',
     ...docsRoutes,
     ...registry.listSkills().map((skill) => `/registry/${skill.slug}`),

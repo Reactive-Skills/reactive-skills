@@ -33,7 +33,10 @@ export const navigation = {
     },
     {
       title: 'Ecosystem',
-      links: [{ title: 'Skill Registry', href: '/registry' }],
+      links: [
+        { title: 'Skill Registry', href: '/registry' },
+        { title: 'Mods', href: '/mods' },
+      ],
     },
   ],
 };

@@ -12,6 +12,7 @@ import { ThemeToggle } from './ThemeToggle';
 const NAV = [
   { title: 'Docs', href: '/docs' },
   { title: 'Registry', href: '/registry' },
+  { title: 'Mods', href: '/mods' },
   { title: 'Blog', href: '/blog' },
   { title: 'Telemetry', href: '/telemetry' },
 ];

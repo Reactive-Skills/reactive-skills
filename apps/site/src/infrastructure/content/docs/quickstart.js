@@ -68,6 +68,14 @@ export const quickstart = {
       ],
     },
     {
+      id: 'watch-runs',
+      heading: 'Optional: watch runs from inside Claude Code',
+      blocks: [
+        { type: 'text', text: 'The bq-vitals mod shows the active skill and state in the Claude Code status line, draws a live map of the state machine with /flow, and prints the path a finished run took with /flow-plan. It only reads the event ledger and the skill statechart.' },
+        { type: 'code', example: { language: 'bash', command: '/plugin install bq-vitals --marketplace Reactive-Skills/reactive-skills', explanation: 'Type this at the Claude Code prompt, not in a shell. Answer y to add the marketplace, then pick a scope. See the [Mods page](/mods) for details.' } },
+      ],
+    },
+    {
       id: 'mcp-bridge',
       heading: 'Optional: connect MCP for host-integrated workflows',
       blocks: [
@@ -82,5 +90,6 @@ export const quickstart = {
     { title: 'AXI CLI reference', href: '/docs/axi' },
     { title: 'Connect a client with MCP', href: '/docs/mcp' },
     { title: 'Understand the concepts', href: '/docs/concepts' },
+    { title: 'Mods for Claude Code', href: '/mods' },
   ],
 };
