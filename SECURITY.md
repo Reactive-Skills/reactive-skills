@@ -49,6 +49,19 @@ Out of scope:
 These weaknesses are public and tracked openly:
 
 - Guard code supplied by a skill, in `guardFunction` files and in inline `guard` expressions, currently runs with the full privileges of the runtime process. A malicious or compromised skill can read files and environment variables, start processes, and make network calls. The fix is tracked in [#34](https://github.com/Reactive-Skills/reactive-skills/issues/34).
-- The runtime does not yet vet third-party skills before running their code. This is tracked in [#33](https://github.com/Reactive-Skills/reactive-skills/issues/33).
+- The runtime does not vet third-party skills by itself before it runs their code. `reactive-skills-axi vet` is a static check you run on demand, and it is not a sandbox. Recording a trust decision per skill and refusing a skill that changed since it was reviewed are still open in [#33](https://github.com/Reactive-Skills/reactive-skills/issues/33).
 
-Until these are fixed, run only skills from sources you trust, and review each skill's `guards/` directory and inline `guard:` expressions before installing or updating it.
+Until these are fixed, run only skills from sources you trust. Run `reactive-skills-axi vet` on a skill before you install or update it, and review each skill's `guards/` directory and inline `guard:` expressions yourself.
+
+## Trust model
+
+The runtime runs with your user's privileges, and what it executes depends on the skill:
+
+- A `guardFunction` file is loaded with `import()` in the runtime process whenever its transition is evaluated. It has the full privileges of that process: your files, environment variables, network, and child processes.
+- An inline `guard` expression, and a judgment criterion that compiles as an expression, run in `node:vm` with a 100 ms limit. The sandbox is not a security boundary, because it passes host objects such as `Object` and `Boolean` into the expression.
+- `on_enter` and `on_exit` hooks emit signals and set context. They do not run commands.
+- State prompts, templates, and references are text the agent reads. The agent may follow them with its own tools, under its own permission settings.
+- The runtime never runs other files in a skill, such as `scripts/`. A person or an agent may run them.
+- `sync` copies skill files and does not run them.
+
+`reactive-skills-axi vet` reads these files as text and applies one rule set to guards, scripts, prompts, and hidden content. It never imports or runs skill code, and it can miss obfuscated code. See [docs/vetting.md](docs/vetting.md) for the rules, severities, exit codes, and the allowlist format.

@@ -180,6 +180,30 @@ Output (TOON format):
 - Formatted error and warning lists
 - Non-zero exit code (1) on validation failure for CI integration
 
+### vet
+
+Statically scan one skill, or every skill in a directory, before you run its code.
+Vet looks for risky APIs in guards and scripts, prompt injection, hidden Unicode and comments, encoded blobs, and download-and-execute steps.
+It reads skill files as text and never imports, requires, or runs them, so it is a check for review and CI and not a sandbox.
+
+```bash
+# Scan one skill, or a directory of skills:
+npx -y @reactive-skills/axi vet skills/my-skill
+npx -y @reactive-skills/axi vet ./catalog --allowlist vet-allowlist.yaml
+
+# Fail on medium findings too, and print JSON:
+npx -y @reactive-skills/axi vet skills/my-skill --fail-on medium --json
+
+# List the rules and their severities:
+npx -y @reactive-skills/axi vet --rules
+```
+
+Each finding has a rule id, a severity (`high`, `medium`, or `low`), a file, a line, and a short message.
+The exit code is `0` when nothing at or above `--fail-on` (default `high`) is left, `1` when something is, and `2` when vet could not run.
+An allowlist file of reviewed exceptions, each with a skill, a rule, a path, and a required reason, suppresses findings that are legitimate.
+The rule set lives in `@reactive-skills/runtime`, so the skills catalog's CI runs the same rules.
+[docs/vetting.md](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/vetting.md) lists every rule, the allowlist format, and what the runtime executes with which privileges.
+
 ### events
 
 Tail the event store ledger for a skill.

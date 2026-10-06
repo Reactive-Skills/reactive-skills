@@ -61,6 +61,22 @@ export const COMMANDS: Record<string, CommandSpec> = {
     ]),
     run: async (args) => (await import('../commands/validate.js')).validateCommand(args),
   },
+  vet: {
+    usage: usage([
+      `Usage: ${BIN} vet [path-to-skill-or-directory] [--fail-on <high|medium|low>] [--allowlist <file>] [--json] [--rules]`,
+      '',
+      'Statically scan one skill, or every skill in a directory, for risky code, prompt injection, hidden content, and download-and-execute steps.',
+      'Skill code is read, never imported or run.',
+      '--fail-on <severity>  Exit 1 when a finding is at or above this severity (default: high).',
+      '--allowlist <file>    Suppress reviewed findings listed in a YAML file kept outside the skills.',
+      '--json                Print machine-readable JSON.',
+      '--rules               List the rules, their severities, and what they look for.',
+      'Exit codes: 0 no finding at or above --fail-on, 1 at least one, 2 vet could not run.',
+      `Example: ${BIN} vet skills/my-skill`,
+      `Example: ${BIN} vet ./catalog --allowlist vet-allowlist.yaml --fail-on medium`,
+    ]),
+    run: async (args) => (await import('../commands/vet.js')).vetCommand(args),
+  },
   preflight: {
     usage: usage([
       `Usage: ${BIN} preflight [path-to-skill] [--json]`,

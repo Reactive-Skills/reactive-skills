@@ -15,6 +15,7 @@
   - `events [limit]` — Read the selected run from the skill-scoped ledger and JSONL projection.
   - `inspect <path>` — Print statechart, transitions, and guards.
   - `validate <path>` — Lint and validate a `skill.yaml` manifest.
+  - `vet <path>` — Statically scan skills for risky code, prompt injection, hidden content, and download-and-execute steps (`--fail-on`, `--allowlist`, `--json`, `--rules`).
   - `invoke <skill>` — Invoke a skill, bootstrapping its FSM engine.
   - `init <name>` — Scaffold new modular reactive skill in `skills/<name>/`.
   - `upgrade <path>` — Migrate a legacy `SKILL.md` to a reactive `skill.yaml`.

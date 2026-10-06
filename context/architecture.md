@@ -40,6 +40,7 @@ reactive-skills/                          # Repo root
 │       │   │   ├── legacy-adapter.ts     # Backward compatibility wrapper for SKILL.md
 │       │   │   ├── migration.ts          # Retroactive project migrator & schema upgrader
 │       │   │   └── job-manager.ts        # Run isolation, active pointer & job metadata
+│       │   ├── vet/                      # Static skill vetting: shared rule set, allowlist, scan engine (@reactive-skills/runtime/vet)
 │       │   ├── mcp/
 │       │   │   └── server.ts             # Stdio MCP server (reactive-skills-mcp binary)
 │       │   ├── telemetry/
@@ -94,6 +95,7 @@ reactive-skills/                          # Repo root
 │   │       │   ├── reset.ts              # axi reset   — reset FSM to initial state
 │   │       │   ├── jobs.ts               # axi jobs    — manage job isolation
 │   │       │   ├── validate.ts           # axi validate — lint skill manifest
+│   │       │   ├── vet.ts                # axi vet      — statically scan skills for risky code and hidden content
 │   │       │   ├── view.ts               # axi view    — open Lavish visual review
 │   │       │   ├── sync.ts               # axi sync    — workspace sync
 │   │       │   ├── home.ts               # axi         — dashboard home

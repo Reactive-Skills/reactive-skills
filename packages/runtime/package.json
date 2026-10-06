@@ -6,7 +6,8 @@
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
-    "./sync": "./dist/sync/cli.js"
+    "./sync": "./dist/sync/cli.js",
+    "./vet": "./dist/vet/index.js"
   },
   "bin": {
     "reactive-skills-dev": "./dist/cli/dev.js",
