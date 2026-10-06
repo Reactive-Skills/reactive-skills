@@ -4,6 +4,7 @@
 - `packages/runtime/src/core/types.ts`: Zod schemas & TypeScript types for FSM, signals, and projections.
 - `packages/runtime/src/core/event-store.ts`: Immutable append-only event ledger (JSONL + native SQLite driver).
 - `packages/runtime/src/core/guard-evaluator.ts`: Sandbox evaluator for transition conditions.
+- `packages/runtime/src/vet/`: Static vetting rule set for third-party skills (`engine.ts`, `rules.ts`, `code-rules.ts`, `text-rules.ts`, `supply-rules.ts`, `manifest.ts`, `allowlist.ts`, `source.ts`, `types.ts`); reads skill files and never runs them. Exported from `@reactive-skills/runtime/vet`; the AXI `vet` command and the catalog CI share it (`docs/vetting.md`).
 - `packages/runtime/src/core/guard-module-format.ts`: Static check that a guardFunction file's syntax matches the module format Node loads it as; never executes the guard.
 - `packages/runtime/src/core/judgment-engine.ts`: Decoupled Ports-and-Adapters judgment engine with snap-on adapters and circuit breaking.
 - `packages/runtime/src/core/approval-grants.ts`: Per-workspace self-report grant stored in the user's home folder; the engine reads it and only `reactive-skills-axi approve` writes or revokes it (ADR 0012).

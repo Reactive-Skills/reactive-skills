@@ -49,6 +49,7 @@
 | Automated CC/CRAP gate in CI (`check:complexity` script) | Quality | ⏳ Queued |
 | Context doc synchronization (architecture, progress tracker, project overview) | Docs | ✅ Done |
 | Skill identifiers: `jobs` and `reset` resolve a skill path, directory name, or manifest name to the manifest-keyed run store; `reset --job` fails for an unknown run; approve and bypass-recovery hints name a resolvable skill (#45, #65 item 1) | AXI | ✅ Done |
+| Static skill vetting: `reactive-skills-axi vet <skill\|dir>` and a shared rule set in the runtime (`@reactive-skills/runtime/vet`) for risky APIs, prompt injection, hidden content, encoded blobs, and download-and-execute steps, with `--fail-on`, a reviewed allowlist, and `docs/vetting.md` (#33, Reactive-Skills/skills#20) | Core / AXI | ✅ Done |
 | Mixed legacy/runs store: legacy snapshot, projection and watermark rows follow the run that owns the legacy events (no more `FOREIGN KEY constraint failed`), `invoke` opens the ledger before registering a job and a store that cannot be opened fails with its path and a recovery command, `jobs` lists each job once (#43) | Core | ✅ Done |
 | `invoke --payload` rejects a `{"contextUpdates":{...}}` wrapper with a message naming the flat initial-context shape and creates no job; invoke and emit usage text and the CLI docs state each command's payload shape (#44) | AXI | ✅ Done |
 

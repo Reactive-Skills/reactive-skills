@@ -5,6 +5,7 @@
   | 'VALIDATION_ERROR'
   | 'NO_EVENT_STORE'
   | 'RUNTIME_ERROR'
+  | 'USAGE_ERROR'
   | 'UNKNOWN';
 
 export class AxiError extends Error {
@@ -26,6 +27,8 @@ export function exitCodeForError(code: ErrorCode): number {
     case 'VALIDATION_ERROR':
     case 'NO_EVENT_STORE':
       return 1;
+    case 'USAGE_ERROR':
+      return 2;
     default:
       return 1;
   }
