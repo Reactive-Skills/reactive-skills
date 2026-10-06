@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { FSMEngine, JobManager, createSortableId } from '@reactive-skills/runtime';
-import { AxiError } from '../errors.js';
+import { AxiError, storeOpenError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
 import { extractJobFlag, resolveSkillPath, resolveWorkspaceDir } from '../args.js';
@@ -153,7 +153,7 @@ export async function invokeCommand(args: string[]): Promise<string> {
   } catch (err) {
     const error = err instanceof AxiError
       ? err
-      : new AxiError(
+      : storeOpenError(err) ?? new AxiError(
           err instanceof Error ? err.message : 'Failed to invoke skill',
           'NOT_FOUND',
           ['Check the skill name and ensure it exists in skills/ or global registry', 'Usage: reactive-skills-axi invoke <skill-name-or-path>']
