@@ -6,7 +6,8 @@
 | :--- | :--- | :--- |
 | `@reactive-skills/runtime` | v0.17.2 | ✅ Published |
 | `@reactive-skills/axi` | v0.17.2 | ✅ Published |
-| `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.18.0 | 🧪 Candidate prepared (`docs/specs/0020-v0.18.0-release-preparation.md`) |
+| `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.18.0 | ✅ Published (`docs/specs/0020-v0.18.0-release-preparation.md`) |
+| `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.19.0 | 🧪 Candidate prepared (`docs/specs/0022-v0.19.0-release-preparation.md`) |
 | `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.17.3 | ✅ Published (`docs/specs/0018-v0.17.3-release-preparation.md`) |
 
 ---
@@ -76,11 +77,11 @@
 | R2 | v0.17.1 | #28, #22 part 1, #15 (`docs/specs/0015-gate-integrity.md`, ADR 0011) | ✅ Published |
 | R2b | v0.17.2 | Rejected-credential refusal message, test guard hint | ✅ Published |
 | R2c | v0.17.3 | Agent-facing credentials reason (stop and ask the user, never unset the key) | ✅ Published |
-| R3a | v0.18.0 | #22 part 2 human approval and self-report grant (ADR 0012, `docs/specs/0019-human-approval.md`), #47, #32 | 🧪 Candidate prepared (PRs #67, #68, #69 merged) |
-| R3b | v0.19.0 | #29, #10, #39, #42, #44, #65, #66 | ⏳ Queued |
-| R4 | v0.20.0 | #14, #26, #43, #45 | ⏳ Queued |
-| R5 | v0.21.0 | #31, #24 | ⏳ Queued |
-| R6 | v0.22.0 | #34 phase 1, #33, #40 | ⏳ Queued |
+| R3a | v0.18.0 | #22 part 2 human approval and self-report grant (ADR 0012, `docs/specs/0019-human-approval.md`), #47, #32 | ✅ Published |
+| R3b | v0.19.0 | #10, #42, #44, #45, #24, #43, `vet` (#33 part), site fixes; #29, #39, #65 items 2-3 still open | 🧪 Candidate prepared (`docs/specs/0022-v0.19.0-release-preparation.md`) |
+| R4 | v0.20.0 | #14, #26 | ⏳ Queued |
+| R5 | v0.21.0 | #31 | ⏳ Queued |
+| R6 | v0.22.0 | #34 phase 1, #33 trust record, #40 | ⏳ Queued |
 | R7 | v0.23.0 | #34 sandbox default, #33 strict mode | ⏳ Queued |
 | Triage | n/a | #12 Synthesis report scoping (likely skill or template side) | ⏳ Needs triage |
 

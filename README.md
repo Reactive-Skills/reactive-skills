@@ -5,18 +5,17 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.18.0)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.19.0)
 
 ---
 
-> 🚀 **What's New in v0.18.0:**
-> - A gate that no model can judge now waits for you: the agent asks you to run `reactive-skills-axi approve` in your own terminal and type back a one-time code.
-> - Self-reported decisions are off by default and need an operator grant from `approve --allow-self-reported`, stored in your home folder; every such decision is flagged.
-> - Guards say why they refused (`guard_message`, or `{ passed, reason }` from a guard function), and Jev authoring errors no longer trip the circuit breaker.
-> - Breaking: without a model or a grant, natural-language gates no longer pass on the agent's own report, and unattended runs need a working model.
-> - Behavior change for library users: an engine refuses signals once another process writes to its run; long-lived holders call `hasExternalChanges()` and `reopen()`.
+> 🚀 **What's New in v0.19.0:**
+> - New `reactive-skills-axi vet <skill|dir>` statically checks a skill's guard code, text, and dependencies for risky patterns before you run it. It is the first part of the trust work; a trust record and a hardened mode are still to come.
+> - `validate` catches a guard file in the wrong module format before it runs, and `<command> --help` now works on every command.
+> - `invoke` rejects a wrapped `contextUpdates` payload and shows the expected shape; `jobs` and `reset` find runs by skill path or name.
+> - Judgments can limit what the AI judge sees with `context_paths` and `include_payload`; a legacy mixed run store migrates instead of crashing `invoke`.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.18.0) · [View Changelog](CHANGELOG.md)
+> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.19.0) · [View Changelog](CHANGELOG.md)
 
 ---
 
