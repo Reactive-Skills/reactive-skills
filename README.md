@@ -447,6 +447,16 @@ The browser viewer does not scan local ports automatically.
 
 For performance tiers, algorithmic budgets, and caching standards, see [PERFORMANCE-STANDARDS.md](PERFORMANCE-STANDARDS.md).
 
+## Star History
+
+<a href="https://www.star-history.com/?repos=reactive-skills%2Freactive-skills%2Creactive-skills%2Fskills&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=reactive-skills/reactive-skills%2Creactive-skills/skills&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=reactive-skills/reactive-skills%2Creactive-skills/skills&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=reactive-skills/reactive-skills%2Creactive-skills/skills&type=date&legend=top-left" />
+ </picture>
+</a>
+
 ---
 
 ## 📜 License
