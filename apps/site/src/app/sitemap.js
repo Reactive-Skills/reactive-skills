@@ -20,6 +20,7 @@ export default function sitemap() {
     '/registry',
     '/mods',
     '/blog',
+    '/privacy',
     ...docsRoutes,
     ...registry.listSkills().map((skill) => `/registry/${skill.slug}`),
     ...blog.listPosts().map((post) => `/blog/${post.slug}`),

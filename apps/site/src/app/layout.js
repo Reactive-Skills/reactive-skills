@@ -2,6 +2,7 @@ import './globals.css';
 import { Providers } from './providers';
 import { SiteHeader } from '@/components/site/SiteHeader';
 import { SiteFooter } from '@/components/site/SiteFooter';
+import { Analytics } from '@/components/site/Analytics';
 import { absoluteUrl, siteBaseUrl } from '@/infrastructure/siteMetadata';
 
 const siteTitle = 'Reactive Skills | Resumable Workflows for Coding Agents';
@@ -79,6 +80,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <Analytics />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteStructuredData) }} />
         <script dangerouslySetInnerHTML={{ __html: 'window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);' }} />
       </head>

@@ -39,6 +39,7 @@ export function SiteFooter() {
           <Link href="/docs/troubleshooting" className="text-phino-text-muted transition-colors hover:text-phino-text">Troubleshooting</Link>
           <Link href="/docs/changelog" className="text-phino-text-muted transition-colors hover:text-phino-text">Changelog</Link>
           <Link href="/telemetry" className="text-phino-text-muted transition-colors hover:text-phino-text">Telemetry</Link>
+          <Link href="/privacy" className="text-phino-text-muted transition-colors hover:text-phino-text">Privacy</Link>
         </nav>
       </div>
       <div className="border-t border-phino-border">
