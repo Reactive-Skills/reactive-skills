@@ -126,8 +126,9 @@ describe('Performance Budget & Metrics Telemetry', () => {
         expect(transitionEvent!.payload.metrics).toEqual(res.metrics);
       }
 
-      // Keep the 25ms budget on fast hosts; allow at most 2x the control on slow storage.
-      // The independent 1s ceiling still catches stalls even when the control is slow.
+      // Bound: under 2x the control median, with a 12.5ms floor (500ms on CI/win32). The control
+      // is ~20-40ms on a typical idle host, so the effective bound is ~45-80ms, catching
+      // sustained regressions of roughly 45ms or more. The 1s ceiling still catches stalls.
       const maxP1 = (process.env.CI || process.platform === 'win32') ? 1000 : 25;
       const baseline = Math.max(maxP1 / 2, median(controlDurations));
       const diagnostic = `handleSignal ms: ${durations}; control ms: ${controlDurations}`;
