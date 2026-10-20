@@ -67,6 +67,7 @@
 | Quickstart install step carries a skill trust note pointing to `SECURITY.md` (guard code runs with full process privileges; #34, #33) | Site | ✅ Done |
 | Site production type-check excludes `apps/site/tests` (TS6059 from #72 had failed every deploy since 2026-10-05); CI now builds the site; authoring docs state guard module formats (#10) | Site | ✅ Done |
 | `validate` checks guardFunction module format without importing the guard; runtime load failures name the file and the fix (#10) | Runtime, AXI | ✅ Done |
+| Umami page-view analytics (tracker only, no recorder, Do Not Track honored) with a `/privacy` disclosure and footer link (`docs/analytics.md`) | Site | ✅ Done |
 
 ---
 
