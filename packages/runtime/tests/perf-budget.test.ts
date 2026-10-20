@@ -85,12 +85,12 @@ describe('Performance Budget & Metrics Telemetry', () => {
       const insert = controlDb.prepare('INSERT INTO control VALUES (?)');
       const controlPath = path.join(tempDbDir, 'control.jsonl');
       const payload = JSON.stringify({ signal: 'TEST_RAN', data: 'x'.repeat(256) });
-      const snapshot = Array.from({ length: 500 }, (_, id) => ({ id, type: 'STATE_TRANSITION', data: 'x'.repeat(64) }));
+      const snapshot = Array.from({ length: 1500 }, (_, id) => ({ id, type: 'STATE_TRANSITION', data: 'x'.repeat(64) }));
       const measureControl = () => {
         const start = performance.now();
         // A fixed eight commits plus file writes models a small persisted transition.
         // Use raw SQLite rather than EventStore so runtime regressions cannot inflate the control.
-        // The JSON round-trip gives the control a CPU share like handleSignal's, so CPU contention
+        // The JSON round-trip roughly matches handleSignal's CPU time, so CPU contention
         // slows both alike instead of skewing the ratio.
         for (let write = 0; write < 8; write++) {
           JSON.parse(JSON.stringify(snapshot));
