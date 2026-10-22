@@ -12,7 +12,9 @@ const PATHS = [
   {
     title: 'Create a skill',
     description: 'Turn a repeatable process into explicit states, evidence gates, and durable outputs.',
-    command: 'npx -y @reactive-skills/axi init my-workflow',
+    install: 'npx skills add Reactive-Skills/skills --skill skill-manager',
+    prompt: 'Use skill-manager to create a reactive skill named my-workflow',
+    alternative: 'npx -y @reactive-skills/axi init my-workflow',
     href: '/docs/authoring',
     linkLabel: 'Read authoring guide',
   },
@@ -38,10 +40,23 @@ export function StartPaths() {
               <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </Link>
           </div>
-          <code className="block self-start overflow-x-auto border border-phino-border bg-phino-code-bg px-3 py-2.5 font-mono text-xs leading-relaxed text-phino-code-text">
-            <span className="mr-2 text-phino-signal-text" aria-hidden="true">$</span>
-            {path.command}
-          </code>
+          <div className="self-start">
+            {path.install && (
+              <p className="mb-2 text-xs text-phino-text-muted">
+                Install first: <code className="font-mono text-phino-code-text">{path.install}</code>
+              </p>
+            )}
+            <code className="block overflow-x-auto border border-phino-border bg-phino-code-bg px-3 py-2.5 font-mono text-xs leading-relaxed text-phino-code-text">
+              <span className="mr-2 text-phino-signal-text" aria-hidden="true">{path.prompt ? '>' : '$'}</span>
+              {path.prompt ? `"${path.prompt}"` : path.command}
+            </code>
+            {path.prompt && <p className="mt-1.5 text-xs text-phino-text-muted">Ask your agent. Recommended.</p>}
+            {path.alternative && (
+              <p className="mt-2 text-xs text-phino-text-muted">
+                Terminal alternative: <code className="font-mono text-phino-code-text">{path.alternative}</code>
+              </p>
+            )}
+          </div>
         </li>
       ))}
     </ul>

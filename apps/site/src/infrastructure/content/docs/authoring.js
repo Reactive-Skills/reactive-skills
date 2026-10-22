@@ -7,6 +7,25 @@ export const authoring = {
   href: '/docs/authoring',
   sections: [
     {
+      id: 'skill-manager',
+      heading: 'Recommended: skill-manager',
+      blocks: [
+        { type: 'text', text: 'The canonical method to scaffold, modify, and migrate reactive skills is the skill-manager agent skill. Instead of writing YAML manifests manually, install skill-manager and ask your AI agent what you want to create.' },
+        { type: 'text', text: 'Step 1: install skill-manager.' },
+        { type: 'code', example: { language: 'bash', command: 'npx skills add Reactive-Skills/skills --skill skill-manager' } },
+        { type: 'text', text: 'Step 2: ask your agent:' },
+        { type: 'code', example: { language: 'text', command: 'Use skill-manager to create a reactive skill named my-workflow', explanation: 'skill-manager validates schemas, coordinates state prompts with strict execution invariants, and handles lifecycle operations (CREATE, UPDATE, MIGRATE_LEGACY, MIGRATE_REACTIVE).' } },
+      ],
+    },
+    {
+      id: 'terminal-scaffolding',
+      heading: 'Terminal scaffolding',
+      blocks: [
+        { type: 'text', text: 'For quick command-line scaffolding, you can also use the AXI CLI. It scaffolds the modular file layout in skills/<skill-name>/.' },
+        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi init <skill-name>' } },
+      ],
+    },
+    {
       id: 'beyond-scaffold',
       heading: 'Beyond the basic scaffold',
       blocks: [
