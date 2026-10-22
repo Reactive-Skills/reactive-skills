@@ -1,56 +1,49 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { HeroCommandTabs } from './HeroCommandTabs';
-import { HeroStats } from './HeroStats';
-import { RuntimeWorkbench } from './RuntimeWorkbench';
+import { CopyButton } from '@/components/common/CopyButton';
+import { RunTape } from './RunTape';
 
-export function Hero({ stats }) {
+const INSTALL_COMMAND = 'npx skills add Reactive-Skills/skills --skill tdd-refactor';
+
+export function Hero({ tape, skillName }) {
   return (
-    <section className="relative overflow-hidden border-b border-phino-border bg-phino-canvas">
-      <div className="phino-grid pointer-events-none absolute inset-0 opacity-40" aria-hidden="true" />
-      <div className="phino-radial pointer-events-none absolute inset-0" aria-hidden="true" />
+    <section className="border-b border-phino-border bg-phino-canvas" aria-labelledby="hero-heading">
+      <div className="container py-14 sm:py-20 lg:py-24">
+        <h1
+          id="hero-heading"
+          className="max-w-5xl font-display text-[2rem] font-extrabold leading-[1.04] tracking-[-0.04em] text-phino-text [text-wrap:balance] sm:text-5xl lg:text-[4rem]"
+        >
+          Your agent runs the workflow <span className="text-phino-signal-text">one checked step</span> at a time.
+        </h1>
 
-      <div className="container relative py-12 sm:py-16 lg:py-20">
-        <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-8 xl:gap-12">
-          <div className="min-w-0 space-y-6 lg:col-span-6 xl:col-span-7">
-            <p className="inline-flex items-center gap-2.5 rounded-full border border-phino-signal/30 bg-phino-signal-soft/60 px-3.5 py-1 font-mono text-xs text-phino-signal-text">
-              <span className="h-2 w-2 rounded-full bg-phino-signal" aria-hidden="true" />
-              <span className="font-semibold uppercase tracking-wider">Workflows for coding agents</span>
-            </p>
+        <p className="mt-6 max-w-[62ch] text-base leading-relaxed text-phino-text-muted sm:text-lg">
+          Reactive Skills turns a long instruction file into a workflow your agent runs one step at a time. It sees only the current step, moves forward when a check passes, and leaves a run history you can inspect and resume.
+        </p>
 
-            <h1 className="font-display text-4xl font-extrabold leading-[1.08] tracking-tight text-phino-text sm:text-5xl xl:text-6xl">
-              Stop hoping your agent followed the playbook.{' '}
-              <span className="bg-gradient-to-r from-phino-signal-text via-teal-600 to-emerald-600 bg-clip-text text-transparent dark:via-teal-300 dark:to-emerald-300">
-                Make each step pass a check.
-              </span>
-            </h1>
+        <RunTape steps={tape} skillName={skillName} />
 
-            <p className="max-w-2xl text-base leading-relaxed text-phino-text-muted sm:text-lg">
-              Reactive Skills turns a long instruction file into a workflow your agent runs one step at a time. It sees only the current step, moves forward when a check passes, and leaves a run history you can inspect and resume.
-            </p>
+        <div className="mt-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm font-semibold" aria-label="Start here">
+            <Link
+              href="/registry"
+              className="inline-flex items-center gap-1.5 text-phino-signal-text underline decoration-phino-signal/40 hover:decoration-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
+            >
+              Browse workflows <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+            <Link
+              href="/docs/quickstart"
+              className="text-phino-text underline decoration-phino-border-strong hover:decoration-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
+            >
+              Read the quickstart
+            </Link>
+          </nav>
 
-            <HeroCommandTabs />
-
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <Link
-                href="/registry"
-                className="inline-flex items-center gap-2 rounded-lg bg-phino-text px-5 py-2.5 text-sm font-semibold text-phino-canvas transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
-              >
-                Browse workflows <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-              <Link
-                href="/docs/quickstart"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-phino-border-strong bg-phino-surface-raised px-5 py-2.5 text-sm font-medium text-phino-text transition-colors hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
-              >
-                Read the quickstart
-              </Link>
-            </div>
-
-            <HeroStats stats={stats} />
-          </div>
-
-          <div className="min-w-0 lg:col-span-6 xl:col-span-5">
-            <RuntimeWorkbench />
+          <div className="flex min-w-0 items-center gap-3 border border-phino-border px-4 py-2.5 lg:max-w-[60%]">
+            <code className="min-w-0 font-mono text-xs text-phino-text [overflow-wrap:anywhere] sm:text-sm">
+              <span className="mr-2 select-none text-phino-signal-text" aria-hidden="true">$</span>
+              {INSTALL_COMMAND}
+            </code>
+            <CopyButton value={INSTALL_COMMAND} size="sm" ariaLabel="Copy install command" className="shrink-0" />
           </div>
         </div>
       </div>

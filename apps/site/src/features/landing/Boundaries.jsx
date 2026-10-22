@@ -1,5 +1,3 @@
-import { Check } from 'lucide-react';
-
 const BOUNDARIES = [
   'It does not make a model correct. It makes progress explicit and inspectable.',
   'It does not replace tests, reviews, or human decisions.',
@@ -9,13 +7,12 @@ const BOUNDARIES = [
 
 export function Boundaries() {
   return (
-    <div className="grid gap-3 md:grid-cols-2">
+    <ul className="grid border-t border-phino-border md:grid-cols-2 md:gap-x-12">
       {BOUNDARIES.map((text) => (
-        <div key={text} className="flex gap-3 rounded-xl border border-phino-border bg-phino-surface p-4">
-          <Check className="mt-0.5 h-4 w-4 shrink-0 text-phino-signal" aria-hidden="true" />
-          <p className="text-sm leading-relaxed text-phino-text-muted">{text}</p>
-        </div>
+        <li key={text} className="border-b border-phino-border py-4 text-sm leading-relaxed text-phino-text-muted">
+          {text}
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

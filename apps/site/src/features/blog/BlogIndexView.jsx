@@ -22,10 +22,7 @@ export function BlogIndexView({ posts, tags }) {
     <div className="container py-12 sm:py-16">
       {/* Header section */}
       <div className="max-w-3xl">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-phino-signal-text">
-          Engineering & Architecture
-        </p>
-        <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-phino-text sm:text-5xl">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-phino-text sm:text-5xl">
           The Reactive Skills Blog
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-phino-text-muted">

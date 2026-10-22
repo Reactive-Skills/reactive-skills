@@ -13,8 +13,8 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['"Space Grotesk"', 'Inter', 'ui-sans-serif', 'sans-serif'],
+        sans: ['"Inter Tight"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['"Martian Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
@@ -73,17 +73,11 @@ module.exports = {
       keyframes: {
         'accordion-down': { from: { height: '0' }, to: { height: 'var(--radix-accordion-content-height)' } },
         'accordion-up': { from: { height: 'var(--radix-accordion-content-height)' }, to: { height: '0' } },
-        'signal-flow': { '0%': { backgroundPosition: '100% 0' }, '100%': { backgroundPosition: '-100% 0' } },
-        'signal-flow-v': { '0%': { backgroundPosition: '0 100%' }, '100%': { backgroundPosition: '0 -100%' } },
-        'pulse-soft': { '0%, 100%': { opacity: '0.35' }, '50%': { opacity: '1' } },
         'fade-up': { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'signal-flow': 'signal-flow 2.6s linear infinite',
-        'signal-flow-v': 'signal-flow-v 2.6s linear infinite',
-        'pulse-soft': 'pulse-soft 2.2s ease-in-out infinite',
         'fade-up': 'fade-up 0.5s ease-out both',
       },
     },

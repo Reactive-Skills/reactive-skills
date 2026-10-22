@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;600;800&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -26,7 +26,7 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --radius: 0.125rem;
 
     /* ===== Phino semantic tokens — LIGHT ===== */
     --phino-canvas: #f4f5f7;
@@ -58,6 +58,15 @@
     --phino-code-bg: #0b0e12;
     --phino-code-text: #e6edf3;
     --phino-grid-line: rgba(13, 17, 23, 0.05);
+
+    /* PersonaGenome (0-1) and Bloom motion values, kept under Phino token names. */
+    --phino-genome-softness: 0.1;
+    --phino-genome-boldness: 0.7;
+    --phino-genome-subtlety: 0.6;
+    --phino-genome-consistency: 0.9;
+    --phino-duration-swift: 160ms;
+    --phino-duration-deliberate: 420ms;
+    --phino-ease-move: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   :where(.dark) {
@@ -81,35 +90,35 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
 
-    /* ===== Phino semantic tokens — DARK (recomputed for contrast) ===== */
-    --phino-canvas: #06070a;
-    --phino-surface: #0c0e13;
-    --phino-surface-raised: #13161c;
-    --phino-overlay: #1a1e25;
-    --phino-border: #212530;
-    --phino-border-strong: #333a47;
-    --phino-text: #e9edf3;
-    --phino-text-muted: #9aa4b2;
-    --phino-text-subtle: #6c7684;
-    --phino-signal: #2dd4bf;
-    --phino-signal-text: #5eead4;
-    --phino-signal-soft: #0b211e;
-    --phino-guard: #f59e0b;
-    --phino-guard-text: #fbbf24;
-    --phino-guard-soft: #211906;
-    --phino-state: #60a5fa;
-    --phino-state-text: #93c5fd;
-    --phino-state-soft: #0c1a2e;
-    --phino-event: #4ade80;
-    --phino-event-text: #86efac;
-    --phino-event-soft: #0b1f14;
-    --phino-danger: #f87171;
-    --phino-danger-text: #fca5a5;
-    --phino-danger-soft: #2a1214;
-    --phino-success: #4ade80;
-    --phino-focus: #2dd4bf;
-    --phino-code-bg: #080a0d;
-    --phino-code-text: #e6edf3;
+    /* ===== Phino semantic tokens — DARK (run-history palette) ===== */
+    --phino-canvas: #0e100f;
+    --phino-surface: #161917;
+    --phino-surface-raised: #1c201d;
+    --phino-overlay: #222723;
+    --phino-border: #2a2f2b;
+    --phino-border-strong: #3b423c;
+    --phino-text: #e7e9e4;
+    --phino-text-muted: #a3aaa2;
+    --phino-text-subtle: #8d948c;
+    --phino-signal: #9bff6a;
+    --phino-signal-text: #9bff6a;
+    --phino-signal-soft: #17240f;
+    --phino-guard: #ffb238;
+    --phino-guard-text: #ffb238;
+    --phino-guard-soft: #2a1f0b;
+    --phino-state: #8fb8ff;
+    --phino-state-text: #b3ceff;
+    --phino-state-soft: #121a29;
+    --phino-event: #9bff6a;
+    --phino-event-text: #b8ff94;
+    --phino-event-soft: #17240f;
+    --phino-danger: #ff5c49;
+    --phino-danger-text: #ff8475;
+    --phino-danger-soft: #2c1310;
+    --phino-success: #9bff6a;
+    --phino-focus: #9bff6a;
+    --phino-code-bg: #0a0b0a;
+    --phino-code-text: #e7e9e4;
     --phino-grid-line: rgba(255, 255, 255, 0.045);
   }
 }
@@ -130,26 +139,12 @@
     background: var(--phino-signal);
     color: var(--phino-canvas);
   }
-}
-
-@layer utilities {
-  .phino-grid {
-    background-image:
-      linear-gradient(var(--phino-grid-line) 1px, transparent 1px),
-      linear-gradient(90deg, var(--phino-grid-line) 1px, transparent 1px);
-    background-size: 44px 44px;
+  html {
+    caret-color: var(--phino-signal);
+    scrollbar-color: var(--phino-border-strong) var(--phino-canvas);
   }
-  .phino-radial {
-    background:
-      radial-gradient(60rem 40rem at 50% -10%, var(--phino-signal-soft), transparent 70%);
-  }
-  .phino-signal-line {
-    background-image: linear-gradient(90deg, transparent, var(--phino-signal), transparent);
-    background-size: 220% 100%;
-  }
-  .phino-signal-line-v {
-    background-image: linear-gradient(180deg, transparent, var(--phino-signal), transparent);
-    background-size: 100% 220%;
+  a {
+    text-underline-offset: 0.2em;
   }
 }
 
