@@ -68,7 +68,7 @@
 | Site production type-check excludes `apps/site/tests` (TS6059 from #72 had failed every deploy since 2026-10-05); CI now builds the site; authoring docs state guard module formats (#10) | Site | ✅ Done |
 | `validate` checks guardFunction module format without importing the guard; runtime load failures name the file and the fix (#10) | Runtime, AXI | ✅ Done |
 | Umami page-view analytics (tracker only, no recorder, Do Not Track honored) with a `/privacy` disclosure and footer link (`docs/analytics.md`) | Site | ✅ Done |
-| Run-history redesign: dark palette, mono display face, full-width hero with a scroll-driven run tape of real `tdd-refactor` states, sortable registry log replacing card rows, splitting SKILL.md tape; card rows, eyebrows and section numbers removed; tokens keep `--phino-*` names (`lib/landing/flightRecorder.js`) | Site | ✅ Done |
+| Run-history redesign: dark and light Flight Recorder palettes, mono display face, full-width hero with a scroll-driven run tape of real `tdd-refactor` states, sortable registry log replacing card rows, splitting SKILL.md tape; card rows, eyebrows and section numbers removed; tokens keep `--phino-*` names (`lib/landing/flightRecorder.js`) | Site | ✅ Done |
 
 ---
 
