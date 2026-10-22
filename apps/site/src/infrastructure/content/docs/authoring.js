@@ -10,8 +10,11 @@ export const authoring = {
       id: 'skill-manager',
       heading: 'Recommended: skill-manager',
       blocks: [
-        { type: 'text', text: 'The canonical method to scaffold, modify, and migrate reactive skills is the skill-manager agent skill. Instead of writing YAML manifests manually, ask your AI agent:' },
-        { type: 'code', example: { language: 'text', command: 'Use skill-manager to create a reactive skill named my-feature-workflow', explanation: 'skill-manager validates schemas, coordinates state prompts with strict execution invariants, and handles lifecycle operations (CREATE, UPDATE, MIGRATE_LEGACY, MIGRATE_REACTIVE).' } },
+        { type: 'text', text: 'The canonical method to scaffold, modify, and migrate reactive skills is the skill-manager agent skill. Instead of writing YAML manifests manually, install skill-manager and ask your AI agent what you want to create.' },
+        { type: 'text', text: 'Step 1: install skill-manager.' },
+        { type: 'code', example: { language: 'bash', command: 'npx skills add Reactive-Skills/skills --skill skill-manager' } },
+        { type: 'text', text: 'Step 2: ask your agent:' },
+        { type: 'code', example: { language: 'text', command: 'Use skill-manager to create a reactive skill named my-workflow', explanation: 'skill-manager validates schemas, coordinates state prompts with strict execution invariants, and handles lifecycle operations (CREATE, UPDATE, MIGRATE_LEGACY, MIGRATE_REACTIVE).' } },
       ],
     },
     {
