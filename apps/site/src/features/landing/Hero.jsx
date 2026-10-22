@@ -13,7 +13,7 @@ export function Hero({ tape, skillName }) {
           id="hero-heading"
           className="max-w-5xl font-display text-[2rem] font-extrabold leading-[1.04] tracking-[-0.04em] text-phino-text [text-wrap:balance] sm:text-5xl lg:text-[4rem]"
         >
-          Your agent runs the workflow <span className="text-phino-signal-text">one checked step</span> at a time.
+          Your agent runs the workflow one checked step at a time.
         </h1>
 
         <p className="mt-6 max-w-[62ch] text-base leading-relaxed text-phino-text-muted sm:text-lg">
@@ -38,7 +38,7 @@ export function Hero({ tape, skillName }) {
             </Link>
           </nav>
 
-          <div className="flex min-w-0 items-center gap-3 border border-phino-border px-4 py-2.5 lg:max-w-[60%]">
+          <div className="flex min-w-0 items-center gap-2 lg:max-w-[60%] lg:justify-end lg:text-right">
             <code className="min-w-0 font-mono text-xs text-phino-text [overflow-wrap:anywhere] sm:text-sm">
               <span className="mr-2 select-none text-phino-signal-text" aria-hidden="true">$</span>
               {INSTALL_COMMAND}

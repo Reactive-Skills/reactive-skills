@@ -67,7 +67,7 @@ export function RunDemo() {
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-center justify-between gap-3 font-mono text-xs uppercase tracking-wider text-white/60">
               <span>Current state</span>
-              <span className={state === 'COMPLETE' ? 'text-phino-signal-text' : 'text-phino-signal-text'}>{state}</span>
+              <span className="text-phino-signal-text">{state}</span>
             </div>
             <div className="mt-4 flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-phino-signal-soft text-phino-signal-text">

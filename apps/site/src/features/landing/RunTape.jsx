@@ -1,37 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
-import { clampProgress } from '@/lib/motion/useScrollProgress';
+import { useScrollProgress } from '@/lib/motion/useScrollProgress';
 import { cn } from '@/lib/utils';
 
 // Static frame (and the reduced-motion frame): the playhead rests inside the second state.
 const REST_AT = 0.3;
 const END_AT = 0.94;
 
-function useHeroScroll() {
-  const [progress, setProgress] = useState(null);
-  useEffect(() => {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let frame = 0;
-    const measure = () => {
-      frame = 0;
-      setProgress(reduce.matches ? null : clampProgress(window.scrollY / (window.innerHeight * 0.55)));
-    };
-    const schedule = () => {
-      if (!frame) frame = window.requestAnimationFrame(measure);
-    };
-    measure();
-    window.addEventListener('scroll', schedule, { passive: true });
-    reduce.addEventListener('change', schedule);
-    return () => {
-      if (frame) window.cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', schedule);
-      reduce.removeEventListener('change', schedule);
-    };
-  }, []);
-  return progress;
-}
+// The page itself, so progress is 0 at the top and 1 after 0.55 viewport heights of scroll.
+const PAGE = { get current() { return document.documentElement; } };
+const PAGE_SCROLL = { start: 0, distance: 0.55 };
 
 function clock(seconds) {
   return `14:02:${String(seconds).padStart(2, '0')}`;
@@ -49,7 +28,7 @@ function eventsInto(steps, active) {
 }
 
 export function RunTape({ steps, skillName }) {
-  const progress = useHeroScroll();
+  const progress = useScrollProgress(PAGE, PAGE_SCROLL);
   const playhead = REST_AT + (progress ?? 0) * (END_AT - REST_AT);
   const share = 1 / steps.length;
   const active = Math.min(steps.length - 1, Math.floor(playhead / share));
