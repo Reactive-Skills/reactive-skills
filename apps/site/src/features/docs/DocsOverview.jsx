@@ -10,8 +10,7 @@ export function DocsOverview({ page, pages }) {
     <div>
       <DocsBreadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Docs' }]} />
 
-      <p className="font-mono text-xs uppercase tracking-[0.2em] text-phino-signal-text">{page.category}</p>
-      <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-phino-text sm:text-4xl">{page.title}</h1>
+      <h1 className="font-display text-3xl font-semibold tracking-tight text-phino-text sm:text-4xl">{page.title}</h1>
       <p className="mt-3 max-w-2xl text-lg leading-relaxed text-phino-text-muted">{page.summary}</p>
 
       <div className="mt-6 flex flex-wrap items-center gap-1.5" aria-label="Mental model">
