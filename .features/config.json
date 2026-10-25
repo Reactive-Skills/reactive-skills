@@ -1,0 +1,52 @@
+{
+  "modules": [
+    {
+      "name": "runtime",
+      "roots": ["packages/runtime"],
+      "runner": {
+        "list": "rtk proxy node packages/runtime/node_modules/vitest/vitest.mjs list --config packages/runtime/vitest.config.ts --json",
+        "format": "vitest-json",
+        "level": "unit"
+      }
+    },
+    {
+      "name": "axi",
+      "roots": ["apps/axi"],
+      "runner": {
+        "list": "rtk proxy node apps/axi/node_modules/vitest/vitest.mjs list --config apps/axi/vitest.config.ts --json",
+        "format": "vitest-json",
+        "level": "unit"
+      }
+    },
+    {
+      "name": "site",
+      "roots": ["apps/site"],
+      "runner": {
+        "list": "rtk proxy node apps/site/node_modules/vitest/vitest.mjs list --root apps/site --config apps/site/vitest.config.mjs --json",
+        "format": "vitest-json",
+        "level": "unit"
+      }
+    },
+    {
+      "name": "bq-vitals",
+      "roots": ["mods/bq-vitals"],
+      "runner": {
+        "list": "rtk proxy git ls-files -- mods/bq-vitals/hooks/*.test.ts",
+        "format": "lines",
+        "level": "unit"
+      }
+    }
+  ],
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.next/**",
+    "**/coverage/**",
+    "**/CHANGELOG.md",
+    "apps/site/src/infrastructure/content/docs/changelog.js",
+    "apps/site/src/infrastructure/content/registry/skills.js"
+  ],
+  "fail_on": ["uncovered"],
+  "severity_threshold": "medium",
+  "drift": "warn"
+}
