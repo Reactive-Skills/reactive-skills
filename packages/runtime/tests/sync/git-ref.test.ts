@@ -8,7 +8,7 @@ import { runDistribution } from '../../src/sync/distribution.js';
 
 const savedEnv: Record<string, string | undefined> = {};
 const ISOLATED_GIT_ENV = {
-  GIT_CONFIG_GLOBAL: os.devNull,
+  GIT_CONFIG_GLOBAL: '',
   GIT_CONFIG_NOSYSTEM: '1',
   GIT_AUTHOR_NAME: 'Sync Test',
   GIT_AUTHOR_EMAIL: 'sync-test@example.com',
@@ -51,8 +51,12 @@ describe('syncing from a git ref with downgrade protection', () => {
   let central: string;
   let config: string;
   let statePath: string;
+  let gitConfigDir: string;
 
   beforeAll(() => {
+    gitConfigDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sync-git-config-'));
+    ISOLATED_GIT_ENV.GIT_CONFIG_GLOBAL = path.join(gitConfigDir, 'config');
+    fs.writeFileSync(ISOLATED_GIT_ENV.GIT_CONFIG_GLOBAL, '');
     for (const [key, value] of Object.entries(ISOLATED_GIT_ENV)) {
       savedEnv[key] = process.env[key];
       process.env[key] = value;
@@ -64,6 +68,7 @@ describe('syncing from a git ref with downgrade protection', () => {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+    fs.rmSync(gitConfigDir, { recursive: true, force: true });
   });
 
   beforeEach(() => {

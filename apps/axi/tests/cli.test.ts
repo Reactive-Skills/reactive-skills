@@ -28,7 +28,7 @@ vi.mock('../src/commands/dashboard.js', () => ({
   dashboardCommand: vi.fn().mockResolvedValue('dashboard output'),
 }));
 
-import { main } from '../src/cli/index.js';
+import { main } from '../src/cli/main.js';
 import { syncCommand } from '../src/commands/sync.js';
 
 describe('CLI entry point', () => {
@@ -53,6 +53,18 @@ describe('CLI entry point', () => {
     stdoutSpy.mockRestore();
     stderrSpy.mockRestore();
     vi.clearAllMocks();
+  });
+
+  it('does not execute a command when the dispatcher is imported', async () => {
+    vi.resetModules();
+    process.argv = ['node', 'reactive-skills-axi'];
+
+    await import('../src/cli/main.js');
+    await vi.dynamicImportSettled();
+
+    expect(stdoutSpy).not.toHaveBeenCalled();
+    expect(stderrSpy).not.toHaveBeenCalled();
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 
   it('does not error with no args (dashboard)', async () => {

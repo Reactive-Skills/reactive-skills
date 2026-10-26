@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
+import { closeServer, reservePorts } from './support/ports.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -498,27 +499,18 @@ function portFromUrl(url: string): number {
   return Number(new URL(url).port);
 }
 
+/**
+ * Keep one reserved port busy while releasing its verified available successor.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (< 2000ms), test setup only.
+ * - Complexity: O(a), bounded to 50 reservation attempts.
+ * - Cyclomatic Complexity (CC): 1.
+ * - Branch Coverage: target >= 60%.
+ * - CRAP Score: budget <= 30.0.
+ */
 async function reserveBusyPortWithFreeSuccessor(): Promise<http.Server> {
-  // Ephemeral ports can border Windows excluded ranges.
-  // Reserve adjacent ports before testing the real busy-port fallback.
-  for (let port = 45300; port < 45400; port += 2) {
-    const blocker = http.createServer();
-    const successor = http.createServer();
-    const bind = (server: http.Server, candidate: number) => new Promise<void>((resolve, reject) => {
-      server.once('error', reject);
-      server.listen(candidate, '127.0.0.1', () => resolve());
-    });
-    const close = (server: http.Server) => new Promise<void>(resolve => server.close(() => resolve()));
-    try {
-      await bind(blocker, port);
-      await bind(successor, port + 1);
-      await close(successor);
-      return blocker;
-    } catch (error: any) {
-      await close(successor);
-      await close(blocker);
-      if (!['EADDRINUSE', 'EACCES'].includes(error.code)) throw error;
-    }
-  }
-  throw new Error('No adjacent ports available for busy-port fixture');
+  const { servers: [blocker, successor] } = await reservePorts(2);
+  await closeServer(successor);
+  return blocker;
 }

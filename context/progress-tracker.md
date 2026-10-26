@@ -36,8 +36,19 @@
 | Performance Budget Tests (P0/P1 latency assertions) | Quality | ✅ Done |
 | Signal Queue Cycle Guard (REL-02, MAX_QUEUE_DRAIN_DEPTH) | Core | ✅ Done |
 | Public Prose Quality Gate | Quality | ✅ Done |
+| Windows validation portability repairs | Quality | ✅ Runtime 598/598, AXI 311/311, Site 61/61; builds, docs and prose gates passed |
 
 ---
+
+### Validation portability (2026-10-26)
+
+CLI dispatch moved to import-safe `apps/axi/src/cli/main.ts`, with `apps/axi/src/cli/index.ts` retaining executable startup.
+`apps/axi/tests/cli.test.ts` checks import behavior, and `apps/axi/vitest.config.ts` serializes test files to avoid contention with 100ms guard checks.
+`packages/runtime/tests/sync/git-ref.test.ts` isolates Git configuration using an ordinary empty file.
+`packages/runtime/tests/guard-module-format.test.ts` isolates package scope, and `packages/runtime/tests/judgment-context-paths.test.ts` closes its engine before cleanup.
+`packages/runtime/tests/telemetry-port-selection.test.ts` and `packages/runtime/tests/telemetry.test.ts` share OS-assigned adjacent-port reservations in `packages/runtime/tests/support/ports.ts`.
+`PERFORMANCE-STANDARDS.md` records the dispatch and fixture budgets.
+Runtime core behavior and the production guard timeout are unchanged.
 
 ## ⚙️ Milestone: v0.6.x — Performance & Documentation Polish (Active)
 

@@ -3,24 +3,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   listenWithPortSelection,
 } from '../src/telemetry/port-selection.js';
+import { closeServer, reservePorts } from './support/ports.js';
 
 const HOST = '127.0.0.1';
 const servers: http.Server[] = [];
-
-function closeServer(server: http.Server): Promise<void> {
-  if (!server.listening) return Promise.resolve();
-  return new Promise((resolve) => server.close(() => resolve()));
-}
-
-async function occupyPort(port: number): Promise<http.Server> {
-  const server = http.createServer();
-  servers.push(server);
-  await new Promise<void>((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(port, HOST, () => resolve());
-  });
-  return server;
-}
 
 afterEach(async () => {
   await Promise.all(servers.splice(0).map(closeServer));
@@ -28,14 +14,17 @@ afterEach(async () => {
 
 describe('listenWithPortSelection', () => {
   it('binds an explicitly requested port without fallback', async () => {
+    const { port: requestedPort, servers: reserved } = await reservePorts(1);
+    servers.push(...reserved);
+    await closeServer(reserved[0]);
     const result = await listenWithPortSelection({
       host: HOST,
-      requestedPort: 4262,
+      requestedPort,
       createServer: () => http.createServer(),
     });
     servers.push(result.server);
 
-    expect(result.port).toBe(4262);
+    expect(result.port).toBe(requestedPort);
   });
 
   it('preserves explicit port 0 OS-assigned selection', async () => {
@@ -51,7 +40,9 @@ describe('listenWithPortSelection', () => {
   });
 
   it('uses the preferred port when it is available', async () => {
-    const preferredPort = 45200;
+    const { port: preferredPort, servers: reserved } = await reservePorts(1);
+    servers.push(...reserved);
+    await closeServer(reserved[0]);
     const result = await listenWithPortSelection({
       host: HOST,
       preferredPort,
@@ -64,8 +55,9 @@ describe('listenWithPortSelection', () => {
   });
 
   it('falls back to the next available port after a busy preferred port', async () => {
-    const preferredPort = 45210;
-    await occupyPort(preferredPort);
+    const { port: preferredPort, servers: reserved } = await reservePorts(2);
+    servers.push(...reserved);
+    await closeServer(reserved[1]);
     const created: http.Server[] = [];
     const result = await listenWithPortSelection({
       host: HOST,
@@ -85,26 +77,25 @@ describe('listenWithPortSelection', () => {
   });
 
   it('fails clearly without fallback when an explicit port is occupied', async () => {
-    await occupyPort(4263);
+    const { port: requestedPort, servers: reserved } = await reservePorts(1);
+    servers.push(...reserved);
 
     await expect(listenWithPortSelection({
       host: HOST,
-      requestedPort: 4263,
+      requestedPort,
       createServer: () => http.createServer(),
-    })).rejects.toThrow('Port 4263 on 127.0.0.1 is already in use.');
+    })).rejects.toThrow(`Port ${requestedPort} on 127.0.0.1 is already in use.`);
   });
 
   it('reports bounded fallback exhaustion', async () => {
-    const preferredPort = 45000;
-    for (let port = preferredPort; port < preferredPort + 3; port++) {
-      await occupyPort(port);
-    }
+    const { port: preferredPort, servers: reserved } = await reservePorts(3);
+    servers.push(...reserved);
 
     await expect(listenWithPortSelection({
       host: HOST,
       preferredPort,
       maxAttempts: 3,
       createServer: () => http.createServer(),
-    })).rejects.toThrow('No available telemetry viewer ports in range 45000-45002 on 127.0.0.1.');
+    })).rejects.toThrow(`No available telemetry viewer ports in range ${preferredPort}-${preferredPort + 2} on 127.0.0.1.`);
   });
 });

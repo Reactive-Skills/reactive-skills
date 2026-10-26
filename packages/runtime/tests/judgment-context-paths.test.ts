@@ -53,6 +53,7 @@ function sentState(): Record<string, unknown> {
 
 describe('Judgment context_paths and include_payload (#24)', () => {
   let tmpDir: string;
+  let engine: FSMEngine | undefined;
   let originalApiKey: string | undefined;
 
   beforeEach(() => {
@@ -69,6 +70,8 @@ describe('Judgment context_paths and include_payload (#24)', () => {
   });
 
   afterEach(() => {
+    engine?.close();
+    engine = undefined;
     JudgmentEngine.reset();
     fs.rmSync(tmpDir, { recursive: true, force: true });
     if (originalApiKey === undefined) delete process.env.TYPESAFE_API_KEY;
@@ -231,7 +234,7 @@ states:
   DONE:
     description: "Done"
 `);
-    const engine = new FSMEngine({ skillDir: tmpDir, workspaceDir: tmpDir });
+    engine = new FSMEngine({ skillDir: tmpDir, workspaceDir: tmpDir });
     engine.updateContext({ ...RUN_CONTEXT });
 
     await engine.handleSignal('SUBMIT', { model: 'coherent' });

@@ -359,6 +359,11 @@ Documentation
 
 ## Performance Annotations
 
+CLI dispatcher imports perform no command execution.
+The executable entry point retains the P2 dispatch budget, excluding the selected command's own work.
+Telemetry test fixtures reserve at most three adjacent OS-selected ports with at most 50 attempts.
+These P3 fixture operations do not run in production signal or telemetry paths.
+
 Document performance and change risk inline in TypeScript source:
 
 ```typescript

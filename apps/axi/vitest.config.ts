@@ -13,6 +13,8 @@ export default defineConfig({
     environment: 'node',
     globalSetup: path.resolve(__dirname, 'vitest.global-setup.ts'),
     include: ['tests/**/*.test.ts'],
+    // Match runtime isolation so concurrent CLI files do not starve 100ms guard checks.
+    fileParallelism: false,
     // The first test in a file pays for a cold import of the runtime, which can pass 5s on Windows under load.
     testTimeout: 20_000,
   },

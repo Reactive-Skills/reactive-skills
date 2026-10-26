@@ -15,6 +15,8 @@ describe('Guard module format (#10)', () => {
 
   beforeEach(() => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsa-guard-format-'));
+    // Stop package scope lookup at the fixture, independent of the user's home directory.
+    fs.writeFileSync(path.join(dir, 'package.json'), '{}');
   });
 
   afterEach(() => {
