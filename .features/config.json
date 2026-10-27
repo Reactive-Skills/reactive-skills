@@ -22,7 +22,7 @@
       "name": "site",
       "roots": ["apps/site"],
       "runner": {
-        "list": "rtk proxy node apps/site/node_modules/vitest/vitest.mjs list --root apps/site --config apps/site/vitest.config.mjs --json",
+        "list": "rtk proxy node apps/site/node_modules/vitest/vitest.mjs list --root apps/site --config vitest.config.mjs --json",
         "format": "vitest-json",
         "level": "unit"
       }
