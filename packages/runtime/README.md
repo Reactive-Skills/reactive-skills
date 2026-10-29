@@ -371,7 +371,7 @@ console.log(slice.metrics);
 // 2. State transition telemetry:
 const res = await engine.handleSignal('TEST_RAN', { exit_code: 0 });
 console.log(res.metrics);
-// => { transition_duration_ms: 1.05, slice_duration_ms: 0.23, slice_tokens_est: 282 }
+// => { transition_duration_ms: 1.05, slice_duration_ms: 0.23, slice_tokens_est: 282, transition_total_ms: 3.4 }
 ```
 
 See [PERFORMANCE-STANDARDS.md](../../PERFORMANCE-STANDARDS.md) for full latency budgets and caching architecture.

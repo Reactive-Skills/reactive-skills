@@ -123,7 +123,10 @@ describe('Performance Budget & Metrics Telemetry', () => {
         const transitionEvent = eventStore.getAll().find(e =>
           e.type === 'STATE_TRANSITION' && e.causationId === res.event.id);
         expect(transitionEvent).toBeDefined();
-        expect(transitionEvent!.payload.metrics).toEqual(res.metrics);
+        // transition_total_ms is stamped after this event is persisted, so only the returned metrics carry it.
+        const { transition_total_ms: transitionTotalMs, ...persistedMetrics } = res.metrics!;
+        expect(transitionEvent!.payload.metrics).toEqual(persistedMetrics);
+        expect(transitionTotalMs).toBeGreaterThanOrEqual(res.metrics!.transition_duration_ms!);
       }
 
       // Bound: under 2x the control median, with a 12.5ms floor (500ms on CI/win32). The control
