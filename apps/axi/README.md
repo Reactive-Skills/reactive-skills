@@ -456,7 +456,7 @@ Unknown selected names stop the full request before any target directory changes
 This CLI follows the [AXI (Agent eXperience Interface)](https://axi.md) principles:
 
 - **Content-first**: Running with no arguments shows live data, not help text
-- **TOON output**: Token-efficient format for agent consumption (~40% fewer tokens than JSON)
+- **TOON output**: Compact, line-oriented format for agent consumption
 - **Structured errors**: Clean exit codes (0=success, 1=error, 2=unknown flag)
 - **Contextual suggestions**: Next-step hints after every output
 - **Minimal schemas**: 3-4 fields per list item by default

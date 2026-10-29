@@ -389,7 +389,7 @@ export function SkillDetailView({ skill }) {
               AXI CLI Commands
             </h3>
             <p className="mt-2 text-xs leading-relaxed text-phino-text-muted">
-              Inspect or drive this state machine directly via the token-efficient AXI CLI:
+              Inspect or drive this state machine directly via the AXI CLI:
             </p>
 
             <div className="mt-4 space-y-3">

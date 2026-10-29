@@ -112,7 +112,7 @@ transitions:
       heading: 'Agent interfaces: AXI & MCP',
       blocks: [
         { type: 'text', text: 'Reactive skills expose two host interfaces. During INIT, the runtime checks local capabilities and versions, selects a compatible AXI or MCP transport, and persists that choice for the run.' },
-        { type: 'callout', variant: 'signal', title: 'Local-first interface selection', text: 'Use the selected transport for the full run. AXI provides direct shell execution and token-lean output, while MCP provides host-integrated tools. npx launches AXI without changing the selected runtime interface.' },
+        { type: 'callout', variant: 'signal', title: 'Local-first interface selection', text: 'Use the selected transport for the full run. AXI provides direct shell execution and compact, line-oriented TOON output, while MCP provides host-integrated tools. npx launches AXI without changing the selected runtime interface.' },
       ],
     },
     {

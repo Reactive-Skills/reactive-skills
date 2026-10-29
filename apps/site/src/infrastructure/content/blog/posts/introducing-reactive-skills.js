@@ -44,7 +44,7 @@ export const postIntroducingReactiveSkills = {
         {
           type: 'list',
           items: [
-            'Context Window Bloat: Dumping instructions for Explore, Plan, Execute, and Verify simultaneously burns 70%+ of the token budget on phases that are completely irrelevant to the current turn.',
+            'Context Window Bloat: Loading a complete workflow can put instructions for later phases into context before they are needed. State-specific delivery can leave unvisited branches unread, while adding protocol and retained-context costs.',
             'Attention Drift: As conversation turns accumulate, instructions in the middle of a 1,500-line markdown file get suppressed or forgotten.',
             'Vibe-Based Progression: Without a runtime boundary, the agent decides when a task is "done" based purely on its own generated prose ("Everything looks great, all tests pass!") rather than verified system state.',
           ],

@@ -20,7 +20,7 @@ export const overview = {
       heading: 'Choose an integration path',
       blocks: [
         { type: 'list', items: [
-          'AXI: Direct, token-lean CLI interface with TOON output and zero daemon overhead when selected by the runtime.',
+          'AXI: Direct CLI interface with compact, line-oriented TOON output and no background daemon when selected by the runtime.',
           'Quickstart — Run a published skill, then scaffold, inspect, and advance your own in under five minutes.',
           'Authoring Skills — Design, customize, and verify domain states, guards, and projections.',
           'Syncing Skills — Distribute skills across agent runtimes with zero-drift junctions or physical mirroring.',
