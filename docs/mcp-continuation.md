@@ -25,7 +25,8 @@ Consume `view` directly after each completed state instead of issuing an additio
 Fetch state for initial delivery, session resume, transcript compaction, stale state or recovery.
 Keep `job_id` set to the immutable `run_id` from the first view, including after completion.
 Continuation rendering never rotates a terminal run.
-An original strict continuation calls the same `recordStateDelivery()` helper as a state fetch exactly once; a lost-response retry's view is not counted (see below).
+An original strict continuation calls the same `recordStateDelivery()` helper as a state fetch exactly once.
+A recovered view that has no recorded delivery counts once per run and view sequence, including after an interrupted emit or human response.
 Up to `refetch_allowance` repeat fetches of that delivered view remain uncounted; further polling counts toward the idle limit.
 Non-strict runs add no turn bookkeeping.
 
@@ -39,15 +40,19 @@ Keyed continuation operations persist a small `MCP_CONTINUATION_RECORDED` event 
 Unkeyed continuation operations do not add that event.
 Retries return `replayed: true`, the saved original `receipt` and `result_view`, plus the separately labeled current `view`.
 The current view can be later than the original result; compare its sequence with `result_view.seq`.
-A retry adds no transition, decision, approval request or delivery count and consumes no refetch allowance.
+A retry with a saved receipt adds no transition, decision, approval request or delivery count and consumes no refetch allowance.
 It never reapplies an old refusal or warning to a later view; those remain available in the original receipt.
 
 If a signal key predates continuation receipts, or execution stopped after a signal or human-response signal committed but before its receipt was saved, the response explicitly marks `receipt.result_unavailable: true` and returns `replayed: true` with `result_view: null` alongside the current view.
 It does not invent an original transition result or resubmit a committed signal; an interrupted human response still dispatches any of its signals that never committed.
-Such a recovery, like any duplicate, appends no delivery or receipt, so it cannot bump the run version and invalidate an original whose guard is still pending.
-On this opt-in continuation path, the view returned by a lost-response retry of `reactive_emit_signal` or `reactive_respond_human` is therefore not counted as a strict turn: it adds no `AGENT_TURN_STARTED` or `STATE_VIEW_REFETCHED` and does not advance `turns_since_signal`, including when a human-response retry dispatches its remaining signal and reaches a new state in that call.
-Only a committing process that completes its own response counts its reached view.
-A keyed submission's delivery is itself keyed to that submission, so competing processes delivering the same result share one recorded delivery.
+Recovery records one local delivery credit per `(run_id, view.seq)` in SQLite metadata beside the execution events, without appending `AGENT_TURN_STARTED`, `STATE_VIEW_REFETCHED` or a continuation receipt.
+This credit advances `turns_since_signal` when the view has not already been delivered, survives reopening the same store, and leaves the run version unchanged, so recovery cannot invalidate an original whose guard is still pending.
+Repeating recovery of that same view adds no credit and consumes no refetch allowance; up to `refetch_allowance` subsequent state fetches remain free before polling counts toward the idle limit.
+If the original response later records its keyed delivery, that event absorbs the recovery credit, preserving one counted delivery.
+A signal or state transition resets strict idle accounting, including older recovery credits.
+Recovered and saved-receipt views suppress prompt-slice telemetry events so slow rendering also leaves the run version unchanged.
+Recovery does not itself append a bypass transition; normal strict-turn checks include its credit and enforce the idle limit.
+Delivery credits are local bookkeeping, omitted from event exports and JSONL; rebuilding or replacing the SQLite store from event history does not restore them.
 Likewise a keyed signal (emit or human-response) that another server process commits between this process's lookup and its own append is treated as a replay: it evaluates no guard, records no second transition, and returns `result_unavailable`, so the committing process keeps ownership of the original result.
 Use the current view to recover; do not submit a new key merely to recreate a lost response.
 Same-process MCP clients serialize complete mutation operations per immutable run, refreshing cached engines before work.

@@ -261,7 +261,10 @@ The latest signal refusal (guard or evidence verification) survives recovery thr
 
 After negotiating `state.continuation_v1`, MCP emit and human-response tools accept `return_view: "compact-v1"` and return the original receipt/anchor beside one complete current view.
 `mcp/continuation-response.ts` queues same-process MCP mutation work per immutable run and counts original deliveries through `recordStateDelivery()`.
-Keyed submissions persist only receipt metadata and the original view anchor; retry views may be newer, but retries add no delivery, transition or refetch event.
+Keyed submissions persist receipt metadata and the original view anchor; retry views may be newer, but retries add no delivery, transition or refetch execution event.
+A recovered view without a prior delivery records one local SQLite credit per run and view sequence, outside the run version, so a concurrent pending guard remains valid.
+Strict counters and bounded refetch accounting include these credits; an original keyed delivery absorbs its matching credit, and signal/transition boundaries reset older credits.
+Credits survive local reopen/snapshot/replay and are omitted from event exports and JSONL rebuilds.
 `mcp/human-response.ts` retains existing human signal precedence and keeps judgment approval in the interactive CLI.
 Legacy receipt defaults, guards, lifecycle draining, projections and bounded compaction refetch semantics remain intact.
 See [the response contract](../docs/mcp-continuation.md).

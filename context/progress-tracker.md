@@ -159,7 +159,7 @@ Local validation after the MCP state-response integration passed both package bu
 - Verified locally: both package builds, 950 runtime tests, 377 AXI tests with one existing skip, documentation invariants and public prose gates.
 - The new continuation and human-response modules have 100% statement/branch coverage in the focused offline protocol run; the bounded delivery scan also has full branch coverage.
 - Complexity measurements keep P0 helpers at CC <= 8 and human orchestration at CC 12; existing guarantee tests remain unchanged.
-- Interrupted keyed emit/human retries without a saved receipt now return `result_unavailable` instead of a refusal built from idempotent replays, and append no delivery, so on the opt-in continuation path a lost-response retry's view (emit or human response) is not counted as a strict turn; regression tests pin this uncounted recovery at both interruption points.
+- Interrupted keyed emit/human retries without a saved receipt now return `result_unavailable` instead of a refusal built from idempotent replays, and append no delivery event; recovery now records a local per-view credit outside the run version so its strict turn is counted once at both interruption points.
 - A keyed signal whose append deduplicates to another process's committed submission now returns that submission's replay instead of evaluating guards and transitioning a second time; a regression test injects the competing commit between lookup and append.
 - Replayed `handleSignal` results now carry `replayed: true`; MCP emit and human response report them as `result_unavailable`. Recovered and replayed continuations append no delivery or receipt (removing `FSMEngine.hasStateDelivery()`), so a duplicate arriving while the original keyed guard is pending no longer bumps the run version and aborts that guard; a regression test parks a real asynchronous guard function in the winner.
 - The JSONL projection lock no longer steals a lock file that is not yet readable as an owner record (a holder between open and pid write); stealing it let two processes extend the mirror from one checkpoint and duplicate a tail line under concurrent rotation. A regression test holds an empty lock across an append.
@@ -191,3 +191,14 @@ Both final package archives include the current README/changelog and every decla
 `RELEASE_TAG=v0.20.0 node scripts/verify-release-tag.js` passes; no release tag was created or pushed during preparation.
 
 `docs/scope/backlog-release-roadmap.md` keeps the queued workspace-binding work unassigned rather than attributing that unimplemented scope to the v0.20.0 candidate.
+
+## Recovered MCP continuation delivery accounting
+
+- Added additive SQLite delivery credits keyed by immutable run and current view sequence, with indexed signal/transition boundaries and atomic absorption of only the original delivery's matching view; recovery writes neither execution events nor run versions.
+- Included credits in strict counters, XML status, refetch allowance and bypass checks; preserved saved receipts and response shapes.
+- Suppressed prompt-slice telemetry writes during recovered/replayed continuation rendering; a forced slow-render regression first reproduced a run-version bump while a real guard was pending.
+- Expanded protocol regressions for both interruption points on emit/human response, duplicate recovery, pending guards, original-response promotion, snapshot/replay reopen, later views and idle enforcement; added storage isolation, legacy read-only and cleanup checks.
+- Updated continuation docs, root/runtime READMEs, architecture and performance budgets to replace the uncounted recovery limitation.
+- Verified both package builds, 1003 runtime tests, 386 AXI tests (one existing skip), documentation invariants and public prose gates; the focused continuation/storage/strict suite passes 67 tests, including partial human batches, slow rendering and per-view credit absorption.
+
+Changed files: `packages/runtime/src/core/event-store.ts`, `packages/runtime/src/core/fsm-engine.ts`, `packages/runtime/src/mcp/continuation-response.ts`, `packages/runtime/tests/mcp-continuation.test.ts`, `packages/runtime/tests/recovered-deliveries.test.ts`, `docs/mcp-continuation.md`, root/runtime READMEs, `context/architecture.md`, this tracker and `PERFORMANCE-STANDARDS.md`.

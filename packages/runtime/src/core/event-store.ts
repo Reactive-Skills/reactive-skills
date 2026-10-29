@@ -144,8 +144,8 @@ export class SQLiteStorageDriver {
   /**
    * Create additive ledger tables and persistent identity.
    * # Performance & Risk Budget
-   * - Tier: P2 (< 100ms)
-   * - Complexity: O(1) schema and index declarations
+   * - Tier: P2 (<100ms existing schema); P3 first index installation
+   * - Complexity: O(1) existing schema; O(N log N) first installation of the run/type/sequence index
    * - Cyclomatic Complexity (CC): target <= 2
    * - Branch Coverage: target >= 70%
    * - CRAP Score: target <= 25.0
@@ -195,6 +195,14 @@ export class SQLiteStorageDriver {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_events_run_idempotency
         ON events(run_id, idempotency_key)
         WHERE idempotency_key IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_events_type_seq ON events(run_id, type, seq);
+      CREATE TABLE IF NOT EXISTS recovered_deliveries (
+        run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
+        view_seq INTEGER NOT NULL,
+        delivery_key TEXT NOT NULL,
+        absorbed INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY(run_id, view_seq)
+      );
       CREATE TABLE IF NOT EXISTS run_counters (
         run_id TEXT PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
         last_seq INTEGER NOT NULL DEFAULT 0
@@ -432,7 +440,16 @@ export class SQLiteStorageDriver {
     return normalized;
   }
 
-  public appendEvent(event: SignalEvent): SignalEvent {
+  /**
+   * Atomically append execution and absorb only its matching recovered view credit.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(log N + log D), indexed event and optional delivery metadata writes
+   * - Cyclomatic Complexity (CC): target <=12
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
+  public appendEvent(event: SignalEvent, deliveryViewSeq?: number): SignalEvent {
     return this.withBusyRetry(() => {
       this.db.exec('BEGIN IMMEDIATE');
       try {
@@ -445,6 +462,10 @@ export class SQLiteStorageDriver {
           }
         }
         const assigned = this.insertEventInternal({ ...event, seq: 0, run_id: runId }, false);
+        if (deliveryViewSeq !== undefined) {
+          this.db.prepare('UPDATE recovered_deliveries SET absorbed = 1 WHERE run_id = ? AND view_seq = ? AND delivery_key = ?')
+            .run(runId, deliveryViewSeq, event.idempotency_key ?? null);
+        }
         this.db.exec('COMMIT');
         return assigned;
       } catch (error) {
@@ -475,6 +496,67 @@ export class SQLiteStorageDriver {
         throw error;
       }
     });
+  }
+
+  /**
+   * Persist a recovered view once without advancing execution sequence or version.
+   * A delivery already in the ledger covers this view, including a racing original response.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(log D + log N + w), indexed insert and bounded trailing delivery window w
+   * - Cyclomatic Complexity (CC): target <=8
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
+  public recordRecoveredDelivery(viewSeq: number, deliveryKey: string, runId = this.defaultRunId): void {
+    this.withBusyRetry(() => this.db.prepare(`
+      INSERT OR IGNORE INTO recovered_deliveries (run_id, view_seq, delivery_key)
+      SELECT ?, ?, ? WHERE NOT EXISTS (
+        SELECT 1 FROM events WHERE run_id = ? AND seq > ?
+          AND type IN ('AGENT_TURN_STARTED', 'STATE_VIEW_REFETCHED') LIMIT 1
+      )
+    `).run(runId, viewSeq, deliveryKey, runId, viewSeq));
+  }
+
+  /**
+   * Read a recovered view not yet represented by its original keyed ledger delivery.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(log D), primary-key lookup
+   * - Cyclomatic Complexity (CC): target <=8
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
+  public getRecoveredDelivery(viewSeq: number, runId = this.defaultRunId): string | undefined {
+    if (this.readOnly && !this.tableExists('recovered_deliveries')) return undefined;
+    const row = this.db.prepare(`
+      SELECT delivery_key FROM recovered_deliveries d
+      WHERE run_id = ? AND view_seq = ? AND absorbed = 0
+    `).get(runId, viewSeq) as { delivery_key: string } | undefined;
+    return row?.delivery_key;
+  }
+
+  /**
+   * Count supplemental turns since the last signal/transition, capped at the bypass threshold.
+   * Original ledger deliveries absorb their recovery credit, never counting it twice.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(log N + log D + d), d current-epoch candidates until limit unabsorbed credits
+   * - Cyclomatic Complexity (CC): target <=8
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
+  public countRecoveredDeliveries(limit: number, runId = this.defaultRunId): number {
+    if (this.readOnly && !this.tableExists('recovered_deliveries')) return 0;
+    const row = this.db.prepare(`
+      SELECT COUNT(*) AS count FROM (
+        SELECT 1 FROM recovered_deliveries d WHERE d.run_id = ? AND d.view_seq >= MAX(
+          COALESCE((SELECT seq FROM events WHERE run_id = ? AND type = 'SIGNAL_EMITTED' ORDER BY seq DESC LIMIT 1), 0),
+          COALESCE((SELECT seq FROM events WHERE run_id = ? AND type = 'STATE_TRANSITION' ORDER BY seq DESC LIMIT 1), 0)
+        ) AND absorbed = 0 LIMIT ?
+      )
+    `).get(runId, runId, runId, limit) as { count: number };
+    return Number(row.count);
   }
 
   public beginTransaction(): void { this.db.exec('BEGIN IMMEDIATE'); }
@@ -777,6 +859,7 @@ export class EventStore {
   private events: SignalEvent[] = [];
   private listeners: Set<EventListener> = new Set();
   private storagePath: string | null = null;
+  private recoveredDeliveries = new Map<number, { deliveryKey: string; absorbed: boolean }>();
   private sqliteDriver: SQLiteStorageDriver | null = null;
   private sqlitePath: string | null = null;
   private runDir: string | null = null;
@@ -1435,9 +1518,9 @@ export class EventStore {
    * # Performance & Risk Budget
    * - Tier: P1 (< 25ms)
    * - Complexity: O(1) SQLite insert plus O(k + new bytes + 64 KiB + c) mirror; k = new rows, c = chunk metadata
-   * - Cyclomatic Complexity (CC): 8
-   * - Branch Coverage: 90%
-   * - CRAP Score: 8.1 (Threshold <= 15.0)
+   * - Cyclomatic Complexity (CC): target <=12
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
    */
   public append<T = Record<string, any>>(
     type: string,
@@ -1449,6 +1532,8 @@ export class EventStore {
       correlationId?: string;
       requestId?: string;
       idempotencyKey?: string;
+      /** Storage-only anchor for promoting a recovered delivery in the append transaction. */
+      deliveryViewSeq?: number;
       traceParent?: string;
       parentRunId?: string;
       skillId?: string;
@@ -1474,7 +1559,7 @@ export class EventStore {
 
     let persisted = event as SignalEvent<T>;
     if (this.sqliteDriver) {
-      try { persisted = this.sqliteDriver.appendEvent(event as SignalEvent) as SignalEvent<T>; }
+      try { persisted = this.sqliteDriver.appendEvent(event as SignalEvent, metadata.deliveryViewSeq) as SignalEvent<T>; }
       catch (error) { throw new Error('Event persistence failed: SQLite write did not complete.', { cause: error as Error }); }
       // A gap before our own append means another process wrote to this run in between.
       if (persisted.id === event.id && persisted.seq > this.seqCounter + 1) this.externalAppendSeen = true;
@@ -1496,12 +1581,68 @@ export class EventStore {
         } catch (error) { throw new Error('Event persistence failed: JSONL write did not complete.', { cause: error as Error }); }
       }
     }
+    if (metadata.deliveryViewSeq !== undefined) {
+      const recovered = this.recoveredDeliveries.get(metadata.deliveryViewSeq);
+      if (recovered && recovered.deliveryKey === metadata.idempotencyKey) recovered.absorbed = true;
+    }
     this.events.push(persisted as SignalEvent);
     if (this.events.length > this.maxInMemoryEvents) this.events.shift();
     for (const listener of this.listeners) {
       try { listener(persisted as SignalEvent); } catch (error) { console.error('Error in event store listener:', error); }
     }
     return persisted as SignalEvent<T>;
+  }
+
+  /**
+   * Record local delivery metadata independently of the execution stream and run version.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(log D + log N + w) SQLite; O(n) retained events without SQLite
+   * - Cyclomatic Complexity (CC): target <=8
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
+  public recordRecoveredDelivery(viewSeq: number, deliveryKey: string): void {
+    if (this.readOnly) throw new Error('Cannot record a delivery in a read-only event store.');
+    if (this.sqliteDriver) return this.sqliteDriver.recordRecoveredDelivery(viewSeq, deliveryKey, this.eventContext.run_id);
+    if (this.recoveredDeliveries.has(viewSeq)) return;
+    if (this.events.some(e => e.seq > viewSeq && (e.type === 'AGENT_TURN_STARTED' || e.type === 'STATE_VIEW_REFETCHED'))) return;
+    this.recoveredDeliveries.set(viewSeq, { deliveryKey, absorbed: false });
+  }
+
+  /**
+   * Resolve one supplemental view credit; an original delivery absorbs it by key.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(log D) SQLite; O(1) in memory
+   * - Cyclomatic Complexity (CC): target <=8
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
+  public getRecoveredDelivery(viewSeq: number): string | undefined {
+    if (this.sqliteDriver) return this.sqliteDriver.getRecoveredDelivery(viewSeq, this.eventContext.run_id);
+    const recovered = this.recoveredDeliveries.get(viewSeq);
+    return recovered && !recovered.absorbed ? recovered.deliveryKey : undefined;
+  }
+
+  /**
+   * Include bounded supplemental credits in strict accounting, independently of snapshots.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(log N + log D + d) SQLite, d candidates until limit unabsorbed; O(n + D) in memory
+   * - Cyclomatic Complexity (CC): target <=8
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
+  public countRecoveredDeliveries(limit: number): number {
+    if (this.sqliteDriver) return this.sqliteDriver.countRecoveredDeliveries(limit, this.eventContext.run_id);
+    const boundary = [...this.events].reverse().find(e => e.type === 'SIGNAL_EMITTED' || e.type === 'STATE_TRANSITION')?.seq ?? 0;
+    let count = 0;
+    for (const [seq] of this.recoveredDeliveries) {
+      if (seq >= boundary && this.getRecoveredDelivery(seq)) count++;
+      if (count >= limit) break;
+    }
+    return count;
   }
 
   public subscribe(listener: EventListener): () => void {
@@ -1607,10 +1748,20 @@ export class EventStore {
   public close(): void { this.releaseRunLock(); this.sqliteDriver?.close(); }
   public getSqliteDriver(): SQLiteStorageDriver | null { return this.sqliteDriver; }
 
+  /**
+   * Clear selected-run execution and local delivery metadata together.
+   * # Performance & Risk Budget
+   * - Tier: P3 (<2000ms target)
+   * - Complexity: O(n + D) deleted run rows/credits plus existing skill-ledger mirror rewrite
+   * - Cyclomatic Complexity (CC): target <=8
+   * - Branch Coverage: target >=60%
+   * - CRAP Score: target <=30
+   */
   public clear(): void {
     this.events = [];
     this.seqCounter = 0;
     this.projectionWatermarks.clear();
+    this.recoveredDeliveries.clear();
     this.latestSnapshot = null;
     if (this.sqliteDriver) {
       this.sqliteDriver.clear();
