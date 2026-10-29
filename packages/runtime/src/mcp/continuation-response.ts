@@ -169,8 +169,8 @@ export function continuationResponse(engine: FSMEngine, receipt: Receipt, event:
   if (engine.hasExternalChanges()) throw new Error('RUN_VERSION_CONFLICT: Reload the same run before requesting its current view.');
   const saved = continuationRecord(engine, event);
   const recovered = !saved && receipt.result_unavailable === true;
-  // Keyed per submission so competing processes delivering the same result count it once.
-  const deliveryKey = event.idempotency_key ? `${event.id}:DELIVERY` : undefined;
+  // Keyed per submission and view so competing processes delivering the same view count it once.
+  const deliveryKey = event.idempotency_key ? `${event.id}:DELIVERY:${engine.getStateViewSeq()}` : undefined;
   if (!saved && !(recovered && engine.hasStateDelivery())) engine.recordStateDelivery(deliveryKey);
   const slice = engine.generatePromptSlice();
   const currentSeq = engine.getStateViewSeq();

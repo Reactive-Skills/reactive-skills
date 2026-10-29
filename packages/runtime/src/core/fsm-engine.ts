@@ -66,6 +66,8 @@ type SignalHandlingResult = {
   judgmentBasis?: 'self_reported' | 'human';
   /** Shown with every self-reported decision so the operator and the agent can see it (ADR 0012). */
   warning?: string;
+  /** Set when an existing keyed submission answered this call instead of a new evaluation. */
+  replayed?: true;
 };
 
 /** A gate no adapter could judge, waiting for a person to decide it (ADR 0012). */
@@ -1108,6 +1110,7 @@ export class FSMEngine {
         newState: previousState,
         event: existing,
         deliverablesWritten: [],
+        replayed: true,
         ...(refusal ? { refusalReason: String(refusal.payload.error) } : {}),
       };
     };

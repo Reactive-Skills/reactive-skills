@@ -335,6 +335,54 @@ states:
     }
   });
 
+  it('saves no receipt when another process commits the key while its guards are pending', async () => {
+    const client = await connect();
+    const initial = await call(client, 'reactive_state', { output: 'compact-v1' });
+    const skillDir = path.join(workspace, 'skills', 'continuation');
+    const winner = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: initial.run_id });
+    const reopened: FSMEngine[] = [];
+    try {
+      const before = await events(client);
+      const append = EventStore.prototype.append;
+      let original: any;
+      // The winner persists its keyed signal after the duplicate's lookups and before its guards settle.
+      vi.spyOn(EventStore.prototype, 'append').mockImplementation(function (this: EventStore, type, payload, metadata) {
+        if (!original && type === 'SIGNAL_EMITTED' && metadata?.idempotencyKey === 'pending') {
+          original = append.call(winner.getEventStore(), 'SIGNAL_EMITTED', { signal: 'CHECK', exit_code: 0 }, { idempotencyKey: 'pending', source: 'mcp', state: 'WORK' });
+        }
+        return append.call(this, type, payload, metadata);
+      });
+      const duplicate = await emit(client, 'CHECK', { payload: { exit_code: 0 }, idempotency_key: 'pending' });
+      expect(duplicate.receipt).toEqual(unavailableReceipt(original));
+      expect(duplicate.replayed).toBe(true);
+      expect(duplicate.result_view).toBeNull();
+      expect(duplicate.view.state).toBe('WORK');
+      const rows = await events(client);
+      expect(count(rows, 'SIGNAL_EMITTED')).toBe(1);
+      expect(count(rows, 'GUARD_EVALUATED')).toBe(0);
+      expect(count(rows, 'STATE_TRANSITION')).toBe(0);
+      expect(count(rows, 'MCP_CONTINUATION_RECORDED')).toBe(0);
+      expect(count(rows, 'AGENT_TURN_STARTED')).toBe(count(before, 'AGENT_TURN_STARTED') + 1);
+      // The winner's transition settles later; its reached view is still the original result and counts once.
+      append.call(winner.getEventStore(), 'STATE_TRANSITION', { from: 'WORK', to: 'NEXT', signal: 'CHECK' }, { causationId: original.id, state: 'NEXT' });
+      const reached = winner.reopen();
+      reopened.push(reached);
+      const receipt = { event_id: original.id, transitioned: true };
+      const owned = JSON.parse(continuationResponse(reached, receipt, original));
+      expect(owned.replayed).toBe(false);
+      expect(owned.receipt).toEqual(receipt);
+      expect(owned.view.state).toBe('NEXT');
+      reopened.push(reached.reopen());
+      expect(JSON.parse(continuationResponse(reopened[1], receipt, original)).replayed).toBe(true);
+      const settled = await events(client);
+      expect(count(settled, 'AGENT_TURN_STARTED')).toBe(count(before, 'AGENT_TURN_STARTED') + 2);
+      expect(count(settled, 'MCP_CONTINUATION_RECORDED')).toBe(1);
+    } finally {
+      for (const engine of reopened) engine.close();
+      winner.close();
+    }
+  });
+
   it.each(['CHECK', 'AGAIN'])('preserves the saved receipt for immediate retry of %s', async signal => {
     const client = await connect();
     const args = { payload: { exit_code: 1 }, idempotency_key: 'retry-now' };

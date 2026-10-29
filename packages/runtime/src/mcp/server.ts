@@ -20,7 +20,7 @@ import {
 import { getReactiveBootloader } from '../core/bootloader.js';
 import { createStateResponse, serializeStateResponse } from './state-response.js';
 import { submitHumanResponse } from './human-response.js';
-import { continuationResponse, retrySignalResponse, signalReceipt, withMcpRun } from './continuation-response.js';
+import { continuationResponse, retrySignalResponse, signalReceipt, unavailableReceipt, withMcpRun } from './continuation-response.js';
 
 export interface ReactiveMcpServerOptions {
   workspaceDir?: string;
@@ -529,8 +529,9 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
             ...signalReceipt(engine, result),
             ...(submission ? { event_id: result.event.id, evidence: submission.evidence } : {}),
           };
+          const original = result.replayed ? unavailableReceipt(result.event) : { ...receipt, event_id: result.event.id };
           const text = return_view
-            ? continuationResponse(engine, { ...receipt, event_id: result.event.id }, result.event)
+            ? continuationResponse(engine, original, result.event)
             : JSON.stringify(receipt, null, 2);
           return { content: [{ type: 'text', text }] };
         });

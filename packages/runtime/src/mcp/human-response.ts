@@ -110,10 +110,9 @@ export async function submitHumanResponse(engine: FSMEngine, input: HumanRespons
   if (data.feedback) engine.updateContext({ user_feedback: data.feedback });
   if (data.choice) engine.updateContext({ user_choice: data.choice });
   const signals = ['USER_RESPONSE', responseSignal(data)];
-  const resumed = !!existing && signals.some(signal => store.getEventByIdempotencyKey(signalKey(existing, signal)));
   const results = await dispatchResponse(engine, data, signals, decision, !!key);
   const event = decision ?? results[0].event;
-  const receipt = resumed ? unavailableReceipt(event) : responseReceipt(engine, signals, results, withOutcome);
+  const receipt = results.some(result => result.replayed) ? unavailableReceipt(event) : responseReceipt(engine, signals, results, withOutcome);
   if (key && !withOutcome) {
     store.append(CONTINUATION_EVENT, { receipt, result_view: null }, { causationId: event.id, source: 'mcp', state: engine.getCurrentState() });
   }
