@@ -40,7 +40,8 @@ Reactive Skills Architecture (RSA) introduces deterministic structure to autonom
 |---------|------------|-------------|
 | Active State Path Lookup | $O(d)$ where $d \le 5$ (nesting depth) | Retrieving active `StateDefinition` hierarchy |
 | Guard Expression Evaluation | $O(1)$ | Evaluating sandboxed predicate expressions |
-| Event Append & SQLite WAL Write | $O(1)$ | Appending signal events to immutable ledger |
+| Event Append & SQLite WAL Write | $O(1)$ insert + $O(k)$ JSONL mirror, $k$ = rows since the last mirror (usually 1) | Appending signal events to immutable ledger; the mirror appends only rows newer than the last JSONL line's `ledger_seq` |
+| JSONL Mirror Full Reconcile | $O(N)$ where $N$ = events across all runs | Store open, explicit repair (`syncJsonlFromSqlite()`), and an append whose JSONL tail is missing or unreadable |
 | Snapshot Point-in-Time Lookup | $O(1)$ | Querying `snapshots` table by max sequence |
 | Handlebars Prompt Slicing | $O(t)$ where $t$ = template size | Generating turn prompt from cached template delegate |
 | HSM Event Bubbling | $O(h)$ where $h$ = ancestry depth | Propagating unhandled signals from leaf to root |
@@ -127,8 +128,10 @@ export interface ExecutionTelemetryMetadata {
   slice_duration_ms: number;
   /** Estimated tokens at four UTF-8 bytes per token; see delivery scope below */
   slice_tokens_est: number;
-  /** Duration in milliseconds for signal handling and guard evaluation */
+  /** Pre-persistence portion: signal receipt through guard evaluation and target resolution; stamped before the transition is persisted and carried in `STATE_TRANSITION` */
   transition_duration_ms: number;
+  /** Duration in milliseconds from signal receipt through the persisted transition, snapshot save and projections; persisted in the `TRANSITION_COMPLETED` event appended after projections and returned by handleSignal(); excludes queued lifecycle signals */
+  transition_total_ms: number;
   /** Count of tools allowed in active substate */
   allowed_tools_count: number;
 }
@@ -151,7 +154,7 @@ The serializer targets CC <= 8, branch coverage >= 90%, and CRAP <= 10.
 
 3. **Degradation Detection Thresholds**:
    - `slice_duration_ms > 10ms` $\rightarrow$ Warning: Template cache miss or heavy filesystem access.
-   - `transition_duration_ms > 25ms` $\rightarrow$ Warning: Slow guard evaluation or SQLite contention.
+   - `transition_total_ms > 25ms` $\rightarrow$ Warning (`PERF_DEGRADATION`, after `TRANSITION_COMPLETED`): Slow guard evaluation, SQLite contention, snapshot save or projections.
    - `idle_turns >= max_idle_turns` $\rightarrow$ Alert: Agent looping without emitting signals.
 
 ---
@@ -216,7 +219,7 @@ console.log(slice.metrics);
 // 2. State transition metrics:
 const res = await engine.handleSignal('TEST_RAN', { exit_code: 0 });
 console.log(res.metrics);
-// => { transition_duration_ms: 1.05, slice_duration_ms: 0.23, slice_tokens_est: 282 }
+// => { transition_duration_ms: 1.05, slice_duration_ms: 0.23, slice_tokens_est: 282, transition_total_ms: 3.4 }
 ```
 
 #### D. Inspecting Performance Degradation Alarms
