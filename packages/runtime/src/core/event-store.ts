@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { EventContext, SignalEvent } from './types.js';
-import { LocalEvidenceStore, type EvidenceStore, type EvidenceBundle } from './evidence-store.js';
+import { LocalEvidenceStore, type EvidenceStore, type EvidenceBundle, type EvidenceReceipt } from './evidence-store.js';
 import { EvidenceResolver, type EvidenceDeclarations } from './evidence-resolver.js';
 
 export const EVENT_STORE_SCHEMA_VERSION = 3;
@@ -1321,11 +1321,12 @@ export class EventStore {
   }
 
   /**
-   * Portable canonical events/snapshot plus all retained evidence; never exports an unchecked reference alone.
+   * Portable canonical events/snapshot plus the evidence their committed references use; never exports an unchecked reference alone.
+   * Damaged registrations no committed event or snapshot references are reported in `evidence.skipped`, not bundled.
    *
    * # Performance & Risk Budget
    * - Tier: P3 (<2000ms target)
-   * - Complexity: O(events + retained evidence bytes)
+   * - Complexity: O(events + registered evidence bytes)
    * - Cyclomatic Complexity (CC): target <=20
    * - Branch Coverage: target >=60%
    * - CRAP Score: target <=30
@@ -1334,10 +1335,11 @@ export class EventStore {
     const version = this.getRunVersion();
     const events = this.getAll();
     const snapshot = this.getLatestSnapshot();
-    const resolver = new EvidenceResolver(declarations, () => this.getEvidenceStore());
+    const referenced: EvidenceReceipt[] = [];
+    const resolver = new EvidenceResolver(declarations, () => this.getEvidenceStore(), receipt => referenced.push(receipt));
     resolver.resolveEvents(events);
     if (snapshot) resolver.resolveContext(snapshot.context);
-    const evidence = this.runDir || this.evidenceStore ? this.getEvidenceStore().exportBundle()
+    const evidence = this.runDir || this.evidenceStore ? this.getEvidenceStore().exportBundle(referenced)
       : { version: 'rsa-evidence-bundle/v1' as const, run_id: this.eventContext.run_id!, entries: [] };
     this.assertRunVersion(version);
     return { events, snapshot, evidence, ...(declarations ? { evidence_fields: declarations } : {}) };

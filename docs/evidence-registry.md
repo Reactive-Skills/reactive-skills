@@ -51,7 +51,7 @@ JSON file imports must already have the exact canonical encoding; imports never 
 JSON objects project as parsed objects with canonical key order; applications must not rely on a previous noncanonical insertion order.
 Evidence content is not recursively dereferenced after parsing.
 
-The importer accepts workspace-relative paths, rejects traversal and symlinks, captures a regular-file descriptor and verifies source identity and metadata around a bounded read.
+The importer resolves the workspace (and the run's artifacts beneath it) through its real path, so a workspace reached through a symlink works; it accepts workspace-relative paths, rejects traversal and symlinks below the workspace, captures a regular-file descriptor and verifies source identity and metadata around a bounded read.
 It hashes the copied bytes, syncs temporary files, publishes without replacing existing files, commits the receipt last and verifies the stored copy before returning.
 Interrupted imports may leave unreferenced blobs or temporary files; these do not become valid registrations.
 Concurrent registrars share immutable files safely.
@@ -67,7 +67,8 @@ Existing inline streams retain their original bytes and need no registry.
 
 Use `engine.exportRun()` to export canonical events, the latest snapshot, declarations and an evidence bundle together.
 The lower-level `eventStore.exportRun(declarations)` requires the same declarations to verify referenced content.
-Exports check the selected run's version and include every retained registration, including those used only by older events or snapshots.
+Exports check the selected run's version and bundle every registration referenced by committed events or the exported snapshot, including those used only by older events.
+Damaged referenced content fails the export; damaged registrations nothing committed references, such as one behind a refused signal, are left out and listed in `evidence.skipped`.
 Snapshots retain receipts beside the run's immutable registry; copying a snapshot without its artifacts or bundle is incomplete.
 Restore the evidence bundle with `destinationStore.getEvidenceStore().restoreBundle(exported.evidence)` before importing the exported events/snapshot through the storage driver.
 Restore into the same immutable run ID; transferring evidence to another run requires a new registration.

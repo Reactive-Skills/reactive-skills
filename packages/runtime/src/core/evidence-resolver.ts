@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EvidenceMediaTypeSchema, type EvidenceStore } from './evidence-store.js';
+import { EvidenceMediaTypeSchema, type EvidenceReceipt, type EvidenceStore } from './evidence-store.js';
 import type { SignalEvent } from './types.js';
 
 /**
@@ -52,7 +52,11 @@ export type EvidenceDeclarations = z.infer<typeof EvidenceDeclarationsSchema>;
  * Stores remain lazy so inline history does not depend on a registry, even with declarations.
  */
 export class EvidenceResolver {
-  constructor(private readonly declarations: EvidenceDeclarations | undefined, private readonly store: () => EvidenceStore) {}
+  constructor(
+    private readonly declarations: EvidenceDeclarations | undefined,
+    private readonly store: () => EvidenceStore,
+    private readonly onVerified?: (receipt: EvidenceReceipt) => void,
+  ) {}
 
   /**
    * # Performance & Risk Budget
@@ -77,6 +81,7 @@ export class EvidenceResolver {
       // The port validates both receipt structure and the committed local registration.
       const bytes = this.store().read(receipt as Parameters<EvidenceStore['read']>[0]);
       if ((receipt as { media_type: string }).media_type !== field.media_type) throw new Error(`Evidence media type mismatch at ${pointer}.`);
+      this.onVerified?.(receipt as EvidenceReceipt);
       const text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
       result = this.replace(result, segments, field.projection === 'json' ? JSON.parse(text) : text);
     }

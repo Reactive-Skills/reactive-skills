@@ -22,6 +22,8 @@ export interface EvidenceBundle {
   version: 'rsa-evidence-bundle/v1';
   run_id: string;
   entries: Array<{ receipt: EvidenceReceipt; bytes_base64: string }>;
+  /** Unreferenced registrations that failed verification and were left out of a referenced export. */
+  skipped?: Array<{ id: string; error: string }>;
 }
 
 /** Selected-run port. Implementations must verify registration, identity and bytes on every read. */
@@ -30,7 +32,7 @@ export interface EvidenceStore {
   importFile(relativePath: string, mediaType: EvidenceMediaType): EvidenceReceipt;
   registerJson(value: unknown): EvidenceReceipt;
   read(receipt: EvidenceReceipt): Buffer;
-  exportBundle(): EvidenceBundle;
+  exportBundle(referenced?: readonly EvidenceReceipt[]): EvidenceBundle;
   restoreBundle(bundle: EvidenceBundle): void;
 }
 
@@ -192,7 +194,7 @@ export class LocalEvidenceStore implements EvidenceStore {
       throw new Error('Evidence maxBytes must be between 1 and 16777216.');
     }
     this.allowedTypes = new Set((options.allowedMediaTypes ?? EvidenceMediaTypeSchema.options).map(type => EvidenceMediaTypeSchema.parse(type)));
-    this.directory = path.resolve(options.artifactsDir, 'evidence-v1');
+    this.directory = path.join(this.workspace, path.relative(path.resolve(options.workspaceDir), path.resolve(options.artifactsDir)), 'evidence-v1');
     // No directory is created until a registration succeeds. Inline-only replay has no registry dependency.
     if (!inside(this.workspace, this.directory)) throw new Error('Evidence artifacts must be inside the workspace.');
   }
@@ -397,7 +399,8 @@ export class LocalEvidenceStore implements EvidenceStore {
   }
 
   /**
-   * Bundles every committed registration, including evidence retained only by older snapshots/events.
+   * Without `referenced`, bundles every registration and fails on any damage.
+   * With `referenced`, bundles exactly those receipts (failing on damage) and reports damaged unreferenced registrations.
    *
    * # Performance & Risk Budget
    * - Tier: P3 (<2000ms target)
@@ -406,16 +409,27 @@ export class LocalEvidenceStore implements EvidenceStore {
    * - Branch Coverage: target >=60%
    * - CRAP Score: target <=30
    */
-  public exportBundle(): EvidenceBundle {
-    const entries: EvidenceBundle['entries'] = [];
+  public exportBundle(referenced?: readonly EvidenceReceipt[]): EvidenceBundle {
+    const entries = new Map<string, EvidenceBundle['entries'][number]>();
+    for (const receipt of referenced ?? []) entries.set(receipt.id, { receipt, bytes_base64: this.read(receipt).toString('base64') });
+    const skipped: NonNullable<EvidenceBundle['skipped']> = [];
     if (fs.existsSync(this.directory)) {
       assertNoSymlinks(this.workspace, this.directory);
-      for (const name of fs.readdirSync(this.directory).sort().filter(name => /^[a-f0-9]{64}\.receipt\.json$/.test(name))) {
-        const receipt = EvidenceReceiptSchema.parse(JSON.parse(this.readFile(name).toString('utf8')));
-        entries.push({ receipt, bytes_base64: this.read(receipt).toString('base64') });
+      for (const name of fs.readdirSync(this.directory).filter(name => /^[a-f0-9]{64}\.receipt\.json$/.test(name))) {
+        const id = name.slice(0, 64);
+        if (entries.has(id)) continue;
+        try {
+          const receipt = EvidenceReceiptSchema.parse(JSON.parse(this.readFile(name).toString('utf8')));
+          const bytes = this.read(receipt);
+          if (!referenced) entries.set(id, { receipt, bytes_base64: bytes.toString('base64') });
+        } catch (error) {
+          if (!referenced) throw error;
+          skipped.push({ id, error: (error as Error).message });
+        }
       }
     }
-    return { version: 'rsa-evidence-bundle/v1', run_id: this.runId, entries };
+    const bundled = [...entries.keys()].sort().map(id => entries.get(id)!);
+    return { version: 'rsa-evidence-bundle/v1', run_id: this.runId, entries: bundled, skipped: skipped.sort((a, b) => a.id.localeCompare(b.id)) };
   }
 
   /**

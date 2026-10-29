@@ -64,14 +64,14 @@ Inline-only guard, replay, snapshot and projection paths do not open a registry.
 | `LocalEvidenceStore.importFile` / `registerJson` | P1, <25ms target for a warm local file up to 1 MiB | O(bytes + source path depth), plus O(k log k) for sorting JSON object keys; default 1 MiB and configurable hard ceiling 16 MiB per blob |
 | `EvidenceStore.read` / declared field resolution | P1, <25ms target for up to 1 MiB per selected field | O(selected bytes + pointer depth); verify registration, SHA-256, length, media type and encoding on each read |
 | Replay / snapshot evidence verification | P2, <100ms target for bounded local evidence | O(replayed events + selected evidence bytes); no mutable source reads or model calls |
-| `exportRun` / `exportBundle` / `restoreBundle` | P3, <2000ms target for bounded bundles | O(events + all retained registered bytes); bundles intentionally include registrations retained only by older events/snapshots |
+| `exportRun` / `exportBundle` / `restoreBundle` | P3, <2000ms target for bounded bundles | O(events + all registered bytes); bundles registrations referenced by committed events/snapshots, verifies unreferenced ones only to report damage in `skipped` |
 
 These targets are budgets, not measured end-to-end model savings or guaranteed filesystem latency.
 Hashing, parsing, copying, directory checks, atomic publication and file/directory synchronization add real storage cost to a reference submission.
 Each reference occurrence is verified; there is no unverified cross-turn content cache.
 Large evidence or repeated references can exceed the ordinary signal/projection latency target; measure evidence IO separately from P0 guard bookkeeping.
 Registration uses a bounded descriptor read, a synced temporary copy and non-overwriting publication; abandoned temporary files are ignored and no retained blobs are garbage-collected.
-Exports require the run's evidence declarations (`FSMEngine.exportRun()` supplies them) so missing referenced registrations fail instead of producing incomplete bundles.
+Exports require the run's evidence declarations (`FSMEngine.exportRun()` supplies them) so missing referenced registrations fail instead of producing incomplete bundles; damaged unreferenced registrations are reported, not fatal.
 
 ### 1. Algorithmic Complexity (Big-O)
 

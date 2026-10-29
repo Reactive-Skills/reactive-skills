@@ -153,12 +153,11 @@ describe('immutable evidence registry', () => {
       expect(restored.getCurrentState()).toBe('S2');
       expect(restored.getContext().draft).toEqual({ $evidence: receipt });
     }
-    if (fault === 'tamper' || fault === 'missing-blob') {
-      expect(() => engine.exportRun()).toThrow();
-      return;
-    }
     const exported = engine.exportRun();
     expect(exported.events.find(event => event.id === refused.event.id)?.payload.draft).toEqual(bad);
+    expect(exported.evidence.entries.map(entry => entry.receipt)).toEqual([receipt]);
+    expect(exported.evidence.skipped).toEqual(fault === 'tamper' || fault === 'missing-blob'
+      ? [{ id: (bad.$evidence as EvidenceReceipt).id, error: expect.stringMatching(/mismatch|ENOENT/) }] : []);
     damage(ledger, receipt, 'missing-blob');
     expect(() => engine.exportRun()).toThrow();
   });
@@ -437,6 +436,26 @@ describe('immutable evidence registry', () => {
     expect(readOnly.getEvidenceStore().read(old).toString()).toBe('verified');
     expect(() => readOnly.getEvidenceStore().registerJson({ score: 1 })).toThrow(/read-only/);
     expect(() => readOnly.getEvidenceStore().restoreBundle(engine.exportRun().evidence)).toThrow(/read-only/);
+  });
+
+  it('registers, verifies and exports evidence in a workspace reached through a symlink', async () => {
+    fixture(false, false);
+    const real = path.join(workspace, 'real');
+    const linked = path.join(workspace, 'linked');
+    fs.mkdirSync(real);
+    fs.symlinkSync(real, linked, 'dir');
+    const ledger = store(createSortableId(), linked);
+    const engine = new FSMEngine({ skillDir, workspaceDir: linked, eventStore: ledger });
+    fs.writeFileSync(path.join(linked, 'draft.txt'), 'verified');
+    const receipt = ledger.getEvidenceStore().importFile('draft.txt', 'text/plain');
+    expect((await engine.handleSignal('CHECK', { draft: { $evidence: receipt } })).transitioned).toBe(true);
+    expect(fs.existsSync(path.join(real, '.reactive', 'skills', 'evidence-test', 'runs', receipt.run_id, 'artifacts', 'evidence-v1', `${receipt.sha256}.blob`))).toBe(true);
+    const restored = new FSMEngine({ skillDir, workspaceDir: linked, eventStore: store(receipt.run_id, linked) });
+    expect(restored.getCurrentState()).toBe('S2');
+    expect(engine.exportRun().evidence.entries.map(entry => entry.receipt)).toEqual([receipt]);
+    fs.symlinkSync(path.join(real, 'draft.txt'), path.join(real, 'alias.txt'));
+    expect(() => ledger.getEvidenceStore().importFile('alias.txt', 'text/plain')).toThrow(/symlink/);
+    expect(() => ledger.getEvidenceStore().importFile('../draft.txt', 'text/plain')).toThrow(/traversal/);
   });
 
   it('supports paths with spaces and rejects symlinked artifact directories', () => {
