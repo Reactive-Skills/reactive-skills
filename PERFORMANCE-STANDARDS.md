@@ -85,8 +85,8 @@ Initialization and accepted transitions record their effective `contextUpdates` 
 Patch construction is P1 bookkeeping (<25ms target), O(d² + a + k + b), where d is hierarchy depth, a is the affected hook count, k is declared signal context keys and b is copied assignment bytes.
 It adds no ledger rows or history queries; the serialized patch adds its actual bytes to the existing append.
 Rehydration remains P2 (<100ms target), O(delta events + context patch bytes + selected evidence bytes), and applies committed patches without executing hooks, guards, signals or projections.
-Events predating recorded patches additionally inspect the affected declarative hooks with the same bounded hierarchy cost per transition.
-That compatibility fallback uses the installed manifest; assignments from an older manifest version that was never recorded cannot be recovered from the ledger alone.
+Events predating recorded patches replay only their accepted signal updates; the installed manifest cannot supply authoritative historical hook assignments.
+Ledgers written before recorded patches therefore rely on their snapshot for hook-assigned context, and a no-snapshot replay of such a ledger does not reconstruct it.
 
 ### 1. Algorithmic Complexity (Big-O)
 

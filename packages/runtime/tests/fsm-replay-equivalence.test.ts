@@ -47,6 +47,7 @@ function assertRecovery(engine: FSMEngine, skillDir: string, workspaceDir: strin
   const context = engine.getContext();
   const latest = source.getLatestSnapshot()!;
   const snapshots = [null, latest, bootSnapshots.get(engine)!];
+  let replayed: Record<string, any> = {};
   for (const snapshot of snapshots) {
     // Fresh engines and a frozen ledger view exercise constructor recovery, including a snapshot with a nonempty tail.
     const store = new EventStore({ inMemory: true, ...source.getEventContext() });
@@ -56,11 +57,14 @@ function assertRecovery(engine: FSMEngine, skillDir: string, workspaceDir: strin
     const append = vi.spyOn(store, 'append');
     const restored = open(skillDir, workspaceDir, store);
     expect(restored.getCurrentState()).toBe(state);
-    expect(restored.getContext(), `recovery from seq ${snapshot?.seq ?? 0}`).toEqual(context);
+    // Unrecorded hook assignments are recoverable only from the latest snapshot of an older ledger.
+    if (!legacy || snapshot === latest) expect(restored.getContext(), `recovery from seq ${snapshot?.seq ?? 0}`).toEqual(context);
+    if (!snapshot) replayed = restored.getContext();
     expect(append).not.toHaveBeenCalled();
     restored.close();
   }
   expect(source.getAll()).toEqual(original);
+  return replayed;
 }
 
 function definitions(manifest: SkillManifest) {
@@ -94,7 +98,7 @@ describe('Replay and snapshot accepted-context equivalence', () => {
     expect(() => engine.recordTurnStart()).toThrow('BYPASS_DETECTED');
     expect(engine.getContext().value).toBe('original');
     assertRecovery(engine, skillDir, directory);
-    assertRecovery(engine, skillDir, directory, true);
+    expect(assertRecovery(engine, skillDir, directory, true).value).toBe('original');
   });
 
   it.each([false, true])('preserves ordered initial, exit, signal and entry patches (legacy=%s)', async (legacy) => {
@@ -122,11 +126,11 @@ describe('Replay and snapshot accepted-context equivalence', () => {
     fs.writeFileSync(path.join(skillDir, 'skill.yaml'), yaml.dump(manifest));
     const engine = open(skillDir, directory);
     expect(engine.getContext().value).toBe('leaf-entry');
-    assertRecovery(engine, skillDir, directory, legacy);
+    expect(assertRecovery(engine, skillDir, directory, legacy).value).toBe(legacy ? 'default' : 'leaf-entry');
     expect((await engine.handleSignal('NEXT', { approved: false, value: 'refused', contextUpdates: { rejected: true } })).transitioned).toBe(false);
     await engine.handleSignal('NEXT', { approved: true, value: 'signal' });
     expect(engine.getContext().value).toBe('parent-exit');
-    assertRecovery(engine, skillDir, directory, legacy);
+    expect(assertRecovery(engine, skillDir, directory, legacy).value).toBe(legacy ? 'signal' : 'parent-exit');
     await engine.handleSignal('NEXT', { value: 'signal', contextUpdates: { value: 'nested', accepted: true } });
     expect(engine.getContext()).toEqual({ value: 'final-entry', accepted: true });
     if (!legacy) {
@@ -138,7 +142,7 @@ describe('Replay and snapshot accepted-context equivalence', () => {
       manifest.states.DONE.on_enter[0].set_context.value = 'changed';
       fs.writeFileSync(path.join(skillDir, 'skill.yaml'), yaml.dump(manifest));
     }
-    assertRecovery(engine, skillDir, directory, legacy);
+    expect(assertRecovery(engine, skillDir, directory, legacy)).toEqual(legacy ? { value: 'nested', accepted: true } : engine.getContext());
   });
 
   it('recovers an accepted transition interrupted before its snapshot is saved', async () => {
@@ -177,7 +181,10 @@ describe('Replay and snapshot accepted-context equivalence', () => {
     expect(engine.getContext()).toMatchObject({ refactor_cycles: 1, accepted: 'green' });
     expect(engine.getContext()).not.toHaveProperty('rejected');
     assertRecovery(engine, skillDir, directory);
-    assertRecovery(engine, skillDir, directory, true);
+    // A no-snapshot replay of an older ledger keeps accepted signal updates but not the entry-hook counter.
+    const replayed = assertRecovery(engine, skillDir, directory, true);
+    expect(replayed).toMatchObject({ refactor_cycles: 8, accepted: 'green' });
+    expect(replayed).not.toHaveProperty('rejected');
   });
 
   it.each(catalog.manifests)('preserves accepted context across recovery for $path', async (fixture) => {

@@ -281,7 +281,7 @@ export class FSMEngine {
    *
    * # Performance & Risk Budget
    * - Tier: P2 (<100ms target)
-   * - Complexity: O(delta events + context patch bytes + selected evidence bytes); legacy events also read affected hooks
+   * - Complexity: O(delta events + context patch bytes + selected evidence bytes)
    * - Cyclomatic Complexity (CC): target <=15
    * - Branch Coverage: target >=70%
    * - CRAP Score: target <=25
@@ -315,7 +315,7 @@ export class FSMEngine {
    *
    * # Performance & Risk Budget
    * - Tier: P2 (<100ms target)
-   * - Complexity: O(delta events + patch bytes), plus affected declarative hooks for legacy events
+   * - Complexity: O(delta events + patch bytes)
    * - Cyclomatic Complexity (CC): target <=15
    * - Branch Coverage: target >=70%
    * - CRAP Score: target <=25
@@ -333,10 +333,10 @@ export class FSMEngine {
           }
           latestPath = payload.active_path;
           this.context = { ...this.context, ...payload.context };
-          this.updateContext(payload.contextUpdates ?? this.transitionContextUpdates([], latestPath, {}));
+          this.updateContext(payload.contextUpdates);
           break;
         case 'STATE_TRANSITION':
-          if (payload.to) latestPath = this.replayTransitionContext(event, latestPath, pendingSignals);
+          if (payload.to) latestPath = this.replayTransitionContext(event, pendingSignals);
           else this.updateContext(payload.contextUpdates);
           break;
         case 'STATE_ENTRY_HOOK':
@@ -354,28 +354,22 @@ export class FSMEngine {
   }
 
   /**
-   * New commits carry the effective patch independently of later manifest edits. Older commits
-   * fold declarative hooks around their accepted signal in the original execution order.
+   * Commits carry their effective patch independently of later manifest edits. Commits recorded
+   * before patches existed replay only their accepted signal; their hook assignments live in snapshots.
    *
    * # Performance & Risk Budget
    * - Tier: P2 (<100ms target)
-   * - Complexity: O(patch bytes), plus affected declarative hooks for legacy events
+   * - Complexity: O(patch bytes)
    * - Cyclomatic Complexity (CC): target <=15
    * - Branch Coverage: target >=70%
    * - CRAP Score: target <=25
    */
-  private replayTransitionContext(event: SignalEvent, fromPath: string[], pendingSignals: Map<string, Record<string, any>>): string[] {
-    const targetPath = event.payload.to.split('.');
+  private replayTransitionContext(event: SignalEvent, pendingSignals: Map<string, Record<string, any>>): string[] {
     const causationId = event.causation_id || event.causationId;
-    // Strict-execution bypass changes only the state pointer; live execution runs no lifecycle hooks.
-    const bypass = event.payload.signal === 'BYPASS_DETECTED' && !causationId;
-    this.updateContext(event.payload.contextUpdates ?? (bypass ? {} : this.transitionContextUpdates(
-      event.payload.from?.split('.') ?? fromPath,
-      targetPath,
-      (causationId ? pendingSignals.get(causationId) : undefined) ?? event.payload.payload ?? {}
-    )));
+    const signal = causationId ? pendingSignals.get(causationId) : undefined;
+    this.updateContext(event.payload.contextUpdates ?? { ...this.contextKeyUpdates(signal), ...signal?.contextUpdates });
     if (causationId) pendingSignals.delete(causationId);
-    return targetPath;
+    return event.payload.to.split('.');
   }
 
   /**
