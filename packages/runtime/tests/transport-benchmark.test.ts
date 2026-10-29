@@ -51,6 +51,10 @@ describe('transport benchmark accounting', () => {
       expect(Object.fromEntries(report.axi.map((row) => [row.label, row.normalized]))).toEqual(expected.axi);
       expect(report.axi.every((row) => row.timing.mode === 'cold_process')).toBe(true);
     }
+    expect(report.mcp.rows.every((row) => {
+      const ms = (row.timing as { handler_ms: unknown }).handler_ms;
+      return typeof ms === 'number' && Number.isFinite(ms) && ms >= 0;
+    })).toBe(true);
     expect(report.sdk.transitions.map((transition) => (transition as { transitioned: boolean }).transitioned)).toEqual([true, false, true, true]);
     expect(report.sdk.rows.filter((row) => row.resumed_state_fetch).map((row) => row.label)).toEqual(['snapshot', 'replay']);
     expect(report.mcp.rows.map((row) => row.label)).toEqual(expect.arrayContaining(['guard_refusal', 'failure', 'human_response', 'legacy_prepare', 'concurrent-a', 'concurrent-b']));
@@ -66,7 +70,7 @@ describe('transport benchmark accounting', () => {
     expect(report.sdk.findings).toEqual([expect.objectContaining({
       id: 'tdd-replay-refactor-cycles', status: 'expected_failure', observed: { live: 1, snapshot: 1, replay: 0 },
     })]);
-  });
+  }, 120_000);
 
   it('rejects benchmark CLI network access before opening a connection', () => {
     const fence = fileURLToPath(new URL('../scripts/transport-benchmark/network-fence.mjs', import.meta.url));

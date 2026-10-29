@@ -14,7 +14,7 @@ import { measureExchange } from './accounting.js';
  */
 export async function measureMcp(workspace: string) {
   const server = createReactiveMcpServer({ workspaceDir: workspace, defaultSkill: 'tdd-refactor' });
-  const handlerTimes = new Map<string, number>();
+  const handlerTimes = new Map<unknown, number>();
   // SDK-internal access is confined to timing. All calls and frames use its public Client API.
   const registered = (server as unknown as { _registeredTools: Record<string, { handler: (...args: unknown[]) => Promise<unknown> }> })._registeredTools;
   for (const [name, tool] of Object.entries(registered)) {
@@ -29,7 +29,7 @@ export async function measureMcp(workspace: string) {
     tool.handler = async (...args) => {
       const start = performance.now();
       try { return await handler(...args); }
-      finally { handlerTimes.set(name + JSON.stringify(args[0]), performance.now() - start); }
+      finally { handlerTimes.set((args.at(-1) as { requestId: unknown }).requestId, performance.now() - start); }
     };
   }
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -58,9 +58,11 @@ export async function measureMcp(workspace: string) {
     if (!request || !('id' in request)) throw new Error(`Missing MCP request: ${label}`);
     const response = received.find((frame) => 'id' in frame && frame.id === request.id);
     if (!response) throw new Error(`Missing MCP response: ${label}`);
+    const handlerMs = handlerTimes.get(request.id);
+    if (handlerMs === undefined) throw new Error(`Missing MCP handler timing: ${label}`);
     rows.push({
       label, transport: 'mcp', operation: name, actor, resumed_state_fetch: resumed,
-      timing: { mode: 'persistent_handler', handler_ms: handlerTimes.get(name + JSON.stringify(args)), round_trip_ms: roundTrip },
+      timing: { mode: 'persistent_handler', handler_ms: handlerMs, round_trip_ms: roundTrip },
       ...measureExchange(request, response, [workspace]),
     });
     return result;
