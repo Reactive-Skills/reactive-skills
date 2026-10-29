@@ -169,13 +169,7 @@ describe('Strict Execution Mode', () => {
       expect(typeof parsed.turns_since_last_signal).toBe('number');
     });
 
-    const appendIdleEvent = (jobId: string, skillDir = path.join(tempDir, 'skills', '_test_fsm_skill'), workspaceDir = tempDir) => {
-      const engine = new FSMEngine({ skillDir, workspaceDir, jobId });
-      engine.getEventStore().append('IDLE_NOTE', {});
-      engine.close();
-    };
-
-    it('does not count repeat reactive_state fetches of the same run/seq after compaction', async () => {
+    it('does not count up to two repeat reactive_state fetches of the same view after compaction', async () => {
       const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: '_test_fsm_skill' });
       const handler = (server as any)._registeredTools['reactive_state'];
       const fetch = async () => JSON.parse((await handler.handler({ job_id: 'refetch', output: 'compact-v1' }, {} as any)).content[0].text);
@@ -183,38 +177,50 @@ describe('Strict Execution Mode', () => {
       const first = await fetch();
       const second = await fetch();
       const third = await fetch();
-      const fourth = await fetch();
 
-      expect(first.strict).toEqual(expect.objectContaining({ idle_limit: 2, turns_since_signal: 1 }));
-      for (const view of [second, third, fourth]) {
+      expect(first.strict).toEqual({ mode: 'enforced', idle_limit: 2, turns_since_signal: 1, refetch_allowance: 2 });
+      for (const view of [second, third]) {
         expect(view.error).toBeUndefined();
         expect(view.seq).toBe(first.seq);
         expect(view.strict.turns_since_signal).toBe(1);
       }
       const events = new FSMEngine({ skillDir: path.join(tempDir, 'skills', '_test_fsm_skill'), workspaceDir: tempDir, jobId: 'refetch' }).getEventStore().getAll();
       expect(events.filter(event => event.type === 'AGENT_TURN_STARTED')).toHaveLength(1);
+      expect(events.filter(event => event.type === 'STATE_VIEW_REFETCHED')).toHaveLength(2);
       expect(events.some(event => event.type === 'BYPASS_DETECTED')).toBe(false);
     });
 
-    it('counts each new idle delivery and bypasses past max_idle_turns', async () => {
+    it('does not let slow-render PERF_DEGRADATION events turn a refetch into a new view', () => {
+      const skillDir = path.resolve(tempDir, 'skills', '_test_fsm_skill');
+      const eventStore = new EventStore({ inMemory: true });
+      const engine = new FSMEngine({ skillDir, eventStore, workspaceDir: tempDir, perfThresholds: { maxSliceDurationMs: -1 } });
+      const deliver = () => { engine.recordStateDelivery(); engine.generatePromptSlice(); return engine.getStateViewSeq(); };
+
+      const seq = deliver();
+      expect(deliver()).toBe(seq);
+      expect(deliver()).toBe(seq);
+
+      expect(eventStore.getAll().some(event => event.type === 'PERF_DEGRADATION')).toBe(true);
+      expect(engine.getTurnsSinceLastSignal()).toBe(1);
+      expect(engine.isBypassDetected()).toBe(false);
+    });
+
+    it('keeps counting repeat polling past the refetch allowance and bypasses (max_idle_turns = 2)', async () => {
       const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: '_test_fsm_skill' });
       const handler = (server as any)._registeredTools['reactive_state'];
-      const fetch = async () => handler.handler({ job_id: 'idle' }, {} as any);
+      const fetch = async () => handler.handler({}, {} as any);
+      const turns = async () => JSON.parse((await fetch()).content[0].text).turns_since_last_signal;
 
-      const parsed1 = JSON.parse((await fetch()).content[0].text);
-      expect(parsed1.strict_execution).toBe(true);
-      expect(parsed1.turns_since_last_signal).toBe(1);
+      expect(await turns()).toBe(1);
+      expect(await turns()).toBe(1);
+      expect(await turns()).toBe(1);
+      expect(await turns()).toBe(2);
 
-      appendIdleEvent('idle');
-      const parsed2 = JSON.parse((await fetch()).content[0].text);
-      expect(parsed2.turns_since_last_signal).toBe(2);
-
-      appendIdleEvent('idle');
-      const res3 = await fetch();
-      expect(res3.isError).toBe(true);
-      const parsed3 = JSON.parse(res3.content[0].text);
-      expect(parsed3.error).toContain('BYPASS_DETECTED');
-      expect(parsed3.recovery).toBe('Run reactive-skills-axi reset _test_fsm_skill then re-invoke.');
+      const res = await fetch();
+      expect(res.isError).toBe(true);
+      const parsed = JSON.parse(res.content[0].text);
+      expect(parsed.error).toContain('BYPASS_DETECTED');
+      expect(parsed.recovery).toBe('Run reactive-skills-axi reset _test_fsm_skill then re-invoke.');
     });
 
     it('keeps a quoted skill path whole in the recovery command, during and after bypass (#65)', async () => {
@@ -226,10 +232,7 @@ describe('Strict Execution Mode', () => {
       const handler = (server as any)._registeredTools['reactive_state'];
       const call = async () => JSON.parse((await handler.handler({ job_id: 'stuck' }, {} as any)).content[0].text);
 
-      await call();
-      appendIdleEvent('stuck', skillDir, workspaceDir);
-      await call();
-      appendIdleEvent('stuck', skillDir, workspaceDir);
+      for (let i = 0; i < 4; i++) await call();
       const bypassed = await call();
       const stillBypassed = await call();
 

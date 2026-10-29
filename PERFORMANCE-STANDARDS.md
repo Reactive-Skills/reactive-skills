@@ -171,7 +171,7 @@ $$\text{Tokens Saved} = \sum_{t=1}^{\text{Turns}} \left( \text{Tokens}_{\text{Mo
 
 2. **Agent Convergence Velocity (Behavioral Reduction)**:
    - **Loop Elimination**: Deterministic transition guards (`exit_code == 0`, schema validators) prevent premature completion or aimless loops.
-   - **Bypass Detection**: `max_idle_turns` immediately halts ungrounded turns.
+   - **Bypass Detection**: `max_idle_turns` immediately halts ungrounded turns; up to `max_view_refetches` (default 2) repeat fetches of the same view are uncounted for compaction recovery, using a bounded trailing-event scan (P0).
    - **Regression Bubbling**: Failing tests instantly bubble back to exact remediation states (`GREEN_CODE` or `RED_SPEC`) rather than allowing the model to wander.
 
 ---

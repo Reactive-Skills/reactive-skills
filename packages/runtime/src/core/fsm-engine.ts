@@ -466,16 +466,44 @@ export class FSMEngine {
   }
 
   /**
-   * Count a delivered state view once per run sequence, so a recovery refetch of the same view is free.
+   * Count a delivered state view, letting up to `max_view_refetches` repeat fetches of the same view through for compaction recovery.
    * # Performance & Risk Budget
    * - Tier: P0 (< 5ms)
-   * - Complexity: O(1), one latest-event read
-   * - Cyclomatic Complexity (CC): target <= 3
-   * - Branch Coverage: target >= 100%
+   * - Complexity: O(w), bounded trailing-event window
+   * - Cyclomatic Complexity (CC): target <= 6
+   * - Branch Coverage: target >= 90%
    */
   public recordStateDelivery(): void {
-    if (this.eventStore.getLatestEvent()?.type === 'AGENT_TURN_STARTED') return;
+    if (!this.strictExecution || this.inBypassState) return;
+    const { deliveries } = this.currentViewDeliveries();
+    const allowance = this.getStateDefinition(this.activeStatePath)?.max_view_refetches ?? 2;
+    if (deliveries > 0 && deliveries <= allowance) {
+      this.eventStore.append('STATE_VIEW_REFETCHED', {
+        state: this.getCurrentState(),
+        refetches: deliveries,
+      }, { state: this.getCurrentState() });
+      return;
+    }
     this.recordTurnStart();
+  }
+
+  /** Sequence of the event that last changed the state view; delivery bookkeeping and telemetry do not change it. */
+  public getStateViewSeq(): number {
+    return this.currentViewDeliveries().viewSeq;
+  }
+
+  private currentViewDeliveries(): { viewSeq: number; deliveries: number } {
+    const latest = this.eventStore.getLatestSequence();
+    const stateDef = this.getStateDefinition(this.activeStatePath);
+    const window = 4 * ((stateDef?.max_view_refetches ?? 2) + (stateDef?.max_idle_turns ?? 2) + 2);
+    const events = this.eventStore.getSince(Math.max(0, latest - window));
+    let deliveries = 0;
+    for (let i = events.length - 1; i >= 0; i--) {
+      const type = events[i].type;
+      if (type === 'AGENT_TURN_STARTED' || type === 'STATE_VIEW_REFETCHED') deliveries++;
+      else if (type !== 'PERF_DEGRADATION' && type !== 'PROJECTION_FAILED') return { viewSeq: events[i].seq, deliveries };
+    }
+    return { viewSeq: latest > window ? latest : 0, deliveries: latest > window ? Number.MAX_SAFE_INTEGER : deliveries };
   }
 
   public checkBypass(): void {
@@ -780,7 +808,7 @@ export class FSMEngine {
       ...(this.strictExecution ? [
         '  <strict_execution mode="enforced">',
         '    <contract>TODO Card: Load -> Execute -> Emit</contract>',
-        '    <contract>Strict mode counts each new state view until a signal is emitted; re-fetching the same view is not counted. The current counter and limit are shown below.</contract>',
+        `    <contract>Strict mode counts state views until a signal is emitted. Up to ${this.getStateDefinition(this.activeStatePath)?.max_view_refetches ?? 2} repeat fetches of the same view (compaction recovery) are not counted; later repeats count. The current counter and limit are shown below.</contract>`,
         `    <contract>Views since signal: ${this.turnsSinceLastSignal}. Max idle turns: ${this.getStateDefinition(this.activeStatePath)?.max_idle_turns ?? 2}. Exceeding this triggers auto-abort to BYPASS_DETECTED.</contract>`,
         '    <contract>Use the listed tools. Tool-call enforcement requires a host adapter that intercepts those calls.</contract>',
         '    <contract>Recovery: reactive-skills-axi reset <skill> then re-invoke.</contract>',

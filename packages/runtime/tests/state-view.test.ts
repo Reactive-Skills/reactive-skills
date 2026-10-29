@@ -49,7 +49,7 @@ it.each([false, true])('legacy XML reports strict policy only when enabled: %s',
   const xml = runtime.generatePromptSlice().formattedXml;
   expect(xml.includes('<strict_execution')).toBe(strict);
   expect(xml.includes('</strict_execution>')).toBe(strict);
-  expect(xml.includes('Strict mode counts each new state view')).toBe(strict);
+  expect(xml.includes('Strict mode counts state views until a signal is emitted. Up to 2 repeat fetches')).toBe(strict);
   expect(xml).not.toContain('Allowed tools are enforced');
 });
 

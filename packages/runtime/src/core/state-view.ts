@@ -20,7 +20,7 @@ export interface StateView {
   tools: string[];
   contracts: string[];
   policy: string;
-  strict?: { mode: 'enforced'; idle_limit: number; turns_since_signal: number };
+  strict?: { mode: 'enforced'; idle_limit: number; turns_since_signal: number; refetch_allowance: number };
   approval_gate?: { requests: Array<{ id: string; state: string; signal: string; criterion: string; reason?: string }>; instruction: string };
   human_gate?: HumanGateDefinition & { instruction: string };
   model?: StateModelDefinition;
@@ -29,7 +29,7 @@ export interface StateView {
   warning?: string;
 }
 
-export const STATE_VIEW_POLICY = 'Emit after work. Stop at human gates. Re-fetch the same run (MCP job_id or AXI --job set to run_id) after resume or compaction, without emitting a signal or recreating approvals; a repeat fetch of the same view is not counted. Use the listed tools; tool-call enforcement requires a host adapter.';
+export const STATE_VIEW_POLICY = 'Emit after work. Stop at human gates. Re-fetch the same run (MCP job_id or AXI --job set to run_id) after resume or compaction, without emitting a signal or recreating approvals; in strict mode up to refetch_allowance repeat fetches of the same view are not counted, later repeats count toward idle_limit. Use the listed tools; tool-call enforcement requires a host adapter.';
 
 /**
  * Retain exact conditions and module references without repeating transition prose.
@@ -76,7 +76,7 @@ export function createStateView(engine: FSMEngine, slice = engine.generatePrompt
     format: 'compact-v1',
     skill: engine.getManifest().name,
     run_id: engine.getJobId() || 'default',
-    seq: engine.getEventStore().getLatestSequence(),
+    seq: engine.getStateViewSeq(),
     state: slice.state,
     prompt: slice.rawPrompt,
     context: slice.scopedContext,
@@ -106,6 +106,7 @@ function stateMetadata(engine: FSMEngine, model?: StateModelDefinition | null): 
       mode: 'enforced' as const,
       idle_limit: leaf.max_idle_turns ?? 2,
       turns_since_signal: engine.getTurnsSinceLastSignal(),
+      refetch_allowance: leaf.max_view_refetches ?? 2,
     } } : {}),
     ...(leaf.human_gate ? { human_gate: {
       ...leaf.human_gate,
