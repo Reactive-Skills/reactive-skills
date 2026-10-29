@@ -1,10 +1,10 @@
 {
-  "runtime_commit": "3e30d6c",
-  "description": "Normalized deterministic byte fields after compact MCP state delivery; timings, raw byte lengths and ledger sizes remain observations.",
+  "runtime_commit": "d4beaf6",
+  "description": "Current regression expectations for normalized deterministic byte fields from the compact state view runtime; timings, raw byte lengths and ledger sizes remain observations. Historical baseline values live in tdd-baseline.json.",
   "tdd_baseline": {
     "state": "REFACTOR.CLEAN_CODE",
     "rendered_prompt_bytes": 392,
-    "xml_bytes": 1744,
+    "xml_bytes": 1821,
     "scoped_context_bytes": 118,
     "allowed_tools": [
       "view_file",
@@ -21,17 +21,17 @@
   "mcp": {
     "initial": {
       "input_payload_bytes": 24,
-      "tool_result_text_bytes": 2252,
-      "result_bytes": 2395,
+      "tool_result_text_bytes": 2329,
+      "result_bytes": 2472,
       "request_envelope_bytes": 119,
-      "response_envelope_bytes": 2430
+      "response_envelope_bytes": 2507
     },
     "prepare": {
       "input_payload_bytes": 115,
-      "tool_result_text_bytes": 2631,
-      "result_bytes": 2824,
+      "tool_result_text_bytes": 2708,
+      "result_bytes": 2901,
       "request_envelope_bytes": 220,
-      "response_envelope_bytes": 2859
+      "response_envelope_bytes": 2936
     },
     "ready": {
       "input_payload_bytes": 49,
@@ -63,17 +63,17 @@
     },
     "clean": {
       "input_payload_bytes": 24,
-      "tool_result_text_bytes": 2350,
-      "result_bytes": 2518,
+      "tool_result_text_bytes": 2427,
+      "result_bytes": 2595,
       "request_envelope_bytes": 119,
-      "response_envelope_bytes": 2553
+      "response_envelope_bytes": 2630
     },
     "resume_empty_transcript": {
       "input_payload_bytes": 24,
-      "tool_result_text_bytes": 2350,
-      "result_bytes": 2518,
+      "tool_result_text_bytes": 2427,
+      "result_bytes": 2595,
       "request_envelope_bytes": 119,
-      "response_envelope_bytes": 2553
+      "response_envelope_bytes": 2630
     },
     "failure": {
       "input_payload_bytes": 37,
@@ -91,10 +91,10 @@
     },
     "gate": {
       "input_payload_bytes": 27,
-      "tool_result_text_bytes": 1698,
-      "result_bytes": 1819,
+      "tool_result_text_bytes": 1128,
+      "result_bytes": 1243,
       "request_envelope_bytes": 122,
-      "response_envelope_bytes": 1854
+      "response_envelope_bytes": 1278
     },
     "human_response": {
       "input_payload_bytes": 62,
@@ -112,40 +112,40 @@
     },
     "concurrent-a": {
       "input_payload_bytes": 48,
-      "tool_result_text_bytes": 2257,
-      "result_bytes": 2400,
+      "tool_result_text_bytes": 2334,
+      "result_bytes": 2477,
       "request_envelope_bytes": 143,
-      "response_envelope_bytes": 2435
+      "response_envelope_bytes": 2512
     },
     "concurrent-b": {
       "input_payload_bytes": 48,
-      "tool_result_text_bytes": 2257,
-      "result_bytes": 2400,
+      "tool_result_text_bytes": 2334,
+      "result_bytes": 2477,
       "request_envelope_bytes": 143,
-      "response_envelope_bytes": 2435
+      "response_envelope_bytes": 2512
     }
   },
   "sdk": {
     "initial": {
-      "result_bytes": 3088
+      "result_bytes": 3165
     },
     "clean": {
-      "result_bytes": 3018
+      "result_bytes": 3095
     },
     "snapshot": {
-      "result_bytes": 3018
+      "result_bytes": 3095
     },
     "replay": {
-      "result_bytes": 3018
+      "result_bytes": 3095
     },
     "concurrent-0": {
-      "result_bytes": 3385
+      "result_bytes": 3462
     },
     "concurrent-1": {
-      "result_bytes": 3385
+      "result_bytes": 3462
     },
     "legacy": {
-      "result_bytes": 1647
+      "result_bytes": 1077
     }
   },
   "axi": {

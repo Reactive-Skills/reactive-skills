@@ -232,6 +232,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       token_budget: z.number().int().min(128).max(32768).optional().describe('Maximum context tokens for selected route'),
       state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Small bounded state hints'),
       job_id: z.string().optional().describe('Optional job/run ID for a selected reactive skill'),
+      output: z.enum(['legacy', 'compact-v1']).optional().describe('Negotiated state view format; defaults to legacy'),
     },
     /**
      * Prepare the routed state with compact transport accounting.
@@ -242,7 +243,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >= 70%
      * - CRAP Score: target <= 25.0
      */
-    async ({ user_message, candidates, token_budget, state_hints, job_id }) => {
+    async ({ user_message, candidates, token_budget, state_hints, job_id, output }) => {
       try {
         const decision = await contextRouter.route({
           userMessage: user_message,
@@ -316,9 +317,9 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
             };
           }
 
-          if (engine.isStrictExecution()) engine.recordTurnStart();
+          engine.recordStateDelivery();
           const slice = engine.generatePromptSlice();
-          const state = createStateResponse(engine, slice);
+          const state = createStateResponse(engine, slice, false, output);
           const payload = {
             context_route: decision,
             context: {
@@ -328,7 +329,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
             },
           };
           return {
-            content: [{ type: 'text', text: serializeStateResponse(payload, state.metrics) }],
+            content: [{ type: 'text', text: serializeStateResponse(payload, slice.metrics!) }],
           };
         } catch (reactiveError) {
           const skillMdPath = path.join(skillDir, 'SKILL.md');
@@ -372,7 +373,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     {
       skill: z.string().optional().describe('Skill name (defaults to active skill)'),
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
-      include_full_context: z.boolean().optional().describe('Also return the full recorded context alongside scopedContext'),
+      include_full_context: z.boolean().optional().describe('Return full recorded context (replaces scoped context in compact-v1)'),
+      output: z.enum(['legacy', 'compact-v1']).optional().describe('Select compact-v1 after negotiating state.compact_v1; defaults to legacy'),
     },
     /**
      * Fetch scoped state, including after a host transcript is compacted.
@@ -383,7 +385,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >= 80%
      * - CRAP Score: target <= 15.0
      */
-    async ({ skill, job_id, include_full_context }) => {
+    async ({ skill, job_id, include_full_context, output }) => {
       try {
         const engine = getEngine(skill || defaultSkill, job_id, { autoRotateTerminal: true });
 
@@ -406,13 +408,11 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
           };
         }
 
-        if (engine.isStrictExecution()) {
-          engine.recordTurnStart();
-        }
+        engine.recordStateDelivery();
         const slice = engine.generatePromptSlice();
-        const payload = createStateResponse(engine, slice, include_full_context);
+        const payload = createStateResponse(engine, slice, include_full_context, output);
         return {
-          content: [{ type: 'text', text: serializeStateResponse(payload, payload.metrics) }],
+          content: [{ type: 'text', text: serializeStateResponse(payload, slice.metrics!) }],
         };
       } catch (err: any) {
         if (err.message?.startsWith('BYPASS_DETECTED')) {

@@ -8,8 +8,9 @@ The MCP server exposes `reactive_state`, `reactive_emit_signal`, `reactive_respo
 ## 2. AXI CLI (portable, shell-based)
 The `reactive-skills-axi` CLI wraps the runtime with agent-ergonomic TOON output. Agents invoke via shell execution (`reactive-skills-axi init`, `inspect`, `events`, etc.). Works with any agent that can run shell commands.
 
-## 3. In-Harness Hooks (Claude Code only, optional)
-`runtime-hooks.ts` provides `onBeforeAgentTurn`, `onAfterToolExecution`, and `onHumanResponse` for Claude Code's interceptor system. This is the least portable option and is not required for skill execution.
+## Optional host adapters
+This release provides AXI and MCP.
+Host tool interception and compaction reinjection require a separately implemented adapter.
 
 ## Portable Alternative to Harness Hooks
 

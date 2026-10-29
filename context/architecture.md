@@ -37,7 +37,6 @@ reactive-skills/                          # Repo root
 │       │   │   ├── judgment-thresholds.ts # Pure threshold resolution & accept/escalate/reject bands
 │       │   │   ├── projection-engine.ts  # Handlebars deliverable generator
 │       │   │   ├── fsm-engine.ts         # HSM loader, path resolver & bubbling engine
-│       │   │   ├── runtime-hooks.ts      # Pre/post-turn in-harness interceptor hooks
 │       │   │   ├── legacy-adapter.ts     # Backward compatibility wrapper for SKILL.md
 │       │   │   ├── migration.ts          # Retroactive project migrator & schema upgrader
 │       │   │   └── job-manager.ts        # Run isolation, active pointer & job metadata
@@ -243,3 +242,15 @@ States can declare an optional `context_scope` array to limit which `context_key
   Core `PromptSlice.metrics` starts with an XML-byte estimate.
   MCP serialization updates the live engine's latest slice metrics so its next transition can record the delivered response estimate.
   Without transport serialization, core metrics remain XML-only and do not represent AXI output.
+
+### Negotiated complete state view
+
+`state.compact_v1` advertises additive state output selection.
+`core/state-view.ts` builds and renders the shared view for SDK, MCP state/context preparation, AXI invoke/state/emit, and development CLI JSON/XML.
+Existing formats remain selectable by default; compact clients explicitly select `output: "compact-v1"` or `--output compact-v1`.
+The view carries the unchanged rendered prompt, the full current scoped context, leaf-to-root exact contracts without deduplicating same-named signals, tools, run ID and sequence.
+Active human gates, pending judgment approvals, model hints, strict counters, and signal receipt refusal/decision metadata appear when applicable.
+MCP full-context opt-in replaces scoped context in the compact format; it retains the existing legacy behavior in the legacy format.
+The shared bootloader and compact policy require re-fetching the same run after transcript compaction without synthesizing transitions or approvals.
+Host tool interception and automatic compaction reinjection require a separately implemented adapter.
+The latest signal refusal (guard or evidence verification) survives recovery through the already loaded replay delta and an in-memory cache; a subsequent signal supersedes it.

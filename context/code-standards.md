@@ -25,7 +25,7 @@
 ---
 
 ## 4. File Organization & Naming Rules
-- `src/core/`: Core runtime classes (`types.ts`, `fsm-engine.ts`, `event-store.ts`, `guard-evaluator.ts`, `projection-engine.ts`, `runtime-hooks.ts`, `legacy-adapter.ts`, `migration.ts`, `job-manager.ts`).
+- `src/core/`: Core runtime classes (`types.ts`, `fsm-engine.ts`, `event-store.ts`, `guard-evaluator.ts`, `projection-engine.ts`, `state-view.ts`, `legacy-adapter.ts`, `migration.ts`, `job-manager.ts`).
 - `src/cli/`: CLI commands and utilities.
 - `skills/<name>/`: Self-contained reactive skill packages.
 - `tests/<name>.test.ts`: Paired Vitest test suites.

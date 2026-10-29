@@ -80,6 +80,25 @@ export interface PendingApproval {
 
 const SELF_REPORT_WARNING = "Decided from the agent's own report because self-reported decisions are enabled for this workspace; reactive-skills-axi approve --revoke-self-reported turns them off.";
 
+/**
+ * Recover the last refused signal since the most recent committed-state snapshot.
+ * A later signal or transition supersedes an earlier refusal.
+ * # Performance & Risk Budget
+ * - Tier: P2 (< 100ms for bounded replay deltas)
+ * - Complexity: O(r) worst case, already loaded replay events; O(1) extra memory
+ * - Cyclomatic Complexity (CC): target <= 8
+ * - Branch Coverage: target >= 90%
+ * - CRAP Score: target <= 10.0
+ */
+function lastRefusalInReplay(events: SignalEvent[]): string | undefined {
+  for (let index = events.length - 1; index >= 0; index--) {
+    const event = events[index];
+    if (event.type === 'SIGNAL_REFUSED') return event.payload.reason;
+    if (event.type === 'SIGNAL_EMITTED' || event.type === 'STATE_TRANSITION') return undefined;
+  }
+  return undefined;
+}
+
 export class FSMEngine {
   private skillDir: string;
   private workspaceDir: string;
@@ -105,6 +124,7 @@ export class FSMEngine {
   private jobManager: JobManager;
   private templateCache = new Map<string, HandlebarsTemplateDelegate>();
   private lastSliceMetrics?: ExecutionMetrics;
+  private lastRefusalReason?: string;
   private maxSliceDurationMs = 10;
   private maxTransitionDurationMs = 25;
   private stateVisits: Map<string, StateVisitRecord> = new Map();
@@ -255,7 +275,8 @@ export class FSMEngine {
   }
 
   /**
-   * Rehydrate state machine state and context from immutable event history, resuming from the latest point-in-time state snapshot if available (PERF-02 / INV-08)
+   * Rehydrate state machine state and context from immutable event history, resuming from the latest point-in-time state snapshot if available (PERF-02 / INV-08).
+   * Restores refusal metadata from the same replay delta without another ledger query.
    *
    * # Performance & Risk Budget
    * - Tier: P2 (<100ms target)
@@ -314,6 +335,7 @@ export class FSMEngine {
 
     this.activeStatePath = latestPath;
     this.evidenceResolver.resolveContext(this.context);
+    this.lastRefusalReason = lastRefusalInReplay(eventsToReplay);
 
     // Recompute turn counter from event history
     this.turnsSinceLastSignal = 0;
@@ -346,6 +368,8 @@ export class FSMEngine {
     const validated = SkillManifestSchema.parse(parsed);
     return validated as SkillManifest;
   }
+
+  public getLastRefusalReason(): string | undefined { return this.lastRefusalReason; }
 
   public getManifest(): SkillManifest {
     return this.manifest;
@@ -439,6 +463,63 @@ export class FSMEngine {
     }, { state: this.getCurrentState() });
     this.turnsSinceLastSignal++;
     this.checkBypass();
+  }
+
+  /**
+   * Count a delivered state view, letting up to `max_view_refetches` repeat fetches of the same view through for compaction recovery.
+   * # Performance & Risk Budget
+   * - Tier: P0 (< 5ms)
+   * - Complexity: O(w), bounded trailing-event window
+   * - Cyclomatic Complexity (CC): target <= 6
+   * - Branch Coverage: target >= 90%
+   */
+  public recordStateDelivery(): void {
+    if (!this.strictExecution || this.inBypassState) return;
+    const { deliveries } = this.currentViewDeliveries();
+    const allowance = this.getStateDefinition(this.activeStatePath)?.max_view_refetches ?? 2;
+    if (deliveries > 0 && deliveries <= allowance) {
+      this.eventStore.append('STATE_VIEW_REFETCHED', {
+        state: this.getCurrentState(),
+        refetches: deliveries,
+      }, { state: this.getCurrentState() });
+      return;
+    }
+    this.recordTurnStart();
+  }
+
+  /**
+   * Sequence of the event that last changed the state view; delivery bookkeeping and telemetry are ignored within the bounded trailing window; when no view-changing event remains in that window, the anchor falls back to the latest event sequence and can advance in non-strict runs.
+   * Informational only: guards and strict counting do not use it.
+   * # Performance & Risk Budget
+   * - Tier: P0 (< 5ms)
+   * - Complexity: O(w), one latest-sequence lookup plus a bounded trailing-event read
+   * - Cyclomatic Complexity (CC): target <= 1
+   * - Branch Coverage: target >= 90%
+   */
+  public getStateViewSeq(): number {
+    return this.currentViewDeliveries().viewSeq;
+  }
+
+  /**
+   * Find the last view-changing event and count deliveries after it within a window w = 4 * (max_view_refetches + max_idle_turns + 2).
+   * # Performance & Risk Budget
+   * - Tier: P0 (< 5ms)
+   * - Complexity: O(w), one latest-sequence lookup plus a bounded trailing-event read
+   * - Cyclomatic Complexity (CC): target <= 6
+   * - Branch Coverage: target >= 90%
+   */
+  private currentViewDeliveries(): { viewSeq: number; deliveries: number } {
+    const latest = this.eventStore.getLatestSequence();
+    const stateDef = this.getStateDefinition(this.activeStatePath);
+    const window = 4 * ((stateDef?.max_view_refetches ?? 2) + (stateDef?.max_idle_turns ?? 2) + 2);
+    const events = this.eventStore.getSince(Math.max(0, latest - window));
+    let deliveries = 0;
+    for (let i = events.length - 1; i >= 0; i--) {
+      const type = events[i].type;
+      if (type === 'AGENT_TURN_STARTED' || type === 'STATE_VIEW_REFETCHED') deliveries++;
+      else if (type !== 'PERF_DEGRADATION' && type !== 'PROJECTION_FAILED') return { viewSeq: events[i].seq, deliveries };
+    }
+    return { viewSeq: latest > window ? latest : 0, deliveries: latest > window ? Number.MAX_SAFE_INTEGER : deliveries };
   }
 
   public checkBypass(): void {
@@ -740,13 +821,15 @@ export class FSMEngine {
     const formattedXml = [
       `<reactive_skill_state name="${this.getCurrentState()}" path="${this.activeStatePath.join('/')}" skill="${this.manifest.name}">`,
       modelContractXml,
-      this.strictExecution ? '  <strict_execution mode="enforced">' : '',
-      '    <contract>TODO Card: Load -> Execute -> Emit</contract>',
-      '    <contract>Every agent turn must produce a signal via reactive_emit_signal. Fetching state without emitting a signal counts against the idle budget.</contract>',
-      `    <contract>Max idle turns: ${this.getStateDefinition(this.activeStatePath)?.max_idle_turns ?? 2}. Exceeding this triggers auto-abort to BYPASS_DETECTED.</contract>`,
-      '    <contract>Allowed tools are enforced. Tools outside the allowed list will trigger bypass detection in interceptor mode.</contract>',
-      '    <contract>Recovery: reactive-skills-axi reset <skill> then re-invoke.</contract>',
-      '  </strict_execution>',
+      ...(this.strictExecution ? [
+        '  <strict_execution mode="enforced">',
+        '    <contract>TODO Card: Load -> Execute -> Emit</contract>',
+        `    <contract>Strict mode counts state views until a signal is emitted. Up to ${this.getStateDefinition(this.activeStatePath)?.max_view_refetches ?? 2} repeat fetches of the same view (compaction recovery) are not counted; later repeats count. The current counter and limit are shown below.</contract>`,
+        `    <contract>Views since signal: ${this.turnsSinceLastSignal}. Max idle turns: ${this.getStateDefinition(this.activeStatePath)?.max_idle_turns ?? 2}. Exceeding this triggers auto-abort to BYPASS_DETECTED.</contract>`,
+        '    <contract>Use the listed tools. Tool-call enforcement requires a host adapter that intercepts those calls.</contract>',
+        '    <contract>Recovery: reactive-skills-axi reset <skill> then re-invoke.</contract>',
+        '  </strict_execution>',
+      ] : []),
       contextDelta ? `  <context_optimization state_visit_count="${contextDelta.is_revisit ? 'revisit' : 'first'}">Context is scoped to this state\'s relevant keys only. Delta shown for revisions.</context_optimization>` : '',
       `  <state_goal>`,
       rawPrompt.trim().split('\n').map(line => `    ${line}`).join('\n'),
@@ -854,6 +937,7 @@ export class FSMEngine {
   }
 
   /**
+   * Execute existing guarded signal handling and retain its refusal for later views.
    * # Performance & Risk Budget
    * - Tier: P1 (<25ms bookkeeping target; judgments excluded)
    * - Complexity: O(ancestry + selected evidence bytes)
@@ -916,6 +1000,7 @@ export class FSMEngine {
     }
 
     this.turnsSinceLastSignal = 0;
+    this.lastRefusalReason = undefined;
 
     // Guards see payload fields that match context_keys; a refused signal restores the prior context.
     const contextBeforeSignal = this.context;
@@ -932,6 +1017,7 @@ export class FSMEngine {
       this.context = contextBeforeSignal;
       const refusalReason = `Evidence verification failed: ${(error as Error).message}`;
       this.eventStore.append('SIGNAL_REFUSED', { signal: signalName, reason: refusalReason }, { state: previousState, causationId: event.id });
+      this.lastRefusalReason = refusalReason;
       return { transitioned: false, previousState, newState: previousState, event, deliverablesWritten: [], refusalReason };
     }
 
@@ -1138,6 +1224,7 @@ export class FSMEngine {
     if (refusalReason) {
       // The full reason, including any approval instruction, so an idempotent replay returns it as sent.
       this.eventStore.append('SIGNAL_REFUSED', { signal: signalName, reason: refusalReason }, { state: previousState, causationId: event.id });
+      this.lastRefusalReason = refusalReason;
     }
     return {
       transitioned: false,
