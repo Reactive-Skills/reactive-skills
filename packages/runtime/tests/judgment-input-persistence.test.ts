@@ -67,9 +67,12 @@ describe('Judgment input durability and approval identity', () => {
     if (outcome === 'precondition') expect(restored.getPendingApprovals()).toHaveLength(0);
   });
 
-  it.each(['unchanged', 'evidence', 'criterion', 'options', 'threshold', 'adapter', 'model', 'revision'])
+  it.each(['unchanged', 'evidence', 'criterion', 'options', 'threshold', 'adapter', 'model', 'base_url', 'revision',
+    'key_missing', 'key_rotated', 'log_level'])
   ('binds human approval to the current input/configuration: %s', async change => {
     evaluate.mockRejectedValue(new Error('offline'));
+    vi.stubEnv('TYPESAFE_API_KEY', 'agent-key');
+    vi.stubEnv('TYPESAFE_LOG_LEVEL', 'info');
     if (change === 'revision') {
       const manifest = definition();
       manifest.states.REVIEW.transitions.CHECK.target = 'REVIEW';
@@ -81,6 +84,9 @@ describe('Judgment input durability and approval identity', () => {
     expect(request.judgmentIdentity).toMatch(/^[a-f0-9]{64}$/);
     if (change === 'evidence') engine.updateContext({ rubric: 'revised' });
     if (change === 'model') vi.stubEnv('TYPESAFE_DEFAULT_MODEL', 'revised-model');
+    if (change === 'base_url') vi.stubEnv('TYPESAFE_BASE_URL', 'https://revised.example');
+    vi.stubEnv('TYPESAFE_API_KEY', change === 'key_rotated' ? 'rotated-key' : '');
+    if (change === 'log_level') vi.stubEnv('TYPESAFE_LOG_LEVEL', 'debug');
     if (['criterion', 'options', 'threshold', 'adapter'].includes(change)) {
       const manifest = definition();
       Object.assign(manifest.states.REVIEW.transitions.CHECK.judgment, {
@@ -91,7 +97,7 @@ describe('Judgment input durability and approval identity', () => {
       engine.getEventStore().close(); engine = open();
     }
     const result = await engine.decideApproval(request.id, 'approve', 'test');
-    expect(result.transitioned).toBe(change === 'unchanged' || change === 'revision');
+    expect(result.transitioned).toBe(['unchanged', 'revision', 'key_missing', 'key_rotated', 'log_level'].includes(change));
     if (change === 'revision') {
       // A fresh submission after explicit approval never inherits that decision.
       const revision = await engine.handleSignal('CHECK', { check: { text: 'revised evidence', revision: 'v2' }, exit_code: 0 });

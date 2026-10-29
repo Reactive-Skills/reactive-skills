@@ -61,7 +61,7 @@ Pure declarative payload preconditions and required-evidence validation run befo
 No semantic result cache, cross-run reuse, new ledger append or full-history scan is added by input preparation.
 The existing `GUARD_EVALUATED` record carries content-free `inputInspection` metadata on successes and failures.
 `byteCount` counts candidate state JSON bytes, excluding SDK framing and questions; it is not a measurement of total remote request bytes or tokens.
-Opt-in approval identity hashing is O(b + p² + p*d) and includes selected evidence, the judgment declaration and built-in adapter configuration.
+Opt-in approval identity hashing is O(b + p² + p*d) and includes selected evidence, the judgment declaration and built-in adapter base URL and model, not credentials or log level.
 Existing approval-event queries retain their P2 O(n) behavior; input selection does not add a history query.
 Preparation/hash helpers target CC <= 12, branch coverage >= 80%, CRAP <= 15; pure path/type helpers target CC <= 8, branch coverage >= 90%, CRAP <= 10.
 The AXI inspection view is P2 (< 100ms local target), with O(s + p² + p*d + b) work in manifest states s and input size, and opens no run.

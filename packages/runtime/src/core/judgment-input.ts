@@ -204,7 +204,7 @@ export function inspectJudgmentInput(judgment: JudgmentDefinition, evaluation: G
 }
 
 /**
- * Binds opt-in approvals to selected evidence, declaration and built-in adapter configuration.
+ * Binds opt-in approvals to selected evidence, declaration and built-in adapter base URL and model.
  * Custom adapters supply their configuration revision through recorded selected context.
  * Tier: P1 (< 25ms); Complexity: O(p² + p*d + b); CRAP target <= 15 (CC <= 12, branch coverage >= 80%).
  */
@@ -213,7 +213,6 @@ export function judgmentInputIdentity(judgment: JudgmentDefinition, evaluation: 
   const prepared = prepareJudgmentInput(judgment, evaluation);
   return createHash('sha256').update(JSON.stringify([
     judgment, prepared.state, prepared.inspection.errors,
-    process.env.TYPESAFE_API_KEY, process.env.TYPESAFE_BASE_URL,
-    process.env.TYPESAFE_DEFAULT_MODEL, process.env.TYPESAFE_LOG_LEVEL,
+    process.env.TYPESAFE_BASE_URL, process.env.TYPESAFE_DEFAULT_MODEL,
   ])).digest('hex');
 }

@@ -82,8 +82,9 @@ The existing `GUARD_EVALUATED` event persists it without an additional ledger ap
 Replay, snapshots and idempotent resubmissions consume the recorded result without invoking adapters again.
 Fresh submissions do not cache semantic results, either within a run or across runs.
 
-Opt-in human approvals bind to a hash of the selected evidence, judgment declaration and built-in adapter configuration.
-Changing selected evidence, criterion, options, rubric, threshold, adapter configuration or model configuration requires a fresh decision.
+Opt-in human approvals bind to a hash of the selected evidence, judgment declaration, `TYPESAFE_BASE_URL` and `TYPESAFE_DEFAULT_MODEL`.
+Changing selected evidence, criterion, options, rubric, threshold, adapter, base URL or model requires a fresh decision.
+Credentials and log level are not part of the identity, so `approve` accepts the pending request from a terminal with a missing or rotated `TYPESAFE_API_KEY` or a different `TYPESAFE_LOG_LEVEL`, and no secret-derived value is written to the ledger.
 A subsequent submission with a new evidence revision cannot inherit a previous human decision.
 Custom adapters should put their configuration revision in selected recorded context so approval identity includes it.
 Legacy human approvals retain their existing matching rules.
