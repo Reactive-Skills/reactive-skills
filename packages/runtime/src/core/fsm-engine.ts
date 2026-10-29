@@ -262,6 +262,7 @@ export class FSMEngine {
         initial_state: initialPath.join('.'),
         active_path: initialPath,
         context: this.context,
+        contextUpdates: this.transitionContextUpdates([], initialPath, {}),
       }, { state: initialPath.join('.') });
 
       this.enterPath(initialPath, [], 'INITIAL_BOOT');
@@ -280,7 +281,7 @@ export class FSMEngine {
    *
    * # Performance & Risk Budget
    * - Tier: P2 (<100ms target)
-   * - Complexity: O(delta events + selected evidence bytes)
+   * - Complexity: O(delta events + context patch bytes + selected evidence bytes)
    * - Cyclomatic Complexity (CC): target <=15
    * - Branch Coverage: target >=70%
    * - CRAP Score: target <=25
@@ -301,42 +302,85 @@ export class FSMEngine {
       latestPath = this.resolveInitialPath([this.manifest.initial_state]);
     }
 
-    // A signal's context changes are durable only once the transition it caused is committed,
-    // so refused and unhandled signals replay without changing context.
-    const pendingSignalUpdates = new Map<string, Record<string, any>>();
-
     // Verify retained content, but apply the canonical receipts to context, never materialized values.
     this.evidenceResolver.resolveEvents(eventsToReplay);
-    for (const e of eventsToReplay) {
-      if (e.type === 'SKILL_INITIALIZED' && e.payload?.active_path) {
-        latestPath = e.payload.active_path;
-        if (e.payload.context) {
-          this.context = { ...this.context, ...e.payload.context };
-        }
-      } else if (e.type === 'STATE_TRANSITION' && e.payload?.to) {
-        latestPath = e.payload.to.split('.');
-        const causationId = e.causation_id || e.causationId;
-        const signalUpdates = causationId ? pendingSignalUpdates.get(causationId) : undefined;
-        if (signalUpdates) {
-          this.updateContext(signalUpdates);
-          pendingSignalUpdates.delete(causationId!);
-        }
-      } else if (e.type === 'STATE_ENTRY_HOOK' && e.payload?.action?.set_context) {
-        this.updateContext(e.payload.action.set_context);
-      } else if (e.type === 'SIGNAL_EMITTED') {
-        pendingSignalUpdates.set(e.id, {
-          ...this.contextKeyUpdates(e.payload),
-          ...(e.payload?.contextUpdates || {}),
-        });
-      } else if (e.payload?.contextUpdates) {
-        this.updateContext(e.payload.contextUpdates);
-      }
-    }
-
-    this.activeStatePath = latestPath;
+    this.activeStatePath = this.replayContext(eventsToReplay, latestPath);
     this.evidenceResolver.resolveContext(this.context);
     this.lastRefusalReason = lastRefusalInReplay(eventsToReplay);
+    this.replayExecutionCounters(eventsToReplay, snap?.context);
+  }
 
+  /**
+   * Apply only accepted signal changes and explicit patches, without dispatching replayed signals.
+   *
+   * # Performance & Risk Budget
+   * - Tier: P2 (<100ms target)
+   * - Complexity: O(delta events + patch bytes)
+   * - Cyclomatic Complexity (CC): target <=15
+   * - Branch Coverage: target >=70%
+   * - CRAP Score: target <=25
+   */
+  private replayContext(events: SignalEvent[], initialPath: string[]): string[] {
+    let latestPath = initialPath;
+    const pendingSignals = new Map<string, Record<string, any>>();
+    for (const event of events) {
+      const payload = event.payload ?? {};
+      switch (event.type) {
+        case 'SKILL_INITIALIZED':
+          if (!payload.active_path) {
+            this.updateContext(payload.contextUpdates);
+            break;
+          }
+          latestPath = payload.active_path;
+          this.context = { ...this.context, ...payload.context };
+          this.updateContext(payload.contextUpdates);
+          break;
+        case 'STATE_TRANSITION':
+          if (payload.to) latestPath = this.replayTransitionContext(event, pendingSignals);
+          else this.updateContext(payload.contextUpdates);
+          break;
+        case 'STATE_ENTRY_HOOK':
+          this.updateContext(payload.action?.set_context ?? payload.contextUpdates);
+          break;
+        case 'SIGNAL_EMITTED':
+          // Keep candidates separate until a committed transition accepts them.
+          pendingSignals.set(event.id, payload);
+          break;
+        default:
+          this.updateContext(payload.contextUpdates);
+      }
+    }
+    return latestPath;
+  }
+
+  /**
+   * Commits carry their effective patch independently of later manifest edits. Commits recorded
+   * before patches existed replay only their accepted signal; their hook assignments live in snapshots.
+   *
+   * # Performance & Risk Budget
+   * - Tier: P2 (<100ms target)
+   * - Complexity: O(patch bytes)
+   * - Cyclomatic Complexity (CC): target <=15
+   * - Branch Coverage: target >=70%
+   * - CRAP Score: target <=25
+   */
+  private replayTransitionContext(event: SignalEvent, pendingSignals: Map<string, Record<string, any>>): string[] {
+    const causationId = event.causation_id || event.causationId;
+    const signal = causationId ? pendingSignals.get(causationId) : undefined;
+    this.updateContext(event.payload.contextUpdates ?? { ...this.contextKeyUpdates(signal), ...signal?.contextUpdates });
+    if (causationId) pendingSignals.delete(causationId);
+    return event.payload.to.split('.');
+  }
+
+  /**
+   * # Performance & Risk Budget
+   * - Tier: P2 (<100ms target)
+   * - Complexity: O(delta events)
+   * - Cyclomatic Complexity (CC): target <=15
+   * - Branch Coverage: target >=70%
+   * - CRAP Score: target <=25
+   */
+  private replayExecutionCounters(eventsToReplay: SignalEvent[], snapshotContext?: Record<string, any>): void {
     // Recompute turn counter from event history
     this.turnsSinceLastSignal = 0;
     this.inBypassState = false;
@@ -352,8 +396,8 @@ export class FSMEngine {
     }
 
     // Restore turns_since_last_signal from snapshot context if available
-    if (snap?.context?.turns_since_last_signal !== undefined) {
-      this.turnsSinceLastSignal = snap.context.turns_since_last_signal;
+    if (snapshotContext?.turns_since_last_signal !== undefined) {
+      this.turnsSinceLastSignal = snapshotContext.turns_since_last_signal;
     }
   }
 
@@ -413,6 +457,37 @@ export class FSMEngine {
     for (const key of this.manifest.context_keys || []) {
       if (payload?.[key] !== undefined) {
         updates[key] = payload[key];
+      }
+    }
+    return updates;
+  }
+
+  /**
+   * Fold declarative assignments into one durable patch without executing hooks or emitting signals.
+   * Signal context keys precede exit hooks; explicit signal updates precede entry hooks.
+   *
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms bookkeeping target)
+   * - Complexity: O(depth squared + affected hook assignments + signal context keys + patch bytes), independent of history
+   * - Cyclomatic Complexity (CC): target <=12
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
+  private transitionContextUpdates(fromPath: string[], toPath: string[], payload: Record<string, any>): Record<string, any> {
+    let commonDepth = 0;
+    while (commonDepth < Math.min(fromPath.length, toPath.length) && fromPath[commonDepth] === toPath[commonDepth]) {
+      commonDepth++;
+    }
+    const updates: Record<string, any> = Object.assign(Object.create(null), this.contextKeyUpdates(payload));
+    for (let depth = fromPath.length; depth > commonDepth; depth--) {
+      for (const action of this.getStateDefinition(fromPath.slice(0, depth))?.on_exit ?? []) {
+        Object.assign(updates, action.set_context);
+      }
+    }
+    Object.assign(updates, payload.contextUpdates);
+    for (let depth = commonDepth + 1; depth <= toPath.length; depth++) {
+      for (const action of this.getStateDefinition(toPath.slice(0, depth))?.on_enter ?? []) {
+        Object.assign(updates, action.set_context);
       }
     }
     return updates;
@@ -522,6 +597,14 @@ export class FSMEngine {
     return { viewSeq: latest > window ? latest : 0, deliveries: latest > window ? Number.MAX_SAFE_INTEGER : deliveries };
   }
 
+  /**
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target excluding storage)
+   * - Complexity: O(hierarchy depth + diagnostic bytes), independent of history
+   * - Cyclomatic Complexity (CC): target <=12
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
   public checkBypass(): void {
     if (!this.strictExecution || this.inBypassState) return;
     const stateDef = this.getStateDefinition(this.activeStatePath);
@@ -539,6 +622,7 @@ export class FSMEngine {
         to: bypassTarget,
         signal: 'BYPASS_DETECTED',
         payload: { reason: 'Agent exceeded max idle turns without emitting a signal' },
+        contextUpdates: {},
       }, { state: bypassTarget });
       this.inBypassState = true;
       this.activeStatePath = [bypassTarget];
@@ -1255,6 +1339,13 @@ export class FSMEngine {
 
   /**
    * Transition between two hierarchical paths executing exit, transition, and entry hooks
+   *
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms bookkeeping target, storage excluded)
+   * - Complexity: O(depth squared + affected hook assignments + signal context keys + patch bytes), independent of history
+   * - Cyclomatic Complexity (CC): target <=12
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
    */
   private transitionBetweenPaths(
     fromPath: string[],
@@ -1283,6 +1374,7 @@ export class FSMEngine {
       to: toPath.join('.'),
       signal: signalName,
       payload,
+      contextUpdates: this.transitionContextUpdates(fromPath, toPath, payload),
       metrics,
     }, {
       state: toPath.join('.'),

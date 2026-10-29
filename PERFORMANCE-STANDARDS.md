@@ -79,6 +79,15 @@ Large evidence or repeated references can exceed the ordinary signal/projection 
 Registration uses a bounded descriptor read, a synced temporary copy and non-overwriting publication; abandoned temporary files are ignored and no retained blobs are garbage-collected.
 Export scoping and failure rules are owned by [docs/evidence-registry.md](docs/evidence-registry.md).
 
+### Accepted context recovery
+
+Initialization and accepted transitions record their effective `contextUpdates` patch in the existing ledger event, including declarative lifecycle assignments in execution order.
+Patch construction is P1 bookkeeping (<25ms target), O(d² + a + k + b), where d is hierarchy depth, a is the affected hook count, k is declared signal context keys and b is copied assignment bytes.
+It adds no ledger rows or history queries; the serialized patch adds its actual bytes to the existing append.
+Rehydration remains P2 (<100ms target), O(delta events + context patch bytes + selected evidence bytes), and applies committed patches without executing hooks, guards, signals or projections.
+Events predating recorded patches replay only their accepted signal updates; the installed manifest cannot supply authoritative historical hook assignments.
+Ledgers written before recorded patches therefore rely on their snapshot for hook-assigned context, and a no-snapshot replay of such a ledger does not reconstruct it.
+
 ### 1. Algorithmic Complexity (Big-O)
 
 #### Allowed Patterns
@@ -152,7 +161,7 @@ MCP text, result-object and full stdio-envelope bytes are distinct from input pa
 Byte counts are never token counts; native token heuristics are labeled and normalized independently.
 Actual model calls/output are zero in the default offline trace; scripted input is reported separately as a proxy.
 The fixture retains per-run ledger/visit counts and every JSONL segment's size, with no claim that unvisited source branches were delivered to a model.
-Replay's known entry-hook context discrepancy is reported as a named expected baseline failure, not suppressed or repaired here.
+Snapshot restore and full replay must match live accepted context; any mismatch fails the fixture (see [Accepted context recovery](#accepted-context-recovery)).
 No public runtime capability is added by this developer-only operation.
 
 ### 1. The Value Dimension: What Do We Save?

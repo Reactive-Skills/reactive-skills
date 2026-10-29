@@ -19,9 +19,9 @@ class ReplayStore extends EventStore {
  * # Performance & Risk Budget
  * - Tier: P3 (offline fixture; per operation target < 2000ms, no suite latency assertion)
  * - Complexity: O(e+b) fixture events and view bytes
- * - Cyclomatic Complexity (CC): 12 (measured; threshold <= 20)
- * - Branch Coverage: 83% (10/12 V8 branches measured; target >= 60%)
- * - CRAP Score: 12.7 (measured; threshold <= 30.0)
+ * - Cyclomatic Complexity (CC): target <= 20
+ * - Branch Coverage: target >= 60%
+ * - CRAP Score: target <= 30.0
  */
 export async function measureSdk(workspace: string) {
   const skillDir = path.join(workspace, 'skills', 'tdd-refactor');
@@ -93,18 +93,7 @@ export async function measureSdk(workspace: string) {
         const contextMatches = JSON.stringify(restored.scopedContext) === JSON.stringify(clean.scopedContext);
         recovery.push({ path: label, context_matches_live: contextMatches, refactor_cycles: restored.scopedContext.refactor_cycles, events: eventCount });
         if (!contextMatches) {
-          const expectedKnownDrift = { ...clean.scopedContext, refactor_cycles: 0 };
-          if (label !== 'replay' || clean.scopedContext.refactor_cycles !== 1
-            || JSON.stringify(restored.scopedContext) !== JSON.stringify(expectedKnownDrift)) {
-            throw new Error(`Unexpected recovery context mismatch: ${label}`);
-          }
-          findings.push({
-            id: 'tdd-replay-refactor-cycles',
-            status: 'expected_failure',
-            description: 'Full replay differs from live state and snapshot restore for entry-hook context.',
-            observed: { live: 1, snapshot: recovery[0].refactor_cycles, replay: restored.scopedContext.refactor_cycles },
-            documentation: 'packages/runtime/scripts/transport-benchmark/BASELINE-FINDINGS.md#tdd-replay-refactor-cycles',
-          });
+          throw new Error(`Recovery changed accepted context: ${label}`);
         }
       } finally { resumed.close(); }
     }

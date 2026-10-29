@@ -60,9 +60,9 @@ The legacy pre-persistence `transition_duration_ms` remains separately available
 The separately labeled `benchmark_awaited_handle_signal_ms` observes the completed SDK call and is not a second persisted metric.
 Raw per-call times are observations, not percentile estimates or latency ceilings; run repeated traces before making timing claims.
 
-The named expected baseline failure `tdd-replay-refactor-cycles` remains visible in `sdk.findings`, with live, snapshot and replay values and a pointer to [BASELINE-FINDINGS.md](BASELINE-FINDINGS.md).
-This fixture does not fix runtime replay or claim those paths preserve equivalent context.
-Any other recovery mismatch still fails.
+Snapshot restore and full replay must match live accepted context, including `refactor_cycles: 1`, without appending recovery events.
+Any recovery mismatch fails; `sdk.findings` is empty on success.
+[BASELINE-FINDINGS.md](BASELINE-FINDINGS.md) records the resolved entry-hook regression.
 
 The focused runtime test checks deterministic MCP/SDK fields and refusal/gate behavior, forbids model fetches, and checks the cold AXI fields when its compiled entry exists.
 The complete benchmark command always requires both builds.
