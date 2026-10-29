@@ -38,6 +38,10 @@ A criterion written as a JavaScript expression always runs in the Script adapter
 With the key set, a failed or rejected Jev request refuses the signal for a natural-language criterion, and the run stays in its state (ADR 0011).
 When Jev rejects its credentials or a judgment is misconfigured, the refusal says that retrying will not help.
 
+Judgments can opt into nested `payload_paths`, `required_context_paths` and declarative payload preconditions with the `judgment.payload_selection` capability.
+Inspect candidate input with `inspectJudgmentInput()` or `reactive-skills-axi inspect <path> --judgment-input @candidate.json` before invoking an adapter.
+See [judgment input selection](../../docs/specs/judgment-input-selection.md) for input shapes, refusal behavior and content-free audit metadata.
+
 ### Approval for Gates No Model Can Judge
 
 A natural-language criterion that no model can judge refuses the signal and waits for a person (ADR 0012).

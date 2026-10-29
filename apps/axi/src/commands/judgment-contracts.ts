@@ -8,6 +8,7 @@ import {
   isExecutableCriterion,
   predicateProbabilityForConfidence,
   resolveJudgmentThreshold,
+  usesJudgmentInputOptions,
   type JudgmentDefinition,
 } from '@reactive-skills/runtime';
 
@@ -89,6 +90,8 @@ function looksLikeExpression(criterion: string): boolean {
 
 /**
  * Warns on semantic judgments that rely on min_confidence and on new fields used without the capability requirement.
+ * Tier: P2 (< 100ms); Complexity: O(s + t + b), states/transitions and declaration bytes.
+ * CRAP target <= 25 per lint path (CC <= 15, branch coverage >= 70%).
  */
 export function lintJudgmentThresholds(manifest: Record<string, any>): JudgmentLintResult {
   const warnings: string[] = [];
@@ -114,7 +117,7 @@ export function lintJudgmentThresholds(manifest: Record<string, any>): JudgmentL
 
     // Only the Jev adapter sends context, and paths are read from the run context itself.
     const scopesContext = judgment.context_paths !== undefined || judgment.include_payload !== undefined;
-    if (scopesContext && judgment.adapter_hint === 'script') {
+    if (scopesContext && judgment.adapter_hint === 'script' && !usesJudgmentInputOptions(judgment as JudgmentDefinition)) {
       warnings.push(
         `${location} sets context_paths or include_payload with adapter_hint: script; only the Jev adapter sends context to a model, so the script adapter ignores them`
       );
@@ -179,7 +182,8 @@ export function lintJudgmentThresholds(manifest: Record<string, any>): JudgmentL
   }
 
   const usesContextScope = judgments.some(
-    ({ judgment }) => judgment.context_paths !== undefined || judgment.include_payload !== undefined
+    ({ judgment }) => (judgment.context_paths !== undefined || judgment.include_payload !== undefined)
+      && !usesJudgmentInputOptions(judgment as JudgmentDefinition)
   );
   if (
     usesContextScope

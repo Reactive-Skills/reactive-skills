@@ -45,10 +45,11 @@ export const COMMANDS: Record<string, CommandSpec> = {
   },
   inspect: {
     usage: usage([
-      `Usage: ${BIN} inspect <path>`,
+      `Usage: ${BIN} inspect <path> [--judgment-input <JSON|@file>]`,
       '',
       'Print the statechart, transitions, and guards of a skill.',
       `Example: ${BIN} inspect skills/my-skill`,
+      '  --judgment-input  Inspect candidate {context,payload} without opening a run or contacting adapters',
     ]),
     run: async (args) => (await import('../commands/inspect.js')).inspectCommand(args),
   },

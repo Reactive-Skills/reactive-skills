@@ -45,6 +45,9 @@ function describeJudgmentFailure(judgment: JudgmentDefinition, result: JudgmentR
 export class GuardEvaluator {
   /**
    * Evaluate a transition guard expression, custom JS function file, or snap-on judgment
+   * Tier: P2 orchestration (< 100ms local), adapter waiting bounded separately.
+   * Complexity: O(b + p²*d*i), input bytes and selected paths/depth.
+   * CRAP target <= 25 per evaluation path (CC <= 15, branch coverage >= 70%).
    */
   public static async evaluate(
     guardExpr: string | undefined,
@@ -64,10 +67,10 @@ export class GuardEvaluator {
       return { passed: true };
     }
 
+    let judgmentResult: JudgmentResult | undefined;
+    let fallbackTriggered = false;
+    let fallbackTarget: string | undefined;
     try {
-      let judgmentResult: JudgmentResult | undefined;
-      let fallbackTriggered = false;
-      let fallbackTarget: string | undefined;
 
       // 0. Evaluate snap-on judgment if defined
       if (judgment) {
@@ -93,6 +96,7 @@ export class GuardEvaluator {
           return {
             passed: false,
             error: `Guard function must be a JavaScript file (.js, .mjs, .cjs): ${guardFunctionPath}`,
+            judgmentResult, fallbackTriggered, fallbackTarget,
           };
         }
 
@@ -103,6 +107,7 @@ export class GuardEvaluator {
           return {
             passed: false,
             error: `Guard function path escapes skill directory: ${guardFunctionPath}`,
+            judgmentResult, fallbackTriggered, fallbackTarget,
           };
         }
 
@@ -114,6 +119,7 @@ export class GuardEvaluator {
             return {
               passed: false,
               error: `Guard function path escapes skill directory: ${guardFunctionPath}`,
+              judgmentResult, fallbackTriggered, fallbackTarget,
             };
           }
 
@@ -210,6 +216,7 @@ export class GuardEvaluator {
       return {
         passed: false,
         error: `Guard evaluation failed: ${err.message}`,
+        judgmentResult, fallbackTriggered, fallbackTarget,
       };
     }
   }
