@@ -27,10 +27,12 @@ export const STATIC_RUNTIME_CAPABILITIES = [
   'judgment.probability_thresholds',
   'judgment.human_approval',
   'judgment.context_paths',
+  'judgment.total_deadline',
   'context.routing',
   'context.preparation',
   'runtime.bootloader',
   'runtime.accepted_update_replay',
+  'evidence.local_registry',
 ] as const;
 
 export type RuntimeTransport = 'axi' | 'mcp';

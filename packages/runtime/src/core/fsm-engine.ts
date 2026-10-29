@@ -23,6 +23,7 @@ import { readSelfReportGrant, type SelfReportGrant } from './approval-grants.js'
 import { LegacySkillAdapter } from './legacy-adapter.js';
 import { ProjectionEngine } from './projection-engine.js';
 import { JobManager, isJobTerminal } from './job-manager.js';
+import { EvidenceResolver } from './evidence-resolver.js';
 
 export interface FSMEngineOptions {
   skillDir: string;
@@ -90,6 +91,7 @@ export class FSMEngine {
   private context: Record<string, any>;
   private eventStore: EventStore;
   private projectionEngine: ProjectionEngine;
+  private evidenceResolver: EvidenceResolver;
   private signalQueue: Array<{ signal: string; payload?: Record<string, any>; metadata?: any }> = [];
   private isProcessingQueue = false;
   private signalQueueDepth = 0;
@@ -107,6 +109,14 @@ export class FSMEngine {
   private maxTransitionDurationMs = 25;
   private stateVisits: Map<string, StateVisitRecord> = new Map();
 
+  /**
+   * # Performance & Risk Budget
+   * - Tier: P2 (<100ms target excluding legacy migration)
+   * - Complexity: O(replayed events + evidence bytes)
+   * - Cyclomatic Complexity (CC): target <=15
+   * - Branch Coverage: target >=70%
+   * - CRAP Score: target <=25
+   */
   constructor(options: FSMEngineOptions) {
     this.skillDir = path.resolve(options.skillDir);
     this.workspaceDir = options.workspaceDir || process.cwd();
@@ -199,12 +209,15 @@ export class FSMEngine {
       ...inheritedContext,
       ...(options.initialContext || {}),
     };
+    this.evidenceResolver = new EvidenceResolver(this.manifest.evidence, () => this.eventStore.getEvidenceStore());
+    this.evidenceResolver.resolveContext(this.context);
     this.projectionEngine = new ProjectionEngine(
       this.skillDir,
       this.manifest.deliverable_projections || [],
       options.workspaceDir || process.cwd(),
       this.jobName || this.jobId,
-      this.isActiveJob
+      this.isActiveJob,
+      this.manifest.evidence
     );
 
     const autoRehydrate = options.autoRehydrate !== false;
@@ -242,8 +255,14 @@ export class FSMEngine {
   }
 
   /**
-   * Rehydrate state machine state and context from immutable event history,
-   * resuming from the latest point-in-time state snapshot if available (PERF-02 / INV-08)
+   * Rehydrate state machine state and context from immutable event history, resuming from the latest point-in-time state snapshot if available (PERF-02 / INV-08)
+   *
+   * # Performance & Risk Budget
+   * - Tier: P2 (<100ms target)
+   * - Complexity: O(delta events + selected evidence bytes)
+   * - Cyclomatic Complexity (CC): target <=15
+   * - Branch Coverage: target >=70%
+   * - CRAP Score: target <=25
    */
   private rehydrate(
     events: SignalEvent[],
@@ -265,6 +284,8 @@ export class FSMEngine {
     // so refused and unhandled signals replay without changing context.
     const pendingSignalUpdates = new Map<string, Record<string, any>>();
 
+    // Verify retained content, but apply the canonical receipts to context, never materialized values.
+    this.evidenceResolver.resolveEvents(eventsToReplay);
     for (const e of eventsToReplay) {
       if (e.type === 'SKILL_INITIALIZED' && e.payload?.active_path) {
         latestPath = e.payload.active_path;
@@ -292,6 +313,7 @@ export class FSMEngine {
     }
 
     this.activeStatePath = latestPath;
+    this.evidenceResolver.resolveContext(this.context);
 
     // Recompute turn counter from event history
     this.turnsSinceLastSignal = 0;
@@ -339,6 +361,20 @@ export class FSMEngine {
 
   public getContext(): Record<string, any> {
     return { ...this.context };
+  }
+
+  /**
+   * Canonical records plus verified evidence, with manifest declarations applied automatically.
+   *
+   * # Performance & Risk Budget
+   * - Tier: P3 (<2000ms target)
+   * - Complexity: O(events + retained evidence bytes)
+   * - Cyclomatic Complexity (CC): target <=20
+   * - Branch Coverage: target >=60%
+   * - CRAP Score: target <=30
+   */
+  public exportRun(): ReturnType<EventStore['exportRun']> {
+    return this.eventStore.exportRun(this.manifest.evidence);
   }
 
   public updateContext(updates: Record<string, any>): void {
@@ -817,6 +853,14 @@ export class FSMEngine {
     }
   }
 
+  /**
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms bookkeeping target; judgments excluded)
+   * - Complexity: O(ancestry + selected evidence bytes)
+   * - Cyclomatic Complexity (CC): target <=12
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
   private async processSignal(
     signalName: string,
     payload: Record<string, any> = {},
@@ -880,6 +924,17 @@ export class FSMEngine {
       this.updateContext(incomingContextUpdates);
     }
 
+    let verification: { event: SignalEvent; context: Record<string, any> };
+    try {
+      if (this.manifest.evidence && event.payload.signal !== signalName) throw new Error('Payload must not override the evidence signal binding.');
+      verification = this.resolveSignalEvidence(event);
+    } catch (error) {
+      this.context = contextBeforeSignal;
+      const refusalReason = `Evidence verification failed: ${(error as Error).message}`;
+      this.eventStore.append('SIGNAL_REFUSED', { signal: signalName, reason: refusalReason }, { state: previousState, causationId: event.id });
+      return { transitioned: false, previousState, newState: previousState, event, deliverablesWritten: [], refusalReason };
+    }
+
     let refusalReason: string | undefined;
     // Read once, so the decision and its SELF_REPORT_GRANT_USED record see the same grant.
     const grant = readSelfReportGrant(this.workspaceDir);
@@ -910,8 +965,8 @@ export class FSMEngine {
           transDef.guard,
           transDef.guardFunction,
           {
-            event,
-            context: this.context,
+            event: verification.event,
+            context: verification.context,
             currentState: testPath.join('.'),
             skillDir: this.skillDir,
             selfReportAllowed,
@@ -1091,6 +1146,23 @@ export class FSMEngine {
       event,
       deliverablesWritten: [],
       ...(refusalReason ? { refusalReason } : {}),
+    };
+  }
+
+  /**
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target for <=1MiB)
+   * - Complexity: O(selected evidence bytes + declared context keys)
+   * - Cyclomatic Complexity (CC): target <=12
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
+  private resolveSignalEvidence(event: SignalEvent): { event: SignalEvent; context: Record<string, any> } {
+    // Updates apply only after acceptance, but invalid referenced updates must refuse before committing it.
+    this.evidenceResolver.resolveContext(event.payload.contextUpdates || {});
+    return {
+      event: this.evidenceResolver.resolveEvent(event),
+      context: this.evidenceResolver.resolveContext(this.context),
     };
   }
 

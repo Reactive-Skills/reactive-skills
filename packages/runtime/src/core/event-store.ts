@@ -3,6 +3,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { EventContext, SignalEvent } from './types.js';
+import { LocalEvidenceStore, type EvidenceStore, type EvidenceBundle, type EvidenceReceipt } from './evidence-store.js';
+import { EvidenceResolver, type EvidenceDeclarations } from './evidence-resolver.js';
 
 export const EVENT_STORE_SCHEMA_VERSION = 3;
 
@@ -21,6 +23,7 @@ export function createSortableId(): string {
 }
 
 export interface EventStoreOptions {
+  evidenceStore?: EvidenceStore;
   storagePath?: string;
   sqlitePath?: string;
   workspaceDir?: string;
@@ -677,6 +680,8 @@ export class EventStoreOpenError extends Error {
 
 /** Immutable append-only event store. SQLite is canonical when enabled. */
 export class EventStore {
+  private evidenceStore?: EvidenceStore;
+  private readonly evidenceWorkspace: string;
   private events: SignalEvent[] = [];
   private listeners: Set<EventListener> = new Set();
   private storagePath: string | null = null;
@@ -696,7 +701,18 @@ export class EventStore {
   private lockFd: number | null = null;
   private lockPath: string | null = null;
 
+  /**
+   * Opens canonical storage; evidence port construction remains lazy.
+   * # Performance & Risk Budget
+   * - Tier: P2 (<100ms target)
+   * - Complexity: O(reconciled ledger bytes); evidence initialization O(1)
+   * - Cyclomatic Complexity (CC): target <=15 for initialization changes
+   * - Branch Coverage: target >=70%
+   * - CRAP Score: target <=25
+   */
   constructor(options: EventStoreOptions = {}) {
+    this.evidenceWorkspace = path.resolve(options.workspaceDir || process.cwd());
+    this.evidenceStore = options.evidenceStore;
     this.maxInMemoryEvents = options.maxInMemoryEvents || 1000;
     this.maxJsonlBytes = options.maxJsonlBytes || 10 * 1024 * 1024;
     this.readOnly = options.readOnly === true;
@@ -1278,6 +1294,57 @@ export class EventStore {
   public getEventCount(): number { return this.sqliteDriver ? this.sqliteDriver.getEventCount(this.eventContext.run_id) : this.events.length; }
   public getLatestEvent(): SignalEvent | null { return this.sqliteDriver ? this.sqliteDriver.getLatestEvent(this.eventContext.run_id) : (this.events.at(-1) || null); }
   public getEventContext(): EventContext { return { ...this.eventContext }; }
+
+  /**
+   * Selected-run evidence port; lazy construction keeps legacy inline replay registry-free.
+   *
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(directory depth)
+   * - Cyclomatic Complexity (CC): target <=12
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
+  public getEvidenceStore(): EvidenceStore {
+    const runId = this.eventContext.run_id!;
+    if (!this.evidenceStore) {
+      if (!this.runDir) throw new Error('In-memory event stores require an injected EvidenceStore to resolve references.');
+      this.evidenceStore = new LocalEvidenceStore({
+        workspaceDir: this.evidenceWorkspace,
+        artifactsDir: path.join(path.dirname(this.runDir), runId, 'artifacts'),
+        runId,
+        readOnly: this.readOnly,
+      });
+    }
+    if (this.evidenceStore.runId !== runId) throw new Error('EvidenceStore belongs to another run.');
+    return this.evidenceStore;
+  }
+
+  /**
+   * Portable canonical events/snapshot plus the evidence their committed references use; never exports an unchecked reference alone.
+   * Damaged registrations no committed event or snapshot references are reported in `evidence.skipped`, not bundled.
+   * Without declarations, references cannot be identified, so every registration is bundled and any damage fails the export.
+   *
+   * # Performance & Risk Budget
+   * - Tier: P3 (<2000ms target)
+   * - Complexity: O(events + registered evidence bytes)
+   * - Cyclomatic Complexity (CC): target <=20
+   * - Branch Coverage: target >=60%
+   * - CRAP Score: target <=30
+   */
+  public exportRun(declarations?: EvidenceDeclarations): { events: SignalEvent[]; snapshot: ReturnType<EventStore['getLatestSnapshot']>; evidence: EvidenceBundle; evidence_fields?: EvidenceDeclarations } {
+    const version = this.getRunVersion();
+    const events = this.getAll();
+    const snapshot = this.getLatestSnapshot();
+    const referenced: EvidenceReceipt[] = [];
+    const resolver = new EvidenceResolver(declarations, () => this.getEvidenceStore(), receipt => referenced.push(receipt));
+    resolver.resolveEvents(events);
+    if (snapshot) resolver.resolveContext(snapshot.context);
+    const evidence = this.runDir || this.evidenceStore ? this.getEvidenceStore().exportBundle(declarations ? referenced : undefined)
+      : { version: 'rsa-evidence-bundle/v1' as const, run_id: this.eventContext.run_id!, entries: [] };
+    this.assertRunVersion(version);
+    return { events, snapshot, evidence, ...(declarations ? { evidence_fields: declarations } : {}) };
+  }
   /** True when another process appended to this run after this store loaded or last appended. */
   public hasExternalAppends(): boolean { return this.externalAppendSeen || (this.sqliteDriver !== null && this.getLatestSequence() > this.seqCounter); }
   public getRunVersion(): number { return this.sqliteDriver?.getRunVersion(this.eventContext.run_id || 'default') || this.getLatestSequence(); }

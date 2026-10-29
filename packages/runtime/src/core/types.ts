@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { validateContextPath } from './judgment-context.js';
+import { EvidenceDeclarationsSchema, type EvidenceDeclarations } from './evidence-resolver.js';
 
 /**
  * Signal Event Schema: Immutable envelope for all events in the reactive skill bus
@@ -98,6 +99,10 @@ export interface JudgmentDefinition {
   fallback_adapter?: string;
   fallback_target?: string;
   timeout_ms?: number;
+  /** Opt into one deadline for adapter selection and the entire fallback cascade. */
+  total_timeout_ms?: number;
+  /** Allows the existing fallback slot to retry an adapter; bounded mode defaults to one attempt. */
+  retry_policy?: { max_attempts_per_adapter: number };
   /**
    * Run-context paths the Jev adapter sends to the model, such as `write_side.deciders`, relative
    * to the run context. Each found path is sent under its own name beside the payload. A path with
@@ -151,6 +156,19 @@ export interface JudgmentThreshold {
  */
 export type JudgmentBand = 'accept' | 'escalate' | 'reject' | 'unevaluable';
 
+export interface JudgmentAttempt {
+  adapter: string;
+  stage: 'primary' | 'fallback';
+  invoked: boolean;
+  elapsedMs: number;
+  timeoutMs?: number;
+  outcome: 'success' | 'outage' | 'credentials' | 'authoring' | 'timeout' | 'skipped';
+  cancellationCause?: 'total_deadline' | 'attempt_timeout';
+  reason?: string;
+  breakerBefore?: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+  breakerAfter?: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+}
+
 export interface JudgmentResult {
   verdict: boolean | string | number;
   confidence: number;
@@ -162,6 +180,9 @@ export interface JudgmentResult {
   adapterName: string;
   adapterSelectionReason?: string;
   latencyMs: number;
+  /** Actual adapter invocations; skipped fallback slots are recorded separately in attempts. */
+  attemptCount?: number;
+  attempts?: JudgmentAttempt[];
   error?: string;
   raw?: unknown;
   /** Threshold that decided the result, set by the judgment engine. */
@@ -279,6 +300,8 @@ export interface SkillManifest {
   description: string;
   initial_state: string;
   runtime_requirements?: RuntimeRequirements;
+  /** Explicit reference fields; canonical records retain receipts, verification uses resolved copies. */
+  evidence?: EvidenceDeclarations;
   strict_execution?: boolean;
   context_keys?: string[];
   default_context?: Record<string, any>;
@@ -353,12 +376,20 @@ export const JudgmentDefinitionSchema = z.object({
   fallback_adapter: z.string().optional(),
   fallback_target: z.string().optional(),
   timeout_ms: z.number().positive().optional(),
+  total_timeout_ms: z.number().finite().positive().max(2_147_483_647).optional(),
+  retry_policy: z.object({ max_attempts_per_adapter: z.number().int().min(1).max(2) }).optional(),
   context_paths: z.array(z.string().superRefine((path, ctx) => {
     const problem = validateContextPath(path);
     if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem });
   })).optional(),
   include_payload: z.boolean().optional(),
-}).superRefine((judgment, ctx) => {
+}).superRefine(/**
+ * Tier: P2 manifest validation (< 100ms).
+ * Complexity: O(1); CRAP target <= 25 (CC <= 15, branch coverage >= 70%).
+ */ (judgment, ctx) => {
+  if (judgment.retry_policy && judgment.total_timeout_ms === undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['retry_policy'], message: 'retry_policy requires total_timeout_ms' });
+  }
   if (judgment.min_probability !== undefined && judgment.min_confidence !== undefined) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -469,6 +500,7 @@ export const SkillManifestSchema = z.object({
   description: z.string(),
   initial_state: z.string(),
   runtime_requirements: RuntimeRequirementsSchema.optional(),
+  evidence: EvidenceDeclarationsSchema.optional(),
   strict_execution: z.boolean().optional(),
   context_keys: z.array(z.string()).optional(),
   default_context: z.record(z.any()).optional(),
