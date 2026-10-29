@@ -3,6 +3,7 @@ import path from 'node:path';
 import Handlebars from 'handlebars';
 import { DeliverableProjection, SignalEvent } from './types.js';
 import { EventStore } from './event-store.js';
+import { EvidenceResolver, type EvidenceDeclarations } from './evidence-resolver.js';
 
 function resolveWithExistingAncestor(candidate: string): string {
   let existing = path.resolve(candidate);
@@ -44,12 +45,21 @@ export class ProjectionEngine {
   private jobId?: string;
   private isActiveJob: boolean;
 
+  /**
+   * # Performance & Risk Budget
+   * - Tier: P2 (<100ms target)
+   * - Complexity: O(template bytes)
+   * - Cyclomatic Complexity (CC): target <=15
+   * - Branch Coverage: target >=70%
+   * - CRAP Score: target <=25
+   */
   constructor(
     skillDir: string,
     projections: DeliverableProjection[] = [],
     workspaceDir = process.cwd(),
     jobId?: string,
-    isActiveJob = true
+    isActiveJob = true,
+    private readonly evidence?: EvidenceDeclarations
   ) {
     this.skillDir = skillDir;
     this.workspaceDir = path.resolve(workspaceDir);
@@ -151,6 +161,13 @@ export class ProjectionEngine {
 
   /**
    * Render all deliverables matching the given event trigger safely with an error boundary
+   *
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target excluding evidence IO)
+   * - Complexity: O(events + selected evidence bytes + output bytes)
+   * - Cyclomatic Complexity (CC): target <=12
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
    */
   public project(
     eventStore: EventStore,
@@ -189,6 +206,17 @@ export class ProjectionEngine {
       transitions,
       lastUpdated: new Date().toISOString(),
     };
+
+    try {
+      const resolver = new EvidenceResolver(this.evidence, () => eventStore.getEvidenceStore());
+      projContext.context = resolver.resolveContext(context);
+      projContext.events = events.map(event => resolver.resolveEvent(event));
+    } catch (error) {
+      for (const proj of eligibleProjections) {
+        eventStore.append('PROJECTION_FAILED', { template: proj.template, output: proj.output, error: `Evidence verification failed: ${(error as Error).message}` });
+      }
+      return writtenFiles;
+    }
 
     for (const proj of this.projections) {
       try {
