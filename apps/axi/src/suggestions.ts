@@ -93,7 +93,7 @@ export function getSuggestions(ctx: SuggestionContext): string[] {
         return [
           'Read the state prompt above and execute the instructed tasks',
           'Run `reactive-skills-axi emit ' + skillName + ' <signal>' + jobFlag + '` to advance to the next state',
-          'Run `reactive-skills-axi state ' + skillName + jobFlag + '` to re-read the active state prompt',
+          'For resume, compaction, stale state, or a lost response, run `reactive-skills-axi state ' + skillName + jobFlag + '`',
           'Run `reactive-skills-axi reset ' + skillName + jobFlag + '` to clear this run and start fresh',
         ];
       }
@@ -121,7 +121,7 @@ export function getSuggestions(ctx: SuggestionContext): string[] {
         return [
           'Read the new state prompt above and execute the next phase tasks',
           'Run `reactive-skills-axi emit ' + skillName + ' <signal>' + jobFlag + '` to continue advancing',
-          'Run `reactive-skills-axi state ' + skillName + jobFlag + '` to re-read the active state prompt',
+          'For resume, compaction, stale state, or a lost response, run `reactive-skills-axi state ' + skillName + jobFlag + '`',
           'Run `reactive-skills-axi events` to view the event history',
         ];
       }

@@ -50,6 +50,13 @@ reactive-skills-axi state <skill>
 axi emit <skill> <signal>
 ```
 
+When capabilities include `state.compact_v1`, use `--output compact-v1` on `invoke`, `emit`, and recovery `state` commands.
+Consume the complete view returned by `invoke` or the `view` in an `emit` receipt before doing the next state's work.
+Fetch `state <skill> --job <run_id> --output compact-v1` again after resume, transcript compaction, stale state, or a lost response.
+The compact view supplies scoped context once, exact transition requirements, active gates and refusal warnings.
+Use `inspect <skill-path>` for guard details and `<command> --help` for usage; omitting the output flag or selecting `--output legacy` retains terminal output with suggestions.
+AXI does not count these state deliveries as strict turns; its strict status fields do not provide MCP turn enforcement.
+
 ## Commands
 
 ### setup
