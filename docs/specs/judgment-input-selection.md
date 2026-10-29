@@ -77,7 +77,8 @@ Destination classes describe adapter policy, not a resolved endpoint or provider
 `byteCount` counts UTF-8 bytes of JSON candidate state (`event`, `context`, `currentState`); it excludes questions, SDK framing, model configuration and credentials.
 It can be nonzero for a locally refused candidate and is zero when invalid declarations prevent state construction.
 
-New judgments record this view in `JudgmentResult.inputInspection`, including success, local refusal, adapter rejection and outage.
+New judgments record this view in `JudgmentResult.inputInspection`, including success, local refusal, adapter rejection, outage and runtime faults.
+Without a whole-cascade deadline, a runtime fault in the judgment path, such as a failing adapter selection, refuses the signal with `band: reject` and does not create a human-approval request.
 The existing `GUARD_EVALUATED` event persists it without an additional ledger append or selected-content audit copy.
 Replay, snapshots and idempotent resubmissions consume the recorded result without invoking adapters again.
 Fresh submissions do not cache semantic results, either within a run or across runs.
