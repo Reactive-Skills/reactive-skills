@@ -487,11 +487,26 @@ export class FSMEngine {
     this.recordTurnStart();
   }
 
-  /** Sequence of the event that last changed the state view; delivery bookkeeping and telemetry do not change it. */
+  /**
+   * Sequence of the event that last changed the state view; delivery bookkeeping and telemetry do not change it.
+   * # Performance & Risk Budget
+   * - Tier: P0 (< 5ms)
+   * - Complexity: O(w), one latest-sequence lookup plus a bounded trailing-event read
+   * - Cyclomatic Complexity (CC): target <= 1
+   * - Branch Coverage: target >= 90%
+   */
   public getStateViewSeq(): number {
     return this.currentViewDeliveries().viewSeq;
   }
 
+  /**
+   * Find the last view-changing event and count deliveries after it within a window w = 4 * (max_view_refetches + max_idle_turns + 2).
+   * # Performance & Risk Budget
+   * - Tier: P0 (< 5ms)
+   * - Complexity: O(w), one latest-sequence lookup plus a bounded trailing-event read
+   * - Cyclomatic Complexity (CC): target <= 6
+   * - Branch Coverage: target >= 90%
+   */
   private currentViewDeliveries(): { viewSeq: number; deliveries: number } {
     const latest = this.eventStore.getLatestSequence();
     const stateDef = this.getStateDefinition(this.activeStatePath);

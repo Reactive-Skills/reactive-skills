@@ -57,7 +57,7 @@ function compactContract(state: string, signal: string, transition: TransitionDe
  * A supplied outcome carries the refusal/decision warning from that signal receipt.
  * # Performance & Risk Budget
  * - Tier: P0 (< 5ms for bounded slices; excludes existing slice generation)
- * - Complexity: O(h² + b + a), hierarchy, contract bytes and existing approval-request/decision queries
+ * - Complexity: O(h² + b + a + w), hierarchy, contract bytes, existing approval-request/decision queries and bounded trailing-event window
  * - Cyclomatic Complexity (CC): target <= 8
  * - Branch Coverage: target >= 90%
  * - CRAP Score: target <= 10.0

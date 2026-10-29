@@ -208,7 +208,8 @@ These in-memory metrics are not restored across process restarts; re-fetch state
 The delivery estimate excludes SDK JSON-RPC framing, tool definitions, and other harness context.
 AXI renders its own output from the core slice; core XML estimates must not be presented as AXI transport measurements.
 
-MCP state assembly and serialization are P0 operations with O(b) work in response bytes and no additional event-ledger reads.
+MCP state assembly and serialization are P0 operations with O(b) work in response bytes.
+In strict mode each MCP/CLI delivery adds one bounded O(w) trailing-event read for same-view refetch accounting, where w = 4 × (`max_view_refetches` + `max_idle_turns` + 2) events (32 by default).
 Legacy responses contain one XML prompt and scoped context; `include_full_context: true` on `reactive_state` adds the full recorded context.
 That response grows with recorded context and is included in its delivery estimate.
 The serializer targets CC <= 8, branch coverage >= 90%, and CRAP <= 10.
@@ -216,9 +217,9 @@ The serializer targets CC <= 8, branch coverage >= 90%, and CRAP <= 10.
 Negotiated `state.compact_v1` delivery builds one shared complete view and serializes compact JSON (or development `xml-v1`).
 The view contains one raw rendered prompt and one scoped context object; full-context opt-in replaces that object rather than duplicating it.
 State view building and rendering target P0 (< 5ms for bounded state content), CC <= 8 per helper, branch coverage >= 90%, and CRAP <= 10.
-Building costs O(h² + b + a): hierarchy depth h, view/contract bytes b, and existing approval-request/decision query results a.
+Building costs O(h² + b + a + w): hierarchy depth h, view/contract bytes b, existing approval-request/decision query results a, and the bounded trailing-event window w.
 Rendering is O(b), preserves required values without truncation, and adds no events or projections.
-The sequence anchor uses the existing run-scoped latest-sequence lookup.
+The sequence anchor is the last view-changing event, found by one latest-sequence lookup plus a bounded O(w) trailing-event read that skips delivery bookkeeping and telemetry; it falls back to the latest sequence when the window holds no view-changing event.
 The most recent refusal is restored from the already loaded replay delta (O(r) worst case) and cached for O(1) retrieval in state views.
 A subsequent emitted signal clears it; a new refusal replaces it without adding events.
 Pending judgment approvals use the existing approval read path; its history cost is not claimed to be constant.
