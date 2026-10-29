@@ -111,6 +111,7 @@ Pointers target legacy signal payload fields, including a declared `/contextUpda
 They must match the signal's manifest declaration and media type.
 The map accepts at most 32 bindings; field ancestors must be objects and bound fields must not already appear in the inline payload.
 Bindings cannot overlap or target prototype properties.
+AXI reports malformed `--evidence` JSON or bindings, and malformed `read` receipts, as `VALIDATION_ERROR` before opening the run.
 Import descriptors are transport metadata; only `{$evidence: receipt}` values enter the signal's canonical payload.
 Existing `emit @payload.json` still means a file containing signal JSON, and performs no automatic evidence import.
 JSON evidence file bytes must already be canonical; the transport never rewrites a draft during import.

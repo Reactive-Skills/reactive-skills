@@ -275,6 +275,32 @@ describe.each(['axi', 'mcp'] as const)('%s evidence interface', transport => {
     finally { engine.close(); }
   });
 
+  it.runIf(transport === 'axi')('classifies malformed evidence JSON and bindings as validation errors before opening the run', async () => {
+    const malformed = [
+      ['--evidence', '{bad'],
+      ['--evidence'],
+      ['--evidence', JSON.stringify({ draft: { path: 'draft with spaces.txt', media_type: 'text/plain' } })],
+      ['--evidence', JSON.stringify({ '/draft': { path: 'draft with spaces.txt', media_type: 'image/png' } })],
+    ];
+    for (const flags of malformed) {
+      const output = await emitCommand([skillDir, 'CHECK', '{}', '--job', 'transport-run', ...flags, '--idempotency-key', 'bad-evidence']);
+      expect(output).toContain('Invalid --evidence JSON');
+      expect(output).toContain('code: VALIDATION_ERROR');
+      expect(output).not.toContain('Verified draft');
+    }
+    const receipt = JSON.parse(await importEvidence()).reference;
+    for (const input of ['{bad', JSON.stringify({ ...receipt, sha256: 'short' })]) {
+      const { evidenceCommand } = await import('../../src/commands/evidence.js');
+      expect(JSON.parse(await evidenceCommand([skillDir, 'read', input, '--job', 'transport-run'])))
+        .toEqual({ error: 'Invalid receipt JSON: pass the reference object returned by evidence import', code: 'VALIDATION_ERROR' });
+    }
+    const engine = inspectRun();
+    try {
+      expect(engine.getCurrentState()).toBe('REVIEW');
+      expect(engine.getEventStore().getEventByIdempotencyKey('bad-evidence')).toBeFalsy();
+    } finally { engine.close(); }
+  });
+
   it('refuses damaged registered bytes through the core resolver', async () => {
     const receipt = JSON.parse(await importEvidence()).reference;
     const engine = inspectRun();

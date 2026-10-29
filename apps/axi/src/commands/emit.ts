@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { FSMEngine, submitEvidenceSignal, type EvidenceReceipt } from '@reactive-skills/runtime';
+import { EvidenceBindingsSchema, FSMEngine, submitEvidenceSignal, type EvidenceBindings, type EvidenceReceipt } from '@reactive-skills/runtime';
 import { AxiError, storeOpenError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
@@ -7,6 +7,7 @@ import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.j
 
 
 const USAGE_SUGGESTION = 'Usage: reactive-skills-axi emit <skill> <signal> \'{"key":"value"}\' or \'@filepath.json\'';
+const EVIDENCE_USAGE_SUGGESTION = 'Usage: --evidence \'{"/field":{"path":"file.txt","media_type":"text/plain"}}\' or \'{"/field":{"reference":<receipt>}}\'';
 
 /**
  * Splits emit arguments so a flag is never read as the skill, event ID, or signal.
@@ -56,6 +57,23 @@ function parsePayload(input: string): Record<string, unknown> {
       fromFile ? 'Invalid JSON payload file: ' + input.slice(1) : 'Invalid JSON payload',
       'VALIDATION_ERROR', [USAGE_SUGGESTION]
     );
+  }
+}
+
+/**
+ * Classify malformed evidence bindings before any engine or store is opened.
+ * # Performance & Risk Budget
+ * - Tier: P0 (<5ms target)
+ * - Complexity: O(evidence argument bytes)
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+function parseEvidence(input: string): EvidenceBindings {
+  try {
+    return EvidenceBindingsSchema.parse(JSON.parse(input));
+  } catch {
+    throw new AxiError('Invalid --evidence JSON', 'VALIDATION_ERROR', [EVIDENCE_USAGE_SUGGESTION]);
   }
 }
 
@@ -221,6 +239,7 @@ export async function emitCommand(args: string[]): Promise<string> {
     }
 
     const payload = parsePayload(payloadArgStr);
+    const bindings = evidence === undefined ? undefined : parseEvidence(evidence);
 
     const workspaceDir = resolveWorkspaceDir(skillPath);
     const engine = new FSMEngine({ 
@@ -240,8 +259,8 @@ export async function emitCommand(args: string[]): Promise<string> {
       }
 
       const metadata = { source: 'cli', causationId: eventId, idempotencyKey };
-      const submission = evidence === undefined ? undefined
-        : await submitEvidenceSignal(engine, signalName, payload, JSON.parse(evidence), metadata);
+      const submission = bindings === undefined ? undefined
+        : await submitEvidenceSignal(engine, signalName, payload, bindings, metadata);
       const result = submission?.result ?? await engine.handleSignal(signalName, payload, metadata);
 
       return renderEmitOutput(engine, result, skillName, signalName, jobId, submission?.evidence);
