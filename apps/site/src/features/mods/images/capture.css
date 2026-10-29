@@ -1,0 +1,15 @@
+@font-face { font-family: CaptureMono; src: url('data:font/ttf;base64,FONT_DATA') format('truetype'); }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #0e100f; color: #e7e9e4; }
+body { width: 840px; padding: 18px; }
+.window { border: 1px solid #3b423c; border-radius: 12px; overflow: hidden; background: #161917; }
+header { display: flex; align-items: center; gap: 16px; padding: 15px 22px; border-bottom: 1px solid #2a2f2b; background: #1c201d; font: 12px CaptureMono, monospace; color: #a3aaa2; }
+.dots { display: flex; gap: 6px; }
+.dots i { display: block; width: 6px; height: 6px; border-radius: 50%; background: #5c655d; }
+.title { flex: 1; color: #e7e9e4; }
+.example { color: #a3aaa2; }
+pre { margin: 0; padding: 25px 22px 29px; font: 13px/1.9 CaptureMono, monospace; font-variant-ligatures: none; white-space: pre-wrap; overflow-wrap: anywhere; }
+.muted { color: #a3aaa2; }
+.signal { color: #9bff6a; }
+.current { color: #91baff; }
+.bar { color: #9bff6a; }

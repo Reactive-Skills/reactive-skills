@@ -1,0 +1,45 @@
+{
+  "source": {
+    "repository": "https://github.com/Reactive-Skills/skills",
+    "commit": "1fe016bef539e548a60b4c765393ed20f30aea06",
+    "manifest": "release-notes/skill.yaml"
+  },
+  "description": "Deterministic demonstration run through the real runtime and bq-vitals hooks. Evidence, clock intervals and session usage are example data; no release is published.",
+  "start": "2026-10-01T12:00:00.000Z",
+  "runId": "019a1234-0000-7000-8000-000000000001",
+  "usage": {
+    "context": { "tokens": 42000, "window": 200000, "percent": 21 },
+    "cost": { "usd": 0.18 },
+    "rateLimits": [
+      { "kind": "five_hour", "percentUsed": 4 },
+      { "kind": "seven_day", "percentUsed": 9 }
+    ]
+  },
+  "steps": [
+    {
+      "signal": "INTAKE_READY", "dwellMs": 8000, "state": "COLLECT",
+      "payload": { "repository": "https://github.com/Reactive-Skills/reactive-skills", "release_version": "demo", "scope_refs": ["demo-base..demo-head"] }
+    },
+    {
+      "signal": "COLLECTION_COMPLETE", "dwellMs": 16000, "state": "CLASSIFY",
+      "payload": { "commits": [{ "message": "fix: clarify command output" }] }
+    },
+    {
+      "signal": "ENTRIES_CLASSIFIED", "dwellMs": 10000, "state": "COMPOSE",
+      "payload": { "changelog_entries": [{ "category": "Fixed", "text": "Clarify command output." }] }
+    },
+    {
+      "signal": "NOTES_COMPOSED", "dwellMs": 24000, "state": "VALIDATE",
+      "payload": { "release_notes": "## Fixed\n\n- Clarify command output.\n" }
+    },
+    {
+      "signal": "VALIDATION_PASSED", "dwellMs": 12000, "state": "REVIEW",
+      "payload": { "exit_code": 0 }
+    }
+  ],
+  "views": [
+    { "name": "status-line", "afterStep": 4, "liveMs": 6000, "title": "Status line" },
+    { "name": "flow", "afterStep": 4, "liveMs": 6000, "title": "/flow" },
+    { "name": "flow-plan", "afterStep": 5, "liveMs": 4000, "title": "/flow-plan" }
+  ]
+}

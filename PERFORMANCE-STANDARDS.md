@@ -553,6 +553,16 @@ Documentation
 
 ## Performance Annotations
 
+### Offline mods image capture
+
+`apps/site/src/features/mods/images/capture.mjs` is a P3 authoring operation, outside the site request path.
+Local fixture recording, mod formatting and HTML preparation target <2000ms per operation, with O(e + m + b) work in the bounded demo events, pinned manifest and output bytes.
+Browser navigation, font readiness and capture are external waits with a 60-second timeout per command; this is a timeout, not a measured latency claim.
+The three PNGs are rendered at 2× (1680 pixels wide), optimized with the existing Sharp dependency and each capped at 250 kB by the site tests.
+The bundled font, host adapter and capture dependencies are authoring inputs; the site imports only the PNGs and adds no client capture code.
+The static mods page remains P3 with O(m + f + i) rendering in mods, features and images.
+Capture helpers target CC <=20, branch coverage >=60% and CRAP <=30; these are targets, not measured coverage claims.
+
 Document performance and change risk inline in TypeScript source:
 
 ```typescript
