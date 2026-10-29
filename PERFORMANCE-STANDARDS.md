@@ -32,6 +32,13 @@ Reactive Skills Architecture (RSA) introduces deterministic structure to autonom
 
 ## Complexity Budget
 
+### Release packaging verification
+
+The release entrypoint regression is a P3 offline check after the normal package builds.
+It packs both public packages into temporary directories and validates declared entry files against the package manager's actual archive file list.
+Metadata validation costs O(f * e + d * b) in packed files f, entry count e, declaration depth d and declaration bytes b, with a <2000ms local validation target excluding package-manager startup and archive creation.
+No packaging work runs in the runtime or CLI request paths.
+
 ### Payload Contracts and Guard Inspection
 
 Authored `payload_contract` validation and rendering are P0 (<5ms for bounded declarations), with O(f + b) work for f declared fields and b selected value or expression bytes.

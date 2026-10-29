@@ -2,12 +2,12 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.19.0:**
-> - The runtime exports the static vetting rule set behind `reactive-skills-axi vet`, and `inspectGuardModuleFormat` for guard module-format checks.
-> - Judgments accept `context_paths` and `include_payload`; the new `judgment.context_paths` capability lets a skill refuse older runtimes.
-> - Legacy mixed run stores migrate, and a store that cannot open fails with `EVENT_STORE_OPEN_FAILED` and a recovery command instead of leaving an orphan job.
+> 🚀 **What's New in v0.20.0:**
+> - Breaking 0.x minor release: default MCP state delivery removes `promptSlice` and makes full recorded context opt-in; negotiated compact views and continuation envelopes add complete current-state delivery.
+> - Optional local evidence, judgment deadlines, payload selection and payload contracts retain existing guards and approval requirements.
+> - New ledgers persist accepted context patches for replay; older ledgers need valid snapshots to recover unrecorded hook assignments.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.19.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Breaking Changes and Migration Notes](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.20.0.md) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

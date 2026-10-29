@@ -7,6 +7,7 @@
 | `@reactive-skills/runtime` | v0.17.2 | ✅ Published |
 | `@reactive-skills/axi` | v0.17.2 | ✅ Published |
 | `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.18.0 | ✅ Published (`docs/specs/0020-v0.18.0-release-preparation.md`) |
+| `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.20.0 | 🧪 Breaking 0.x minor release candidate; breaking changes and migration checklist in `docs/releases/v0.20.0.md` |
 | `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.19.0 | 🧪 Candidate prepared (`docs/specs/0022-v0.19.0-release-preparation.md`) |
 | `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.17.3 | ✅ Published (`docs/specs/0018-v0.17.3-release-preparation.md`) |
 
@@ -118,7 +119,7 @@ Local validation after the MCP state-response integration passed both package bu
 | R2c | v0.17.3 | Agent-facing credentials reason (stop and ask the user, never unset the key) | ✅ Published |
 | R3a | v0.18.0 | #22 part 2 human approval and self-report grant (ADR 0012, `docs/specs/0019-human-approval.md`), #47, #32 | ✅ Published |
 | R3b | v0.19.0 | #10, #42, #44, #45, #24, #43, `vet` (#33 part), site fixes; #29, #39, #65 items 2-3 still open | 🧪 Candidate prepared (`docs/specs/0022-v0.19.0-release-preparation.md`) |
-| R4 | v0.20.0 | #14, #26 | ⏳ Queued |
+| R4 | Unassigned | #14, #26 | ⏳ Queued; v0.20.0 instead carries the runtime/transport candidate |
 | R5 | v0.21.0 | #31 | ⏳ Queued |
 | R6 | v0.22.0 | #34 phase 1, #33 trust record, #40 | ⏳ Queued |
 | R7 | v0.23.0 | #34 sandbox default, #33 strict mode | ⏳ Queued |
@@ -170,3 +171,23 @@ Local validation after the MCP state-response integration passed both package bu
 - Added `apps/axi/tests/commands/continuation-reads.test.ts` for bounded access after snapshot/replay, run aliases and skill paths with competing-run events, explicit causation, scoped refusal context, and the pinned public TDD continuation/terminal-resume path; updated state/emit test doubles for bounded store access without changing their guarantee assertions.
 - Updated `PERFORMANCE-STANDARDS.md` with indexed lookup complexity and isolated measured timings; cold replay and open verification remain separate costs.
 - Verified both package builds, 958 runtime tests, 385 AXI tests with one existing skip, documentation invariants and public prose gates; exact transport-byte assertions remain unchanged, with five expected legacy output sizes increased by 22 bytes for the revised recovery hint.
+
+## v0.20.0 release preparation
+
+The release preparation command advanced the root, runtime, AXI and site package manifests to `0.20.0`; individual skill versions remain unchanged.
+`docs/releases/v0.20.0.md` records default MCP state changes, opt-in compact/continuation and inspection shapes, strict-fetch accounting, SDK keyed replay results and legacy snapshot recovery requirements.
+The runtime and AXI changelogs carry the same release entry; `scripts/sync-changelog.js` synchronizes the root changelog and generated site release history.
+The root, AXI and runtime README release banners describe the breaking 0.x minor release and link its migration notes.
+The candidate requires both package builds, runtime and AXI suites (including documentation/prose checks), site tests, final runtime archive inspection and `RELEASE_TAG=v0.20.0 node scripts/verify-release-tag.js` before submission.
+Publication remains a separate tag push after the release pull request is merged.
+
+Release packaging inspection confirmed AXI is documented and consumed as a CLI/MCP package, with no root library source or package API imports in repository code/tests/docs.
+Removed its dangling `main` / `types` declarations, documented the CLI-only boundary in the AXI README and release notes, and retained both CLI binary declarations.
+`packages/runtime/tests/package-entrypoints.test.ts` packs each public package into a temporary directory and checks all declared main/types/typings/module/exports/bin files against actual packed contents after the normal builds.
+The table-driven regression first failed for AXI's missing `dist/index.js` before the metadata correction; runtime entrypoint validation already passed.
+
+Final candidate verification passed on Node 22.23.3: both package builds, 994 runtime tests, 386 AXI tests (one existing skip), 61 site tests, documentation/prose gates and the production site build.
+Both final package archives include the current README/changelog and every declared entry file; the AXI archive resolves its runtime dependency to `0.20.0`.
+`RELEASE_TAG=v0.20.0 node scripts/verify-release-tag.js` passes; no release tag was created or pushed during preparation.
+
+`docs/scope/backlog-release-roadmap.md` keeps the queued workspace-binding work unassigned rather than attributing that unimplemented scope to the v0.20.0 candidate.
