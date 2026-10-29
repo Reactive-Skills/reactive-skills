@@ -11,7 +11,7 @@ const VERSION = packageMetadata.version ?? 'unknown';
 const DESCRIPTION = 'AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format';
 
 export const TOP_HELP = `usage: reactive-skills-axi [command] [args] [flags]
-commands[24]:
+commands[25]:
   (none)=home, init, upgrade, inspect, validate, vet, preflight, capabilities, context-route, bootloader, events, invoke, state, emit, evidence, approve, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard
 flags[2]:
   --help, --version
