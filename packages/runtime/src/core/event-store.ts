@@ -6,7 +6,6 @@ import { EventContext, SignalEvent } from './types.js';
 import { LocalEvidenceStore, type EvidenceStore, type EvidenceBundle, type EvidenceReceipt } from './evidence-store.js';
 import { EvidenceResolver, type EvidenceDeclarations } from './evidence-resolver.js';
 import { JsonlCheckpoint, LedgerBoundary, loadCheckpoint, publishCheckpoint, verifyCheckpoint } from './jsonl-checkpoint.js';
-import { isDeepStrictEqual } from 'node:util';
 
 export const EVENT_STORE_SCHEMA_VERSION = 3;
 
@@ -207,8 +206,7 @@ export class SQLiteStorageDriver {
       INSERT OR IGNORE INTO ledger_counter (id, last_seq) VALUES (1, 0);
       CREATE TABLE IF NOT EXISTS ledger_identity (
         id INTEGER PRIMARY KEY CHECK (id = 1),
-        generation TEXT NOT NULL,
-        mirror_initialized INTEGER NOT NULL DEFAULT 0
+        generation TEXT NOT NULL
       );
       INSERT OR IGNORE INTO ledger_identity (id, generation) VALUES (1, lower(hex(randomblob(16))));
       CREATE TABLE IF NOT EXISTS projections (
@@ -295,7 +293,7 @@ export class SQLiteStorageDriver {
       this.createCurrentTables();
 
       const perRunSeq = new Map<string, number>();
-      this.db.exec('UPDATE ledger_identity SET generation = lower(hex(randomblob(16))), mirror_initialized = 1 WHERE id = 1');
+      this.db.exec('UPDATE ledger_identity SET generation = lower(hex(randomblob(16))) WHERE id = 1');
       const insert = this.db.prepare(`
         INSERT INTO events (
           id, event_id, ledger_seq, seq, timestamp, occurred_at, type, event_type,
@@ -526,17 +524,10 @@ export class SQLiteStorageDriver {
    * - Branch Coverage: target >= 80%
    * - CRAP Score: target <= 15.0
    */
-  public getLedgerBoundary(): LedgerBoundary & { mirrorInitialized: number } {
-    const row = this.db.prepare(`SELECT generation,
+  public getLedgerBoundary(): LedgerBoundary {
+    return this.db.prepare(`SELECT generation,
       COALESCE((SELECT ledger_seq FROM events ORDER BY ledger_seq DESC LIMIT 1), 0) AS ledgerSeq,
-      (SELECT MAX(version) FROM schema_version) AS schema,
-      mirror_initialized AS mirrorInitialized FROM ledger_identity WHERE id = 1`).get() as LedgerBoundary & { mirrorInitialized: number };
-    return row;
-  }
-
-  /** Persistent bootstrap marker: an intentionally cleared canonical store must not reimport its old mirror. */
-  public markMirrorInitialized(): void {
-    this.db.exec('UPDATE ledger_identity SET mirror_initialized = 1 WHERE id = 1 AND mirror_initialized = 0');
+      (SELECT MAX(version) FROM schema_version) AS schema FROM ledger_identity WHERE id = 1`).get() as LedgerBoundary;
   }
 
   public getEventCount(runId = this.defaultRunId): number {
@@ -715,7 +706,7 @@ export class SQLiteStorageDriver {
       this.db.prepare('DELETE FROM state_snapshots WHERE run_id = ?').run(this.defaultRunId);
       this.db.prepare('DELETE FROM projection_watermarks WHERE run_id = ?').run(this.defaultRunId);
       this.db.prepare('DELETE FROM runs WHERE run_id = ?').run(this.defaultRunId);
-      this.db.exec('UPDATE ledger_identity SET generation = lower(hex(randomblob(16))), mirror_initialized = 1 WHERE id = 1');
+      this.db.exec('UPDATE ledger_identity SET generation = lower(hex(randomblob(16))) WHERE id = 1');
       this.db.exec('COMMIT');
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch { /* transaction already closed */ }
@@ -736,7 +727,7 @@ export class SQLiteStorageDriver {
     this.db.exec('BEGIN IMMEDIATE');
     try {
       this.db.exec('DELETE FROM events; DELETE FROM projections; DELETE FROM state_snapshots; DELETE FROM projection_watermarks; DELETE FROM run_counters; DELETE FROM runs; UPDATE ledger_counter SET last_seq = 0 WHERE id = 1;');
-      this.db.exec('UPDATE ledger_identity SET generation = lower(hex(randomblob(16))), mirror_initialized = 1 WHERE id = 1');
+      this.db.exec('UPDATE ledger_identity SET generation = lower(hex(randomblob(16))) WHERE id = 1');
       this.db.exec('COMMIT');
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch { /* transaction already closed */ }
@@ -948,7 +939,7 @@ export class EventStore {
       }
       const latest = this.sqliteDriver.getLatestSequence(this.eventContext.run_id);
       const boundary = this.readOnly ? null : this.sqliteDriver.getLedgerBoundary();
-      if (latest > 0 || boundary?.mirrorInitialized === 1 || (boundary && boundary.ledgerSeq > 0)) {
+      if (latest > 0 || (boundary && boundary.ledgerSeq > 0)) {
         this.seqCounter = latest;
         this.events = this.sqliteDriver.getRecentEvents(this.maxInMemoryEvents, this.eventContext.run_id);
         if (!this.readOnly) this.verifyJsonlOnOpen();
@@ -1091,33 +1082,18 @@ export class EventStore {
     }
   }
 
-  /**
-   * Decode the full projection only for import or repair, retaining malformed-line evidence.
-   * # Performance & Risk Budget
-   * - Tier: P3 (< 2000ms)
-   * - Complexity: O(total bytes + N) time and memory
-   * - Cyclomatic Complexity (CC): 7
-   * - Branch Coverage: target >= 60%
-   * - CRAP Score: target <= 30.0
-   */
-  private readJsonlProjection(): { events: SignalEvent[]; malformed: boolean } {
+  private readAllJsonlEvents(): SignalEvent[] {
+    if (!this.storagePath) return [];
     const events: SignalEvent[] = [];
-    let malformed = false;
     for (const jsonlPath of this.getJsonlPaths()) {
       if (!fs.existsSync(jsonlPath)) continue;
       const lines = fs.readFileSync(jsonlPath, 'utf8').split('\n').filter(line => line.trim());
       for (const line of lines) {
-        try {
-          const event = JSON.parse(line);
-          if (event && typeof event.id === 'string') events.push(event as SignalEvent);
-          else malformed = true;
-        } catch { malformed = true; }
+        try { events.push(JSON.parse(line) as SignalEvent); } catch { /* skip incomplete or malformed line */ }
       }
     }
-    return { events, malformed };
+    return events;
   }
-
-  private readAllJsonlEvents(): SignalEvent[] { return this.readJsonlProjection().events; }
 
   private deduplicateById(events: SignalEvent[]): SignalEvent[] {
     const byId = new Map<string, SignalEvent>();
@@ -1259,28 +1235,21 @@ export class EventStore {
   }
 
   /**
-   * Full canonical diff; malformed, duplicate, foreign or changed rows require a rewrite.
+   * Full ID diff up to a captured boundary; appends missing rows and rewrites only for a gap below the mirrored max.
    * # Performance & Risk Budget
    * - Tier: P3 (< 2000ms)
    * - Complexity: O(N + bytes) time and memory across all runs and segments
-   * - Cyclomatic Complexity (CC): 8
+   * - Cyclomatic Complexity (CC): 2
    * - Branch Coverage: target >= 60%
    * - CRAP Score: target <= 30.0
    */
   private reconcileJsonlUnlocked(untilLedgerSeq?: number): number {
-    const { events: jsonlEvents, malformed } = this.readJsonlProjection();
+    const jsonlEvents = this.readAllJsonlEvents();
     const jsonlIds = new Set(jsonlEvents.map(event => event.id));
     const maxMirroredSeq = jsonlEvents.reduce((max, event) => Math.max(max, event.ledger_seq || 0), 0);
-    const canonical = this.sqliteDriver!.queryEvents({ allRuns: true, untilLedgerSeq });
-    const byId = new Map(canonical.map(event => [event.id, JSON.parse(JSON.stringify(event))]));
-    const invalid = jsonlIds.size !== jsonlEvents.length || jsonlEvents.some((event, index) =>
-      !isDeepStrictEqual(event, byId.get(event.id)) || (index > 0 && (event.ledger_seq || 0) <= (jsonlEvents[index - 1].ledger_seq || 0)));
-    const missing = canonical.filter(event => !jsonlIds.has(event.id));
+    const missing = this.sqliteDriver!.queryEvents({ allRuns: true, untilLedgerSeq }).filter(event => !jsonlIds.has(event.id));
     // Appending a gap row below the mirrored maximum would lower the tail watermark the per-append mirror trusts.
-    if (invalid || malformed || missing.some(event => (event.ledger_seq || 0) < maxMirroredSeq)) {
-      this.rewriteJsonlFromSqliteUnlocked(untilLedgerSeq);
-      return missing.length;
-    }
+    if (missing.some(event => (event.ledger_seq || 0) < maxMirroredSeq)) { this.rewriteJsonlFromSqliteUnlocked(untilLedgerSeq); return missing.length; }
     return this.appendJsonlLines(missing);
   }
 
@@ -1334,7 +1303,6 @@ export class EventStore {
   private certifyJsonlUnlocked(boundary: LedgerBoundary, previous?: JsonlCheckpoint): void {
     const current = this.sqliteDriver!.getLedgerBoundary();
     if (current.generation !== boundary.generation) throw new Error('Ledger generation changed during repair');
-    if (current.mirrorInitialized === 0) this.sqliteDriver!.markMirrorInitialized();
     publishCheckpoint(`${this.storagePath!}.checkpoint.json`, this.getJsonlPaths(), boundary, previous);
   }
 
