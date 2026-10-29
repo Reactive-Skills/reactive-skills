@@ -1,3 +1,29 @@
+## [Unreleased]
+
+- feat(runtime)!: **Breaking response content for manifests opting into `payload_contract`.** Compact transition contracts and legacy XML exit conditions show authored typed payload requirements in place of inline guard source; opaque legacy functions gain inspection guidance.
+  Structural failures refuse with field details and a recovery hint, while valid payloads reach the unchanged guard evaluator and retain ancestor fall-through.
+  New `state.payload_contracts` capability and SDK schema/inspection exports; see `docs/payload-contracts.md` for validation limits and measured costs.
+- feat(inspect)!: **Breaking opt-in response shape.** MCP `reactive_inspect` with `state` and `signal`, and AXI `inspect --state --signal`, return one owning transition with exact guard expressions and optional `guard_source` module text.
+  Targeted inspection opens no run and executes no guard code; omitting selectors preserves existing whole-skill output.
+
+- feat(mcp)!: **Breaking response shape for clients selecting `return_view: "compact-v1"`.** `reactive_emit_signal` and `reactive_respond_human` return `{receipt, replayed, result_view, view}` after negotiating `state.continuation_v1`.
+  Omitting the option preserves the existing receipt shape.
+  The complete current view follows lifecycle signals, child invocation and projections; keyed retries retain the original receipt and anchor without adding a delivery or transition.
+  Strict continuation delivery shares the bounded compaction-refetch accounting with state fetches; see `docs/mcp-continuation.md`.
+- feat(runtime)!: **Breaking response shape for SDK callers of `FSMEngine.handleSignal`.** Its result gains `replayed: true` when an existing keyed submission answered the call instead of a new evaluation; fresh results omit the field.
+  Legacy MCP receipts are unchanged.
+
+- fix(mcp)!: **Breaking for external MCP clients.** `reactive_state` returns compact JSON with the state prompt once in `formattedXml` and only `scopedContext`; the duplicate `promptSlice` field is removed and the full recorded `context` is omitted by default.
+  Clients that need the full recorded context must pass `include_full_context: true`; read the state prompt from `formattedXml`.
+  Active-state `reactive_context_prepare` also no longer returns `promptSlice`.
+- fix(runtime): core `slice_tokens_est` uses UTF-8 XML bytes rather than UTF-16 character length.
+  MCP state responses expose a separate `metrics.slice_tokens_est` based on the complete serialized response text, including escaping and metadata, at four UTF-8 bytes per token.
+  These are estimates, not tokenizer measurements; MCP serialization also updates the live engine's latest slice metrics for its next transition.
+  Without transport serialization, core estimates remain XML-only; MCP estimates exclude JSON-RPC framing and tool definitions.
+- feat(runtime): judgments accept an opt-in `total_timeout_ms` that bounds adapter selection and the whole fallback cascade, plus `retry_policy.max_attempts_per_adapter`; new `judgment.total_deadline` capability.
+  `JudgmentResult.latencyMs` now covers the entire cascade even when unevaluable, and `attempts` records per-attempt timing, cancellation cause and breaker state; see `docs/specs/0023-judgment-deadlines.md`.
+  Without `total_timeout_ms`, cascade behavior is unchanged.
+
 
 ## [0.19.0] - 2026-10-06
 

@@ -32,6 +32,8 @@ reactive-skills/                          # Repo root
 │       │   │   ├── event-store.ts        # Append-only JSONL + SQLite event ledger
 │       │   │   ├── jsonl-checkpoint.ts   # Skill-wide byte certificates and chunk verification
 │       │   │   ├── guard-evaluator.ts    # node:vm sandbox invariant evaluator
+│       │   │   ├── payload-contract.ts   # Authored payload schema, rendering and read-only guard inspection
+│       │   │   ├── payload-guard.ts      # Structural preflight before unchanged guard enforcement
 │       │   │   ├── guard-module-format.ts # Static ESM/CommonJS check for guardFunction files
 │       │   │   ├── judgment-engine.ts    # Decoupled snap-on judgment engine & circuit breaker
 │       │   │   ├── judgment-thresholds.ts # Pure threshold resolution & accept/escalate/reject bands

@@ -162,6 +162,14 @@ Print the statechart, transitions, and guards for a reactive skill.
 npx -y @reactive-skills/axi inspect skills/my-skill
 ```
 
+Inspect one owning transition and its exact guard source without opening a run:
+
+```bash
+npx -y @reactive-skills/axi inspect skills/my-skill --state WORK.CHECK --signal TEST_RAN
+```
+
+Optional authored payload contracts and their validation limits are described in [payload contracts](../../docs/payload-contracts.md).
+
 Inspect judgment inputs without opening a run or contacting adapters:
 
 ```bash

@@ -8,6 +8,24 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "vUnreleased",
+    "heading": "vUnreleased",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "feat(runtime)!: **Breaking response content for manifests opting into `payload_contract`.** Compact transition contracts and legacy XML exit conditions show authored typed payload requirements in place of inline guard source; opaque legacy functions gain inspection guidance.",
+          "feat(inspect)!: **Breaking opt-in response shape.** MCP `reactive_inspect` with `state` and `signal`, and AXI `inspect --state --signal`, return one owning transition with exact guard expressions and optional `guard_source` module text.",
+          "feat(mcp)!: **Breaking response shape for clients selecting `return_view: \"compact-v1\"`.** `reactive_emit_signal` and `reactive_respond_human` return `{receipt, replayed, result_view, view}` after negotiating `state.continuation_v1`.",
+          "feat(runtime)!: **Breaking response shape for SDK callers of `FSMEngine.handleSignal`.** Its result gains `replayed: true` when an existing keyed submission answered the call instead of a new evaluation; fresh results omit the field.",
+          "fix(mcp)!: **Breaking for external MCP clients.** `reactive_state` returns compact JSON with the state prompt once in `formattedXml` and only `scopedContext`; the duplicate `promptSlice` field is removed and the full recorded `context` is omitted by default.",
+          "fix(runtime): core `slice_tokens_est` uses UTF-8 XML bytes rather than UTF-16 character length.",
+          "feat(runtime): judgments accept an opt-in `total_timeout_ms` that bounds adapter selection and the whole fallback cascade, plus `retry_policy.max_attempts_per_adapter`; new `judgment.total_deadline` capability."
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-19-0",
     "heading": "v0.19.0 (2026-10-06)",
     "blocks": [
