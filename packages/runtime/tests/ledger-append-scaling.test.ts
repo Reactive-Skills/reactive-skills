@@ -132,6 +132,24 @@ describe('ledger append scaling', () => {
     expect(readJsonlIds(storeDir)).toEqual(readSqliteIds(storeDir));
     reopened.close();
   });
+
+  it('keeps mirroring every event in a long-lived store after the JSONL tail was cut mid-line', () => {
+    const workspaceDir = tempWorkspace();
+    const store = new EventStore({ workspaceDir, skillId: 'cut', runId: createSortableId(), enableSqlite: true });
+    for (let index = 0; index < 5; index++) store.append('STEP', { index });
+    const storeDir = path.join(workspaceDir, '.reactive', 'skills', 'cut');
+    const jsonlPath = path.join(storeDir, 'events.jsonl');
+    fs.truncateSync(jsonlPath, fs.statSync(jsonlPath).size - 25);
+
+    store.append('AFTER_CUT_1', {});
+    store.append('AFTER_CUT_2', {});
+    // The interrupted fragment stays behind as an unparseable line; every SQLite event must still parse from JSONL.
+    const parsedIds = fs.readFileSync(jsonlPath, 'utf8').split('\n').filter(Boolean)
+      .flatMap(line => { try { return [JSON.parse(line).id as string]; } catch { return []; } });
+    expect(new Set(parsedIds)).toEqual(new Set(readSqliteIds(storeDir)));
+    expect(parsedIds).toHaveLength(new Set(parsedIds).size);
+    store.close();
+  });
 });
 
 describe('transition_total_ms', () => {
