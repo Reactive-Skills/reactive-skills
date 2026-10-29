@@ -219,7 +219,7 @@ The view contains one raw rendered prompt and one scoped context object; full-co
 State view building and rendering target P0 (< 5ms for bounded state content), CC <= 8 per helper, branch coverage >= 90%, and CRAP <= 10.
 Building costs O(h² + b + a + w): hierarchy depth h, view/contract bytes b, existing approval-request/decision query results a, and the bounded trailing-event window w.
 Rendering is O(b), preserves required values without truncation, and adds no events or projections.
-The sequence anchor is the last view-changing event, found by one latest-sequence lookup plus a bounded O(w) trailing-event read that skips delivery bookkeeping and telemetry; it falls back to the latest sequence when the window holds no view-changing event.
+The sequence anchor is the last view-changing event, found by one latest-sequence lookup plus a bounded O(w) trailing-event read that skips delivery bookkeeping and telemetry; when the window holds no view-changing event it falls back to the latest event sequence, so repeated telemetry can advance it in non-strict runs. The anchor is informational and does not affect guards or strict counting.
 The most recent refusal is restored from the already loaded replay delta (O(r) worst case) and cached for O(1) retrieval in state views.
 A subsequent emitted signal clears it; a new refusal replaces it without adding events.
 Pending judgment approvals use the existing approval read path; its history cost is not claimed to be constant.

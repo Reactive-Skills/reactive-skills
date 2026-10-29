@@ -488,7 +488,8 @@ export class FSMEngine {
   }
 
   /**
-   * Sequence of the event that last changed the state view; delivery bookkeeping and telemetry do not change it.
+   * Sequence of the event that last changed the state view; delivery bookkeeping and telemetry are ignored within the bounded trailing window; when no view-changing event remains in that window, the anchor falls back to the latest event sequence and can advance in non-strict runs.
+   * Informational only: guards and strict counting do not use it.
    * # Performance & Risk Budget
    * - Tier: P0 (< 5ms)
    * - Complexity: O(w), one latest-sequence lookup plus a bounded trailing-event read
