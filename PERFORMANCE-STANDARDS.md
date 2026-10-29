@@ -77,8 +77,14 @@ Inline-only guard, replay, snapshot and projection paths do not open a registry.
 |-----------|-----------------|----------------------|
 | `LocalEvidenceStore.importFile` / `registerJson` | P1, <25ms target for a warm local file up to 1 MiB | O(bytes + source path depth), plus O(k log k) for sorting JSON object keys; default 1 MiB and configurable hard ceiling 16 MiB per blob |
 | `EvidenceStore.read` / declared field resolution | P1, <25ms target for up to 1 MiB per selected field | O(selected bytes + pointer depth); verify registration, SHA-256, length, media type and encoding on each read |
+| AXI/MCP evidence import, explicit read and `submitEvidenceSignal` | P2 cold bootstrap <100ms; P1 <25ms local evidence work per <=1 MiB field, excluding guards/judgments | O(cold replay delta + selected evidence bytes + pointer traversal/copies); at most 32 bindings, fixed 1 MiB import limit per file in the default transport store |
 | Replay / snapshot evidence verification | P2, <100ms target for bounded local evidence | O(replayed events + selected evidence bytes); no mutable source reads or model calls |
 | `exportRun` / `exportBundle` / `restoreBundle` | P3, <2000ms target for bounded bundles | O(events + all registered bytes); with declarations, bundles registrations referenced by committed events/snapshots and verifies unreferenced ones only to report damage in `skipped`; without declarations, bundles and verifies every registration |
+
+Transport binding metadata stays outside task JSON and does not require additional event-ledger scans.
+A folded import-and-emit uses one interface call; standalone registration then emit uses two, while explicit content read adds another call only when requested.
+End-to-end latency must include bootstrap, registration, hashing, persistence, projections and transport overhead for the chosen flow; the per-field budget does not cap a multi-field submission's total time.
+Keyed retries consult the existing indexed signal record before reopening an import source, then retain core idempotency semantics.
 
 These targets are budgets, not measured end-to-end model savings or guaranteed filesystem latency.
 Hashing, parsing, copying, directory checks, atomic publication and file/directory synchronization add real storage cost to a reference submission.
@@ -86,6 +92,15 @@ Each reference occurrence is verified; there is no unverified cross-turn content
 Large evidence or repeated references can exceed the ordinary signal/projection latency target; measure evidence IO separately from P0 guard bookkeeping.
 Registration uses a bounded descriptor read, a synced temporary copy and non-overwriting publication; abandoned temporary files are ignored and no retained blobs are garbage-collected.
 Export scoping and failure rules are owned by [docs/evidence-registry.md](docs/evidence-registry.md).
+
+### Accepted context recovery
+
+Initialization and accepted transitions record their effective `contextUpdates` patch in the existing ledger event, including declarative lifecycle assignments in execution order.
+Patch construction is P1 bookkeeping (<25ms target), O(d² + a + k + b), where d is hierarchy depth, a is the affected hook count, k is declared signal context keys and b is copied assignment bytes.
+It adds no ledger rows or history queries; the serialized patch adds its actual bytes to the existing append.
+Rehydration remains P2 (<100ms target), O(delta events + context patch bytes + selected evidence bytes), and applies committed patches without executing hooks, guards, signals or projections.
+Events predating recorded patches replay only their accepted signal updates; the installed manifest cannot supply authoritative historical hook assignments.
+Ledgers written before recorded patches therefore rely on their snapshot for hook-assigned context, and a no-snapshot replay of such a ledger does not reconstruct it.
 
 ### 1. Algorithmic Complexity (Big-O)
 
@@ -160,7 +175,7 @@ MCP text, result-object and full stdio-envelope bytes are distinct from input pa
 Byte counts are never token counts; native token heuristics are labeled and normalized independently.
 Actual model calls/output are zero in the default offline trace; scripted input is reported separately as a proxy.
 The fixture retains per-run ledger/visit counts and every JSONL segment's size, with no claim that unvisited source branches were delivered to a model.
-Replay's known entry-hook context discrepancy is reported as a named expected baseline failure, not suppressed or repaired here.
+Snapshot restore and full replay must match live accepted context; any mismatch fails the fixture (see [Accepted context recovery](#accepted-context-recovery)).
 No public runtime capability is added by this developer-only operation.
 
 ### 1. The Value Dimension: What Do We Save?
@@ -179,7 +194,7 @@ $$\text{Tokens Saved} = \sum_{t=1}^{\text{Turns}} \left( \text{Tokens}_{\text{Mo
 
 2. **Agent Convergence Velocity (Behavioral Reduction)**:
    - **Loop Elimination**: Deterministic transition guards (`exit_code == 0`, schema validators) prevent premature completion or aimless loops.
-   - **Bypass Detection**: `max_idle_turns` immediately halts ungrounded turns.
+   - **Bypass Detection**: `max_idle_turns` immediately halts ungrounded turns; up to `max_view_refetches` (default 2) repeat fetches of the same view are uncounted for compaction recovery, using a bounded trailing-event scan (P0).
    - **Regression Bubbling**: Failing tests instantly bubble back to exact remediation states (`GREEN_CODE` or `RED_SPEC`) rather than allowing the model to wander.
 
 ---
@@ -216,10 +231,24 @@ These in-memory metrics are not restored across process restarts; re-fetch state
 The delivery estimate excludes SDK JSON-RPC framing, tool definitions, and other harness context.
 AXI renders its own output from the core slice; core XML estimates must not be presented as AXI transport measurements.
 
-MCP state assembly and serialization are P0 operations with O(b) work in response bytes and no additional event-ledger reads.
-Every response contains one XML prompt and scoped context; `include_full_context: true` on `reactive_state` adds the full recorded context.
+MCP state assembly and serialization are P0 operations with O(b) work in response bytes.
+In strict mode each MCP/CLI delivery adds one bounded O(w) trailing-event read for same-view refetch accounting, where w = 4 × (`max_view_refetches` + `max_idle_turns` + 2) events (24 by default).
+Legacy responses contain one XML prompt and scoped context; `include_full_context: true` on `reactive_state` adds the full recorded context.
 That response grows with recorded context and is included in its delivery estimate.
 The serializer targets CC <= 8, branch coverage >= 90%, and CRAP <= 10.
+
+Negotiated `state.compact_v1` delivery builds one shared complete view and serializes compact JSON (or development `xml-v1`).
+The view contains one raw rendered prompt and one scoped context object; full-context opt-in replaces that object rather than duplicating it.
+State view building and rendering target P0 (< 5ms for bounded state content), CC <= 8 per helper, branch coverage >= 90%, and CRAP <= 10.
+Building costs O(h² + b + a + w): hierarchy depth h, view/contract bytes b, existing approval-request/decision query results a, and the bounded trailing-event window w.
+Rendering is O(b), preserves required values without truncation, and adds no events or projections.
+The sequence anchor is the last view-changing event, found by one latest-sequence lookup plus a bounded O(w) trailing-event read that skips delivery bookkeeping and telemetry; when the window holds no view-changing event it falls back to the latest event sequence, so repeated telemetry can advance it in non-strict runs. The anchor is informational and does not affect guards or strict counting.
+The most recent refusal is restored from the already loaded replay delta (O(r) worst case) and cached for O(1) retrieval in state views.
+A subsequent emitted signal clears it; a new refusal replaces it without adding events.
+Pending judgment approvals use the existing approval read path; its history cost is not claimed to be constant.
+Existing prompt slicing and cold-open replay costs are additional and unchanged.
+MCP compact delivery updates the existing live byte estimate but omits telemetry from the model-facing view.
+AXI output bytes and XML bytes are distinct from MCP response bytes; no transport savings percentage is claimed by this change.
 
 3. **Degradation Detection Thresholds**:
    - `slice_duration_ms > 10ms` $\rightarrow$ Warning: Template cache miss or heavy filesystem access.

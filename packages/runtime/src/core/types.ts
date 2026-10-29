@@ -277,6 +277,7 @@ export interface StateDefinition {
   substates?: Record<string, StateDefinition>; // Nested HSM states
   initial_substate?: string;
   max_idle_turns?: number; // Max turns before bypass detection triggers (default 2)
+  max_view_refetches?: number; // Uncounted repeat fetches of the same strict view, for compaction recovery (default 2)
   bypass_target?: string; // Target state when bypass is detected (default "BYPASS_DETECTED")
 }
 
@@ -501,6 +502,7 @@ export const StateSchema: z.ZodType<StateDefinition> = z.lazy(() =>
     substates: z.record(StateSchema).optional(),
     initial_substate: z.string().optional(),
     max_idle_turns: z.number().int().positive().optional(),
+    max_view_refetches: z.number().int().nonnegative().optional(),
     bypass_target: z.string().optional(),
   })
 );

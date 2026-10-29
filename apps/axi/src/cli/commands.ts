@@ -123,6 +123,7 @@ export const COMMANDS: Record<string, CommandSpec> = {
       `Usage: ${BIN} invoke <skill-name-or-path> [--job <job-id>] [--parent <job-id>] [--payload <JSON|@file>]`,
       '',
       'Start a skill run and print its first state prompt.',
+      '--output compact-v1 returns one complete view after negotiating state.compact_v1; --output legacy preserves the default format.',
       '--payload takes a flat JSON object that becomes the run\'s initial context,',
       'e.g. \'{"mission":"ship"}\'. A {"contextUpdates":{...}} wrapper is rejected;',
       'that shape belongs to emit.',
@@ -135,8 +136,17 @@ export const COMMANDS: Record<string, CommandSpec> = {
       `Usage: ${BIN} state <skill-name> [--job <job-id>]`,
       '',
       'Print the current state of a skill run.',
+      '--output compact-v1 returns current instructions and recorded context; --output legacy preserves the default format.',
     ]),
     run: async (args) => (await import('../commands/state.js')).stateCommand(args),
+  },
+  evidence: {
+    usage: usage([
+      `Usage: ${BIN} evidence <skill> import <workspace-relative-path> --media-type <type> [--job <run>]`,
+      `Or:    ${BIN} evidence <skill> read <receipt-JSON> [--job <run>]`,
+      'Import returns JSON receipt metadata. Only read returns verified content.',
+    ]),
+    run: async (args) => (await import('../commands/evidence.js')).evidenceCommand(args),
   },
   emit: {
     usage: usage([
@@ -144,6 +154,8 @@ export const COMMANDS: Record<string, CommandSpec> = {
       `Or:    ${BIN} emit <skill-name> <event-id> <signal-name> [<JSON|@file> | --payload <JSON|@file>] [--job <job-id>] [--idempotency-key <key>]`,
       '',
       'Send a signal to a skill run.',
+      '--evidence <JSON> binds declared payload pointers to {reference: receipt} or {path, media_type}.',
+      '--output compact-v1 returns a receipt and complete view, including refusals; --output legacy preserves the default format.',
       '--payload is the signal payload. Put context changes under contextUpdates,',
       'e.g. \'{"contextUpdates":{"mission":"ship"}}\'; they are merged into the run context.',
       `Example: ${BIN} emit my-skill TEST_RAN --payload '{"exit_code":0}'`,

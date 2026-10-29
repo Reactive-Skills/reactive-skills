@@ -4,6 +4,7 @@
 - `packages/runtime/src/core/types.ts`: Zod schemas & TypeScript types for FSM, signals, and projections.
 - `packages/runtime/src/core/event-store.ts`: Immutable append-only event ledger (JSONL + native SQLite driver).
 - `packages/runtime/src/core/evidence-store.ts`: Selected-run EvidenceStore port, immutable local registrations and portable evidence bundles.
+- `packages/runtime/src/core/evidence-submission.ts`: Shared AXI/MCP binding schema, local import, explicit read and idempotent reference submission.
 - `packages/runtime/src/core/evidence-resolver.ts`: Explicit manifest field schemas and ephemeral evidence views for guards, replay and projections.
 - `packages/runtime/src/core/jsonl-checkpoint.ts`: Skill-wide JSONL byte certificates, bounded chunk hashing and complete open-time verification.
 - `packages/runtime/src/core/guard-evaluator.ts`: Sandbox evaluator for transition conditions.
@@ -20,8 +21,9 @@
 - `packages/runtime/src/core/bootloader.ts`: Versioned authoritative runtime bootloader and stable skill reference helpers.
 - `packages/runtime/src/core/runtime-capabilities.ts`: Runtime version, capability, compatibility, and transport selection contracts.
 - `packages/runtime/src/core/projection-engine.ts`: Handlebars deliverable generator.
+- `packages/runtime/src/core/state-view.ts`: Shared complete state view and compact JSON/development XML renderer.
 - `packages/runtime/src/core/fsm-engine.ts`: State machine loader, state path resolver & bubbling engine.
-- `packages/runtime/src/core/runtime-hooks.ts`: In-harness interceptor hooks (onBeforeAgentTurn, onAfterToolExecution, onHumanResponse).
+- Host tool interception and compaction reinjection require a separately implemented adapter; this release provides AXI and MCP.
 - `packages/runtime/src/core/legacy-adapter.ts`: Backward compatibility wrapper and converter for `SKILL.md`.
 - `packages/runtime/src/core/migration.ts`: Retroactive project migrator and schema upgrader.
 - `packages/runtime/src/core/job-manager.ts`: Run isolation, active pointer resolution & job metadata manager.

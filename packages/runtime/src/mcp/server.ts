@@ -5,6 +5,8 @@ import yaml from 'js-yaml';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { EvidenceMediaTypeSchema, EvidenceReceiptSchema } from '../core/evidence-store.js';
+import { EvidenceBindingsSchema, importEvidence, readEvidence, submitEvidenceSignal } from '../core/evidence-submission.js';
 import { FSMEngine } from '../core/fsm-engine.js';
 import { EventStore } from '../core/event-store.js';
 import { JobManager } from '../core/job-manager.js';
@@ -230,6 +232,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       token_budget: z.number().int().min(128).max(32768).optional().describe('Maximum context tokens for selected route'),
       state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Small bounded state hints'),
       job_id: z.string().optional().describe('Optional job/run ID for a selected reactive skill'),
+      output: z.enum(['legacy', 'compact-v1']).optional().describe('Negotiated state view format; defaults to legacy'),
     },
     /**
      * Prepare the routed state with compact transport accounting.
@@ -240,7 +243,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >= 70%
      * - CRAP Score: target <= 25.0
      */
-    async ({ user_message, candidates, token_budget, state_hints, job_id }) => {
+    async ({ user_message, candidates, token_budget, state_hints, job_id, output }) => {
       try {
         const decision = await contextRouter.route({
           userMessage: user_message,
@@ -314,9 +317,9 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
             };
           }
 
-          if (engine.isStrictExecution()) engine.recordTurnStart();
+          engine.recordStateDelivery();
           const slice = engine.generatePromptSlice();
-          const state = createStateResponse(engine, slice);
+          const state = createStateResponse(engine, slice, false, output);
           const payload = {
             context_route: decision,
             context: {
@@ -326,7 +329,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
             },
           };
           return {
-            content: [{ type: 'text', text: serializeStateResponse(payload, state.metrics) }],
+            content: [{ type: 'text', text: serializeStateResponse(payload, slice.metrics!) }],
           };
         } catch (reactiveError) {
           const skillMdPath = path.join(skillDir, 'SKILL.md');
@@ -370,7 +373,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     {
       skill: z.string().optional().describe('Skill name (defaults to active skill)'),
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
-      include_full_context: z.boolean().optional().describe('Also return the full recorded context alongside scopedContext'),
+      include_full_context: z.boolean().optional().describe('Return full recorded context (replaces scoped context in compact-v1)'),
+      output: z.enum(['legacy', 'compact-v1']).optional().describe('Select compact-v1 after negotiating state.compact_v1; defaults to legacy'),
     },
     /**
      * Fetch scoped state, including after a host transcript is compacted.
@@ -381,7 +385,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >= 80%
      * - CRAP Score: target <= 15.0
      */
-    async ({ skill, job_id, include_full_context }) => {
+    async ({ skill, job_id, include_full_context, output }) => {
       try {
         const engine = getEngine(skill || defaultSkill, job_id, { autoRotateTerminal: true });
 
@@ -404,13 +408,11 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
           };
         }
 
-        if (engine.isStrictExecution()) {
-          engine.recordTurnStart();
-        }
+        engine.recordStateDelivery();
         const slice = engine.generatePromptSlice();
-        const payload = createStateResponse(engine, slice, include_full_context);
+        const payload = createStateResponse(engine, slice, include_full_context, output);
         return {
-          content: [{ type: 'text', text: serializeStateResponse(payload, payload.metrics) }],
+          content: [{ type: 'text', text: serializeStateResponse(payload, slice.metrics!) }],
         };
       } catch (err: any) {
         if (err.message?.startsWith('BYPASS_DETECTED')) {
@@ -427,6 +429,56 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     }
   );
 
+  server.tool(
+    'reactive_import_evidence',
+    'Import a bounded workspace-relative local file into the selected run; return receipt metadata only',
+    {
+      path: z.string().min(1).max(4096),
+      media_type: EvidenceMediaTypeSchema,
+      skill: z.string().optional(),
+      job_id: z.string().optional(),
+    },
+    /**
+     * # Performance & Risk Budget
+     * - Tier: P2 cold engine (<100ms); P1 evidence IO (<25ms per <=1MiB)
+     * - Complexity: O(cold replay delta + evidence bytes + path depth)
+     * - Cyclomatic Complexity (CC): target <=8
+     * - Branch Coverage: target >=90%
+     * - CRAP Score: target <=10
+     */
+    async ({ path: source, media_type, skill, job_id }) => {
+      try {
+        const engine = getEngine(skill || defaultSkill, job_id);
+        const reference = importEvidence(engine, source, media_type);
+        return { content: [{ type: 'text', text: JSON.stringify({ reference }) }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: JSON.stringify({ error: (error as Error).message }) }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'reactive_read_evidence',
+    'Explicitly read verified registered content in the selected run, including after compaction',
+    { reference: EvidenceReceiptSchema, skill: z.string().optional(), job_id: z.string().optional() },
+    /**
+     * # Performance & Risk Budget
+     * - Tier: P2 cold engine (<100ms); P1 evidence IO (<25ms per <=1MiB)
+     * - Complexity: O(cold replay delta + evidence bytes)
+     * - Cyclomatic Complexity (CC): target <=8
+     * - Branch Coverage: target >=90%
+     * - CRAP Score: target <=10
+     */
+    async ({ reference, skill, job_id }) => {
+      try {
+        const output = readEvidence(getEngine(skill || defaultSkill, job_id), reference);
+        return { content: [{ type: 'text', text: JSON.stringify(output) }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: JSON.stringify({ error: (error as Error).message }) }], isError: true };
+      }
+    }
+  );
+
   // 2. TOOL: reactive_emit_signal
   server.tool(
     'reactive_emit_signal',
@@ -434,14 +486,26 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     {
       signal: z.string().describe('Signal name (e.g. CHECK_PASSED, CHARTER_DRAFTED)'),
       payload: z.record(z.any()).optional().describe('Signal payload data (e.g. exit_code, file_path)'),
+      evidence: EvidenceBindingsSchema.optional().describe('Declared payload pointer to {reference: receipt} or {path, media_type}; kept separate from task JSON'),
       skill: z.string().optional().describe('Target skill name'),
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
       idempotency_key: z.string().optional().describe('Optional key that makes duplicate signal submission a no-op'),
     },
-    async ({ signal, payload = {}, skill, job_id, idempotency_key }) => {
+    /**
+     * # Performance & Risk Budget
+     * - Tier: P2 cold engine (<100ms); P1 evidence IO (<25ms per <=1MiB), judgments additional
+     * - Complexity: O(cold replay delta + selected evidence bytes + response bytes)
+     * - Cyclomatic Complexity (CC): target <=8
+     * - Branch Coverage: target >=90%
+     * - CRAP Score: target <=10
+     */
+    async ({ signal, payload = {}, evidence, skill, job_id, idempotency_key }) => {
       try {
         const engine = getEngine(skill || defaultSkill, job_id);
-        const result = await engine.handleSignal(signal, payload, { idempotencyKey: idempotency_key, source: 'mcp' });
+        const metadata = { idempotencyKey: idempotency_key, source: 'mcp' };
+        const submission = evidence === undefined ? undefined
+          : await submitEvidenceSignal(engine, signal, payload, evidence, metadata);
+        const result = submission?.result ?? await engine.handleSignal(signal, payload, metadata);
 
         return {
           content: [
@@ -457,6 +521,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
                   newState: result.newState,
                   isWaitingForHuman: engine.isWaitingForHuman(),
                   projectionsWritten: result.deliverablesWritten,
+                  ...(submission ? { event_id: result.event.id, evidence: submission.evidence } : {}),
                   refusalReason: result.refusalReason,
                   judgmentBasis: result.judgmentBasis,
                   warning: result.warning,

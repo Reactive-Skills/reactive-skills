@@ -12,6 +12,7 @@ import { LocalEvidenceStore, canonicalEvidenceJson, type EvidenceReceipt } from 
 import { EvidenceDeclarationsSchema, EvidenceResolver } from '../src/core/evidence-resolver.js';
 import { GuardEvaluator } from '../src/core/guard-evaluator.js';
 import { ProjectionEngine } from '../src/core/projection-engine.js';
+import { createStateView } from '../src/core/state-view.js';
 
 describe('immutable evidence registry', () => {
   let workspace: string;
@@ -160,6 +161,21 @@ describe('immutable evidence registry', () => {
       ? [{ id: (bad.$evidence as EvidenceReceipt).id, error: expect.stringMatching(/mismatch|ENOENT/) }] : []);
     damage(ledger, receipt, 'missing-blob');
     expect(() => engine.exportRun()).toThrow();
+  });
+
+  it('reports an evidence refusal identically from the cached engine and reopened snapshot/replay engines', async () => {
+    fixture(false, false);
+    const ledger = store();
+    const engine = new FSMEngine({ skillDir, workspaceDir: workspace, eventStore: ledger });
+    const refused = await engine.handleSignal('CHECK', { draft: { $evidence: { bogus: true } } });
+    expect(refused.refusalReason).toContain('Evidence verification failed');
+    expect(createStateView(engine).refusal).toBe(refused.refusalReason);
+    for (const snapshot of [true, false]) {
+      const reopened = store(ledger.getEventContext().run_id);
+      if (!snapshot) vi.spyOn(reopened, 'getLatestSnapshot').mockReturnValue(null);
+      const restored = new FSMEngine({ skillDir, workspaceDir: workspace, eventStore: reopened });
+      expect(createStateView(restored).refusal).toBe(refused.refusalReason);
+    }
   });
 
   it.each(['snapshot', 'replay'] as const)('fails %s restoration and export explicitly when retained evidence is unavailable', async mode => {

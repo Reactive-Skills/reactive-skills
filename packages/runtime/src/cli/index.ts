@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createStateView, renderStateView } from '../core/state-view.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -17,7 +18,7 @@ Usage:
   reactive-skills mcp                 Run the stdio Model Context Protocol (MCP) server
   reactive-skills install <skill>     Install skill globally and sync
   reactive-skills migrate [path]      Retroactively migrate project to latest schema
-  reactive-skills state [skill]       Get active state slice and prompt
+  reactive-skills state [skill]       Get active state slice and prompt [--output legacy|compact-v1|xml-v1]
   reactive-skills emit <signal>       Emit signal and step state machine
   reactive-skills query "<sql>"       Query SQLite event store
   reactive-skills inspect <skill>     Inspect statechart and transitions
@@ -28,6 +29,15 @@ Usage:
   `);
 }
 
+/**
+ * Dispatch development commands, including negotiated complete state rendering.
+ * # Performance & Risk Budget
+ * - Tier: P2 (< 100ms for local state commands, excluding process startup)
+ * - Complexity: O(r + b + h² + a), replay, view bytes, hierarchy and approval records
+ * - Cyclomatic Complexity (CC): legacy command dispatcher; output selection adds two branches
+ * - Branch Coverage: target >= 70%
+ * - CRAP Score: target <= 25.0
+ */
 async function main() {
   if (!command || command === 'help' || command === '--help') {
     printHelp();
@@ -121,12 +131,13 @@ async function main() {
     }
 
     const engine = new FSMEngine({ skillDir: targetDir, autoRotateTerminal: true });
-    if (engine.isStrictExecution()) {
-      engine.recordTurnStart();
-    }
+    engine.recordStateDelivery();
     const slice = engine.generatePromptSlice();
 
-    if (isJson) {
+    const viewOutput = args.find(arg => arg.startsWith('--output='))?.slice('--output='.length) ?? (args.includes('--output') ? args[args.indexOf('--output') + 1] : undefined);
+    if (viewOutput === 'compact-v1' || viewOutput === 'xml-v1') {
+      console.log(renderStateView(createStateView(engine, slice), viewOutput));
+    } else if (isJson) {
       console.log(JSON.stringify(slice, null, 2));
     } else {
       console.log(slice.formattedXml);

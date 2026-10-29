@@ -61,10 +61,11 @@ npm install -g @reactive-skills/axi
 ### 2. Inspect a Skill's Current State
 
 ```bash
-npx -y @reactive-skills/axi state <skill-name>
+npx -y @reactive-skills/axi state <skill-name> --output compact-v1
 ```
 
-Outputs the current state, active prompt instructions, allowed tools, and available transitions in structured format:
+Outputs the current state, its instructions and recorded context, allowed tools, and applicable signal requirements.
+Negotiate `state.compact_v1` through capabilities before selecting `--output compact-v1`; omitting the flag or using `--output legacy` preserves the existing terminal format shown below:
 
 ```yaml
 state:
@@ -77,6 +78,19 @@ help[2]:
   Read the state prompt above and execute the instructed tasks
   Run `npx -y @reactive-skills/axi emit <skill> <signal>` to advance
 ```
+
+The compact view is shared by AXI `invoke`, `state`, and `emit`, MCP `reactive_state` and active-state `reactive_context_prepare` (`output: "compact-v1"`), and the SDK's `createStateView(engine)` / `renderStateView(view)` exports.
+It includes one unchanged rendered prompt, one current scoped context object, ordered leaf and ancestor contracts, tools, immutable run ID and sequence, and applicable gate, model, strict status, or signal refusal metadata.
+AXI compact `emit` returns its receipt and a complete `view`, including when a signal is refused.
+MCP emit continuation is unchanged.
+MCP `include_full_context: true` replaces the compact view's scoped `context` with full context; legacy MCP retains its existing opt-in full-context field.
+The development CLI supports `state <path> --output compact-v1` and `--output xml-v1`; its existing XML remains selectable by omitting the option.
+
+After transcript compaction or session resume, fetch the same run again before working.
+Use the returned recorded context without inventing missing values, emitting a transition, or recreating approvals.
+Declared context scopes retain their existing semantics; states without a declared scope retain the full-context fallback.
+Guard expressions check submitted data; a passing expression alone does not prove a command ran.
+Use the listed tools; tool-call enforcement and automatic compaction reinjection require a separately implemented host adapter.
 
 ### 3. Emit a Signal to Advance
 

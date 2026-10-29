@@ -119,9 +119,13 @@ describe('transport benchmark accounting', () => {
     expect(responses.gate.isWaitingForHuman).toBe(true);
     expect(responses.human_response.currentState).toBe('WORK');
     expect(responses.legacy_prepare.context.source).toBe('skill_markdown');
-    expect(report.sdk.findings).toEqual([expect.objectContaining({
-      id: 'tdd-replay-refactor-cycles', status: 'expected_failure', observed: { live: 1, snapshot: 1, replay: 0 },
-    })]);
+    expect(report.sdk.findings).toEqual([]);
+    const sdkRun = ledger.runs.find((run) => run.transitions === 3)!;
+    expect(sdkRun).toBeDefined();
+    expect(report.sdk.recovery).toEqual([
+      { path: 'snapshot', context_matches_live: true, refactor_cycles: 1, events: sdkRun.events },
+      { path: 'replay', context_matches_live: true, refactor_cycles: 1, events: sdkRun.events },
+    ]);
   }, 120_000);
 
   it('rejects benchmark CLI network access before opening a connection', () => {
