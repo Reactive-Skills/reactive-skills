@@ -21,6 +21,11 @@ npm install @reactive-skills/runtime
 import { FSMEngine, EventStore, JobManager, LegacySkillAdapter, ProjectionEngine } from '@reactive-skills/runtime';
 ```
 
+### Payload Contracts
+
+Optional authored `payload_contract` metadata describes typed transition inputs while the original guards remain enforced.
+See [payload contracts and targeted guard inspection](../../docs/payload-contracts.md) for manifest examples, inspection APIs and measured costs.
+
 ### Semantic Judgment Adapter
 
 `JevJudgmentAdapter` uses the production `@typesafe-ai/sdk` package and calls TypeSafe AI's System One API directly.

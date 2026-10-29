@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PayloadContractSchema, validatePayloadContractDrift } from './payload-contract.js';
 import { validateContextPath } from './judgment-context.js';
 import { EvidenceDeclarationsSchema, type EvidenceDeclarations } from './evidence-resolver.js';
 import { JudgmentInputOptionsSchema, judgmentInputDeclarationErrors, usesJudgmentInputOptions, JUDGMENT_PAYLOAD_SELECTION_CAPABILITY } from './judgment-input.js';
@@ -242,6 +243,7 @@ export interface TransitionDefinition {
   guard?: string; // JavaScript expression returning boolean, e.g. "event.payload.exit_code != 0"
   guardFunction?: string; // Relative path to JS function file in guards/
   guard_message?: string; // Refusal reason returned when the inline guard refuses (#32)
+  payload_contract?: import('./payload-contract.js').PayloadContract;
   judgment?: JudgmentDefinition; // Decoupled snap-on judgment evaluation
   description?: string;
   invoke?: string;
@@ -456,10 +458,11 @@ export const TransitionSchema = z.union([
     guard: z.string().optional(),
     guardFunction: z.string().optional(),
     guard_message: z.string().optional(),
+    payload_contract: PayloadContractSchema.optional(),
     judgment: JudgmentDefinitionSchema.optional(),
     description: z.string().optional(),
     invoke: z.string().optional(),
-  }),
+  }).superRefine(validatePayloadContractDrift),
 ]);
 
 export const StateLifecycleActionSchema = z.object({

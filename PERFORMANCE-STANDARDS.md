@@ -32,6 +32,28 @@ Reactive Skills Architecture (RSA) introduces deterministic structure to autonom
 
 ## Complexity Budget
 
+### Payload Contracts and Guard Inspection
+
+Authored `payload_contract` validation and rendering are P0 (<5ms for bounded declarations), with O(f + b) work for f declared fields and b selected value or expression bytes.
+Structural checks run on the existing verified evidence before the unchanged guard evaluator and use existing guard/refusal events; no new append, projection or full-history read is added.
+Contract consistency checks recognize only a complete single strict equality against a JSON primitive and never infer a complete schema from guard text.
+Pure helpers target CC <=8, branch coverage >=90% and CRAP <=10.
+Focused V8 coverage measures 100% branches for `payload-contract.ts` and `payload-guard.ts`; ESLint measures helper CC 3–8, with state/module inspection CC 11/5 under P2 limits.
+
+Targeted guard inspection is P2 (<100ms local), O(m + d + b) in manifest bytes m, owning-state depth d and source bytes b.
+SDK inspection of an already validated manifest omits m; MCP and AXI parse the manifest on disk without opening a run or executing lifecycle or guard code.
+Module source reads validate realpath containment, cost O(b), and do not resolve or execute imported modules.
+Inspection helpers target CC <=15, branch coverage >=70% and CRAP <=25.
+Existing whole-skill inspection and guard/judgment costs remain additional and unchanged.
+
+The offline `packages/runtime/scripts/benchmark-payload-contracts.ts` probe uses the pinned public TDD GREEN_CODE state on Node v22.23.3/Linux with warm filesystem caches, 100 samples after ten warmups.
+Authored declaration validation measured 0.011541ms p50 / 0.015329ms p95, structural checking 0.000640/0.001037ms, compact payload rendering 0.000370/0.001010ms, module inspection 0.030866/0.046988ms and complete compact view assembly 0.181072/0.270909ms.
+Original guarded evaluation with contract checks measured 0.365471/0.499987ms; complete refused-signal handling with existing persistence measured 5.848791/6.991587ms, within the P1 storage budget rather than the pure P0 check budget.
+The TDD initial request plus MCP response text is 1,552B with the short exact guard or 1,549B with this authored contract, rendered one short line per field; including inspection yields 1,719B/1,883B respectively.
+The saving is bounded by the 37B guard it replaces, so this view stays far above the 820B design estimate.
+Byte counts include JSON request arguments and actual MCP response text, exclude JSON-RPC framing, tool definitions, process startup and model work, and are not token counts.
+This metadata supplies typed payload guidance; it makes no universal byte or end-to-end latency savings claim.
+
 ### Judgment Waiting and Bookkeeping
 
 Judgment orchestration is P0 bookkeeping: timer setup, adapter selection bookkeeping, result classification and telemetry must stay below 5ms of local work, excluding external adapter waiting and request serialization.

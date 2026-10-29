@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+- feat(runtime)!: **Breaking response content for manifests opting into `payload_contract`.** Compact transition contracts and legacy XML exit conditions show authored typed payload requirements in place of inline guard source; opaque legacy functions gain inspection guidance.
+  Structural failures refuse with field details and a recovery hint, while valid payloads reach the unchanged guard evaluator and retain ancestor fall-through.
+  New `state.payload_contracts` capability and SDK schema/inspection exports; see `docs/payload-contracts.md` for validation limits and measured costs.
+- feat(inspect)!: **Breaking opt-in response shape.** MCP `reactive_inspect` with `state` and `signal`, and AXI `inspect --state --signal`, return one owning transition with exact guard expressions and optional `guard_source` module text.
+  Targeted inspection opens no run and executes no guard code; omitting selectors preserves existing whole-skill output.
+
 - feat(mcp)!: **Breaking response shape for clients selecting `return_view: "compact-v1"`.** `reactive_emit_signal` and `reactive_respond_human` return `{receipt, replayed, result_view, view}` after negotiating `state.continuation_v1`.
   Omitting the option preserves the existing receipt shape.
   The complete current view follows lifecycle signals, child invocation and projections; keyed retries retain the original receipt and anchor without adding a delivery or transition.
