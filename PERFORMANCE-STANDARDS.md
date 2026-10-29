@@ -55,8 +55,8 @@ External waiting must be reported separately from P0 local budgets and never as 
 See [the deadline contract](docs/specs/0023-judgment-deadlines.md) for opt-in semantics and compatibility.
 
 Opt-in judgment input preparation and its content-free inspection view are P1 operations (< 25ms local target).
-They cost O(p² + p*d + b) for p selected paths, path depth d and selected JSON bytes b; parent/child overlap checks account for the quadratic path term.
-Payload numeric indices are limited to 10000 to bound sparse-array serialization.
+They cost O(p²*d*i + b) for p selected paths, path depth d, largest selected array index i and selected JSON bytes b; parent/child overlap and contiguous-index checks account for the path term.
+Payload numeric indices are limited to 10000 to bound the contiguous-index check.
 Pure declarative payload preconditions and required-evidence validation run before adapter selection and refuse without a model request.
 No semantic result cache, cross-run reuse, new ledger append or full-history scan is added by input preparation.
 The existing `GUARD_EVALUATED` record carries content-free `inputInspection` metadata on successes and failures.

@@ -31,8 +31,9 @@ Preflight rejects malformed declarations and a missing capability requirement.
 
 `payload_paths` selects paths relative to the submitted payload.
 The selected values keep their nesting: `check.text` arrives as `event.check.text`.
-Array indices keep their positions, with unselected positions serialized as `null`.
-Numeric segments must use canonical indices between 0 and 10000, limiting sparse-array expansion.
+Numeric segments are array indices and must use canonical values between 0 and 10000.
+Selected indices must form a contiguous prefix from 0 under each array: `checks.2` also needs `checks.0` and `checks.1`, a child of each, or the whole `checks` array.
+Preflight refuses a gap with an error naming the path and the skipped index, so the judge never sees placeholder `null` elements; explicit `null` values from the payload are kept.
 Selecting a parent includes its complete subtree; selecting overlapping children does not modify the source.
 Every selected payload path is required.
 An empty list sends an empty event object.

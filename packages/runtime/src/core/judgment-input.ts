@@ -67,13 +67,27 @@ export function usesJudgmentInputOptions(judgment: JudgmentDefinition): boolean 
   return judgment.payload_paths !== undefined || judgment.required_context_paths !== undefined || judgment.precondition !== undefined;
 }
 
-/** Tier: P1 (< 25ms); Complexity: O(p² + p*d) paths/depth; CRAP target <= 15 (CC <= 12, branch coverage >= 80%). */
+/** Tier: P1 (< 25ms); Complexity: O(p²*d*i) paths/depth/max index (i <= 10000); CRAP target <= 15 (CC <= 12, branch coverage >= 80%). */
 export function judgmentInputDeclarationErrors(judgment: JudgmentDefinition): string[] {
   const parsed = InputDeclarationSchema.safeParse(judgment);
   if (!parsed.success) return parsed.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`);
   const errors: string[] = [];
   if (judgment.payload_paths !== undefined && judgment.include_payload === false) {
     errors.push('payload_paths requires include_payload to be true or omitted');
+  }
+  const overlaps = (a: string, b: string) => a === b || a.startsWith(`${b}.`) || b.startsWith(`${a}.`);
+  for (const path of judgment.payload_paths ?? []) {
+    const segments = path.split('.');
+    segments.forEach((segment, depth) => {
+      const prefix = segments.slice(0, depth).join('.');
+      const gap = /^\d+$/.test(segment)
+        ? Array.from({ length: Number(segment) }, (_, index) => depth ? `${prefix}.${index}` : `${index}`)
+          .find(slot => !judgment.payload_paths!.some(selected => overlaps(selected, slot)))
+        : undefined;
+      if (gap !== undefined) {
+        errors.push(`payload_paths '${path}' skips array index '${gap}'; select the whole array or a contiguous prefix from index 0`);
+      }
+    });
   }
   for (const path of judgment.required_context_paths ?? []) {
     if (judgment.context_paths !== undefined && !judgment.context_paths.some(selected => path === selected || path.startsWith(`${selected}.`))) {
@@ -153,7 +167,7 @@ function destinationClass(adapter?: string): JudgmentInputInspection['destinatio
 
 /**
  * Prepares candidate state without I/O or adapter invocation. Metadata never contains evidence values.
- * Tier: P1 (< 25ms); Complexity: O(p² + p*d + b), paths p, depth d, selected bytes b.
+ * Tier: P1 (< 25ms); Complexity: O(p²*d*i + b), paths p, depth d, max index i, selected bytes b.
  * CRAP target <= 15 (CC <= 12 per helper, branch coverage >= 80%); no ledger scans or result cache.
  */
 export function prepareJudgmentInput(judgment: JudgmentDefinition, evaluation: GuardEvaluationContext) {
@@ -193,7 +207,7 @@ export function prepareJudgmentInput(judgment: JudgmentDefinition, evaluation: G
 
 /**
  * Returns a content-free preflight view, without contacting or configuring an adapter.
- * Tier: P1 (< 25ms); Complexity: O(p² + p*d + b); CRAP target <= 15 (CC <= 12, branch coverage >= 80%).
+ * Tier: P1 (< 25ms); Complexity: O(p²*d*i + b); CRAP target <= 15 (CC <= 12, branch coverage >= 80%).
  */
 export function inspectJudgmentInput(judgment: JudgmentDefinition, evaluation: GuardEvaluationContext): JudgmentInputInspection {
   return prepareJudgmentInput(judgment, evaluation).inspection;
@@ -202,7 +216,7 @@ export function inspectJudgmentInput(judgment: JudgmentDefinition, evaluation: G
 /**
  * Binds opt-in approvals to selected evidence, declaration and built-in adapter base URL and model.
  * Custom adapters supply their configuration revision through recorded selected context.
- * Tier: P1 (< 25ms); Complexity: O(p² + p*d + b); CRAP target <= 15 (CC <= 12, branch coverage >= 80%).
+ * Tier: P1 (< 25ms); Complexity: O(p²*d*i + b); CRAP target <= 15 (CC <= 12, branch coverage >= 80%).
  */
 export function judgmentInputIdentity(judgment: JudgmentDefinition, evaluation: GuardEvaluationContext): string | undefined {
   if (!usesJudgmentInputOptions(judgment)) return undefined;

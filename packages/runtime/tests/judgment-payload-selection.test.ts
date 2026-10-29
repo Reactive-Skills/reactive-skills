@@ -14,7 +14,7 @@ vi.mock('@typesafe-ai/sdk', () => ({
 
 const context = {
   event: { id: 'e1', seq: 1, type: 'CHECK', timestamp: '2026-01-01', payload: {
-    checks: [{ text: 'unselected' }, { text: 'current evidence', other: 'excluded sibling' }],
+    checks: [{ text: 'current evidence', other: 'excluded sibling' }, { text: 'unselected' }],
     unrelated: 'excluded payload', exit_code: 0,
   } },
   context: { review: { rubric: 'relevant', unused: 'excluded context' } },
@@ -22,7 +22,7 @@ const context = {
 };
 const judgment: JudgmentDefinition = {
   type: 'predicate', criterion: 'Does the evidence satisfy the rubric?', adapter_hint: 'jev',
-  context_paths: ['review.rubric'], payload_paths: ['checks.1.text'],
+  context_paths: ['review.rubric'], payload_paths: ['checks.0.text'],
   required_context_paths: ['review.rubric'],
 };
 
@@ -38,12 +38,12 @@ describe('Opt-in judgment input contract', () => {
     const result = await JudgmentEngine.evaluate(judgment, context);
     const state = sdk.systemOne.mock.calls[0][0].state;
     expect(JSON.parse(JSON.stringify(state))).toEqual({
-      event: { checks: [null, { text: 'current evidence' }] },
+      event: { checks: [{ text: 'current evidence' }] },
       context: { 'review.rubric': 'relevant' }, currentState: 'REVIEW',
     });
     expect(JSON.stringify(sdk.systemOne.mock.calls)).not.toMatch(/unselected|excluded/);
     expect(result.inputInspection).toMatchObject({
-      payloadPaths: ['checks.1.text'], contextPaths: ['review.rubric'], missingRequired: [],
+      payloadPaths: ['checks.0.text'], contextPaths: ['review.rubric'], missingRequired: [],
       fullEvent: false, byteCount: Buffer.byteLength(JSON.stringify(state), 'utf8'),
     });
   });
@@ -89,7 +89,7 @@ describe('Opt-in judgment input contract', () => {
     expect(result.passed).toBe(true);
     expect(requests).toHaveLength(2);
     expect(JSON.stringify(requests)).not.toMatch(/unselected|excluded/);
-    expect(context.event.payload.checks[1]).toHaveProperty('other', 'excluded sibling');
+    expect(context.event.payload.checks[0]).toHaveProperty('other', 'excluded sibling');
   });
 
   it('inspects without invoking adapters and records the same content-free metadata on outage', async () => {
@@ -104,7 +104,7 @@ describe('Opt-in judgment input contract', () => {
   });
 
   it.each([
-    { payload_paths: ['checks.1.other'] }, { criterion: 'Is the other evidence adequate?' },
+    { payload_paths: ['checks.0.other'] }, { criterion: 'Is the other evidence adequate?' },
     { options: ['accept', 'reject'] }, { min_probability: 0.95 }, { rubric: ['weak', 'strong'] },
   ])('does not cache when judgment configuration changes: %j', async change => {
     await JudgmentEngine.evaluate(judgment, context);
@@ -116,22 +116,22 @@ describe('Opt-in judgment input contract', () => {
     await JudgmentEngine.evaluate(judgment, context);
     vi.stubEnv('TYPESAFE_DEFAULT_MODEL', 'changed-model');
     await JudgmentEngine.evaluate(judgment, { ...context, event: { ...context.event, payload: {
-      ...context.event.payload, checks: [{ text: 'unused' }, { text: 'revised evidence' }],
+      ...context.event.payload, checks: [{ text: 'revised evidence' }, { text: 'unused' }],
     } } });
     expect(sdk.systemOne).toHaveBeenCalledTimes(2);
-    expect(sdk.systemOne.mock.calls[1][0].state.event.checks[1].text).toBe('revised evidence');
+    expect(sdk.systemOne.mock.calls[1][0].state.event.checks[0].text).toBe('revised evidence');
   });
 
   it('keeps concurrent input selection and inspection independent', async () => {
     const other = { ...context, event: { ...context.event, payload: { ...context.event.payload, checks: [{ text: 'second' }] } } };
     const results = await Promise.all([
       JudgmentEngine.evaluate(judgment, context),
-      JudgmentEngine.evaluate({ ...judgment, payload_paths: ['checks.0.text'] }, other),
+      JudgmentEngine.evaluate({ ...judgment, payload_paths: ['checks.0'] }, other),
     ]);
     expect(sdk.systemOne.mock.calls.map(call => JSON.stringify(call[0].state.event))).toEqual([
-      '{"checks":[null,{"text":"current evidence"}]}', '{"checks":[{"text":"second"}]}',
+      '{"checks":[{"text":"current evidence"}]}', '{"checks":[{"text":"second"}]}',
     ]);
-    expect(results.map(result => result.inputInspection?.payloadPaths)).toEqual([['checks.1.text'], ['checks.0.text']]);
+    expect(results.map(result => result.inputInspection?.payloadPaths)).toEqual([['checks.0.text'], ['checks.0']]);
   });
 
   it.each(['string', 'number', 'boolean', 'object', 'array', 'null'] as const)('validates %s payload types locally', async type => {
@@ -146,9 +146,9 @@ describe('Opt-in judgment input contract', () => {
 
   it('preserves overlapping subtrees, nulls and source objects', async () => {
     const original = JSON.stringify(context);
-    const result = await JudgmentEngine.evaluate({ ...judgment, payload_paths: ['checks.1.text', 'checks.1', 'checks.1.text'] }, context);
+    const result = await JudgmentEngine.evaluate({ ...judgment, payload_paths: ['checks.0.text', 'checks.0', 'checks.0.text'] }, context);
     expect(result.passed).toBe(true);
-    expect(sdk.systemOne.mock.calls[0][0].state.event.checks[1]).toEqual(context.event.payload.checks[1]);
+    expect(sdk.systemOne.mock.calls[0][0].state.event.checks[0]).toEqual(context.event.payload.checks[0]);
     expect(JSON.stringify(context)).toBe(original);
     sdk.systemOne.mockClear();
     await JudgmentEngine.evaluate({ ...judgment, payload_paths: [] }, context);
@@ -169,7 +169,7 @@ describe('Opt-in judgment input contract', () => {
   it('retains input audit metadata when a subsequent inline guard throws', async () => {
     const result = await GuardEvaluator.evaluate('payload.missing.value === 0', undefined, context, judgment);
     expect(result.passed).toBe(false);
-    expect(result.judgmentResult?.inputInspection).toMatchObject({ payloadPaths: ['checks.1.text'] });
+    expect(result.judgmentResult?.inputInspection).toMatchObject({ payloadPaths: ['checks.0.text'] });
   });
 
   it('records input metadata when automatic adapter availability throws', async () => {
@@ -179,7 +179,7 @@ describe('Opt-in judgment input contract', () => {
     });
     const result = await GuardEvaluator.evaluate(undefined, undefined, context, { ...judgment, adapter_hint: undefined });
     expect(result.passed).toBe(false);
-    expect(result.judgmentResult?.inputInspection).toMatchObject({ payloadPaths: ['checks.1.text'] });
+    expect(result.judgmentResult?.inputInspection).toMatchObject({ payloadPaths: ['checks.0.text'] });
     expect(result.judgmentResult?.attemptCount).toBe(0);
   });
 
@@ -204,6 +204,40 @@ describe('Opt-in judgment input contract', () => {
       runtime_requirements: { required_capabilities: ['judgment.payload_selection'] },
     }).success).toBe(true);
   });
+
+  it.each([
+    [['checks.1.text'], 'checks.1.text', 'checks.0'],
+    [['checks.0', 'checks.2'], 'checks.2', 'checks.1'],
+    [['grid.0.0', 'grid.1.1'], 'grid.1.1', 'grid.1.0'],
+    [['checks.0.items.1'], 'checks.0.items.1', 'checks.0.items.0'],
+  ])('refuses non-contiguous array selection %j at preflight without a request', async (paths, path, gap) => {
+    const parsed = JudgmentDefinitionSchema.safeParse({ ...judgment, payload_paths: paths });
+    expect(parsed.success).toBe(false);
+    const message = parsed.error!.issues.map(issue => issue.message).join('\n');
+    expect(message).toContain(`'${path}' skips array index '${gap}'`);
+    expect(message).toMatch(/whole array or a contiguous prefix/);
+    const result = await JudgmentEngine.evaluate({ ...judgment, payload_paths: paths }, context);
+    expect(result).toMatchObject({ passed: false, judgmentSkipped: true, attemptCount: 0 });
+    expect(sdk.systemOne).not.toHaveBeenCalled();
+  });
+
+  it('sends contiguous, nested and parent-covered array selections without placeholder nulls', async () => {
+    const candidate = { ...context, event: { ...context.event, payload: {
+      checks: [null, { text: 'second', other: 'excluded sibling' }, { text: 'third' }],
+      grid: [[1, 2], [3, 4]], unrelated: 'excluded payload',
+    } } };
+    for (const paths of [['checks.0', 'checks.1.text', 'checks.2'], ['checks', 'checks.2.text'], ['grid.0', 'grid.1.0', 'grid.1.1']]) {
+      expect(JudgmentDefinitionSchema.safeParse({ ...judgment, payload_paths: paths }).success).toBe(true);
+      expect((await JudgmentEngine.evaluate({ ...judgment, payload_paths: paths }, candidate)).passed).toBe(true);
+    }
+    expect(sdk.systemOne.mock.calls.map(call => call[0].state.event)).toEqual([
+      { checks: [null, { text: 'second' }, { text: 'third' }] },
+      { checks: candidate.event.payload.checks },
+      { grid: [[1, 2], [3, 4]] },
+    ]);
+    expect(JSON.stringify(sdk.systemOne.mock.calls.filter((_, index) => index !== 1))).not.toMatch(/excluded/);
+  });
+
 
   it('keeps legacy invalid context path diagnostics to the single field issue', () => {
     const result = JudgmentDefinitionSchema.safeParse({ type: 'predicate', criterion: 'ok', context_paths: ['a..b'] });
