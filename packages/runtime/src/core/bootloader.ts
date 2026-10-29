@@ -55,7 +55,7 @@ export function createReactiveBootloader(skillName: string): string {
 > Do not repeat version or capability checks after INIT.
 > When capabilities include \`state.compact_v1\`, select MCP \`output: "compact-v1"\` or AXI \`--output compact-v1\` for complete state views.
 > Consume the complete view returned by AXI invoke/emit; fetch state again for resume, recovery, stale state, or a lost response.
-> After host transcript compaction, re-fetch the same immutable run with MCP \`reactive_state\` or AXI \`state ${name} --job <run_id>\` before doing work.
+> After host transcript compaction, re-fetch the same immutable run with MCP \`reactive_state\` and \`job_id: <run_id>\` or AXI \`state ${name} --job <run_id>\` before doing work.
 > This restores the current instructions and recorded scoped context. Do not emit a transition, recreate an approval, or infer missing context to recover it.
 >
 > **CONTEXT ROUTING**

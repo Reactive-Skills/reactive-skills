@@ -134,3 +134,4 @@ Local validation after the MCP state-response integration passed both package bu
 - Added interface meaning, scoped sentinel recovery, refusal and restoration regression tests without changing existing guarantee assertions.
 - Restored the most recent guard refusal from existing replay data and cached it for complete views across compaction; no new event types or payload changes.
 - Documented negotiated output flags in AXI command help and development CLI help.
+- Added `FSMEngine.recordStateDelivery()` for MCP state, context preparation and development CLI state: a refetch of the same run/seq (latest event already `AGENT_TURN_STARTED`) no longer counts as a strict idle turn; MCP strict bypass tests now insert a new event between idle deliveries. Compaction refetch guidance names MCP `job_id: <run_id>` so terminal runs are not rotated.

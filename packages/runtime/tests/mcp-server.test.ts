@@ -234,7 +234,7 @@ describe('Reactive MCP Server Integration', () => {
     expect(typeof parsed.turns_since_last_signal).toBe('number');
   });
 
-  it('should not bypass on 2 reactive_state calls for test-fsm (has strict_execution but no bypass yet)', async () => {
+  it('should not bypass or recount a repeat reactive_state call for test-fsm', async () => {
     const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: 'test-fsm' });
     const tools = (server as any)._registeredTools;
 
@@ -246,8 +246,8 @@ describe('Reactive MCP Server Integration', () => {
 
     const res2 = await handler.handler({}, {} as any);
     const parsed2 = JSON.parse(res2.content[0].text);
-    expect(parsed2.turns_since_last_signal).toBe(2);
-    expect(res2.isError).toBeUndefined() || !res2.isError;
+    expect(parsed2.turns_since_last_signal).toBe(1);
+    expect(res2.isError).toBeUndefined();
   });
 
   it('reactive_state job parameter: accepts optional job_id and defaults to active job', async () => {

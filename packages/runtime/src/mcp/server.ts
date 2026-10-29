@@ -317,7 +317,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
             };
           }
 
-          if (engine.isStrictExecution()) engine.recordTurnStart();
+          engine.recordStateDelivery();
           const slice = engine.generatePromptSlice();
           const state = createStateResponse(engine, slice, false, output);
           const payload = {
@@ -408,9 +408,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
           };
         }
 
-        if (engine.isStrictExecution()) {
-          engine.recordTurnStart();
-        }
+        engine.recordStateDelivery();
         const slice = engine.generatePromptSlice();
         const payload = createStateResponse(engine, slice, include_full_context, output);
         return {

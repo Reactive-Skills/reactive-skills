@@ -465,6 +465,19 @@ export class FSMEngine {
     this.checkBypass();
   }
 
+  /**
+   * Count a delivered state view once per run sequence, so a recovery refetch of the same view is free.
+   * # Performance & Risk Budget
+   * - Tier: P0 (< 5ms)
+   * - Complexity: O(1), one latest-event read
+   * - Cyclomatic Complexity (CC): target <= 3
+   * - Branch Coverage: target >= 100%
+   */
+  public recordStateDelivery(): void {
+    if (this.eventStore.getLatestEvent()?.type === 'AGENT_TURN_STARTED') return;
+    this.recordTurnStart();
+  }
+
   public checkBypass(): void {
     if (!this.strictExecution || this.inBypassState) return;
     const stateDef = this.getStateDefinition(this.activeStatePath);
@@ -767,7 +780,7 @@ export class FSMEngine {
       ...(this.strictExecution ? [
         '  <strict_execution mode="enforced">',
         '    <contract>TODO Card: Load -> Execute -> Emit</contract>',
-        '    <contract>Strict mode counts delivered state views until a signal is emitted. The current counter and limit are shown below.</contract>',
+        '    <contract>Strict mode counts each new state view until a signal is emitted; re-fetching the same view is not counted. The current counter and limit are shown below.</contract>',
         `    <contract>Views since signal: ${this.turnsSinceLastSignal}. Max idle turns: ${this.getStateDefinition(this.activeStatePath)?.max_idle_turns ?? 2}. Exceeding this triggers auto-abort to BYPASS_DETECTED.</contract>`,
         '    <contract>Use the listed tools. Tool-call enforcement requires a host adapter that intercepts those calls.</contract>',
         '    <contract>Recovery: reactive-skills-axi reset <skill> then re-invoke.</contract>',

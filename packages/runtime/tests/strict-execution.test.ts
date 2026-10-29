@@ -169,45 +169,52 @@ describe('Strict Execution Mode', () => {
       expect(typeof parsed.turns_since_last_signal).toBe('number');
     });
 
-    it('calling reactive_state twice without emitting a signal does NOT bypass (strict mode tracks turns, not calls)', async () => {
+    const appendIdleEvent = (jobId: string, skillDir = path.join(tempDir, 'skills', '_test_fsm_skill'), workspaceDir = tempDir) => {
+      const engine = new FSMEngine({ skillDir, workspaceDir, jobId });
+      engine.getEventStore().append('IDLE_NOTE', {});
+      engine.close();
+    };
+
+    it('does not count repeat reactive_state fetches of the same run/seq after compaction', async () => {
       const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: '_test_fsm_skill' });
-      const tools = (server as any)._registeredTools;
+      const handler = (server as any)._registeredTools['reactive_state'];
+      const fetch = async () => JSON.parse((await handler.handler({ job_id: 'refetch', output: 'compact-v1' }, {} as any)).content[0].text);
 
-      const handler = tools['reactive_state'];
+      const first = await fetch();
+      const second = await fetch();
+      const third = await fetch();
+      const fourth = await fetch();
 
-      // First call
-      const res1 = await handler.handler({}, {} as any);
-      const parsed1 = JSON.parse(res1.content[0].text);
+      expect(first.strict).toEqual(expect.objectContaining({ idle_limit: 2, turns_since_signal: 1 }));
+      for (const view of [second, third, fourth]) {
+        expect(view.error).toBeUndefined();
+        expect(view.seq).toBe(first.seq);
+        expect(view.strict.turns_since_signal).toBe(1);
+      }
+      const events = new FSMEngine({ skillDir: path.join(tempDir, 'skills', '_test_fsm_skill'), workspaceDir: tempDir, jobId: 'refetch' }).getEventStore().getAll();
+      expect(events.filter(event => event.type === 'AGENT_TURN_STARTED')).toHaveLength(1);
+      expect(events.some(event => event.type === 'BYPASS_DETECTED')).toBe(false);
+    });
+
+    it('counts each new idle delivery and bypasses past max_idle_turns', async () => {
+      const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: '_test_fsm_skill' });
+      const handler = (server as any)._registeredTools['reactive_state'];
+      const fetch = async () => handler.handler({ job_id: 'idle' }, {} as any);
+
+      const parsed1 = JSON.parse((await fetch()).content[0].text);
       expect(parsed1.strict_execution).toBe(true);
       expect(parsed1.turns_since_last_signal).toBe(1);
 
-      // Second call
-      const res2 = await handler.handler({}, {} as any);
-      const parsed2 = JSON.parse(res2.content[0].text);
+      appendIdleEvent('idle');
+      const parsed2 = JSON.parse((await fetch()).content[0].text);
       expect(parsed2.turns_since_last_signal).toBe(2);
 
-      // Third call -> bypass (max_idle_turns = 2, 3 > 2)
-      const res3 = await handler.handler({}, {} as any);
+      appendIdleEvent('idle');
+      const res3 = await fetch();
+      expect(res3.isError).toBe(true);
       const parsed3 = JSON.parse(res3.content[0].text);
-      expect(res3.isError).toBe(true);
       expect(parsed3.error).toContain('BYPASS_DETECTED');
-    });
-
-    it('reactive_state returns error with recovery instructions when in bypass state', async () => {
-      const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: '_test_fsm_skill' });
-      const tools = (server as any)._registeredTools;
-
-      const handler = tools['reactive_state'];
-
-      // Trigger bypass by calling 3 times
-      await handler.handler({}, {} as any);
-      await handler.handler({}, {} as any);
-      const res3 = await handler.handler({}, {} as any);
-
-      expect(res3.isError).toBe(true);
-      const parsed = JSON.parse(res3.content[0].text);
-      expect(parsed.error).toContain('BYPASS_DETECTED');
-      expect(parsed.recovery).toBe('Run reactive-skills-axi reset _test_fsm_skill then re-invoke.');
+      expect(parsed3.recovery).toBe('Run reactive-skills-axi reset _test_fsm_skill then re-invoke.');
     });
 
     it('keeps a quoted skill path whole in the recovery command, during and after bypass (#65)', async () => {
@@ -220,7 +227,9 @@ describe('Strict Execution Mode', () => {
       const call = async () => JSON.parse((await handler.handler({ job_id: 'stuck' }, {} as any)).content[0].text);
 
       await call();
+      appendIdleEvent('stuck', skillDir, workspaceDir);
       await call();
+      appendIdleEvent('stuck', skillDir, workspaceDir);
       const bypassed = await call();
       const stillBypassed = await call();
 

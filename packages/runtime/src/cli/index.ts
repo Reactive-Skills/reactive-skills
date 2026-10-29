@@ -131,9 +131,7 @@ async function main() {
     }
 
     const engine = new FSMEngine({ skillDir: targetDir, autoRotateTerminal: true });
-    if (engine.isStrictExecution()) {
-      engine.recordTurnStart();
-    }
+    engine.recordStateDelivery();
     const slice = engine.generatePromptSlice();
 
     const viewOutput = args.find(arg => arg.startsWith('--output='))?.slice('--output='.length) ?? (args.includes('--output') ? args[args.indexOf('--output') + 1] : undefined);

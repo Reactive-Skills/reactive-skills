@@ -29,7 +29,7 @@ export interface StateView {
   warning?: string;
 }
 
-export const STATE_VIEW_POLICY = 'Emit after work. Stop at human gates. Re-fetch the same run after resume or compaction, without emitting a signal or recreating approvals. Use the listed tools; tool-call enforcement requires a host adapter.';
+export const STATE_VIEW_POLICY = 'Emit after work. Stop at human gates. Re-fetch the same run (MCP job_id or AXI --job set to run_id) after resume or compaction, without emitting a signal or recreating approvals; a repeat fetch of the same view is not counted. Use the listed tools; tool-call enforcement requires a host adapter.';
 
 /**
  * Retain exact conditions and module references without repeating transition prose.
