@@ -1017,6 +1017,7 @@ export class FSMEngine {
       this.context = contextBeforeSignal;
       const refusalReason = `Evidence verification failed: ${(error as Error).message}`;
       this.eventStore.append('SIGNAL_REFUSED', { signal: signalName, reason: refusalReason }, { state: previousState, causationId: event.id });
+      this.lastRefusalReason = refusalReason;
       return { transitioned: false, previousState, newState: previousState, event, deliverablesWritten: [], refusalReason };
     }
 
