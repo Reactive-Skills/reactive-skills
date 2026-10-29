@@ -46,7 +46,7 @@ export class GuardEvaluator {
   /**
    * Evaluate a transition guard expression, custom JS function file, or snap-on judgment
    * Tier: P2 orchestration (< 100ms local), adapter waiting bounded separately.
-   * Complexity: O(b + p²*d*i), input bytes and selected paths/depth.
+   * Complexity: O(b + p²*d*i + e), input bytes, selected paths/depth and non-empty checked string bytes/object keys.
    * CRAP target <= 25 per evaluation path (CC <= 15, branch coverage >= 70%).
    */
   public static async evaluate(

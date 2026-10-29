@@ -43,6 +43,13 @@
 
 ## ⚙️ Milestone: v0.6.x — Performance & Documentation Polish (Active)
 
+Explicit shallow non-empty judgment preconditions are implemented in `packages/runtime/src/core/judgment-input.ts` as `precondition.non_empty.context_paths` / `payload_paths`, retaining existing presence/type checks and the bounded judgment cascade.
+`judgment-nonempty-preconditions.test.ts` covers missing/blank/empty values, non-empty values, zero/false, manifest-seeded null/[] defaults, refusal replay/snapshots, idempotent replay and subsequent evidence updates; existing guarantee tests remain unchanged.
+AXI `inspect-judgment-input.test.ts` covers read-only, content-free inspection through the shared runtime API, with the inspection complexity annotation updated in `judgment-input-inspection.ts`.
+The runtime README, `docs/specs/judgment-input-selection.md` and `PERFORMANCE-STANDARDS.md` describe the additive contract and its checked-value cost.
+Caller complexity annotations in `judgment-engine.ts`, `guard-evaluator.ts` and `fsm-engine.ts` account for checked string bytes/object keys without changing cascade, guard or FSM behavior.
+Local validation passed 1,014 runtime tests, 387 AXI tests (one existing skip), both package builds and documentation/prose gates; new helper CC measures 2–6 and preparation CC 12.
+
 Optional transition payload contracts and targeted guard inspection are implemented in `core/payload-contract.ts`, `payload-guard.ts`, `types.ts`, `fsm-engine.ts`, `state-view.ts`, `runtime-capabilities.ts`, `index.ts`, MCP `server.ts` and AXI `commands/guard-inspection.ts`, `inspect.ts`, `cli/commands.ts`.
 The shared compact/XML renderer retains exact legacy guard fallback and owning-state order; structural checks precede unchanged guards and preserve ancestor fall-through, evidence and refusal events.
 `payload-contract.test.ts` and AXI `guard-inspection.test.ts` cover typed inputs, incomplete contracts, declaration drift, replay/snapshots and read-only contained source inspection.

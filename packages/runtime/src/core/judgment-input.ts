@@ -28,6 +28,11 @@ const PayloadPathSchema = z.string().superRefine((path, ctx) => {
   if (problem) ctx.addIssue({ code: 'custom', message: problem });
 });
 
+/** Tier: P0 (< 5ms); Complexity: O(1); CRAP target <= 10 (CC <= 8, branch coverage >= 90%). */
+function hasPreconditionChecks(value: { payload_schema?: unknown; non_empty?: unknown }): boolean {
+  return value.payload_schema !== undefined || value.non_empty !== undefined;
+}
+
 export const JudgmentInputOptionsSchema = z.object({
   payload_paths: z.array(PayloadPathSchema).optional(),
   required_context_paths: z.array(ContextPathSchema).optional(),
@@ -35,8 +40,12 @@ export const JudgmentInputOptionsSchema = z.object({
     payload_schema: z.record(PayloadPathSchema, z.object({
       type: z.enum(['string', 'number', 'boolean', 'object', 'array', 'null']),
       const: z.union([z.string(), z.number().finite(), z.boolean(), z.null()]).optional(),
-    }).strict()),
-  }).strict().optional(),
+    }).strict()).optional(),
+    non_empty: z.object({
+      context_paths: z.array(ContextPathSchema).optional(),
+      payload_paths: z.array(PayloadPathSchema).optional(),
+    }).strict().optional(),
+  }).strict().refine(hasPreconditionChecks, 'precondition requires payload_schema or non_empty').optional(),
 });
 
 export type JudgmentInputOptions = z.infer<typeof JudgmentInputOptionsSchema>;
@@ -91,6 +100,32 @@ function readPath(value: unknown, path: string): unknown {
     current = (current as Record<string, unknown>)[segment];
   }
   return current;
+}
+
+/** Tier: P0 (< 5ms for bounded evidence); Complexity: O(s + k), string bytes s or object keys k; CRAP target <= 10 (CC <= 8, branch coverage >= 90%). */
+function isEmptyEvidence(value: unknown): boolean {
+  if (value === undefined || value === null) return true;
+  if (typeof value === 'string') return value.trim().length === 0;
+  if (Array.isArray(value)) return value.length === 0;
+  return typeof value === 'object' && Object.keys(value).length === 0;
+}
+
+/** Tier: P1 (< 25ms); Complexity: O(p*d + e), paths p, depth d, checked string bytes/object keys e; CRAP target <= 15 (CC <= 12, branch coverage >= 80%). */
+function missingNonEmptyInputs(judgment: JudgmentDefinition, evaluation: GuardEvaluationContext): string[] {
+  const declaration = judgment.precondition?.non_empty;
+  return [
+    { prefix: 'context', value: evaluation.context, paths: declaration?.context_paths ?? [] },
+    { prefix: 'payload', value: evaluation.event.payload, paths: declaration?.payload_paths ?? [] },
+  ].flatMap(({ prefix, value, paths }) => paths
+    .filter(path => isEmptyEvidence(readPath(value, path)))
+    .map(path => `${prefix}.${path}`));
+}
+
+/** Tier: P1 (< 25ms); Complexity: O(p*d), required paths p and depth d; CRAP target <= 15 (CC <= 12, branch coverage >= 80%). */
+function missingRequiredContext(judgment: JudgmentDefinition, context: Record<string, unknown>): string[] {
+  return (judgment.required_context_paths ?? [])
+    .filter(path => readPath(context, path) === undefined)
+    .map(path => `context.${path}`);
 }
 
 /** Tier: P0 (< 5ms); Complexity: O(d); CRAP target <= 10 (CC <= 8, branch coverage >= 90%). */
@@ -176,7 +211,7 @@ function destinationClass(adapter?: string): JudgmentInputInspection['destinatio
 
 /**
  * Prepares candidate state without I/O or adapter invocation. Metadata never contains evidence values.
- * Tier: P1 (< 25ms); Complexity: O(p²*d*i + b), paths p, depth d, max index i, selected bytes b.
+ * Tier: P1 (< 25ms); Complexity: O(p²*d*i + b + e), paths p, depth d, max index i, selected bytes b, checked string bytes/object keys e.
  * CRAP target <= 15 (CC <= 12 per helper, branch coverage >= 80%); no ledger scans or result cache.
  */
 export function prepareJudgmentInput(judgment: JudgmentDefinition, evaluation: GuardEvaluationContext) {
@@ -194,11 +229,13 @@ export function prepareJudgmentInput(judgment: JudgmentDefinition, evaluation: G
   const payload = judgment.payload_paths === undefined ? { value: evaluation.event.payload, missing: [], gaps: [] }
     : projectPayload(evaluation.event.payload, judgment.payload_paths);
   inspection.errors.push(...payload.gaps);
-  inspection.missingRequired = [...payload.missing, ...(judgment.required_context_paths ?? [])
-    .filter(path => readPath(evaluation.context, path) === undefined).map(path => `context.${path}`)];
+  const nonEmptyMissing = missingNonEmptyInputs(judgment, evaluation);
+  inspection.missingRequired = [...new Set([
+    ...payload.missing, ...missingRequiredContext(judgment, evaluation.context), ...nonEmptyMissing,
+  ])];
   inspection.errors.push(...inspection.missingRequired.map(path => `Missing required judgment input: ${path}`));
   const failures = preconditionErrors(judgment, evaluation.event.payload);
-  if (judgment.precondition) inspection.preconditionPassed = failures.length === 0;
+  if (judgment.precondition) inspection.preconditionPassed = failures.length + nonEmptyMissing.length === 0;
   inspection.errors.push(...failures);
   const state = {
     ...(inspection.includePayload ? { event: payload.value ?? {} } : {}),
@@ -217,7 +254,7 @@ export function prepareJudgmentInput(judgment: JudgmentDefinition, evaluation: G
 
 /**
  * Returns a content-free preflight view, without contacting or configuring an adapter.
- * Tier: P1 (< 25ms); Complexity: O(p²*d*i + b); CRAP target <= 15 (CC <= 12, branch coverage >= 80%).
+ * Tier: P1 (< 25ms); Complexity: O(p²*d*i + b + e), checked string bytes/object keys e; CRAP target <= 15 (CC <= 12, branch coverage >= 80%).
  */
 export function inspectJudgmentInput(judgment: JudgmentDefinition, evaluation: GuardEvaluationContext): JudgmentInputInspection {
   return prepareJudgmentInput(judgment, evaluation).inspection;
@@ -226,7 +263,7 @@ export function inspectJudgmentInput(judgment: JudgmentDefinition, evaluation: G
 /**
  * Binds opt-in approvals to selected evidence, declaration and built-in adapter base URL and model.
  * Custom adapters supply their configuration revision through recorded selected context.
- * Tier: P1 (< 25ms); Complexity: O(p²*d*i + b); CRAP target <= 15 (CC <= 12, branch coverage >= 80%).
+ * Tier: P1 (< 25ms); Complexity: O(p²*d*i + b + e), checked string bytes/object keys e; CRAP target <= 15 (CC <= 12, branch coverage >= 80%).
  */
 export function judgmentInputIdentity(judgment: JudgmentDefinition, evaluation: GuardEvaluationContext): string | undefined {
   if (!usesJudgmentInputOptions(judgment)) return undefined;

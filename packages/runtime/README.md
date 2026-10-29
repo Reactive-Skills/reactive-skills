@@ -44,6 +44,7 @@ With the key set, a failed or rejected Jev request refuses the signal for a natu
 When Jev rejects its credentials or a judgment is misconfigured, the refusal says that retrying will not help.
 
 Judgments can opt into nested `payload_paths`, `required_context_paths` and declarative payload preconditions with the `judgment.payload_selection` capability.
+Use `precondition.non_empty.context_paths` or `precondition.non_empty.payload_paths` to refuse absent, null, blank-string or empty-collection evidence before adapter selection; existing presence-only declarations keep their semantics.
 Inspect candidate input with `inspectJudgmentInput()` or `reactive-skills-axi inspect <path> --judgment-input @candidate.json` before invoking an adapter.
 See [judgment input selection](../../docs/specs/judgment-input-selection.md) for input shapes, refusal behavior and content-free audit metadata.
 

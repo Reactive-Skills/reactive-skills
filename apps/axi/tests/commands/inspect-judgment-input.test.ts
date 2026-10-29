@@ -42,6 +42,27 @@ describe('inspect --judgment-input', () => {
     expect(await inspectCommand([directory, '--judgment-input'])).toContain('Usage: inspect');
   });
 
+  it('reports non-empty context and payload failures without opening a run or exposing values', async () => {
+    const manifestPath = path.join(directory, 'skill.yaml');
+    const manifest = yaml.load(fs.readFileSync(manifestPath, 'utf8')) as {
+      states: { ACTIVE: { substates: { REVIEW: { transitions: { CHECK: { judgment: Record<string, unknown> } } } } } };
+    };
+    manifest.states.ACTIVE.substates.REVIEW.transitions.CHECK.judgment.precondition = {
+      non_empty: { context_paths: ['rubric'], payload_paths: ['check.text'] },
+    };
+    fs.writeFileSync(manifestPath, yaml.dump(manifest));
+    const inspect = async (rubric: unknown, text: unknown) => JSON.parse(await inspectCommand([
+      directory, '--judgment-input', JSON.stringify({ context: { rubric }, payload: { check: { text } } }),
+    ])).judgment_inputs[0];
+    expect(await inspect(null, ' \t')).toMatchObject({
+      missingRequired: ['context.rubric', 'payload.check.text'], preconditionPassed: false,
+    });
+    const accepted = await inspect('selected rubric', 'selected evidence');
+    expect(accepted).toMatchObject({ missingRequired: [], errors: [], preconditionPassed: true });
+    expect(JSON.stringify(accepted)).not.toMatch(/selected rubric|selected evidence/);
+    expect(fs.readdirSync(directory)).toEqual(['skill.yaml']);
+  });
+
   it('does not copy malformed candidate content into an inspection error', async () => {
     const output = await inspectCommand([directory, '--judgment-input', 'confidential-evidence']);
     expect(output).toContain('Judgment input must be valid JSON');
