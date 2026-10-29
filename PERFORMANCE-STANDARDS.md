@@ -32,6 +32,28 @@ Reactive Skills Architecture (RSA) introduces deterministic structure to autonom
 
 ## Complexity Budget
 
+### Judgment Waiting and Bookkeeping
+
+Judgment orchestration is P0 bookkeeping: timer setup, adapter selection bookkeeping, result classification and telemetry must stay below 5ms of local work, excluding external adapter waiting and request serialization.
+Timer and accounting primitives use P0 risk ceilings; configuration/classification helpers and cascade orchestration use P1/P2 risk ceilings with the same local-work target, excluding external waiting.
+Whole-cascade accounting is O(a), where a <= 2 primary/fallback slots, independent of ledger history.
+Request serialization and scoped-context processing are O(b + p), where b is selected input bytes and p is selected paths.
+Telemetry uses the existing `GUARD_EVALUATED` append, with no additional storage operation.
+
+`judgment.total_timeout_ms` optionally bounds all asynchronous selection, configuration and evaluation waiting in one cascade.
+Every adapter receives the smaller of the remaining budget and an explicit per-attempt `timeout_ms` when supplied, plus cooperative cancellation.
+Timer scheduling and synchronous event-loop blocking can delay timeout delivery; late results are refused when control returns.
+Custom adapters must observe cancellation to stop their external work.
+Without the total deadline, legacy retry and timeout behavior remains in effect; Jev retains its existing 3000ms adapter default and zero SDK retries.
+Configured SDK clients are cached per adapter instance and invalidated when authentication, endpoint, model or log configuration changes.
+Client reuse has no measured latency or network connection reuse claim.
+
+`JudgmentResult.latencyMs` includes the entire cascade even when unevaluable, while `attempts[].elapsedMs` measures each invocation and records skips, timeout/cancellation cause and circuit outcome.
+`attemptCount` excludes skips.
+Fake-clock tests verify exact deadline and refusal accounting; they do not measure typical external model latency.
+External waiting must be reported separately from P0 local budgets and never as zero on refusal.
+See [the deadline contract](docs/specs/0023-judgment-deadlines.md) for opt-in semantics and compatibility.
+
 ### 1. Algorithmic Complexity (Big-O)
 
 #### Allowed Patterns

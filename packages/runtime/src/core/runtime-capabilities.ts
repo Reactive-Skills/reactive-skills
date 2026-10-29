@@ -27,6 +27,7 @@ export const STATIC_RUNTIME_CAPABILITIES = [
   'judgment.probability_thresholds',
   'judgment.human_approval',
   'judgment.context_paths',
+  'judgment.total_deadline',
   'context.routing',
   'context.preparation',
   'runtime.bootloader',

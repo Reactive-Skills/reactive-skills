@@ -10,6 +10,7 @@ import {
 import { GuardEvaluationContext } from './guard-evaluator.js';
 import { decideJudgment, resolveJudgmentThreshold } from './judgment-thresholds.js';
 import { scopeJudgmentContext } from './judgment-context.js';
+import { JudgmentExecution, JudgmentTimeoutError } from './judgment-execution.js';
 
 interface TypeSafeClientLike {
   systemOne(
@@ -112,6 +113,12 @@ export class JudgmentAuthoringError extends Error {
 
 function isAuthoringError(err: unknown): boolean {
   return err instanceof JudgmentAuthoringError || (err as { name?: string } | null)?.name === 'JudgmentAuthoringError';
+}
+
+/** Tier: P0 (< 5ms); Complexity: O(1); CRAP target <= 10 (CC <= 8, coverage >= 90%). */
+function isCredentialsError(error: unknown): boolean {
+  const status = (error as { status?: number } | null)?.status;
+  return status === 401 || status === 403;
 }
 
 /** Why no adapter could decide a judgment; selects the agent-facing reason (ADR 0011, ADR 0012). */
@@ -219,6 +226,21 @@ export class ScriptJudgmentAdapter implements JudgmentAdapter {
  */
 export class JevJudgmentAdapter implements JudgmentAdapter {
   public readonly id = 'jev';
+  private client?: TypeSafeClientLike;
+  private clientConfiguration?: string;
+
+  /** Tier: P0 (< 5ms); Complexity: O(1); CRAP target <= 10 (CC <= 8, coverage >= 90%). */
+  private getClient(sdk: TypeSafeSdkModule): TypeSafeClientLike {
+    const configuration = JSON.stringify([
+      process.env.TYPESAFE_API_KEY, process.env.TYPESAFE_BASE_URL,
+      process.env.TYPESAFE_DEFAULT_MODEL, process.env.TYPESAFE_LOG_LEVEL,
+    ]);
+    if (!this.client || this.clientConfiguration !== configuration) {
+      this.client = new sdk.TypeSafeClient();
+      this.clientConfiguration = configuration;
+    }
+    return this.client;
+  }
 
   public supports(type: JudgmentType): boolean {
     return type === 'predicate' || type === 'categorical' || type === 'evaluation';
@@ -234,19 +256,22 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
     return Boolean(process.env.TYPESAFE_API_KEY?.trim());
   }
 
+  /**
+   * Tier: P2 adapter orchestration (< 100ms local); external SDK waiting has its own deadline.
+   * Complexity: O(b + p), selected context bytes b and paths p; no ledger reads.
+   * CRAP target <= 25 (CC <= 15 per normalization path, branch coverage >= 70%).
+   */
   public async evaluate(
     req: JudgmentRequest,
     evalContext: GuardEvaluationContext
   ): Promise<JudgmentResult> {
     const startTime = performance.now();
-    const timeoutMs = Math.max(1, (evalContext as GuardEvaluationContext & { timeout_ms?: number }).timeout_ms || 3000);
     const sdk = await loadTypeSafeSdk();
     if (!sdk) {
       throw new Error('TypeSafe SDK is unavailable; install @typesafe-ai/sdk and configure TYPESAFE_API_KEY');
     }
 
     // A judgment that declares neither field sends the whole run context and the payload.
-    const scoped = req.contextPaths !== undefined || req.includePayload !== undefined;
     const includePayload = req.includePayload !== false;
     const selection = req.contextPaths !== undefined
       ? scopeJudgmentContext(evalContext.context || {}, req.contextPaths)
@@ -267,103 +292,125 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
       question = sdk.score(req.criterion, normalizeScoreRubric(req.rubric));
     }
 
+    const response = await this.requestWithDeadline(sdk, state, question, evalContext);
+
+    const answer = response.answers?.judgment;
+    if (!answer || typeof answer !== 'object') {
+      throw new Error('TypeSafe SDK returned no judgment answer');
+    }
+
+    const latencyMs = Number((performance.now() - startTime).toFixed(2));
+    const raw = {
+      model: response.model,
+      answers: response.answers,
+      usage: response.usage,
+    };
+    const scope = this.contextMetadata(req, response.usage, selection);
+    return { ...this.normalizeAnswer(req, answer), adapterName: this.id, latencyMs, raw, ...scope };
+  }
+
+  /** Tier: P1 (< 25ms); Complexity: O(p) selected paths; CRAP target <= 15 (CC <= 12, coverage >= 80%). */
+  private contextMetadata(req: JudgmentRequest, usage: unknown, selection?: ReturnType<typeof scopeJudgmentContext>) {
+    const inputTokens = (usage as { input_tokens?: unknown } | null | undefined)?.input_tokens;
+    const contextSent: JudgmentContextSent | undefined = req.contextPaths !== undefined || req.includePayload !== undefined
+      ? {
+          ...(selection ? { paths: selection.sent } : {}),
+          missing: selection ? selection.missing : [],
+          includePayload: req.includePayload !== false,
+          ...(typeof inputTokens === 'number' && Number.isFinite(inputTokens) ? { inputTokens } : {}),
+        }
+      : undefined;
+    return contextSent ? { contextSent } : {};
+  }
+
+  /** Tier: P2 normalization (< 100ms); Complexity: O(options); CRAP target <= 25 (CC <= 15, coverage >= 70%). */
+  private normalizeAnswer(req: JudgmentRequest, answer: object): Pick<JudgmentResult, 'verdict' | 'confidence' | 'probability' | 'passed'> {
+    if (req.type === 'predicate') {
+      const probability = (answer as { type?: string; noul?: number }).noul;
+      if (typeof probability !== 'number' || !Number.isFinite(probability)) {
+        throw new Error('TypeSafe SDK returned an invalid predicate answer');
+      }
+      const boundedProbability = Math.min(1, Math.max(0, probability));
+      const verdict = boundedProbability >= 0.5;
+      return {
+        verdict,
+        confidence: Math.abs(boundedProbability - 0.5) * 2,
+        probability: boundedProbability,
+        passed: verdict,
+      };
+    }
+
+    if (req.type === 'categorical') {
+      const choice = (answer as { choice?: unknown; confidence?: unknown }).choice;
+      if (typeof choice !== 'string') {
+        throw new Error('TypeSafe SDK returned an invalid categorical answer');
+      }
+      const confidence = this.answerConfidence(answer);
+      return {
+        verdict: choice,
+        confidence,
+        probability: pickedProbability(answer, choice),
+        passed: req.options ? req.options.includes(choice) : Boolean(choice),
+      };
+    }
+
+    const score = (answer as { score?: unknown; confidence?: unknown }).score;
+    if (typeof score !== 'number' || !Number.isFinite(score)) {
+      throw new Error('TypeSafe SDK returned an invalid score answer');
+    }
+    const confidence = this.answerConfidence(answer);
+    return {
+      verdict: score,
+      confidence,
+      passed: score > 0,
+    };
+  }
+
+  /** Tier: P0 (< 5ms); Complexity: O(1); CRAP target <= 10 (CC <= 8, coverage >= 90%). */
+  private answerConfidence(answer: object): number {
+    const confidence = (answer as { confidence?: unknown }).confidence;
+    return typeof confidence === 'number' ? confidence : 0;
+  }
+
+  /**
+   * Tier: P0 bookkeeping (< 5ms); SDK waiting is limited to timeout_ms (default 3000ms).
+   * Complexity: O(1) timer/listener overhead; CRAP target <= 15 (CC <= 12, coverage >= 80%).
+   */
+  private async requestWithDeadline(
+    sdk: TypeSafeSdkModule, state: Record<string, unknown>, question: unknown,
+    evalContext: GuardEvaluationContext
+  ) {
+    evalContext.signal?.throwIfAborted();
+    const timeoutMs = Math.max(1, evalContext.timeout_ms || 3000);
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let cancel = () => {};
+    const cancelled = new Promise<never>((_, reject) => {
+      cancel = () => {
+        const error = evalContext.signal?.reason ?? new Error('Judgment cancelled');
+        reject(error);
+        controller.abort(error);
+      };
+      evalContext.signal?.addEventListener('abort', cancel, { once: true });
+    });
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => {
-        reject(new Error(`Jev adapter execution timed out after ${timeoutMs}ms`));
-        controller.abort();
+        const error = new JudgmentTimeoutError('attempt_timeout', timeoutMs);
+        reject(error);
+        controller.abort(error);
       }, timeoutMs);
     });
-
     try {
-      const response = await Promise.race([
-        new sdk.TypeSafeClient().systemOne(
+      return await Promise.race([
+        this.getClient(sdk).systemOne(
           { state, questions: { judgment: question } },
           { signal: controller.signal, timeout: timeoutMs, retry: { maxRetries: 0 } }
         ),
-        timeout,
+        timeout, cancelled,
       ]);
-
-      const answer = response.answers?.judgment;
-      if (!answer || typeof answer !== 'object') {
-        throw new Error('TypeSafe SDK returned no judgment answer');
-      }
-
-      const latencyMs = Number((performance.now() - startTime).toFixed(2));
-      const raw = {
-        model: response.model,
-        answers: response.answers,
-        usage: response.usage,
-      };
-      const inputTokens = (response.usage as { input_tokens?: unknown } | null | undefined)?.input_tokens;
-      const contextSent: JudgmentContextSent | undefined = scoped
-        ? {
-            ...(selection ? { paths: selection.sent } : {}),
-            missing: selection ? selection.missing : [],
-            includePayload,
-            ...(typeof inputTokens === 'number' && Number.isFinite(inputTokens) ? { inputTokens } : {}),
-          }
-        : undefined;
-      const scope = contextSent ? { contextSent } : {};
-
-      if (req.type === 'predicate') {
-        const probability = (answer as { type?: string; noul?: number }).noul;
-        if (typeof probability !== 'number' || !Number.isFinite(probability)) {
-          throw new Error('TypeSafe SDK returned an invalid predicate answer');
-        }
-        const boundedProbability = Math.min(1, Math.max(0, probability));
-        const verdict = boundedProbability >= 0.5;
-        return {
-          verdict,
-          confidence: Math.abs(boundedProbability - 0.5) * 2,
-          probability: boundedProbability,
-          passed: verdict,
-          adapterName: this.id,
-          latencyMs,
-          raw,
-          ...scope,
-        };
-      }
-
-      if (req.type === 'categorical') {
-        const choice = (answer as { choice?: unknown; confidence?: unknown }).choice;
-        if (typeof choice !== 'string') {
-          throw new Error('TypeSafe SDK returned an invalid categorical answer');
-        }
-        const confidence = typeof (answer as { confidence?: unknown }).confidence === 'number'
-          ? (answer as { confidence: number }).confidence
-          : 0;
-        return {
-          verdict: choice,
-          confidence,
-          probability: pickedProbability(answer, choice),
-          passed: req.options ? req.options.includes(choice) : Boolean(choice),
-          adapterName: this.id,
-          latencyMs,
-          raw,
-          ...scope,
-        };
-      }
-
-      const score = (answer as { score?: unknown; confidence?: unknown }).score;
-      if (typeof score !== 'number' || !Number.isFinite(score)) {
-        throw new Error('TypeSafe SDK returned an invalid score answer');
-      }
-      const confidence = typeof (answer as { confidence?: unknown }).confidence === 'number'
-        ? (answer as { confidence: number }).confidence
-        : 0;
-      return {
-        verdict: score,
-        confidence,
-        passed: score > 0,
-        adapterName: this.id,
-        latencyMs,
-        raw,
-        ...scope,
-      };
     } finally {
-      if (timer) clearTimeout(timer);
+      if (timer !== undefined) clearTimeout(timer);
+      evalContext.signal?.removeEventListener('abort', cancel);
     }
   }
 }
@@ -451,11 +498,34 @@ export class JudgmentEngine {
   }
 
   /**
-   * Evaluate a transition judgment using the snap-on adapter cascade
+   * Evaluate a transition judgment using the snap-on adapter cascade.
+   * Tier: P0 bookkeeping (< 5ms), external waiting uses declared deadlines.
+   * Complexity: O(a + b), a <= 2 adapter slots and b request bytes.
+   * CRAP target <= 10 (CC <= 8, branch coverage >= 90%).
    */
   public static async evaluate(
     judgment: JudgmentDefinition,
     evalContext: GuardEvaluationContext
+  ): Promise<JudgmentResult & { fallbackTriggered?: boolean; fallbackTarget?: string }> {
+    const execution = new JudgmentExecution(judgment);
+    try {
+      if (evalContext.humanDecision) return execution.finish(this.humanResult(judgment, evalContext.humanDecision));
+      return execution.finish(await this.evaluateCascade(judgment, evalContext, execution));
+    } catch (error) {
+      if (!execution.bounded) throw error;
+      const adapterId = execution.attempts.at(-1)?.adapter ?? judgment.adapter_hint ?? 'jev';
+      const cause = error instanceof Error ? error.message : String(error);
+      return execution.finish(this.unevaluable(judgment, adapterId, cause, 'bounded_cascade', adapterId));
+    }
+  }
+
+  /**
+   * Tier: P2 cascade orchestration (< 100ms local), external waiting bounded separately.
+   * Complexity: O(a + b), a <= 2 adapter slots and b request bytes; no history scans.
+   * CRAP target <= 25 (CC <= 15, branch coverage >= 70%).
+   */
+  private static async evaluateCascade(
+    judgment: JudgmentDefinition, evalContext: GuardEvaluationContext, execution: JudgmentExecution
   ): Promise<JudgmentResult & { fallbackTriggered?: boolean; fallbackTarget?: string }> {
     const req: JudgmentRequest = {
       type: judgment.type,
@@ -467,26 +537,76 @@ export class JudgmentEngine {
       ...(judgment.include_payload !== undefined ? { includePayload: judgment.include_payload } : {}),
     };
 
-    // A person decided this gate in an interactive terminal (ADR 0012); the engine validated it.
-    if (evalContext.humanDecision) {
-      const approved = evalContext.humanDecision === 'approve';
-      return {
-        verdict: approved,
-        confidence: 1,
-        probability: approved ? 1 : 0,
-        passed: approved,
-        adapterName: 'human',
-        adapterSelectionReason: 'human_approval',
-        latencyMs: 0,
-        decidedBy: 'human',
-        threshold: resolveJudgmentThreshold(judgment),
-        band: approved ? 'accept' : 'reject',
-        fallbackTriggered: false,
-        ...(approved ? {} : { error: 'A person rejected this gate in an interactive terminal.', fallbackTarget: judgment.fallback_target }),
-      };
+    const { primaryAdapterId, adapterSelectionReason } = await this.selectAdapter(judgment, execution);
+    const { result, primaryFailed, authoringError, ...failure } = await this.evaluatePrimary(
+      primaryAdapterId, adapterSelectionReason, req, evalContext, execution
+    );
+    const { credentialsRejected, failureCause } = failure;
+
+    if (execution.bounded && (authoringError || credentialsRejected)) {
+      return this.unevaluable(judgment, primaryAdapterId, failureCause, adapterSelectionReason, primaryAdapterId,
+        authoringError ? 'authoring' : 'credentials');
+    }
+    const outageAdapterId = await this.detectOutage(primaryAdapterId, primaryFailed, adapterSelectionReason, execution);
+    const { kind, cause } = this.failureReason({ credentialsRejected, authoringError, failureCause }, outageAdapterId);
+    // Without a configured model, only an operator grant lets the agent's own payload decide (ADR 0012).
+    const needsGrant = (r: JudgmentResult) => Boolean(r.selfReported) && !evalContext.selfReportAllowed;
+
+    if (!result || primaryFailed) {
+      return this.evaluateFallback(judgment, req, evalContext, execution, primaryAdapterId,
+        adapterSelectionReason, outageAdapterId, cause, kind);
     }
 
-    // Determine target primary adapter
+    // An open Jev circuit or a broken Jev install made the script adapter primary; it cannot judge natural language either.
+    if (outageAdapterId && result.selfReported) {
+      return this.unevaluable(judgment, outageAdapterId, cause, adapterSelectionReason, result.adapterName, kind);
+    }
+    if (needsGrant(result)) {
+      return this.unevaluable(judgment, primaryAdapterId, cause, adapterSelectionReason, result.adapterName, 'no_model');
+    }
+
+    // 3. Apply the declared threshold and decision band
+    return this.applyDecision(judgment, result, false);
+  }
+
+  /** Tier: P1 (< 25ms); Complexity: O(cause bytes); CRAP target <= 15 (CC <= 12, coverage >= 80%). */
+  private static failureReason(
+    failure: { credentialsRejected: boolean; authoringError: boolean; failureCause: string }, outageAdapterId?: string
+  ): { kind: UnevaluableKind; cause: string } {
+    let { credentialsRejected, failureCause } = failure;
+    const { authoringError } = failure;
+    const earlierRejection = outageAdapterId ? this.rejectedCredentials.get(outageAdapterId) : undefined;
+    // An authoring error keeps its own cause even after an earlier credentials rejection.
+    if (!credentialsRejected && !authoringError && earlierRejection) {
+      credentialsRejected = true;
+      failureCause = `${earlierRejection}; circuit breaker open`;
+    }
+    return { kind: authoringError ? 'authoring' : credentialsRejected ? 'credentials' : 'outage', cause: failureCause };
+  }
+
+  /** Tier: P0 (< 5ms); Complexity: O(1); CRAP target <= 10 (CC <= 8, coverage >= 90%). */
+  private static humanResult(judgment: JudgmentDefinition, decision: 'approve' | 'reject'): JudgmentResult & { fallbackTriggered: boolean; fallbackTarget?: string } {
+    const approved = decision === 'approve';
+    return {
+      verdict: approved,
+      confidence: 1,
+      probability: approved ? 1 : 0,
+      passed: approved,
+      adapterName: 'human',
+      adapterSelectionReason: 'human_approval',
+      latencyMs: 0,
+      decidedBy: 'human',
+      threshold: resolveJudgmentThreshold(judgment),
+      band: approved ? 'accept' : 'reject',
+      fallbackTriggered: false,
+      ...(approved ? {} : { error: 'A person rejected this gate in an interactive terminal.', fallbackTarget: judgment.fallback_target }),
+    };
+  }
+
+  /** Tier: P0 bookkeeping (< 5ms); Complexity: O(1); CRAP target <= 10 (CC <= 8, coverage >= 90%). */
+  private static async selectAdapter(judgment: JudgmentDefinition, execution: JudgmentExecution): Promise<{
+    primaryAdapterId: string; adapterSelectionReason: string;
+  }> {
     let primaryAdapterId = judgment.adapter_hint;
     let adapterSelectionReason = judgment.adapter_hint
       ? `adapter_hint:${judgment.adapter_hint}`
@@ -501,7 +621,7 @@ export class JudgmentEngine {
       } else if (!jevBreaker?.canExecute()) {
         adapterSelectionReason = 'jev_circuit_open';
         primaryAdapterId = 'script';
-      } else if (await jevAdapter.isAvailable()) {
+      } else if (await execution.wait(() => jevAdapter.isAvailable())) {
         primaryAdapterId = 'jev';
         adapterSelectionReason = 'jev_available';
       } else {
@@ -510,6 +630,14 @@ export class JudgmentEngine {
       }
     }
 
+    return { primaryAdapterId, adapterSelectionReason };
+  }
+
+  /** Tier: P2 orchestration (< 100ms local); Complexity: O(b) request bytes; CRAP target <= 25 (CC <= 15, coverage >= 70%). */
+  private static async evaluatePrimary(
+    primaryAdapterId: string, adapterSelectionReason: string, req: JudgmentRequest,
+    evalContext: GuardEvaluationContext, execution: JudgmentExecution
+  ) {
     const primaryAdapter = this.adapters.get(primaryAdapterId);
     const primaryBreaker = this.breakers.get(primaryAdapterId);
 
@@ -524,11 +652,7 @@ export class JudgmentEngine {
     // 1. Try Primary Adapter if breaker allows
     if (primaryAdapter && primaryBreaker?.canExecute()) {
       try {
-        result = await primaryAdapter.evaluate(req, {
-          ...evalContext,
-          timeout_ms: judgment.timeout_ms,
-        } as any);
-        primaryBreaker.recordSuccess();
+        result = await execution.evaluate(primaryAdapter, req, evalContext, 'primary', primaryBreaker);
         this.rejectedCredentials.delete(primaryAdapterId);
         result = {
           ...result,
@@ -541,87 +665,102 @@ export class JudgmentEngine {
           // A misconfigured judgment is not an outage, so it does not count against the breaker.
           authoringError = true;
         } else {
-          primaryBreaker.recordFailure();
           // 401 and 403 mean the adapter rejected its credentials, which retrying cannot fix.
-          credentialsRejected = err?.status === 401 || err?.status === 403;
+          credentialsRejected = isCredentialsError(err);
           if (credentialsRejected) this.rejectedCredentials.set(primaryAdapterId, failureCause);
           else this.rejectedCredentials.delete(primaryAdapterId);
         }
       }
     } else {
       primaryFailed = true;
+      execution.attempts.push({
+        adapter: primaryAdapterId, stage: 'primary', invoked: false, elapsedMs: 0,
+        outcome: 'skipped', reason: primaryAdapter ? 'circuit_open' : 'unregistered',
+        breakerBefore: primaryBreaker?.getState(), breakerAfter: primaryBreaker?.getState(),
+      });
     }
 
-    const outageAdapterId = await this.detectOutage(primaryAdapterId, primaryFailed, adapterSelectionReason);
-    // An open circuit throws nothing, so use the rejection that opened it.
-    const earlierRejection = outageAdapterId ? this.rejectedCredentials.get(outageAdapterId) : undefined;
-    // An authoring error keeps its own cause even after an earlier credentials rejection.
-    if (!credentialsRejected && !authoringError && earlierRejection) {
-      credentialsRejected = true;
-      failureCause = `${earlierRejection}; circuit breaker open`;
-    }
-    const failureKind = (): UnevaluableKind => (authoringError ? 'authoring' : credentialsRejected ? 'credentials' : 'outage');
-    // Without a configured model, only an operator grant lets the agent's own payload decide (ADR 0012).
-    const needsGrant = (r: JudgmentResult) => Boolean(r.selfReported) && !evalContext.selfReportAllowed;
+    return { result, primaryFailed, credentialsRejected, authoringError, failureCause };
+  }
 
-    // 2. Cascade to Fallback Adapter if primary failed or was blocked by breaker
-    if (!result || primaryFailed) {
-      const fallbackId = judgment.fallback_adapter || 'script';
-      const fallbackAdapter = this.adapters.get(fallbackId) || this.adapters.get('script')!;
-      try {
-        const fallbackResult = await fallbackAdapter.evaluate(req, evalContext);
-        if (outageAdapterId && fallbackResult.selfReported) {
-          return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, fallbackResult.adapterName, failureKind());
-        }
-        if (needsGrant(fallbackResult)) {
-          return this.unevaluable(judgment, primaryAdapterId, failureCause, adapterSelectionReason, fallbackResult.adapterName, 'no_model');
-        }
-        return this.applyDecision(
-          judgment,
-          { ...fallbackResult, adapterSelectionReason: `${adapterSelectionReason}:fallback` },
-          true
-        );
-      } catch (err: any) {
-        if (outageAdapterId) {
-          const cause = `${failureCause}; fallback ${fallbackId} also failed: ${err.message}`;
-          return this.unevaluable(judgment, outageAdapterId, cause, adapterSelectionReason, fallbackId, failureKind());
-        }
-        return {
-          verdict: false,
-          confidence: 0.0,
-          passed: false,
-          adapterName: fallbackId,
-          latencyMs: 0,
-          error: `Both primary (${primaryAdapterId}) and fallback (${fallbackId}) adapters failed: ${err.message}`,
-          threshold: resolveJudgmentThreshold(judgment),
-          band: 'reject',
-          fallbackTriggered: true,
-          fallbackTarget: judgment.fallback_target,
-        };
+  /** Tier: P2 orchestration (< 100ms local); Complexity: O(b) request bytes; CRAP target <= 25 (CC <= 15, coverage >= 70%). */
+  private static async evaluateFallback(
+    judgment: JudgmentDefinition, req: JudgmentRequest, evalContext: GuardEvaluationContext,
+    execution: JudgmentExecution, primaryAdapterId: string, adapterSelectionReason: string,
+    outageAdapterId: string | undefined, failureCause: string, failureKind: UnevaluableKind
+  ): Promise<JudgmentResult & { fallbackTriggered?: boolean; fallbackTarget?: string }> {
+    const fallbackId = judgment.fallback_adapter || 'script';
+    const fallbackAdapter = this.adapters.get(fallbackId) || this.adapters.get('script')!;
+    try {
+      const fallbackResult = await execution.evaluate(fallbackAdapter, req, evalContext, 'fallback', this.breakers.get(fallbackAdapter.id));
+      if (execution.bounded) this.rejectedCredentials.delete(fallbackAdapter.id);
+      if (outageAdapterId && fallbackResult.selfReported) {
+        return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, fallbackResult.adapterName, failureKind);
       }
+      if (fallbackResult.selfReported && !evalContext.selfReportAllowed) {
+        return this.unevaluable(judgment, primaryAdapterId, failureCause, adapterSelectionReason, fallbackResult.adapterName, 'no_model');
+      }
+      return this.applyDecision(
+        judgment,
+        { ...fallbackResult, adapterSelectionReason: `${adapterSelectionReason}:fallback` },
+        true
+      );
+    } catch (err: unknown) {
+      return this.fallbackFailure(judgment, execution, fallbackAdapter, err,
+        { primaryAdapterId, adapterSelectionReason, outageAdapterId, failureCause, failureKind, fallbackId });
     }
+  }
 
-    // An open Jev circuit or a broken Jev install made the script adapter primary; it cannot judge natural language either.
-    if (outageAdapterId && result.selfReported) {
-      return this.unevaluable(judgment, outageAdapterId, failureCause, adapterSelectionReason, result.adapterName, failureKind());
-    }
-    if (needsGrant(result)) {
-      return this.unevaluable(judgment, primaryAdapterId, failureCause, adapterSelectionReason, result.adapterName, 'no_model');
-    }
+  /** Tier: P0 (< 5ms); Complexity: O(1); CRAP target <= 10 (CC <= 8, coverage >= 90%). */
+  private static fallbackFailureKind(error: unknown, execution: JudgmentExecution, adapterId: string, previousKind: UnevaluableKind): UnevaluableKind {
+    if (isAuthoringError(error)) return 'authoring';
+    if (isCredentialsError(error)) return 'credentials';
+    if (execution.bounded && execution.attempts.at(-1)?.reason === 'circuit_open' && this.rejectedCredentials.has(adapterId)) return 'credentials';
+    return previousKind;
+  }
 
-    // 3. Apply the declared threshold and decision band
-    return this.applyDecision(judgment, result, false);
+  /** Tier: P2 failure classification (< 100ms); Complexity: O(error bytes); CRAP target <= 25 (CC <= 15, coverage >= 70%). */
+  private static fallbackFailure(
+    judgment: JudgmentDefinition, execution: JudgmentExecution, fallbackAdapter: JudgmentAdapter, err: unknown,
+    source: { primaryAdapterId: string; adapterSelectionReason: string; outageAdapterId?: string;
+      failureCause: string; failureKind: UnevaluableKind; fallbackId: string }
+  ): JudgmentResult & { fallbackTriggered: boolean; fallbackTarget?: string } {
+    const { primaryAdapterId, adapterSelectionReason, outageAdapterId, failureCause, failureKind, fallbackId } = source;
+    const message = err instanceof Error ? err.message : String(err);
+    if (outageAdapterId || execution.bounded) {
+      const cause = `${failureCause}; fallback ${fallbackId} also failed: ${message}`;
+      const kind = this.fallbackFailureKind(err, execution, fallbackAdapter.id, failureKind);
+      if (execution.bounded && kind === 'credentials') this.rejectedCredentials.set(fallbackAdapter.id, message);
+      else if (execution.bounded && kind !== 'authoring') this.rejectedCredentials.delete(fallbackAdapter.id);
+      return this.unevaluable(judgment, kind === 'credentials' ? fallbackAdapter.id : outageAdapterId ?? primaryAdapterId,
+        cause, adapterSelectionReason, fallbackAdapter.id, kind);
+    }
+    return {
+      verdict: false,
+      confidence: 0.0,
+      passed: false,
+      adapterName: fallbackId,
+      latencyMs: 0,
+      error: `Both primary (${primaryAdapterId}) and fallback (${fallbackId}) adapters failed: ${message}`,
+      threshold: resolveJudgmentThreshold(judgment),
+      band: 'reject',
+      fallbackTriggered: true,
+      fallbackTarget: judgment.fallback_target,
+    };
   }
 
   /**
    * Returns the model adapter that is configured but cannot answer: the selected primary model
    * adapter failed or is blocked by its circuit, or Jev is configured but its open circuit or
    * broken install forced the script default. An adapter that is not configured is not in an outage.
+   * Tier: P1 configuration bookkeeping (< 25ms local); external checks share the total deadline.
+   * Complexity: O(1); CRAP target <= 15 (CC <= 12, branch coverage >= 80%).
    */
   private static async detectOutage(
     primaryAdapterId: string,
     primaryFailed: boolean,
-    adapterSelectionReason: string
+    adapterSelectionReason: string,
+    execution: JudgmentExecution
   ): Promise<string | undefined> {
     const candidateId = adapterSelectionReason === 'jev_circuit_open' || adapterSelectionReason === 'jev_unavailable'
       ? 'jev'
@@ -631,9 +770,10 @@ export class JudgmentEngine {
     const candidate = candidateId ? this.adapters.get(candidateId) : undefined;
     if (!candidateId || !candidate) return undefined;
     try {
-      const configured = candidate.isConfigured ? await candidate.isConfigured() : await candidate.isAvailable();
+      const configured = await execution.wait(async () => candidate.isConfigured ? candidate.isConfigured() : candidate.isAvailable());
       return configured ? candidateId : undefined;
-    } catch {
+    } catch (error) {
+      if (error instanceof JudgmentTimeoutError) throw error;
       return undefined;
     }
   }
@@ -642,6 +782,7 @@ export class JudgmentEngine {
    * A judgment no adapter could decide. The cascade ran (`fallbackTriggered`), but there is no
    * `fallbackTarget`, so the signal is refused and the run stays put instead of being sent to
    * repair work that was never judged (ADR 0011).
+   * Tier: P0 (< 5ms); Complexity: O(cause bytes); CRAP target <= 10 (CC <= 8, coverage >= 90%).
    */
   private static unevaluable(
     judgment: JudgmentDefinition,
@@ -653,7 +794,7 @@ export class JudgmentEngine {
   ): JudgmentResult & { fallbackTriggered: boolean; fallbackTarget?: string } {
     const reasons: Record<UnevaluableKind, string> = {
       credentials: `Judgment could not be evaluated: ${adapterId === 'jev' ? 'jev rejected TYPESAFE_API_KEY' : `${adapterId} rejected its credentials`} (${cause}). This gate cannot be judged until the credentials work, and retrying with the same credentials will not help. ${adapterId === 'jev' ? 'Stop and ask the user to fix or replace TYPESAFE_API_KEY; do not unset it to get past this gate.' : `Stop and ask the user to fix the credentials for ${adapterId}.`}`,
-      outage: `Judgment could not be evaluated: ${adapterId} is unavailable (${cause}). The criterion is not an executable expression, so the script fallback cannot judge it. Retry the signal when ${adapterId} is reachable, with a new idempotency key if you set one.`,
+      outage: `Judgment could not be evaluated: ${adapterId} is unavailable (${cause}). ${judgment.total_timeout_ms === undefined ? 'The criterion is not an executable expression, so the script fallback cannot judge it.' : 'No adapter completed an independent decision within the declared policy.'} Retry the signal when ${adapterId} is reachable, with a new idempotency key if you set one.`,
       authoring: `Judgment could not be evaluated: the judgment is misconfigured (${cause}). Retrying will not help; tell the user the skill needs fixing.`,
       no_model: 'Judgment could not be evaluated: no model is configured to judge this criterion, and self-reported decisions are not enabled for this workspace.',
     };

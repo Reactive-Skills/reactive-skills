@@ -15,6 +15,9 @@ export interface GuardEvaluationContext {
   selfReportAllowed?: boolean;
   /** A validated human decision for this transition's judgment (ADR 0012). */
   humanDecision?: 'approve' | 'reject';
+  /** Remaining adapter budget and cooperative cancellation, supplied by bounded judgments. */
+  timeout_ms?: number;
+  signal?: AbortSignal;
 }
 
 const ALLOWED_GUARD_EXTENSIONS = ['.js', '.mjs', '.cjs'];
