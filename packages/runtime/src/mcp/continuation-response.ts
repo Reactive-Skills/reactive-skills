@@ -156,8 +156,8 @@ function matchingOutcome(receipt: Receipt, anchor: ViewAnchor | null, currentSeq
 /**
  * Deliver one complete current view after settled signal work. Durable receipt metadata
  * distinguishes an original result from a later view without storing prompts or context.
- * Replays serialize the current view but append no delivery or other event. A recovered
- * submission without a saved receipt counts the current view only if it was never delivered.
+ * Replays and recovered submissions without a saved receipt serialize the current view but
+ * append no delivery or other event, so a duplicate cannot invalidate a still-pending original.
  * # Performance & Risk Budget
  * - Tier: P0 (<5ms bounded view; existing persistence/approval queries additional)
  * - Complexity: O(b + h² + a + w), view bytes, ancestry, approvals, bounded delivery window
@@ -169,9 +169,9 @@ export function continuationResponse(engine: FSMEngine, receipt: Receipt, event:
   if (engine.hasExternalChanges()) throw new Error('RUN_VERSION_CONFLICT: Reload the same run before requesting its current view.');
   const saved = continuationRecord(engine, event);
   const recovered = !saved && receipt.result_unavailable === true;
-  // Keyed per submission and view so competing processes delivering the same view count it once.
-  const deliveryKey = event.idempotency_key ? `${event.id}:DELIVERY:${engine.getStateViewSeq()}` : undefined;
-  if (!saved && !(recovered && engine.hasStateDelivery())) engine.recordStateDelivery(deliveryKey);
+  // Keyed per submission so competing processes delivering the same result count it once.
+  const deliveryKey = event.idempotency_key ? `${event.id}:DELIVERY` : undefined;
+  if (!saved && !recovered) engine.recordStateDelivery(deliveryKey);
   const slice = engine.generatePromptSlice();
   const currentSeq = engine.getStateViewSeq();
   const resultView = resultAnchor(saved, recovered, { run_id: engine.getJobId(), seq: currentSeq });

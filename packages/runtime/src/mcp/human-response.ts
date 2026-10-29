@@ -89,7 +89,7 @@ function responseDecision(engine: FSMEngine, data: HumanResponse, key?: string, 
 
 /**
  * Record one human ingress decision, preserving stored data on keyed retry.
- * A retry that replays an already dispatched signal reports its original outcome as unavailable.
+ * A retry that replays an already dispatched signal reports its original outcome as unavailable and saves no receipt.
  * Judgment approvals remain restricted to the existing interactive CLI path.
  * # Performance & Risk Budget
  * - Tier: P2 (<100ms local work; existing guards/adapters additional)
@@ -112,8 +112,9 @@ export async function submitHumanResponse(engine: FSMEngine, input: HumanRespons
   const signals = ['USER_RESPONSE', responseSignal(data)];
   const results = await dispatchResponse(engine, data, signals, decision, !!key);
   const event = decision ?? results[0].event;
-  const receipt = results.some(result => result.replayed) ? unavailableReceipt(event) : responseReceipt(engine, signals, results, withOutcome);
-  if (key && !withOutcome) {
+  const replayed = results.some(result => result.replayed);
+  const receipt = replayed ? unavailableReceipt(event) : responseReceipt(engine, signals, results, withOutcome);
+  if (key && !withOutcome && !replayed) {
     store.append(CONTINUATION_EVENT, { receipt, result_view: null }, { causationId: event.id, source: 'mcp', state: engine.getCurrentState() });
   }
   return { receipt, event };

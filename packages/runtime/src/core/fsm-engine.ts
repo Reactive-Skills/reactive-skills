@@ -579,20 +579,6 @@ export class FSMEngine {
   }
 
   /**
-   * Whether the current state view already has a recorded delivery; always false outside strict counting.
-   * # Performance & Risk Budget
-   * - Tier: P0 (SQLite-backed budget < 5ms)
-   * - Complexity: O(log n + w) with SQLite; O(n) in-memory; n = stored events, w = bounded tail window
-   * - Cyclomatic Complexity (CC): 1
-   * - Branch Coverage: 100% (1/1 measured branch entry)
-   * - CRAP Score: 1.0 (Threshold <= 10.0)
-   * - Measurement: ESLint complexity and V8 coverage from continuation, strict-execution and human-approval tests
-   */
-  public hasStateDelivery(): boolean {
-    return this.currentViewDeliveries().deliveries > 0;
-  }
-
-  /**
    * Sequence of the event that last changed the state view; delivery bookkeeping and telemetry are ignored within the bounded trailing window; when no view-changing event remains in that window, the anchor falls back to the latest event sequence and can advance in non-strict runs.
    * Informational only: guards and strict counting do not use it.
    * # Performance & Risk Budget

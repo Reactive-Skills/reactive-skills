@@ -37,6 +37,7 @@ states:
       ASK: REVIEW
       NEST: CHAIN
       CHILD: {target: NEXT, invoke: skills/child}
+      SLOW: {target: NEXT, guardFunction: guards/paused.mjs}
   CHAIN:
     on_enter:
       - emit_signal: DRAIN
@@ -56,6 +57,17 @@ states:
 `);
     fs.writeFileSync(path.join(skill, 'states/work.md'), 'Perform the work.');
     fs.writeFileSync(path.join(skill, 'states/next.md'), 'Verify the next step.');
+    fs.mkdirSync(path.join(skill, 'guards'));
+    // Signals that evaluation started, then stays pending until the test writes the release marker.
+    fs.writeFileSync(path.join(skill, 'guards/paused.mjs'), `import fs from 'node:fs';
+import path from 'node:path';
+import { setTimeout } from 'node:timers/promises';
+export default async function guard({ skillDir }) {
+  fs.writeFileSync(path.join(skillDir, 'started'), '');
+  while (!fs.existsSync(path.join(skillDir, 'release'))) await setTimeout(10);
+  return true;
+}
+`);
     const child = path.join(workspace, 'skills', 'child');
     fs.mkdirSync(child);
     fs.writeFileSync(path.join(child, 'skill.yaml'), `schema_version: reactive/v1
@@ -272,7 +284,7 @@ states:
     }
   });
 
-  it('counts one delivery when a duplicate from another process passes its delivery check first', async () => {
+  it('counts one delivery when a duplicate from another process recovers before the original delivers', async () => {
     const skillDir = path.join(workspace, 'skills', 'continuation');
     const winner = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: 'cross-process' });
     try {
@@ -281,19 +293,14 @@ states:
       const duplicate = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: winner.getJobId() });
       try {
         const existing = duplicate.getEventStore().getEventByIdempotencyKey('cross')!;
-        const store = duplicate.getEventStore();
-        const append = store.append.bind(store);
-        // The winner finishes its delivery and receipt after the duplicate decided to count one.
-        let original: any;
-        vi.spyOn(store, 'append').mockImplementationOnce((type, payload, metadata) => {
-          original = JSON.parse(continuationResponse(winner, { ...signalReceipt(winner, result), event_id: result.event.id }, result.event));
-          return append(type, payload, metadata);
-        });
+        const before = duplicate.getEventStore().getLatestSequence();
         const retry = JSON.parse(continuationResponse(duplicate, unavailableReceipt(existing), existing));
+        expect(duplicate.getEventStore().getLatestSequence()).toBe(before);
+        const original = JSON.parse(continuationResponse(winner, { ...signalReceipt(winner, result), event_id: result.event.id }, result.event));
         expect(original.replayed).toBe(false);
         expect(retry.replayed).toBe(true);
         expect(retry.view.state).toBe('NEXT');
-        expect([original.view.strict.turns_since_signal, retry.view.strict.turns_since_signal]).toEqual([1, 1]);
+        expect([original.view.strict.turns_since_signal, retry.view.strict.turns_since_signal]).toEqual([1, 0]);
         const rows = duplicate.getEventStore().getAll();
         expect(count(rows, 'SIGNAL_EMITTED')).toBe(1);
         expect(count(rows, 'STATE_TRANSITION')).toBe(1);
@@ -335,50 +342,37 @@ states:
     }
   });
 
-  it('saves no receipt when another process commits the key while its guards are pending', async () => {
+  it('appends nothing for a duplicate while the original keyed guard is pending', async () => {
     const client = await connect();
     const initial = await call(client, 'reactive_state', { output: 'compact-v1' });
     const skillDir = path.join(workspace, 'skills', 'continuation');
     const winner = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: initial.run_id });
-    const reopened: FSMEngine[] = [];
     try {
+      const pending = winner.handleSignal('SLOW', {}, { idempotencyKey: 'pending', source: 'mcp' });
+      await vi.waitFor(() => expect(fs.existsSync(path.join(skillDir, 'started'))).toBe(true));
       const before = await events(client);
-      const append = EventStore.prototype.append;
-      let original: any;
-      // The winner persists its keyed signal after the duplicate's lookups and before its guards settle.
-      vi.spyOn(EventStore.prototype, 'append').mockImplementation(function (this: EventStore, type, payload, metadata) {
-        if (!original && type === 'SIGNAL_EMITTED' && metadata?.idempotencyKey === 'pending') {
-          original = append.call(winner.getEventStore(), 'SIGNAL_EMITTED', { signal: 'CHECK', exit_code: 0 }, { idempotencyKey: 'pending', source: 'mcp', state: 'WORK' });
-        }
-        return append.call(this, type, payload, metadata);
-      });
-      const duplicate = await emit(client, 'CHECK', { payload: { exit_code: 0 }, idempotency_key: 'pending' });
+      const original = winner.getEventStore().getEventByIdempotencyKey('pending')!;
+      const duplicate = await emit(client, 'SLOW', { idempotency_key: 'pending' });
       expect(duplicate.receipt).toEqual(unavailableReceipt(original));
       expect(duplicate.replayed).toBe(true);
       expect(duplicate.result_view).toBeNull();
       expect(duplicate.view.state).toBe('WORK');
+      expect(await events(client)).toEqual(before);
+      fs.writeFileSync(path.join(skillDir, 'release'), '');
+      const won = await pending;
+      expect(won.transitioned).toBe(true);
+      expect(won.newState).toBe('NEXT');
+      const owned = JSON.parse(continuationResponse(winner, { ...signalReceipt(winner, won), event_id: original.id }, original));
+      expect(owned.replayed).toBe(false);
+      expect(owned.receipt.transitioned).toBe(true);
+      expect(owned.view.state).toBe('NEXT');
       const rows = await events(client);
       expect(count(rows, 'SIGNAL_EMITTED')).toBe(1);
-      expect(count(rows, 'GUARD_EVALUATED')).toBe(0);
-      expect(count(rows, 'STATE_TRANSITION')).toBe(0);
-      expect(count(rows, 'MCP_CONTINUATION_RECORDED')).toBe(0);
+      expect(count(rows, 'GUARD_EVALUATED')).toBe(1);
+      expect(count(rows, 'STATE_TRANSITION')).toBe(1);
+      expect(count(rows, 'MCP_CONTINUATION_RECORDED')).toBe(1);
       expect(count(rows, 'AGENT_TURN_STARTED')).toBe(count(before, 'AGENT_TURN_STARTED') + 1);
-      // The winner's transition settles later; its reached view is still the original result and counts once.
-      append.call(winner.getEventStore(), 'STATE_TRANSITION', { from: 'WORK', to: 'NEXT', signal: 'CHECK' }, { causationId: original.id, state: 'NEXT' });
-      const reached = winner.reopen();
-      reopened.push(reached);
-      const receipt = { event_id: original.id, transitioned: true };
-      const owned = JSON.parse(continuationResponse(reached, receipt, original));
-      expect(owned.replayed).toBe(false);
-      expect(owned.receipt).toEqual(receipt);
-      expect(owned.view.state).toBe('NEXT');
-      reopened.push(reached.reopen());
-      expect(JSON.parse(continuationResponse(reopened[1], receipt, original)).replayed).toBe(true);
-      const settled = await events(client);
-      expect(count(settled, 'AGENT_TURN_STARTED')).toBe(count(before, 'AGENT_TURN_STARTED') + 2);
-      expect(count(settled, 'MCP_CONTINUATION_RECORDED')).toBe(1);
     } finally {
-      for (const engine of reopened) engine.close();
       winner.close();
     }
   });
@@ -498,11 +492,11 @@ states:
   });
 
   it.each([
-    ['emit', 'recordStateDelivery', 1],
-    ['emit', 'generatePromptSlice', 0],
-    ['human', 'recordStateDelivery', 1],
-    ['human', 'generatePromptSlice', 0],
-  ] as const)('recovers an interrupted keyed %s after %s without inventing its result or recounting delivery', async (operation, interrupted, deliveries) => {
+    ['emit', 'recordStateDelivery', 0],
+    ['emit', 'generatePromptSlice', 1],
+    ['human', 'recordStateDelivery', 0],
+    ['human', 'generatePromptSlice', 1],
+  ] as const)('recovers an interrupted keyed %s after %s without inventing its result or appending delivery', async (operation, interrupted, turns) => {
     const client = await connect();
     if (operation === 'human') await emit(client, 'ASK');
     const tool = operation === 'emit' ? 'reactive_emit_signal' : 'reactive_respond_human';
@@ -522,10 +516,9 @@ states:
     expect(retry.result_view).toBeNull();
     expect(retry.view.state).toBe('NEXT');
     expect(retry.view).not.toHaveProperty('refusal');
-    expect(retry.view.strict.turns_since_signal).toBe(1);
+    expect(retry.view.strict.turns_since_signal).toBe(turns);
     const after = await events(client);
-    expect(after.slice(0, before.length)).toEqual(before);
-    expect(after.slice(before.length).map((row: {type: string}) => row.type)).toEqual(Array(deliveries).fill('AGENT_TURN_STARTED'));
+    expect(after).toEqual(before);
     const again = await call(await connect(), tool, args);
     expect(again.receipt).toEqual(retry.receipt);
     expect(await events(client)).toEqual(after);

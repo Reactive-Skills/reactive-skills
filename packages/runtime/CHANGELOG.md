@@ -4,6 +4,8 @@
   Omitting the option preserves the existing receipt shape.
   The complete current view follows lifecycle signals, child invocation and projections; keyed retries retain the original receipt and anchor without adding a delivery or transition.
   Strict continuation delivery shares the bounded compaction-refetch accounting with state fetches; see `docs/mcp-continuation.md`.
+- feat(runtime)!: **Breaking response shape for SDK callers of `FSMEngine.handleSignal`.** Its result gains `replayed: true` when an existing keyed submission answered the call instead of a new evaluation; fresh results omit the field.
+  Legacy MCP receipts are unchanged.
 
 - fix(mcp)!: **Breaking for external MCP clients.** `reactive_state` returns compact JSON with the state prompt once in `formattedXml` and only `scopedContext`; the duplicate `promptSlice` field is removed and the full recorded `context` is omitted by default.
   Clients that need the full recorded context must pass `include_full_context: true`; read the state prompt from `formattedXml`.

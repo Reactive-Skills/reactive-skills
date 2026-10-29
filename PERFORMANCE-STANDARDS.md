@@ -257,7 +257,7 @@ The serialized-byte heuristic covers the entire continuation envelope, including
 Keyed operations add one P1 (<25ms target) `MCP_CONTINUATION_RECORDED` append containing only receipt metadata and an original view anchor; unkeyed operations add no receipt event.
 Duplicate lookup uses the existing indexed idempotency key and an indexed O(k) causation query for that submission's child events, without a full-run scan.
 Receipt events are ignored by the bounded delivery scan so they do not reset compaction refetch allowance or create an idle turn.
-Original submissions call `recordStateDelivery()` once; keyed retries add no delivery/refetch events, except that a retry recovering an interrupted submission without a saved receipt delivers once when the current view has no delivery (`hasStateDelivery()`, P0 O(w) bounded scan).
+Original submissions call `recordStateDelivery()` once; keyed retries, including recovery of an interrupted submission without a saved receipt, add no delivery/refetch or other events.
 `mcp/human-response.ts` dispatches at most two existing human signals before one view delivery, retaining their current precedence and CLI-only judgment approval boundary.
 Queue/receipt/render helpers target CC <= 8, branch coverage >= 90%, CRAP <= 10; human orchestration targets CC <= 12, branch coverage >= 80%, CRAP <= 15.
 Cold replay and existing guard, evidence, child, projection and approval costs remain additional.
