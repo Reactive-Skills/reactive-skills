@@ -88,6 +88,22 @@ describe('Whole judgment deadline and failure accounting', () => {
   });
 
   it.each([
+    ['credentials', 'backup', 'backup', Object.assign(new Error('credential rejected'), { status: 401 })],
+    ['authoring', 'backup', 'backup', new JudgmentAuthoringError('rubric needs criteria')],
+    ['credentials from an unregistered fallback', 'missing', 'script', Object.assign(new Error('credential rejected'), { status: 401 })],
+  ])('keeps legacy outage guidance when the fallback throws %s', async (_label, fallbackId, runnerId, error) => {
+    register('primary', async () => { throw new Error('offline'); });
+    const runner = register(runnerId, async () => { throw error; });
+    const { total_timeout_ms: _deadline, ...legacy } = judgment;
+    const result = await JudgmentEngine.evaluate({ ...legacy, fallback_adapter: fallbackId }, context);
+    expect(runner.evaluate).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({ band: 'unevaluable', passed: false, adapterName: fallbackId });
+    expect(result.error).toMatch(/primary is unavailable .*Retry the signal when primary is reachable/);
+    expect(result.error).not.toMatch(/credentials|misconfigured/);
+    expect(result.fallbackTarget).toBeUndefined();
+  });
+
+  it.each([
     ['credentials', Object.assign(new Error('credential rejected'), { status: 401 }), /fix the credentials/, 'CLOSED'],
     ['authoring', new JudgmentAuthoringError('rubric needs criteria'), /misconfigured/, 'CLOSED'],
     ['outage', new Error('offline'), /unavailable/, 'CLOSED'],

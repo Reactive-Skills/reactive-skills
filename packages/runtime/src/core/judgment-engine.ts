@@ -727,11 +727,14 @@ export class JudgmentEngine {
   ): JudgmentResult & { fallbackTriggered: boolean; fallbackTarget?: string } {
     const { primaryAdapterId, adapterSelectionReason, outageAdapterId, failureCause, failureKind, fallbackId } = source;
     const message = err instanceof Error ? err.message : String(err);
-    if (outageAdapterId || execution.bounded) {
-      const cause = `${failureCause}; fallback ${fallbackId} also failed: ${message}`;
+    const cause = `${failureCause}; fallback ${fallbackId} also failed: ${message}`;
+    if (!execution.bounded && outageAdapterId) {
+      return this.unevaluable(judgment, outageAdapterId, cause, adapterSelectionReason, fallbackId, failureKind);
+    }
+    if (execution.bounded) {
       const kind = this.fallbackFailureKind(err, execution, fallbackAdapter.id, failureKind);
-      if (execution.bounded && kind === 'credentials') this.rejectedCredentials.set(fallbackAdapter.id, message);
-      else if (execution.bounded && kind !== 'authoring') this.rejectedCredentials.delete(fallbackAdapter.id);
+      if (kind === 'credentials') this.rejectedCredentials.set(fallbackAdapter.id, message);
+      else if (kind !== 'authoring') this.rejectedCredentials.delete(fallbackAdapter.id);
       return this.unevaluable(judgment, kind === 'credentials' ? fallbackAdapter.id : outageAdapterId ?? primaryAdapterId,
         cause, adapterSelectionReason, fallbackAdapter.id, kind);
     }
