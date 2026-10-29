@@ -1006,6 +1006,9 @@ export class FSMEngine {
             this.context,
             signalName
           );
+          // Stamped after the persisted transition, snapshot and projections, before queued lifecycle signals drain.
+          // A copy, so the already persisted STATE_TRANSITION payload object is left as written.
+          const transitionMetrics: ExecutionMetrics = { ...metrics, transition_total_ms: Number((performance.now() - startTime).toFixed(3)) };
 
           // Drain queued lifecycle signals with cycle-depth guard (REL-02)
           if (!this.isProcessingQueue && this.signalQueue.length > 0) {
@@ -1053,7 +1056,7 @@ export class FSMEngine {
             event,
             handledAtDepth: depth,
             deliverablesWritten,
-            metrics,
+            metrics: transitionMetrics,
             ...(guardResult.judgmentResult?.decidedBy === 'human' ? { judgmentBasis: 'human' as const } : {}),
             ...(guardResult.judgmentResult?.selfReported ? { judgmentBasis: 'self_reported' as const, warning: SELF_REPORT_WARNING } : {}),
           };

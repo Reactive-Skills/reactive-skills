@@ -40,7 +40,8 @@ Reactive Skills Architecture (RSA) introduces deterministic structure to autonom
 |---------|------------|-------------|
 | Active State Path Lookup | $O(d)$ where $d \le 5$ (nesting depth) | Retrieving active `StateDefinition` hierarchy |
 | Guard Expression Evaluation | $O(1)$ | Evaluating sandboxed predicate expressions |
-| Event Append & SQLite WAL Write | $O(1)$ | Appending signal events to immutable ledger |
+| Event Append & SQLite WAL Write | $O(1)$ insert + $O(k)$ JSONL mirror, $k$ = rows since the last mirror (usually 1) | Appending signal events to immutable ledger; the mirror appends only rows newer than the last JSONL line's `ledger_seq` |
+| JSONL Mirror Full Reconcile | $O(N)$ where $N$ = events across all runs | Store open, explicit repair (`syncJsonlFromSqlite()`), and an append whose JSONL tail is missing or unreadable |
 | Snapshot Point-in-Time Lookup | $O(1)$ | Querying `snapshots` table by max sequence |
 | Handlebars Prompt Slicing | $O(t)$ where $t$ = template size | Generating turn prompt from cached template delegate |
 | HSM Event Bubbling | $O(h)$ where $h$ = ancestry depth | Propagating unhandled signals from leaf to root |
@@ -112,8 +113,10 @@ export interface ExecutionTelemetryMetadata {
   slice_duration_ms: number;
   /** Estimated tokens in active prompt slice */
   slice_tokens_est: number;
-  /** Duration in milliseconds for signal handling and guard evaluation */
+  /** Duration in milliseconds from signal receipt through guard evaluation and target resolution; stamped before the transition is persisted */
   transition_duration_ms: number;
+  /** Duration in milliseconds from signal receipt through the persisted transition, snapshot save and projections; returned by handleSignal() only, since it is stamped after the STATE_TRANSITION append, and excludes queued lifecycle signals */
+  transition_total_ms: number;
   /** Count of tools allowed in active substate */
   allowed_tools_count: number;
 }
@@ -186,7 +189,7 @@ console.log(slice.metrics);
 // 2. State transition metrics:
 const res = await engine.handleSignal('TEST_RAN', { exit_code: 0 });
 console.log(res.metrics);
-// => { transition_duration_ms: 1.05, slice_duration_ms: 0.23, slice_tokens_est: 282 }
+// => { transition_duration_ms: 1.05, slice_duration_ms: 0.23, slice_tokens_est: 282, transition_total_ms: 3.4 }
 ```
 
 #### D. Inspecting Performance Degradation Alarms
