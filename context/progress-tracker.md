@@ -45,6 +45,7 @@
 | Slice | Archetype | Status |
 | :--- | :--- | :--- |
 | Decoupled Judgment Engine & Snap-On Adapters (`JudgmentPort`, `CircuitBreaker`) | Core | ✅ Done |
+| Opt-in whole-cascade judgment deadline, explicit same-adapter retry permission, cancellation, aggregate/refusal and per-attempt latency, SDK client reuse, and `judgment.total_deadline` capability (`judgment-engine.ts`, `judgment-execution.ts`, `guard-evaluator.ts`, `types.ts`, `runtime-capabilities.ts`); `judgment-deadline.test.ts`, `judgment-client-lifecycle.test.ts`, `judgment-deadline-persistence.test.ts`, `docs/specs/0023-judgment-deadlines.md`, `.agents/references/repository-map.md` and `PERFORMANCE-STANDARDS.md` | Core | ✅ Done |
 | Semantic Model Capability Tiers (`StateModelDefinition`, `<model_contract>`) | Core | ✅ Done |
 | Judgment probability thresholds (`min_probability`, `escalate`, `judgment.probability_thresholds`, guard contract drift checks in `validate`) | Core | ✅ Done |
 | Scoped Jev judgment context (`context_paths`, `include_payload`, `judgment.context_paths`, `contextSent` in `GUARD_EVALUATED`, path checks in `validate`; `docs/specs/0021-judgment-context-paths.md`, #24) | Core | ✅ Done |

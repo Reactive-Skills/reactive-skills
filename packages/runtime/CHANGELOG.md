@@ -7,6 +7,9 @@
   MCP state responses expose a separate `metrics.slice_tokens_est` based on the complete serialized response text, including escaping and metadata, at four UTF-8 bytes per token.
   These are estimates, not tokenizer measurements; MCP serialization also updates the live engine's latest slice metrics for its next transition.
   Without transport serialization, core estimates remain XML-only; MCP estimates exclude JSON-RPC framing and tool definitions.
+- feat(runtime): judgments accept an opt-in `total_timeout_ms` that bounds adapter selection and the whole fallback cascade, plus `retry_policy.max_attempts_per_adapter`; new `judgment.total_deadline` capability.
+  `JudgmentResult.latencyMs` now covers the entire cascade even when unevaluable, and `attempts` records per-attempt timing, cancellation cause and breaker state; see `docs/specs/0023-judgment-deadlines.md`.
+  Without `total_timeout_ms`, cascade behavior is unchanged.
 
 
 ## [0.19.0] - 2026-10-06
