@@ -3,6 +3,8 @@
 These PNGs capture the actual bq-vitals status, `/flow` pane and `/flow-plan` command output, rendered in a framed HTML terminal at 2× resolution.
 They share the site's dark code palette and a bundled DejaVu Sans Mono font, including its block, arrow and check glyphs.
 The same images are used in both site themes.
+The capture renders each duration bar as one solid CSS rectangle at the width of the original block-character run, avoiding font seams.
+The live-map capture places the mod's state list beside its plan to use the frame's width; the intermediate text file preserves the original pane order and content.
 
 `capture-input.json` contains the complete example inputs, neutral usage readings, deterministic clock intervals and public catalog revision.
 `capture.mjs` reads the pinned `release-notes` manifest from `packages/runtime/tests/fixtures/public-catalog.json`, verifies its Git blob hash, and drives its real guarded transitions through `FSMEngine`.
@@ -31,7 +33,7 @@ Repeat runs with the same browser, compiler and Sharp versions should produce id
 | Image | Pixels | View |
 | --- | --- | --- |
 | `status-line.png` | 1680 × 324 | Example usage and `release-notes ▸ VALIDATE` |
-| `flow.png` | 1680 × 1360 | Actual pane with completed, current and unreached states, plus its plan |
+| `flow.png` | 1680 × 854 | Completed, current and unreached states beside the pane's plan |
 | `flow-plan.png` | 1680 × 866 | Actual five-hop plan at `REVIEW`, with guards, durations and unused exits |
 
 The page declares intrinsic image dimensions and descriptive alternative text.

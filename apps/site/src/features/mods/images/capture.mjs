@@ -134,8 +134,26 @@ async function renderMod(run, view) {
 function highlight(text) {
   return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').split('\n').map((line) => {
     if (line.includes('not taken:') || line.startsWith('○')) return `<span class="muted">${line}</span>`;
-    return line.replace(/█+/g, '<span class="bar">$&</span>').replace(/✔/g, '<span class="signal">$&</span>').replace(/▶.*|▸.*/g, '<span class="current">$&</span>');
+    return line.replace(/█+/g, (bar) => `<span class="bar" style="width:${bar.length}ch"></span>`).replace(/✔/g, '<span class="signal">$&</span>').replace(/▶.*|▸.*/g, '<span class="current">$&</span>');
   }).join('\n');
+}
+
+/** Reflow the live pane's existing state list beside its existing plan.
+ * # Performance & Risk Budget
+ * - Tier: P3 (offline, <2000ms target)
+ * - Complexity: O(b) bounded terminal bytes
+ * - Cyclomatic Complexity (CC): target <=20
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=30
+ */
+function terminalBody(text, view) {
+  if (view.name !== 'flow') return `<pre>${highlight(text)}</pre>`;
+  const [runHeader, ...lines] = text.split('\n');
+  const planAt = lines.indexOf('Plan');
+  assert(planAt > 0, 'Expected the live pane state list followed by Plan');
+  const states = lines.slice(0, planAt).join('\n').trim();
+  const plan = lines.slice(planAt).join('\n');
+  return `<div class="flow-pane"><pre>${highlight(runHeader)}</pre><div class="flow-columns"><pre>${highlight(states)}</pre><pre>${highlight(plan)}</pre></div></div>`;
 }
 
 const run = await recordRun();
@@ -145,7 +163,7 @@ const documents = new Map();
 for (const view of input.views) {
   const text = await renderMod(run, view);
   fs.writeFileSync(path.join(scratch, `${view.name}.txt`), text);
-  documents.set(`/${view.name}`, `<!doctype html><meta charset="utf-8"><title>bq-vitals ${view.title}</title><style>${css}</style><div class="window"><header><span class="dots"><i></i><i></i><i></i></span><span class="title">bq-vitals · ${view.title}</span><span class="example">example run</span></header><pre>${highlight(text)}</pre></div>`);
+  documents.set(`/${view.name}`, `<!doctype html><meta charset="utf-8"><title>bq-vitals ${view.title}</title><style>${css}</style><div class="window"><header><span class="dots"><i></i><i></i><i></i></span><span class="title">bq-vitals · ${view.title}</span><span class="example">example run</span></header>${terminalBody(text, view)}</div>`);
 }
 const server = http.createServer((request, response) => {
   response.setHeader('Content-Type', 'text/html; charset=utf-8');

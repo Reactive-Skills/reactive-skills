@@ -22,7 +22,7 @@ const SCREENSHOTS = {
     },
     {
       src: flowImage,
-      alt: 'Live release-notes map at VALIDATE: INTAKE, COLLECT, CLASSIFY and COMPOSE are done; REVIEW is not reached. The plan below shows signals, guards and duration bars.',
+      alt: 'Live release-notes map at VALIDATE: INTAKE, COLLECT, CLASSIFY and COMPOSE are done; REVIEW is not reached. The plan alongside shows signals, guards and duration bars.',
       caption: '/flow during validation: completed states, the current state and the path so far.',
     },
     {

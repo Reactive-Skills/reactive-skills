@@ -557,6 +557,7 @@ Documentation
 
 `apps/site/src/features/mods/images/capture.mjs` is a P3 authoring operation, outside the site request path.
 Local fixture recording, mod formatting and HTML preparation target <2000ms per operation, with O(e + m + b) work in the bounded demo events, pinned manifest and output bytes.
+Duration-bar substitution and live-pane column layout remain O(b) in bounded terminal bytes; bars use one CSS rectangle per original bar and the state list sits beside the plan.
 Browser navigation, font readiness and capture are external waits with a 60-second timeout per command; this is a timeout, not a measured latency claim.
 The three PNGs are rendered at 2× (1680 pixels wide), optimized with the existing Sharp dependency and each capped at 250 kB by the site tests.
 The bundled font, host adapter and capture dependencies are authoring inputs; the site imports only the PNGs and adds no client capture code.
