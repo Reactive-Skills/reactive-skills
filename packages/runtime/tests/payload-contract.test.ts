@@ -5,7 +5,7 @@ import path from 'node:path';
 import { FSMEngine } from '../src/core/fsm-engine.js';
 import { createStateView } from '../src/core/state-view.js';
 import { TransitionSchema } from '../src/core/types.js';
-import { inspectTransitionGuard, PayloadContractSchema, payloadContractError } from '../src/core/payload-contract.js';
+import { inspectTransitionGuard, PayloadContractSchema, payloadContractError, payloadRequirements } from '../src/core/payload-contract.js';
 import { createReactiveMcpServer } from '../src/mcp/server.js';
 import { GuardEvaluator } from '../src/core/guard-evaluator.js';
 import { evaluatePayloadGuard } from '../src/core/payload-guard.js';
@@ -33,12 +33,17 @@ it('builds a valid TDD payload from authored compact requirements and inspects t
   const guard = 'event.payload.exit_code === 0';
   const { skillDir } = start({ target: 'DONE', guard, payload_contract: contract });
   const view = createStateView(engine);
-  expect(view.contracts[0]).toContain(`payload: ${JSON.stringify(contract)}`);
-  expect(view.contracts[0]).not.toContain(guard);
+  expect(view.contracts[0]).toBe('WORK: TEST_RAN -> DONE; exit_code:number=0; inspect guard');
+  expect(JSON.stringify(view)).not.toContain(contract.refusal_hint);
+  expect(JSON.stringify(view)).not.toContain(contract.evidence_source);
   const before = engine.getEventStore().getLatestSequence();
   expect(inspectTransitionGuard(engine.getManifest(), skillDir, 'WORK', 'TEST_RAN')).toMatchObject({ state: 'WORK', signal: 'TEST_RAN', guard });
   expect(engine.getEventStore().getLatestSequence()).toBe(before);
-  const payload = Object.fromEntries(Object.entries(contract.fields).map(([name, field]) => [name, field.const]));
+  const payload = Object.fromEntries(view.contracts[0].split('; ').flatMap(line => {
+    const field = /^(\w+):\w+=(.+)$/.exec(line);
+    return field ? [[field[1], JSON.parse(field[2])]] : [];
+  }));
+  expect(payload).toEqual({ exit_code: 0 });
   expect((await engine.handleSignal('TEST_RAN', payload)).transitioned).toBe(true);
 });
 
@@ -48,6 +53,7 @@ it.each([{}, { exit_code: '0' }, { exit_code: 1 }])('refuses invalid fields with
   expect(result.transitioned).toBe(false);
   expect(result.refusalReason).toContain('exit_code');
   expect(result.refusalReason).toContain(contract.refusal_hint);
+  expect(result.refusalReason).toContain(contract.evidence_source);
 });
 
 it('an incomplete contract never bypasses a complex guard and legacy views retain its exact expression', async () => {
@@ -95,7 +101,7 @@ it.each(['full', 'snapshot'])('retains contracts, refusal and guard enforcement 
   const runId = engine.getJobId();
   engine.close();
   engine = new FSMEngine({ skillDir, workspaceDir: root, jobId: runId });
-  expect(createStateView(engine).contracts[0]).toContain('payload:');
+  expect(createStateView(engine).contracts[0]).toBe('WORK: TEST_RAN -> DONE; exit_code:number=0; inspect guard');
   expect(engine.getEventStore().getAll().some(event => event.type === 'SIGNAL_REFUSED' && String(event.payload.reason).includes(contract.refusal_hint))).toBe(true);
   expect((await engine.handleSignal('TEST_RAN', { exit_code: 0 })).transitioned).toBe(false);
   expect((await engine.handleSignal('TEST_RAN', { exit_code: 0, reviewed: true })).transitioned).toBe(true);
@@ -129,7 +135,7 @@ it.each([
 
 it('legacy XML uses authored requirements and exposes inspection guidance for opaque guards', () => {
   start({ target: 'DONE', guardFunction: 'guards/check.cjs', payload_contract: contract });
-  expect(engine.generatePromptSlice().exitConditions[0]).toContain('payload:');
+  expect(engine.generatePromptSlice().exitConditions[0]).toBe("[WORK] On signal 'TEST_RAN' -> transition to 'DONE' (exit_code:number=0) (inspect guard)");
   engine.close();
   fs.rmSync(root, { recursive: true });
   start({ target: 'DONE', guardFunction: 'guards/check.cjs' });
@@ -189,5 +195,26 @@ it('structural rejection never invokes judgment or grants its fallback and valid
     expect((await evaluatePayloadGuard(contract, undefined, undefined, evaluation)).error).toContain('Guard refused.');
     spy.mockResolvedValueOnce({ passed: false, error: 'Existing rejection', fallbackTarget: 'REVISE', fallbackTriggered: true });
     expect(await evaluatePayloadGuard(contract, undefined, undefined, evaluation)).toMatchObject({ passed: false, fallbackTarget: 'REVISE', fallbackTriggered: true });
+  } finally { spy.mockRestore(); }
+});
+
+it('renders optional fields and authored relationships as one short line each', () => {
+  const payload_contract = PayloadContractSchema.parse({ ...contract, fields: { files: { type: 'array' }, note: { type: 'string', required: false } }, relationships: ['files lists changed paths'] });
+  expect(payloadRequirements({ target: 'DONE', guard: 'event.payload.files.length > 0', payload_contract }))
+    .toEqual(['files:array', 'note?:string', 'rel: files lists changed paths', 'inspect guard']);
+});
+
+it('refuses a contract-guarded transition when another writer moves the run during evaluation', async () => {
+  start({ target: 'DONE', guard: 'event.payload.exit_code === 0', payload_contract: contract });
+  const evaluate = GuardEvaluator.evaluate;
+  const spy = vi.spyOn(GuardEvaluator, 'evaluate').mockImplementation(async (...args) => {
+    const result = await evaluate.apply(GuardEvaluator, args);
+    engine.getEventStore().append('CONCURRENT_WRITE', {});
+    return result;
+  });
+  try {
+    await expect(engine.handleSignal('TEST_RAN', { exit_code: 0 })).rejects.toThrow(/RUN_VERSION_CONFLICT/);
+    expect(engine.getCurrentState()).toBe('WORK');
+    expect(engine.getEventStore().query({ type: 'GUARD_EVALUATED' })).toHaveLength(0);
   } finally { spy.mockRestore(); }
 });

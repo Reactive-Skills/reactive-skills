@@ -46,7 +46,9 @@ Optional transition payload contracts and targeted guard inspection are implemen
 The shared compact/XML renderer retains exact legacy guard fallback and owning-state order; structural checks precede unchanged guards and preserve ancestor fall-through, evidence and refusal events.
 `payload-contract.test.ts` and AXI `guard-inspection.test.ts` cover typed inputs, incomplete contracts, declaration drift, replay/snapshots and read-only contained source inspection.
 `scripts/benchmark-payload-contracts.ts`, `docs/payload-contracts.md`, the runtime README, authoritative changelog and `PERFORMANCE-STANDARDS.md` document the API and measured net cost including inspection.
-The pinned short TDD view grows from 1,552 B to 1,743 B with the authored contract; no universal savings claim is made.
+Authored contracts render one short line per field with an `inspect guard` pointer; refusal hints and evidence sources appear only in refusals and inspection.
+The pinned short TDD view shrinks from 1,552 B to 1,549 B with the authored contract (1,883 B including one inspection); the 37 B guard bounds the saving, so the 820 B design estimate is not reached and no universal savings claim is made.
+`payload-contract.test.ts` also covers a run-version conflict during contract-guarded evaluation.
 Local validation passed 990 runtime tests and 386 AXI tests (one existing AXI skip), both package builds and the documentation/prose gates; new contract/evaluation helpers, the targeted MCP handler and the AXI guard helper have 100% measured branch coverage.
 
 AXI and MCP expose bounded local evidence import, explicit verified reads and an optional `evidence.reference_submission` capability.

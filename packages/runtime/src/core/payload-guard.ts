@@ -1,5 +1,5 @@
 import { GuardEvaluator } from './guard-evaluator.js';
-import { payloadContractError, type PayloadContract } from './payload-contract.js';
+import { contractRefusalGuidance, payloadContractError, type PayloadContract } from './payload-contract.js';
 
 /**
  * Structural refusals cannot approve a guard or trigger its judgment fallback; valid input follows the unchanged evaluator.
@@ -9,7 +9,7 @@ import { payloadContractError, type PayloadContract } from './payload-contract.j
  * - Cyclomatic Complexity (CC): 5 (measured with ESLint)
  * - Branch Coverage: 100% (measured with V8 acceptance tests)
  * - CRAP Score: 5.0 (Threshold <= 10)
- * - Measured: 0.591448ms p95 including original inline guard evaluation; Node 22.23.3/Linux, 100 samples after 10 warmups.
+ * - Measured: 0.499987ms p95 including original inline guard evaluation; Node 22.23.3/Linux, 100 samples after 10 warmups.
  */
 export async function evaluatePayloadGuard(
   contract: PayloadContract | undefined,
@@ -19,7 +19,7 @@ export async function evaluatePayloadGuard(
   if (error) return { passed: false, error };
   const result = await GuardEvaluator.evaluate(...args);
   if (!result.passed && contract) {
-    result.error = `${result.error ?? 'Guard refused.'} ${contract.refusal_hint} Inspect the owning state and signal for exact guard requirements.`;
+    result.error = `${result.error ?? 'Guard refused.'} ${contractRefusalGuidance(contract)} Inspect the owning state and signal for exact guard requirements.`;
   }
   return result;
 }

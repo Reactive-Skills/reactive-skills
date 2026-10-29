@@ -30,7 +30,7 @@ export type PayloadContract = z.infer<typeof PayloadContractSchema>;
  * - Cyclomatic Complexity (CC): 3 (measured with ESLint)
  * - Branch Coverage: 100% (measured with V8 acceptance tests)
  * - CRAP Score: 3.0 (Threshold <= 10)
- * - Measured: 0.000875ms p95 for the containing structural check; Node 22.23.3/Linux, 100 samples after 10 warmups.
+ * - Measured: 0.001037ms p95 for the containing structural check; Node 22.23.3/Linux, 100 samples after 10 warmups.
  */
 function fieldMismatch(field: PayloadContract['fields'][string], value: unknown): boolean {
   return !fieldTypes[field.type].safeParse(value).success || (Object.hasOwn(field, 'const') && value !== field.const);
@@ -43,7 +43,7 @@ function fieldMismatch(field: PayloadContract['fields'][string], value: unknown)
  * - Cyclomatic Complexity (CC): 3 (measured with ESLint)
  * - Branch Coverage: 100% (measured with V8 acceptance tests)
  * - CRAP Score: 3.0 (Threshold <= 10)
- * - Measured: 0.014085ms p95 for the containing declaration parse; Node 22.23.3/Linux, 100 samples after 10 warmups.
+ * - Measured: 0.015329ms p95 for the containing declaration parse; Node 22.23.3/Linux, 100 samples after 10 warmups.
  */
 function validateFieldConstant(field: { type: keyof typeof fieldTypes; const?: unknown }, context: z.RefinementCtx): void {
   if (Object.hasOwn(field, 'const') && !fieldTypes[field.type].safeParse(field.const).success) {
@@ -58,7 +58,7 @@ function validateFieldConstant(field: { type: keyof typeof fieldTypes; const?: u
  * - Cyclomatic Complexity (CC): 8 (measured with ESLint)
  * - Branch Coverage: 100% (measured with V8 acceptance tests)
  * - CRAP Score: 8.0 (Threshold <= 10)
- * - Measured: 0.000875ms p95 structural validation; Node 22.23.3/Linux, 100 samples after 10 warmups.
+ * - Measured: 0.001037ms p95 structural validation; Node 22.23.3/Linux, 100 samples after 10 warmups.
  */
 export function payloadContractError(contract: PayloadContract | undefined, payload: Record<string, unknown>): string | undefined {
   if (!contract) return undefined;
@@ -67,10 +67,22 @@ export function payloadContractError(contract: PayloadContract | undefined, payl
     if (!present && field.required === false) continue;
     const value = present ? payload[name] : undefined;
     if (fieldMismatch(field, value)) {
-      return `Payload field '${name}' requires ${field.type}${Object.hasOwn(field, 'const') ? ` equal to ${JSON.stringify(field.const)}` : ''}. ${contract.refusal_hint}`;
+      return `Payload field '${name}' requires ${field.type}${Object.hasOwn(field, 'const') ? ` equal to ${JSON.stringify(field.const)}` : ''}. ${contractRefusalGuidance(contract)}`;
     }
   }
   return undefined;
+}
+
+/**
+ * Refusal-only recovery text; compact views omit it to keep initial delivery small.
+ * # Performance & Risk Budget
+ * - Tier: P0 (< 5ms); Complexity: O(b), hint and evidence-source bytes
+ * - Cyclomatic Complexity (CC): 1 (manual count)
+ * - Branch Coverage: 100% (measured with V8 acceptance tests)
+ * - CRAP Score: 1.0 (Threshold <= 10)
+ */
+export function contractRefusalGuidance(contract: PayloadContract): string {
+  return `${contract.refusal_hint} Evidence source: ${contract.evidence_source}.`;
 }
 
 /**
@@ -81,7 +93,7 @@ export function payloadContractError(contract: PayloadContract | undefined, payl
  * - Cyclomatic Complexity (CC): 7 (measured with ESLint)
  * - Branch Coverage: 100% (measured with V8 acceptance tests)
  * - CRAP Score: 7.0 (Threshold <= 10)
- * - Measured: 0.014085ms p95 for the containing declaration parse; Node 22.23.3/Linux, 100 samples after 10 warmups.
+ * - Measured: 0.015329ms p95 for the containing declaration parse; Node 22.23.3/Linux, 100 samples after 10 warmups.
  */
 export function validatePayloadContractDrift(transition: Pick<TransitionDefinition, 'guard' | 'payload_contract'>, context: z.RefinementCtx): void {
   if (!transition.guard || !transition.payload_contract) return;
@@ -103,7 +115,7 @@ export function validatePayloadContractDrift(transition: Pick<TransitionDefiniti
  * - Cyclomatic Complexity (CC): 11 (measured with ESLint)
  * - Branch Coverage: 100% (measured with V8 acceptance tests)
  * - CRAP Score: 11.0 (Threshold <= 25)
- * - Measured: 0.000469ms p95 inline inspection; 0.047890ms with module source; Node 22.23.3/Linux, 100 samples after 10 warmups.
+ * - Measured: 0.000271ms p95 inline inspection; 0.046988ms with module source; Node 22.23.3/Linux, 100 samples after 10 warmups.
  */
 export function inspectTransitionGuard(manifest: SkillManifest, skillDir: string, state: string, signal: string) {
   let states = manifest.states;
@@ -126,7 +138,7 @@ export function inspectTransitionGuard(manifest: SkillManifest, skillDir: string
  * - Cyclomatic Complexity (CC): 5 (measured with ESLint)
  * - Branch Coverage: 100% (measured with V8 acceptance tests)
  * - CRAP Score: 5.0 (Threshold <= 25)
- * - Measured: 0.047890ms p95 for the containing module inspection; Node 22.23.3/Linux, 100 samples after 10 warmups.
+ * - Measured: 0.046988ms p95 for the containing module inspection; Node 22.23.3/Linux, 100 samples after 10 warmups.
  */
 function readGuardSource(skillDir: string, modulePath: string): string {
   const root = fs.realpathSync(skillDir);
@@ -139,19 +151,27 @@ function readGuardSource(skillDir: string, modulePath: string): string {
 }
 
 /**
- * Prefer authored payload guidance; retain exact legacy guard text and opaque-module inspect guidance.
+ * Prefer one short authored line per field and relationship; retain exact legacy guard text and opaque-module inspect guidance.
+ * Refusal hints and evidence sources stay in refusals and inspection.
  * # Performance & Risk Budget
- * - Tier: P0 (< 5ms); Complexity: O(b), selected contract bytes
- * - Cyclomatic Complexity (CC): 4 (measured with ESLint)
+ * - Tier: P0 (< 5ms); Complexity: O(f + r), declared fields and relationships
+ * - Cyclomatic Complexity (CC): 4 (manual count; field callback 3)
  * - Branch Coverage: 100% (measured with V8 acceptance tests)
  * - CRAP Score: 4.0 (Threshold <= 10)
- * - Measured: 0.000659ms p95 requirements rendering; Node 22.23.3/Linux, 100 samples after 10 warmups.
+ * - Measured: 0.000370ms p50 / 0.001010ms p95 requirements rendering; Node 22.23.3/Linux, 100 samples after 10 warmups.
  */
 export function payloadRequirements(definition: TransitionDefinition): string[] {
-  if (definition.payload_contract) return [`payload: ${JSON.stringify(definition.payload_contract)} (inspect owning state and signal for exact guards)`];
+  const contract = definition.payload_contract;
+  if (contract) {
+    return [
+      ...Object.entries(contract.fields).map(([name, field]) =>
+        `${name}${field.required === false ? '?' : ''}:${field.type}${Object.hasOwn(field, 'const') ? `=${JSON.stringify(field.const)}` : ''}`),
+      ...contract.relationships.map(relationship => `rel: ${relationship}`),
+      'inspect guard',
+    ];
+  }
   const fields: string[] = [];
   if (definition.guard) fields.push(`guard: ${definition.guard}`);
   if (definition.guardFunction) fields.push(`guardFunction: ${definition.guardFunction} (inspect skill for payload requirements)`);
   return fields;
 }
-

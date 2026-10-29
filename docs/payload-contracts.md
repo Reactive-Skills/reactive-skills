@@ -34,12 +34,15 @@ That bounded consistency check neither derives missing fields nor certifies equi
 Contract review remains the author's responsibility.
 
 Compact views and legacy XML replace inline guard source with the authored contract only for transitions declaring it.
+The contract renders one short requirement per field as `name:type` with `?` for optional fields and `=value` for constants, one `rel: ...` line per relationship (none when empty), and the `inspect guard` pointer.
+The example above renders as `GREEN_CODE: TEST_RAN -> REFACTOR; exit_code:number=0; inspect guard` in compact views and `(exit_code:number=0) (inspect guard)` in legacy XML exit conditions.
+`refusal_hint` and `evidence_source` appear only in refusals and guard inspection.
 Absent a contract, exact inline conditions remain visible and opaque guard functions retain their module path and explicit inspection guidance.
 Every condition retains its owning state, signal and target in leaf-to-ancestor order, including repeated signal names.
 A structural contract refusal continues ancestor fall-through using the same signal and verified evidence.
 Valid structural input always reaches the existing guard evaluator; an incomplete contract cannot turn a failed guard into an approval.
-Contract failures are recorded through the existing guard/refusal events and carry the field requirement and refusal hint.
-Failed original guards retain their reason and gain the authored hint and inspection guidance.
+Contract failures are recorded through the existing guard/refusal events and carry the field requirement, refusal hint and evidence source.
+Failed original guards retain their reason and gain the authored hint, evidence source and inspection guidance.
 No additional event type, projection or ledger scan is introduced.
 
 Inspect the exact owning transition when its authored requirements are insufficient:
@@ -67,13 +70,13 @@ It excludes JSON-RPC framing, tool definitions, process startup and model work; 
 | Presentation | Initial delivery | Optional inspection | Total with inspection |
 |---|---:|---:|---:|
 | Exact TDD guard | 1,552 B | 167 B | 1,719 B |
-| Authored TDD contract | 1,743 B | 334 B | 2,077 B |
+| Authored TDD contract | 1,549 B | 334 B | 1,883 B |
 
-For this short guard, authoring metadata adds 191 B before inspection and 525 B when compared with exact initial delivery requiring no inspection.
-It supplies explicit typing and recovery guidance but does not reduce this example's bytes.
+For this short 37-byte guard, the authored contract saves 3 B of initial delivery; one inspection call adds 334 B, so a run that also inspects costs 331 B more than exact initial delivery requiring no inspection.
+The saving is bounded by the guard text it replaces, so this pinned view cannot approach the design estimate of 820 B; the prompt, policy and other state data that make up most of the view are unchanged.
 Longer guard implementations can yield smaller initial views; their net cost must include any inspection requests and responses.
 No catalog-wide or end-to-end model savings claim follows from this probe.
 
-On Node v22.23.3/Linux with warm filesystem caches, 100 samples after ten warmups measured authored structural validation at 0.000613 ms p50 / 0.000875 ms p95 and complete compact view construction at 0.203840 / 0.317987 ms.
-Complete refused-signal handling, including existing persistence, measured 6.110257 / 7.816677 ms.
+On Node v22.23.3/Linux with warm filesystem caches, 100 samples after ten warmups measured authored structural validation at 0.000640 ms p50 / 0.001037 ms p95, requirements rendering at 0.000370 / 0.001010 ms and complete compact view construction at 0.181072 / 0.270909 ms.
+Complete refused-signal handling, including existing persistence, measured 5.848791 / 6.991587 ms.
 These isolated measurements are not cold-start or external judgment latency measurements.

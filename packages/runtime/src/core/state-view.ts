@@ -40,7 +40,7 @@ export const STATE_VIEW_POLICY = 'Emit after work. Stop at human gates. Re-fetch
  * - Cyclomatic Complexity (CC): 5 (measured with ESLint)
  * - Branch Coverage: 100% (measured with V8 acceptance tests)
  * - CRAP Score: 5.0 (Threshold <= 10)
- * - Measured: 0.317987ms p95 for the containing complete view assembly; Node 22.23.3/Linux, 100 samples after 10 warmups.
+ * - Measured: 0.270909ms p95 for the containing complete view assembly; Node 22.23.3/Linux, 100 samples after 10 warmups.
  */
 function compactContract(state: string, signal: string, transition: TransitionDefinition | string): string {
   const definition = typeof transition === 'string' ? { target: transition } : transition;

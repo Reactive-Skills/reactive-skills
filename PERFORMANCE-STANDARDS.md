@@ -47,9 +47,10 @@ Inspection helpers target CC <=15, branch coverage >=70% and CRAP <=25.
 Existing whole-skill inspection and guard/judgment costs remain additional and unchanged.
 
 The offline `packages/runtime/scripts/benchmark-payload-contracts.ts` probe uses the pinned public TDD GREEN_CODE state on Node v22.23.3/Linux with warm filesystem caches, 100 samples after ten warmups.
-Authored declaration validation measured 0.011389ms p50 / 0.014085ms p95, structural checking 0.000613/0.000875ms, payload rendering 0.000370/0.000659ms, module inspection 0.031361/0.047890ms and complete compact view assembly 0.203840/0.317987ms.
-Original guarded evaluation with contract checks measured 0.391350/0.591448ms; complete refused-signal handling with existing persistence measured 6.110257/7.816677ms, within the P1 storage budget rather than the pure P0 check budget.
-The TDD initial request plus MCP response text is 1,552B with the short exact guard or 1,743B with this authored contract; including inspection yields 1,719B/2,077B respectively.
+Authored declaration validation measured 0.011541ms p50 / 0.015329ms p95, structural checking 0.000640/0.001037ms, compact payload rendering 0.000370/0.001010ms, module inspection 0.030866/0.046988ms and complete compact view assembly 0.181072/0.270909ms.
+Original guarded evaluation with contract checks measured 0.365471/0.499987ms; complete refused-signal handling with existing persistence measured 5.848791/6.991587ms, within the P1 storage budget rather than the pure P0 check budget.
+The TDD initial request plus MCP response text is 1,552B with the short exact guard or 1,549B with this authored contract, rendered one short line per field; including inspection yields 1,719B/1,883B respectively.
+The saving is bounded by the 37B guard it replaces, so this view stays far above the 820B design estimate.
 Byte counts include JSON request arguments and actual MCP response text, exclude JSON-RPC framing, tool definitions, process startup and model work, and are not token counts.
 This metadata supplies typed payload guidance; it makes no universal byte or end-to-end latency savings claim.
 
