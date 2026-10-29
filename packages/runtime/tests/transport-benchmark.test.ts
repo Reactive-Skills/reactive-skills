@@ -7,9 +7,9 @@ import { runBenchmark } from '../scripts/transport-benchmark/run.js';
 
 describe('transport benchmark accounting', () => {
   it('counts UTF-8 payload, text, result and framed JSON-RPC separately', () => {
-    const request = { jsonrpc: '2.0', id: 12, method: 'tools/call', params: { name: 'example', arguments: { text: 'é' } } };
+    const request = { jsonrpc: '2.0' as const, id: 12, method: 'tools/call', params: { name: 'example', arguments: { text: 'é' } } };
     const result = { content: [{ type: 'text', text: '世界\n' }] };
-    const response = { jsonrpc: '2.0', id: 12, result };
+    const response = { jsonrpc: '2.0' as const, id: 12, result };
     const row = measureExchange(request, response, []);
     expect(row.raw.input_payload_bytes).toBe(Buffer.byteLength('{"text":"é"}'));
     expect(row.raw.tool_result_text_bytes).toBe(7);
@@ -56,6 +56,15 @@ describe('transport benchmark accounting', () => {
       return typeof ms === 'number' && Number.isFinite(ms) && ms >= 0;
     })).toBe(true);
     expect(report.sdk.transitions.map((transition) => (transition as { transitioned: boolean }).transitioned)).toEqual([true, false, true, true]);
+    const ledger = report.ledgers.find((row) => row.transport === 'sdk' && row.skill === 'tdd-refactor')!;
+    for (const transition of report.sdk.transitions) {
+      const row = transition as { transitioned: boolean; returned_metrics: { transition_total_ms: number; transition_duration_ms: number } };
+      if (!row.transitioned) continue;
+      expect(Number.isFinite(row.returned_metrics.transition_total_ms)).toBe(true);
+      expect(row.returned_metrics.transition_total_ms).toBeGreaterThanOrEqual(row.returned_metrics.transition_duration_ms);
+      expect(ledger.completed_transition_metrics)
+        .toEqual(expect.arrayContaining([row.returned_metrics]));
+    }
     expect(report.sdk.rows.filter((row) => row.resumed_state_fetch).map((row) => row.label)).toEqual(['snapshot', 'replay']);
     expect(report.mcp.rows.map((row) => row.label)).toEqual(expect.arrayContaining(['guard_refusal', 'failure', 'human_response', 'legacy_prepare', 'concurrent-a', 'concurrent-b']));
     const responses = Object.fromEntries(report.mcp.rows.map((row) => {

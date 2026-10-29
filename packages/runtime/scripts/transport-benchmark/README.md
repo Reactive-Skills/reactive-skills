@@ -53,7 +53,9 @@ Per-run event/visit/transition/refusal counts and the sizes of SQLite, WAL/SHM a
 These storage bytes and artifact digests may vary between observations.
 
 Existing returned/persisted transition metrics are read after execution, without adding measurement events.
-Use the runtime's post-persistence transition metric when available; the legacy pre-persistence `transition_duration_ms` is not a whole-transition measurement.
+`completed_transition_metrics` reads the existing `TRANSITION_COMPLETED` records, including `transition_total_ms`; the same metrics are captured from SDK signal results.
+This total covers the persisted transition, snapshot save and projections, and excludes queued lifecycle signals.
+The legacy pre-persistence `transition_duration_ms` remains separately available in `transition_metrics` and is not a whole-transition measurement.
 The separately labeled `benchmark_awaited_handle_signal_ms` observes the completed SDK call and is not a second persisted metric.
 Raw per-call times are observations, not percentile estimates or latency ceilings; run repeated traces before making timing claims.
 

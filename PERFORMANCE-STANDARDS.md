@@ -85,6 +85,7 @@ $$\text{CRAP}(m) = \text{comp}(m)^2 \times (1 - \text{cov}(m))^3 + \text{comp}(m
 Run it after building runtime and AXI; [fixture instructions](packages/runtime/scripts/transport-benchmark/README.md) define each byte/timing field and the historical/current baselines.
 Accounting is O(b) in serialized bytes, with O(b*r) normalization for a bounded number of scratch roots; offline ledger inspection is O(e+b) in fixture events and stored bytes.
 These scans occur outside timed runtime operations and never append measurement events.
+The fixture reads post-persistence `transition_total_ms` from existing `TRANSITION_COMPLETED` records and SDK results, alongside the separate pre-persistence `STATE_TRANSITION` metrics.
 The operation is P3, with the existing per-operation target below 2,000ms, CC target <= 20, branch coverage target >= 60% and CRAP target <= 30; aggregate trace duration has no fixed latency assertion.
 Cold AXI process time and persistent MCP handler/in-memory round-trip time are distinct observations.
 MCP text, result-object and full stdio-envelope bytes are distinct from input payload, authored Markdown, rendered prompt and artifact-read bytes.

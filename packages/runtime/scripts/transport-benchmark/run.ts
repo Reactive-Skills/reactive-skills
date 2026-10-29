@@ -32,11 +32,15 @@ function inspectLedger(workspace: string) {
           sum(e.type = 'STATE_TRANSITION') AS transitions,
           sum(e.type = 'GUARD_EVALUATED' AND json_extract(e.payload, '$.passed') = 0) AS failed_guards
           FROM runs r LEFT JOIN events e ON e.run_id = r.run_id GROUP BY r.run_id ORDER BY min(e.ledger_seq)`).all();
-        const metrics = db.prepare(`SELECT payload FROM events WHERE type = 'STATE_TRANSITION' ORDER BY ledger_seq`).all()
+        const metricRows = db.prepare(`SELECT type, payload FROM events
+          WHERE type IN ('STATE_TRANSITION', 'TRANSITION_COMPLETED') ORDER BY ledger_seq`).all();
+        const metrics = metricRows.filter((row) => row.type === 'STATE_TRANSITION')
+          .map((row) => JSON.parse(String(row.payload)).metrics ?? null);
+        const completedMetrics = metricRows.filter((row) => row.type === 'TRANSITION_COMPLETED')
           .map((row) => JSON.parse(String(row.payload)).metrics ?? null);
         const files = filesUnder(path.dirname(file)).filter((name) => /events(?:-\d+)?\.jsonl$|events\.db(?:-wal|-shm)?$/.test(path.basename(name)))
           .map((name) => ({ path: path.relative(workspace, name), bytes: fs.statSync(name).size }));
-        return { skill: path.basename(path.dirname(file)), runs, files, transition_metrics: metrics };
+        return { skill: path.basename(path.dirname(file)), runs, files, transition_metrics: metrics, completed_transition_metrics: completedMetrics };
       } finally { db.close(); }
     });
 }
@@ -95,7 +99,7 @@ export async function runBenchmark(options: { includeAxi?: boolean } = {}) {
         offline_judgments: 'Benchmark-only deterministic adapter registered as jev; not a Jev quality or latency measurement.',
         model_output: 'No model invoked. Scripted model-equivalent arguments are a proxy, not measured generated output.',
         protocol: 'MCP SDK frames serialized by its stdio serializer (includes newline); AXI stdout has no invented JSON-RPC wrapper; SDK has no wire envelope.',
-        transition_metrics: 'Existing returned and persisted metrics only. Pre-persistence transition_duration_ms must not be labeled post-persistence time.',
+        transition_metrics: 'Uses returned and persisted transition_total_ms from TRANSITION_COMPLETED. Pre-persistence transition_duration_ms remains separate. No benchmark telemetry events are appended.',
         source_selectivity: 'Authored source bytes are inventory, never delivered-context savings. Full normalized frames and SDK views are retained.',
       },
       fixture,
