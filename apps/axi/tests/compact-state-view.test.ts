@@ -103,7 +103,8 @@ it.each(cases)('preserves complete meaning across SDK, MCP, AXI and XML: $name',
     const escaped = encoded.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     expect(xml).toContain(`<${key}>${escaped}</${key}>`);
   }
-  const beforeSeq = engine.getEventStore().getLatestSequence();
+  // Slow renders may append PERF_DEGRADATION telemetry; only view-changing events must not appear.
+  const beforeSeq = engine.getStateViewSeq();
   engine.close();
 
   const devCli = fileURLToPath(new URL('../../../packages/runtime/dist/cli/index.js', import.meta.url));
@@ -134,7 +135,7 @@ it.each(cases)('preserves complete meaning across SDK, MCP, AXI and XML: $name',
   } finally { await server.close(); }
   if (!testCase.strict) {
     const restored = new runtime.FSMEngine({ skillDir, workspaceDir: root, jobId: runId });
-    expect(restored.getEventStore().getLatestSequence()).toBe(beforeSeq);
+    expect(restored.getStateViewSeq()).toBe(beforeSeq);
     if (!testCase.empty) expect(axi.context).toMatchObject({ situation, evidence });
     if (testCase.empty) expect(axi.context).toEqual({});
     if (testCase.unscoped) expect(axi.context.unrelated).toBe('OUTSIDE_SCOPE');
