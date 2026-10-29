@@ -503,7 +503,7 @@ export class JudgmentEngine {
   /**
    * Evaluate a transition judgment using the snap-on adapter cascade.
    * Tier: P0 bookkeeping (< 5ms), external waiting uses declared deadlines.
-   * Complexity: O(a + p² + p*d + b), a <= 2 adapter slots, paths/depth and selected bytes.
+   * Complexity: O(a + p²*d*i + b), a <= 2 adapter slots, paths/depth/max array index and selected bytes.
    * CRAP target <= 15 (CC <= 12, branch coverage >= 80%).
    */
   public static async evaluate(

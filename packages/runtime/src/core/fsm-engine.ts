@@ -1027,7 +1027,7 @@ export class FSMEngine {
    * Execute existing guarded signal handling and retain its refusal for later views.
    * # Performance & Risk Budget
    * - Tier: P2 orchestration; P0/P1 local guard/transition bookkeeping excludes adapter waiting and persistence
-   * - Complexity: O(h + p² + p*d + b) for ancestry and selected judgment input, plus selected evidence bytes; existing approval lookups O(n)
+   * - Complexity: O(h + p²*d*i + b) for ancestry and selected judgment input, plus selected evidence bytes; existing approval lookups O(n)
    * - Cyclomatic Complexity (CC): target <=15 per extracted path
    * - Branch Coverage: target >=70%
    * - CRAP Score: target <=25
@@ -1610,7 +1610,7 @@ export class FSMEngine {
   }
 
   /**
-   * Tier: P2 (< 100ms); Complexity: O(n + p² + p*d + b), approval events and selected input.
+   * Tier: P2 (< 100ms); Complexity: O(n + p²*d*i + b), approval events and selected input.
    * CRAP target <= 25 (CC <= 15, branch coverage >= 70%).
    */
   private recordApprovalRequest(

@@ -210,15 +210,27 @@ describe('Opt-in judgment input contract', () => {
     [['checks.0', 'checks.2'], 'checks.2', 'checks.1'],
     [['grid.0.0', 'grid.1.1'], 'grid.1.1', 'grid.1.0'],
     [['checks.0.items.1'], 'checks.0.items.1', 'checks.0.items.0'],
-  ])('refuses non-contiguous array selection %j at preflight without a request', async (paths, path, gap) => {
-    const parsed = JudgmentDefinitionSchema.safeParse({ ...judgment, payload_paths: paths });
-    expect(parsed.success).toBe(false);
-    const message = parsed.error!.issues.map(issue => issue.message).join('\n');
+  ])('refuses non-contiguous array selection %j before any request', async (paths, path, gap) => {
+    const candidate = { ...context, event: { ...context.event, payload: {
+      checks: [{ text: 'a', items: [1, 2] }, { text: 'b' }, { text: 'c' }], grid: [[1, 2], [3, 4]],
+    } } };
+    expect(JudgmentDefinitionSchema.safeParse({ ...judgment, payload_paths: paths }).success).toBe(true);
+    const result = await JudgmentEngine.evaluate({ ...judgment, payload_paths: paths }, candidate);
+    expect(result).toMatchObject({ passed: false, judgmentSkipped: true, attemptCount: 0 });
+    const message = result.inputInspection!.errors.join('\n');
     expect(message).toContain(`'${path}' skips array index '${gap}'`);
     expect(message).toMatch(/whole array or a contiguous prefix/);
-    const result = await JudgmentEngine.evaluate({ ...judgment, payload_paths: paths }, context);
-    expect(result).toMatchObject({ passed: false, judgmentSkipped: true, attemptCount: 0 });
     expect(sdk.systemOne).not.toHaveBeenCalled();
+  });
+
+  it('treats numeric segments of plain objects as keys and sends only the selected entry', async () => {
+    const candidate = { ...context, event: { ...context.event, payload: {
+      byCode: { 404: { text: 'not found' }, 500: { text: 'excluded server error' } },
+    } } };
+    const result = await JudgmentEngine.evaluate({ ...judgment, payload_paths: ['byCode.404'] }, candidate);
+    expect(result.passed).toBe(true);
+    expect(sdk.systemOne.mock.calls[0][0].state.event).toEqual({ byCode: { 404: { text: 'not found' } } });
+    expect(JSON.stringify(sdk.systemOne.mock.calls)).not.toMatch(/excluded/);
   });
 
   it('sends contiguous, nested and parent-covered array selections without placeholder nulls', async () => {

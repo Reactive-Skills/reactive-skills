@@ -5,7 +5,7 @@ import { collectTransitionJudgments } from './judgment-contracts.js';
 
 /**
  * Inspects candidate input without opening a run, writing events, importing guards or contacting adapters.
- * Tier: P2 (< 100ms local); Complexity: O(s + p² + p*d + b) manifest states, paths/depth and selected bytes.
+ * Tier: P2 (< 100ms local); Complexity: O(s + p²*d*i + b) manifest states, paths/depth and selected bytes.
  * CRAP target <= 25 (CC <= 15, branch coverage >= 70%).
  */
 export function inspectJudgmentInputs(manifestPath: string, argument?: string): string {

@@ -67,27 +67,13 @@ export function usesJudgmentInputOptions(judgment: JudgmentDefinition): boolean 
   return judgment.payload_paths !== undefined || judgment.required_context_paths !== undefined || judgment.precondition !== undefined;
 }
 
-/** Tier: P1 (< 25ms); Complexity: O(p²*d*i) paths/depth/max index (i <= 10000); CRAP target <= 15 (CC <= 12, branch coverage >= 80%). */
+/** Tier: P1 (< 25ms); Complexity: O(p² + p*d) paths/depth; CRAP target <= 15 (CC <= 12, branch coverage >= 80%). */
 export function judgmentInputDeclarationErrors(judgment: JudgmentDefinition): string[] {
   const parsed = InputDeclarationSchema.safeParse(judgment);
   if (!parsed.success) return parsed.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`);
   const errors: string[] = [];
   if (judgment.payload_paths !== undefined && judgment.include_payload === false) {
     errors.push('payload_paths requires include_payload to be true or omitted');
-  }
-  const overlaps = (a: string, b: string) => a === b || a.startsWith(`${b}.`) || b.startsWith(`${a}.`);
-  for (const path of judgment.payload_paths ?? []) {
-    const segments = path.split('.');
-    segments.forEach((segment, depth) => {
-      const prefix = segments.slice(0, depth).join('.');
-      const gap = /^\d+$/.test(segment)
-        ? Array.from({ length: Number(segment) }, (_, index) => depth ? `${prefix}.${index}` : `${index}`)
-          .find(slot => !judgment.payload_paths!.some(selected => overlaps(selected, slot)))
-        : undefined;
-      if (gap !== undefined) {
-        errors.push(`payload_paths '${path}' skips array index '${gap}'; select the whole array or a contiguous prefix from index 0`);
-      }
-    });
   }
   for (const path of judgment.required_context_paths ?? []) {
     if (judgment.context_paths !== undefined && !judgment.context_paths.some(selected => path === selected || path.startsWith(`${selected}.`))) {
@@ -120,8 +106,27 @@ function assignPath(target: Record<string, unknown>, source: unknown, path: stri
   output[segments.at(-1)!] = value;
 }
 
-/** Tier: P1 (< 25ms); Complexity: O(p² + p*d); CRAP target <= 15 (CC <= 12, branch coverage >= 80%). */
-function projectPayload(payload: unknown, paths: string[]): { value: Record<string, unknown>; missing: string[] } {
+/** Tier: P1 (< 25ms); Complexity: O(p²*d*i) paths/depth/max array index (i <= 10000); CRAP target <= 10 (CC <= 8, branch coverage >= 90%). */
+function arrayGaps(payload: unknown, paths: string[]): string[] {
+  const overlaps = (a: string, b: string) => a === b || a.startsWith(`${b}.`) || b.startsWith(`${a}.`);
+  const errors: string[] = [];
+  for (const path of paths) {
+    const segments = path.split('.');
+    segments.forEach((segment, depth) => {
+      const prefix = segments.slice(0, depth).join('.');
+      if (!/^\d+$/.test(segment) || !Array.isArray(depth ? readPath(payload, prefix) : payload)) return;
+      const gap = Array.from({ length: Number(segment) }, (_, index) => depth ? `${prefix}.${index}` : `${index}`)
+        .find(slot => !paths.some(selected => overlaps(selected, slot)));
+      if (gap !== undefined) {
+        errors.push(`payload_paths '${path}' skips array index '${gap}'; select the whole array or a contiguous prefix from index 0`);
+      }
+    });
+  }
+  return errors;
+}
+
+/** Tier: P1 (< 25ms); Complexity: O(p²*d*i); CRAP target <= 15 (CC <= 12, branch coverage >= 80%). */
+function projectPayload(payload: unknown, paths: string[]): { value: Record<string, unknown>; missing: string[]; gaps: string[] } {
   const value: Record<string, unknown> = {};
   const missing: string[] = [];
   // Parents subsume children; shortest paths first avoids mutating an aliased source subtree.
@@ -134,7 +139,7 @@ function projectPayload(payload: unknown, paths: string[]): { value: Record<stri
     assignPath(value, payload, path, entry);
     assigned.push(path);
   }
-  return { value, missing };
+  return { value, missing, gaps: arrayGaps(payload, paths) };
 }
 
 /** Tier: P0 (< 5ms); Complexity: O(1); CRAP target <= 10 (CC <= 8, branch coverage >= 90%). */
@@ -182,8 +187,9 @@ export function prepareJudgmentInput(judgment: JudgmentDefinition, evaluation: G
   if (inspection.errors.length) return { inspection };
   const context = judgment.context_paths === undefined ? evaluation.context
     : scopeJudgmentContext(evaluation.context, judgment.context_paths).context;
-  const payload = judgment.payload_paths === undefined ? { value: evaluation.event.payload, missing: [] }
+  const payload = judgment.payload_paths === undefined ? { value: evaluation.event.payload, missing: [], gaps: [] }
     : projectPayload(evaluation.event.payload, judgment.payload_paths);
+  inspection.errors.push(...payload.gaps);
   inspection.missingRequired = [...payload.missing, ...(judgment.required_context_paths ?? [])
     .filter(path => readPath(evaluation.context, path) === undefined).map(path => `context.${path}`)];
   inspection.errors.push(...inspection.missingRequired.map(path => `Missing required judgment input: ${path}`));

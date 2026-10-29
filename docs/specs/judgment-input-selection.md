@@ -31,9 +31,9 @@ Preflight rejects malformed declarations and a missing capability requirement.
 
 `payload_paths` selects paths relative to the submitted payload.
 The selected values keep their nesting: `check.text` arrives as `event.check.text`.
-Numeric segments are array indices and must use canonical values between 0 and 10000.
-Selected indices must form a contiguous prefix from 0 under each array: `checks.2` also needs `checks.0` and `checks.1`, a child of each, or the whole `checks` array.
-Preflight refuses a gap with an error naming the path and the skipped index, so the judge never sees placeholder `null` elements; explicit `null` values from the payload are kept.
+Numeric segments must use canonical values between 0 and 10000; they index arrays when the payload value is an array and are object keys otherwise, so `byCode.404` on an object selects only that entry.
+Selected indices under a payload array must form a contiguous prefix from 0: `checks.2` also needs `checks.0` and `checks.1`, a child of each, or the whole `checks` array.
+Input preparation refuses a gap before any adapter request with an error naming the path and the skipped index, so the judge never sees placeholder `null` elements; explicit `null` values from the payload are kept.
 Selecting a parent includes its complete subtree; selecting overlapping children does not modify the source.
 Every selected payload path is required.
 An empty list sends an empty event object.
@@ -93,7 +93,7 @@ Legacy human approvals retain their existing matching rules.
 
 ## Performance and verification
 
-Selection and serialization cost O(p² + p*d + b), where p is the selected path count, d is path depth and b is selected input bytes.
+Selection and serialization cost O(p²*d*i + b), where p is the selected path count, d is path depth, i is the largest selected array index and b is selected input bytes.
 No event-history scan or semantic cache is added to judgment preparation.
 Selecting evidence can reduce request bytes; it does not establish a remote latency improvement.
 Wire-request tests use a mocked SDK and assert that unrelated context and unselected payload subtrees are absent.
