@@ -95,11 +95,22 @@ Export scoping and failure rules are owned by [docs/evidence-registry.md](docs/e
 |---------|------------|-------------|
 | Active State Path Lookup | $O(d)$ where $d \le 5$ (nesting depth) | Retrieving active `StateDefinition` hierarchy |
 | Guard Expression Evaluation | $O(1)$ | Evaluating sandboxed predicate expressions |
-| Event Append & SQLite WAL Write | $O(1)$ insert + $O(k)$ JSONL mirror, $k$ = rows since the last mirror (usually 1) | Appending signal events to immutable ledger; the mirror appends only rows newer than the last JSONL line's `ledger_seq` |
-| JSONL Mirror Full Reconcile | $O(N)$ where $N$ = events across all runs | Store open, explicit repair (`syncJsonlFromSqlite()`), and an append whose JSONL tail is missing or unreadable |
+| Event Append & SQLite WAL Write | $O(1)$ insert + $O(k + b + C + c)$ JSONL mirror, $k$ = new rows, $b$ = new bytes, $C$ = 64 KiB, $c$ = certificate chunk metadata | Append only rows after the skill-wide checkpoint; hash the old partial chunk and new bytes, retaining completed chunk digests |
+| JSONL Mirror Checkpoint Verification | $O(B + c)$ time, $O(C + c)$ memory, $B$ = bytes across every current and rotated segment | P2 store open verifies the complete ordered inventory, byte lengths, SHA-256 chunk digests, ledger generation, schema and global boundary before skipping object reconciliation; a newer canonical tail uses a bounded indexed query |
+| JSONL Mirror Full Reconcile | $O(N + B)$ where $N$ = events across all runs | Missing, stale or uncertain checkpoints, any segment mismatch, explicit repair (`syncJsonlFromSqlite()`), and interrupted mirror writes delegate to the unchanged full reconciler: it appends missing canonical rows, rewrites only for a gap below the mirrored maximum, keeps malformed and JSONL-only rows, then certifies the resulting bytes |
 | Snapshot Point-in-Time Lookup | $O(1)$ | Querying `snapshots` table by max sequence |
 | Handlebars Prompt Slicing | $O(t)$ where $t$ = template size | Generating turn prompt from cached template delegate |
 | HSM Event Bubbling | $O(h)$ where $h$ = ancestry depth | Propagating unhandled signals from leaf to root |
+
+Clean certified opens decode only the bounded recent-event cache and replay after the latest snapshot.
+They still read every JSONL byte: detecting arbitrary external edits requires O(B) verification under the usual cryptographic collision assumption.
+Constant-time stat, active-file-only and tail-only checks do not preserve the repair guarantee.
+Older stores receive a full reconcile before their first certificate is published.
+The certificate is skill-wide, covers every run, and records a captured global ledger boundary under the projection lock.
+It is published by atomic rename only after synchronous mirror writes succeed; the existing mirror contract does not promise power-loss fsync durability.
+Failed mirror or certificate writes leave SQLite canonical, and open verifies the surviving certificate before extending a tail or repairing uncertainty.
+Clear, rebuild, migration and database replacement change the ledger generation or rebuild certification; rotation retains completed chunk digests under the renamed segment.
+Certificate parsing and atomic publication cost O(c) metadata per append, separately from the bounded incremental hashing work.
 
 #### Forbidden Anti-Patterns
 
