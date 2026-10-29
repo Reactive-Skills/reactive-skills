@@ -1069,38 +1069,41 @@ export class FSMEngine {
     const previousState = this.getCurrentState();
     const prevPath = [...this.activeStatePath];
 
+    // The key identifies that submission, so a replay reports why it was refused (ADR 0011).
+    const replay = (existing: SignalEvent): SignalHandlingResult => {
+      const caused = this.eventStore.query({ causationId: existing.id });
+      const accepted = caused.some((e) => e.type === 'STATE_TRANSITION');
+      const refusedEvent = caused.find((e) => e.type === 'SIGNAL_REFUSED');
+      const refusal = accepted
+        ? undefined
+        : refusedEvent
+          ? { payload: { error: refusedEvent.payload?.reason } }
+          : caused
+            .filter((e) => e.type === 'GUARD_EVALUATED' && !e.payload?.passed && !e.payload?.fallbackTarget && e.payload?.error)
+            .at(-1);
+      return {
+        transitioned: false,
+        previousState,
+        newState: previousState,
+        event: existing,
+        deliverablesWritten: [],
+        ...(refusal ? { refusalReason: String(refusal.payload.error) } : {}),
+      };
+    };
     if (metadata.idempotencyKey) {
       const existing = this.eventStore.getEventByIdempotencyKey(metadata.idempotencyKey);
-      if (existing) {
-        // The key identifies that submission, so a replay reports why it was refused (ADR 0011).
-        const caused = this.eventStore.query({ causationId: existing.id });
-        const accepted = caused.some((e) => e.type === 'STATE_TRANSITION');
-        const refusedEvent = caused.find((e) => e.type === 'SIGNAL_REFUSED');
-        const refusal = accepted
-          ? undefined
-          : refusedEvent
-            ? { payload: { error: refusedEvent.payload?.reason } }
-            : caused
-              .filter((e) => e.type === 'GUARD_EVALUATED' && !e.payload?.passed && !e.payload?.fallbackTarget && e.payload?.error)
-              .at(-1);
-        return {
-          transitioned: false,
-          previousState,
-          newState: previousState,
-          event: existing,
-          deliverablesWritten: [],
-          ...(refusal ? { refusalReason: String(refusal.payload.error) } : {}),
-        };
-      }
+      if (existing) return replay(existing);
     }
     // After the idempotency lookup, so a replay returns its stored result even on a stale engine.
     if (checkCurrent) this.assertCurrent();
     const expectedRunVersion = this.eventStore.getRunVersion();
 
+    const eventId = createSortableId();
     const event = this.eventStore.append(
       'SIGNAL_EMITTED',
       { signal: signalName, ...payload },
       {
+        id: eventId,
         source: metadata.source,
         causationId: metadata.causationId,
         requestId: metadata.requestId,
@@ -1108,6 +1111,8 @@ export class FSMEngine {
         state: previousState,
       }
     );
+    // Another process committed the same key after our lookup; its submission owns the transition.
+    if (event.id !== eventId) return replay(event);
     const signalRunVersion = this.eventStore.getRunVersion();
     if (signalRunVersion < expectedRunVersion) {
       this.eventStore.assertRunVersion(expectedRunVersion);

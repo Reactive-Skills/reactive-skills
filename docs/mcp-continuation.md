@@ -46,6 +46,7 @@ If a signal key predates continuation receipts, or execution stopped after a sig
 It does not invent an original transition result or resubmit a committed signal; an interrupted human response still dispatches any of its signals that never committed.
 Such a recovery counts one delivery only when the current view has none yet, and saves no receipt.
 A keyed submission's delivery is itself keyed to that submission, so a duplicate racing from another server process shares the one recorded delivery instead of adding another.
+Likewise a keyed signal that another server process commits between this process's lookup and its own append is treated as a replay: it evaluates no guard and records no second transition.
 Use the current view to recover; do not submit a new key merely to recreate a lost response.
 Same-process MCP clients serialize complete mutation operations per immutable run, refreshing cached engines before work.
 State reads remain independent so recovery can inspect a run during an in-flight judgment.

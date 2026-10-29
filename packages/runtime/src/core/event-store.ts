@@ -1433,6 +1433,7 @@ export class EventStore {
     type: string,
     payload: T,
     metadata: {
+      id?: string;
       source?: string;
       causationId?: string;
       correlationId?: string;
@@ -1446,7 +1447,7 @@ export class EventStore {
     } = {},
   ): SignalEvent<T> {
     const event: SignalEvent<T> = {
-      id: createSortableId(), seq: 0, timestamp: new Date().toISOString(), type, payload,
+      id: metadata.id || createSortableId(), seq: 0, timestamp: new Date().toISOString(), type, payload,
       source: metadata.source, causationId: metadata.causationId, state: metadata.state,
       event_id: '', occurred_at: new Date().toISOString(), event_type: type,
       causation_id: metadata.causationId,

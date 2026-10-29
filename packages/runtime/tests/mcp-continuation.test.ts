@@ -308,6 +308,33 @@ states:
     }
   });
 
+  it('does not transition again when another process commits the same key after the lookup', async () => {
+    const skillDir = path.join(workspace, 'skills', 'continuation');
+    const winner = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: 'cross-transition' });
+    const duplicate = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: winner.getJobId() });
+    try {
+      const store = duplicate.getEventStore();
+      const append = store.append.bind(store);
+      let original: any;
+      // The winner commits its keyed signal between the duplicate's lookup and its own keyed append.
+      vi.spyOn(store, 'append').mockImplementationOnce((type, payload, metadata) => {
+        original = winner.getEventStore().append('SIGNAL_EMITTED', { signal: 'CHECK', exit_code: 0 }, { idempotencyKey: 'race', source: 'mcp', state: 'WORK' });
+        return append(type, payload, metadata);
+      });
+      const replay = await duplicate.handleSignal('CHECK', { exit_code: 0 }, { idempotencyKey: 'race', source: 'mcp' });
+      expect(replay.transitioned).toBe(false);
+      expect(replay.event.id).toBe(original.id);
+      expect(duplicate.getCurrentState()).toBe('WORK');
+      const rows = store.getAll();
+      expect(count(rows, 'SIGNAL_EMITTED')).toBe(1);
+      expect(count(rows, 'GUARD_EVALUATED')).toBe(0);
+      expect(count(rows, 'STATE_TRANSITION')).toBe(0);
+    } finally {
+      duplicate.close();
+      winner.close();
+    }
+  });
+
   it.each(['CHECK', 'AGAIN'])('preserves the saved receipt for immediate retry of %s', async signal => {
     const client = await connect();
     const args = { payload: { exit_code: 1 }, idempotency_key: 'retry-now' };
