@@ -79,6 +79,15 @@ Large evidence or repeated references can exceed the ordinary signal/projection 
 Registration uses a bounded descriptor read, a synced temporary copy and non-overwriting publication; abandoned temporary files are ignored and no retained blobs are garbage-collected.
 Export scoping and failure rules are owned by [docs/evidence-registry.md](docs/evidence-registry.md).
 
+### Accepted context recovery
+
+Initialization and accepted transitions record their effective `contextUpdates` patch in the existing ledger event, including declarative lifecycle assignments in execution order.
+Patch construction is P1 bookkeeping (<25ms target), O(d² + a + k + b), where d is hierarchy depth, a is the affected hook count, k is declared signal context keys and b is copied assignment bytes.
+It adds no ledger rows or history queries; the serialized patch adds its actual bytes to the existing append.
+Rehydration remains P2 (<100ms target), O(delta events + context patch bytes + selected evidence bytes), and applies committed patches without executing hooks, guards, signals or projections.
+Events predating recorded patches additionally inspect the affected declarative hooks with the same bounded hierarchy cost per transition.
+That compatibility fallback uses the installed manifest; assignments from an older manifest version that was never recorded cannot be recovered from the ledger alone.
+
 ### 1. Algorithmic Complexity (Big-O)
 
 #### Allowed Patterns
