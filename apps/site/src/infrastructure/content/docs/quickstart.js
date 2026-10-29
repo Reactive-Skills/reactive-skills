@@ -81,7 +81,7 @@ export const quickstart = {
       blocks: [
         { type: 'text', text: 'When the host uses MCP tool integration, run the stdio server from the same package. The MCP transport exposes the same reactive runtime through host-managed tools.' },
         { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi mcp', explanation: 'Starts the stdio MCP server. It prints nothing and waits for an MCP client to connect over stdin and stdout.' } },
-        { type: 'callout', variant: 'signal', title: 'Runtime selection', text: 'INIT selects a compatible local transport and persists it for the run. AXI provides token-lean shell output, while MCP provides host-integrated tools. The npx command launches AXI without a separate installation.' },
+        { type: 'callout', variant: 'signal', title: 'Runtime selection', text: 'INIT selects a compatible local transport and persists it for the run. AXI provides compact, line-oriented TOON shell output, while MCP provides host-integrated tools. The npx command launches AXI without a separate installation.' },
       ],
     },
   ],

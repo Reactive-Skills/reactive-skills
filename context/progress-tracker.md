@@ -219,7 +219,8 @@ Changed files: `packages/runtime/src/core/event-store.ts`, `packages/runtime/src
 
 ## Public context-claim corrections
 
-Replaced unsupported token-saving claims in `README.md`, `context/project-overview.md`, `PERFORMANCE-STANDARDS.md`, the introductory site blog post (`apps/site/src/infrastructure/content/blog/posts/introducing-reactive-skills.js`) and the site AXI guide (`apps/site/src/infrastructure/content/docs/axi.js`).
+Replaced unsupported token-saving claims in `README.md`, `context/project-overview.md`, `PERFORMANCE-STANDARDS.md`, the introductory site blog post (`apps/site/src/infrastructure/content/blog/posts/introducing-reactive-skills.js`) the site AXI guide (`apps/site/src/infrastructure/content/docs/axi.js`) and the AXI package README (`apps/axi/README.md`).
+Unquantified token-efficiency wording for AXI in the site concepts, overview, quickstart, concepts guide and registry skill view now describes compact, line-oriented TOON output without implying a measured saving.
 The wording distinguishes unvisited source instructions from delivered context, includes protocol and retained-transcript costs, and makes no general reduction claim.
 Performance budgets, including P0 <5 ms, remain explicitly labeled engineering targets.
 Local validation passed both package builds, the full runtime and AXI suites, site tests, documentation invariants, the public prose gate and a targeted scan for the removed percentage claims.
