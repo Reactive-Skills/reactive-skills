@@ -216,3 +216,10 @@ Both final package archives include the current README/changelog and every decla
 - Verified both package builds, 1003 runtime tests, 386 AXI tests (one existing skip), documentation invariants and public prose gates; the focused continuation/storage/strict suite passes 67 tests, including partial human batches, slow rendering and per-view credit absorption.
 
 Changed files: `packages/runtime/src/core/event-store.ts`, `packages/runtime/src/core/fsm-engine.ts`, `packages/runtime/src/mcp/continuation-response.ts`, `packages/runtime/tests/mcp-continuation.test.ts`, `packages/runtime/tests/recovered-deliveries.test.ts`, `docs/mcp-continuation.md`, root/runtime READMEs, `context/architecture.md`, this tracker and `PERFORMANCE-STANDARDS.md`.
+
+## Public context-claim corrections
+
+Replaced unsupported token-saving claims in `README.md`, `context/project-overview.md`, `PERFORMANCE-STANDARDS.md`, the introductory site blog post (`apps/site/src/infrastructure/content/blog/posts/introducing-reactive-skills.js`) and the site AXI guide (`apps/site/src/infrastructure/content/docs/axi.js`).
+The wording distinguishes unvisited source instructions from delivered context, includes protocol and retained-transcript costs, and makes no general reduction claim.
+Performance budgets, including P0 <5 ms, remain explicitly labeled engineering targets.
+Local validation passed both package builds, the full runtime and AXI suites, site tests, documentation invariants, the public prose gate and a targeted scan for the removed percentage claims.

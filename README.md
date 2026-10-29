@@ -25,7 +25,8 @@ Conventional agent skills are static markdown instruction files (`SKILL.md`). An
 
 **Reactive Skills** upgrade passive agent skills into **Hierarchical State Machines (HSM)** driven by a reactive **Event/Signal Bus**:
 
-1. **Just-In-Time Prompt Slices:** Only the prompt, constraints, and tool whitelists for the *active state* are loaded into the LLM turn (~70% token reduction).
+1. **Just-In-Time Prompt Slices:** Reactive workflows expose the active state's prompt, constraints, and allowed tools as the workflow advances.
+   Instructions for unvisited branches can remain unread; previously delivered content remains in the host transcript.
 2. **Signal-Driven Ingress:** Transitions are triggered by typed runtime signals (`REQUIREMENTS_GATHERED`, `TESTS_PASSED`, `USER_APPROVED`).
 3. **Deterministic Guard Gates:** Progress requires deterministic programmatic invariants to evaluate `true` (preventing hallucinated completion).
 4. **Event Sourcing & Live Deliverables:** Every transition is recorded to an append-only ledger (`events.jsonl` + SQLite `events.db`). Documentation, PR bodies, and review matrices are live read-model projections rendered from the event stream.

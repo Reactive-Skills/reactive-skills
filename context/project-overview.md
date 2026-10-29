@@ -12,7 +12,8 @@ Conventional agent skills are static markdown files (`SKILL.md`). The LLM is loa
 ---
 
 ## 2. Core Goals & Outcomes
-1. **Just-In-Time Prompt Injection:** Only inject the prompt slices, constraints, and tool whitelists bound to the active state ($\approx 70\%$ token reduction per step).
+1. **Just-In-Time Prompt Injection:** Deliver the active state's prompt, constraints, and allowed tools.
+   Measure delivered context per interface and path; no general token-reduction percentage is claimed.
 2. **Deterministic Guard Gates:** State transitions require explicit programmatic invariants (`exit_code == 0`, schema checks) to evaluate `true`.
 3. **HSM Event Bubbling:** Deep leaf substates cascade unhandled events up to parent composite states (e.g. `GLOBAL_CANCEL`, `TIMEOUT`, `SECURITY_CRITICAL`).
 4. **Event Sourcing First:** All signals, tool results, guard evaluations, and state transitions are appended to an immutable ledger for auditability, replay, and time-travel.

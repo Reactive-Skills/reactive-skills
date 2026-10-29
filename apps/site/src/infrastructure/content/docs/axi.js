@@ -2,7 +2,7 @@
 export const axi = {
   slug: 'axi',
   title: 'Agent eXperience Interface (AXI)',
-  summary: 'The Agent eXperience Interface for Reactive Skills: zero daemon overhead, compact TOON formatting (~40% fewer tokens than JSON), deterministic exit codes, and actionable recovery hints on every turn.',
+  summary: 'The Agent eXperience Interface for Reactive Skills: direct shell commands, TOON formatting, deterministic exit codes, and actionable recovery hints on every turn.',
   category: 'Integrate',
   href: '/docs/axi',
   sections: [
@@ -10,15 +10,15 @@ export const axi = {
       id: 'origin',
       heading: 'Origin & Specification',
       blocks: [
-        { type: 'callout', variant: 'signal', title: 'Specification Attribution', text: 'The Agent eXperience Interface (AXI) standard was conceived and specified at [axi.md](http://axi.md). Reactive Skills implements the AXI specification to provide an agent-native, token-efficient command-line interface for reactive workflows.' },
-        { type: 'text', text: 'AXI provides a direct, token-efficient interface for agent workflows, while MCP provides host-managed tool integration for clients that need it. Both can drive the same reactive runtime. Explore the full specification, tenets, and community standards at [http://axi.md](http://axi.md).' },
+        { type: 'callout', variant: 'signal', title: 'Specification Attribution', text: 'The Agent eXperience Interface (AXI) standard was conceived and specified at [axi.md](http://axi.md). Reactive Skills implements the AXI specification to provide a command-line interface for reactive workflows.' },
+        { type: 'text', text: 'AXI provides a direct shell interface for agent workflows, while MCP provides host-managed tool integration for clients that need it. Both can drive the same reactive runtime. Explore the full specification, tenets, and community standards at [http://axi.md](http://axi.md).' },
       ],
     },
     {
       id: 'axi-mcp-tradeoffs',
       heading: 'AXI and MCP trade-offs',
       blocks: [
-        { type: 'text', text: 'AXI is engineered for direct shell workflows: no background daemon process, deterministic exit codes, and 40% to 80% lower token consumption through Token-Oriented Object Notation (TOON). MCP provides a host-managed tool bridge for clients that need a persistent stdio connection.' },
+        { type: 'text', text: 'AXI is engineered for direct shell workflows: no background daemon process, deterministic exit codes, and Token-Oriented Object Notation (TOON) output. MCP provides a host-managed tool bridge for clients that need a persistent stdio connection.' },
         { type: 'callout', variant: 'signal', title: 'Runtime interface selection', text: 'INIT checks local AXI and MCP capabilities and versions, then selects one compatible transport for the run. npx is AXI\'s zero-install launcher, not a separate runtime.' },
       ],
     },
@@ -59,9 +59,9 @@ export const axi = {
     },
     {
       id: 'output',
-      heading: 'Token-lean output: TOON vs JSON',
+      heading: 'Output formatting: TOON and JSON',
       blocks: [
-        { type: 'text', text: 'AXI outputs in TOON (Token-Oriented Object Notation) by default. TOON eliminates repetitive braces, quotes, and JSON syntax overhead, saving up to 80% on prompt context tokens while remaining unambiguous for LLM parsers.' },
+        { type: 'text', text: 'AXI outputs in TOON (Token-Oriented Object Notation) by default. Output size depends on the data and selected format. Measure complete command arguments and results, including retained transcript content; no general token-reduction percentage is claimed.' },
         { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi state my-feature-flow', explanation: 'Outputs active state, active path, and available transitions in concise TOON format.', expectedOutput: 'skill: my-feature-flow\nstate: RED_SPEC\npath: [INIT, RED_SPEC]\ntransitions: [TEST_RAN (guard: exit_code != 0) → GREEN_CODE]\nsuggestions: [emit: npx -y @reactive-skills/axi emit my-feature-flow TEST_RAN]' } },
       ],
     },
