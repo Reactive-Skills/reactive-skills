@@ -534,25 +534,25 @@ export class FSMEngine {
     return this.inBypassState;
   }
 
-  public recordTurnStart(): void {
+  public recordTurnStart(idempotencyKey?: string): void {
     if (!this.strictExecution || this.inBypassState) return;
-    this.eventStore.append('AGENT_TURN_STARTED', {
-      state: this.getCurrentState(),
-      turns_since_last_signal: this.turnsSinceLastSignal + 1,
-    }, { state: this.getCurrentState() });
-    this.turnsSinceLastSignal++;
+    const draft = { state: this.getCurrentState(), turns_since_last_signal: this.turnsSinceLastSignal + 1 };
+    const event = this.eventStore.append('AGENT_TURN_STARTED', draft, { state: this.getCurrentState(), idempotencyKey });
+    // A keyed delivery another process already recorded is that same turn, not a new one.
+    this.turnsSinceLastSignal = event.payload.turns_since_last_signal ?? this.turnsSinceLastSignal;
     this.checkBypass();
   }
 
   /**
    * Count a delivered state view, letting up to `max_view_refetches` repeat fetches of the same view through for compaction recovery.
+   * An idempotency key makes the count atomic across processes delivering the same submission's result.
    * # Performance & Risk Budget
    * - Tier: P0 (< 5ms)
    * - Complexity: O(w), bounded trailing-event window
    * - Cyclomatic Complexity (CC): target <= 6
    * - Branch Coverage: target >= 90%
    */
-  public recordStateDelivery(): void {
+  public recordStateDelivery(idempotencyKey?: string): void {
     if (!this.strictExecution || this.inBypassState) return;
     const { deliveries } = this.currentViewDeliveries();
     const allowance = this.getStateDefinition(this.activeStatePath)?.max_view_refetches ?? 2;
@@ -560,10 +560,10 @@ export class FSMEngine {
       this.eventStore.append('STATE_VIEW_REFETCHED', {
         state: this.getCurrentState(),
         refetches: deliveries,
-      }, { state: this.getCurrentState() });
+      }, { state: this.getCurrentState(), idempotencyKey });
       return;
     }
-    this.recordTurnStart();
+    this.recordTurnStart(idempotencyKey);
   }
 
   /**

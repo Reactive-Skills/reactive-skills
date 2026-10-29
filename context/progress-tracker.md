@@ -144,6 +144,7 @@ Local validation after the MCP state-response integration passed both package bu
 - Added `mcp/continuation-response.ts` for per-run MCP serialization, receipt/current-view separation, keyed durable metadata and shared `recordStateDelivery()` accounting; ignored receipt bookkeeping in `core/fsm-engine.ts` bounded refetch scanning.
 - Added `mcp/human-response.ts` to finish the existing human signal batch before delivering a view, preserving default approval precedence, self-report warnings across the full batch and the CLI-only judgment approval boundary.
 - Added protocol regression coverage in `tests/mcp-continuation.test.ts`, including pinned public TDD, exact event/turn counts, refusals/self-loops, lifecycle/child/terminal paths, replay/snapshot recovery, keyed retries and competing clients.
+- Keyed continuation deliveries use a per-submission idempotency key in `recordStateDelivery()`, so a duplicate keyed emit racing from another server process counts the reached state once.
 - Updated shared `core/bootloader.ts`, root/runtime READMEs, runtime changelog, `docs/mcp-continuation.md`, `context/architecture.md`, repository map and `PERFORMANCE-STANDARDS.md` for the negotiated response and delivery/retry budgets.
 - Verified locally: both package builds, 950 runtime tests, 377 AXI tests with one existing skip, documentation invariants and public prose gates.
 - The new continuation and human-response modules have 100% statement/branch coverage in the focused offline protocol run; the bounded delivery scan also has full branch coverage.

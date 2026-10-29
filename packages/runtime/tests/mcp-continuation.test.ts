@@ -9,7 +9,7 @@ import { grantSelfReport } from '../src/core/approval-grants.js';
 import { EventStore } from '../src/core/event-store.js';
 import { FSMEngine } from '../src/core/fsm-engine.js';
 import { submitHumanResponse } from '../src/mcp/human-response.js';
-import { continuationResponse, signalReceipt } from '../src/mcp/continuation-response.js';
+import { continuationResponse, signalReceipt, unavailableReceipt } from '../src/mcp/continuation-response.js';
 import { createReactiveMcpServer } from '../src/mcp/server.js';
 
 // Real SDK requests exercise schema negotiation as well as handler behavior.
@@ -269,6 +269,42 @@ states:
     } finally {
       stale.close();
       other.close();
+    }
+  });
+
+  it('counts one delivery when a duplicate from another process passes its delivery check first', async () => {
+    const skillDir = path.join(workspace, 'skills', 'continuation');
+    const winner = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: 'cross-process' });
+    try {
+      winner.recordStateDelivery();
+      const result = await winner.handleSignal('CHECK', { exit_code: 0 }, { idempotencyKey: 'cross', source: 'mcp' });
+      const duplicate = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: winner.getJobId() });
+      try {
+        const existing = duplicate.getEventStore().getEventByIdempotencyKey('cross')!;
+        const store = duplicate.getEventStore();
+        const append = store.append.bind(store);
+        // The winner finishes its delivery and receipt after the duplicate decided to count one.
+        let original: any;
+        vi.spyOn(store, 'append').mockImplementationOnce((type, payload, metadata) => {
+          original = JSON.parse(continuationResponse(winner, { ...signalReceipt(winner, result), event_id: result.event.id }, result.event));
+          return append(type, payload, metadata);
+        });
+        const retry = JSON.parse(continuationResponse(duplicate, unavailableReceipt(existing), existing));
+        expect(original.replayed).toBe(false);
+        expect(retry.replayed).toBe(true);
+        expect(retry.view.state).toBe('NEXT');
+        expect([original.view.strict.turns_since_signal, retry.view.strict.turns_since_signal]).toEqual([1, 1]);
+        const rows = duplicate.getEventStore().getAll();
+        expect(count(rows, 'SIGNAL_EMITTED')).toBe(1);
+        expect(count(rows, 'STATE_TRANSITION')).toBe(1);
+        expect(count(rows, 'AGENT_TURN_STARTED')).toBe(2);
+        expect(count(rows, 'STATE_VIEW_REFETCHED')).toBe(0);
+        expect(count(rows, 'MCP_CONTINUATION_RECORDED')).toBe(1);
+      } finally {
+        duplicate.close();
+      }
+    } finally {
+      winner.close();
     }
   });
 
