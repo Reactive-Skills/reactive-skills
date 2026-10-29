@@ -148,3 +148,4 @@ Local validation after the MCP state-response integration passed both package bu
 - Verified locally: both package builds, 950 runtime tests, 377 AXI tests with one existing skip, documentation invariants and public prose gates.
 - The new continuation and human-response modules have 100% statement/branch coverage in the focused offline protocol run; the bounded delivery scan also has full branch coverage.
 - Complexity measurements keep P0 helpers at CC <= 8 and human orchestration at CC 12; existing guarantee tests remain unchanged.
+- Interrupted keyed emit/human retries without a saved receipt now return `result_unavailable` instead of a refusal built from idempotent replays, and count the current view's delivery only if it was never delivered (`FSMEngine.hasStateDelivery()`); regression tests cover both interruption points.

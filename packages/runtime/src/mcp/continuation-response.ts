@@ -74,9 +74,21 @@ export function retrySignalResponse(engine: FSMEngine, key: string | undefined, 
   const existing = submissionEvent(engine, key, 'SIGNAL_EMITTED');
   if (!returnView || !existing) return undefined;
   const saved = continuationRecord(engine, existing);
-  const receipt = saved?.payload.receipt ?? { event_id: existing.id, result_unavailable: true,
+  return continuationResponse(engine, saved?.payload.receipt ?? unavailableReceipt(existing), existing);
+}
+
+/**
+ * Mark an original outcome that was committed without a saved receipt instead of inventing it.
+ * # Performance & Risk Budget
+ * - Tier: P0 (<5ms)
+ * - Complexity: O(1), fixed metadata
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+export function unavailableReceipt(event: SignalEvent): Receipt {
+  return { event_id: event.id, result_unavailable: true,
     reason: 'The original request did not record a continuation receipt. The view is current; do not resubmit under a new key.' };
-  return continuationResponse(engine, receipt, existing, true);
 }
 
 type ViewAnchor = { run_id?: string; seq: number };
@@ -96,7 +108,7 @@ function refusalReceipt(receipt: Receipt): Receipt {
 }
 
 /**
- * Keep a prior anchor on replay; missing historical metadata remains explicit.
+ * Keep a prior anchor on replay; missing or unavailable original metadata remains explicit.
  * # Performance & Risk Budget
  * - Tier: P0 (<5ms)
  * - Complexity: O(1)
@@ -104,8 +116,9 @@ function refusalReceipt(receipt: Receipt): Receipt {
  * - Branch Coverage: target >=90%
  * - CRAP Score: target <=10
  */
-function resultAnchor(saved: SignalEvent | undefined, replayed: boolean, current: ViewAnchor): ViewAnchor | null {
-  return saved?.payload.result_view ?? (replayed ? null : current);
+function resultAnchor(saved: SignalEvent | undefined, recovered: boolean, current: ViewAnchor): ViewAnchor | null {
+  if (saved) return saved.payload.result_view ?? null;
+  return recovered ? null : current;
 }
 
 /**
@@ -117,8 +130,8 @@ function resultAnchor(saved: SignalEvent | undefined, replayed: boolean, current
  * - Branch Coverage: target >=90%
  * - CRAP Score: target <=10
  */
-function saveReceipt(engine: FSMEngine, event: SignalEvent, saved: SignalEvent | undefined, replayed: boolean, receipt: Receipt, anchor: ViewAnchor | null): void {
-  if (saved || replayed || !event.idempotency_key) return;
+function saveReceipt(engine: FSMEngine, event: SignalEvent, saved: SignalEvent | undefined, recovered: boolean, receipt: Receipt, anchor: ViewAnchor | null): void {
+  if (saved || recovered || !event.idempotency_key) return;
   engine.getEventStore().append(CONTINUATION_EVENT, { receipt, result_view: anchor }, { state: engine.getCurrentState(), causationId: event.id, source: 'mcp' });
 }
 
@@ -143,7 +156,8 @@ function matchingOutcome(receipt: Receipt, anchor: ViewAnchor | null, currentSeq
 /**
  * Deliver one complete current view after settled signal work. Durable receipt metadata
  * distinguishes an original result from a later view without storing prompts or context.
- * Replays serialize the current view but append no delivery or other event.
+ * Replays serialize the current view but append no delivery or other event. A recovered
+ * submission without a saved receipt counts the current view only if it was never delivered.
  * # Performance & Risk Budget
  * - Tier: P0 (<5ms bounded view; existing persistence/approval queries additional)
  * - Complexity: O(b + h² + a + w), view bytes, ancestry, approvals, bounded delivery window
@@ -151,20 +165,21 @@ function matchingOutcome(receipt: Receipt, anchor: ViewAnchor | null, currentSeq
  * - Branch Coverage: target >=90%
  * - CRAP Score: target <=10
  */
-export function continuationResponse(engine: FSMEngine, receipt: Receipt, event: SignalEvent, replayed = false): string {
+export function continuationResponse(engine: FSMEngine, receipt: Receipt, event: SignalEvent): string {
   if (engine.hasExternalChanges()) throw new Error('RUN_VERSION_CONFLICT: Reload the same run before requesting its current view.');
   const saved = continuationRecord(engine, event);
-  if (!replayed && !saved) engine.recordStateDelivery();
+  const recovered = !saved && receipt.result_unavailable === true;
+  if (!saved && !(recovered && engine.hasStateDelivery())) engine.recordStateDelivery();
   const slice = engine.generatePromptSlice();
   const currentSeq = engine.getStateViewSeq();
-  const resultView = resultAnchor(saved, replayed, { run_id: engine.getJobId(), seq: currentSeq });
+  const resultView = resultAnchor(saved, recovered, { run_id: engine.getJobId(), seq: currentSeq });
   const enriched = refusalReceipt(receipt);
-  saveReceipt(engine, event, saved, replayed, enriched, resultView);
+  saveReceipt(engine, event, saved, recovered, enriched, resultView);
   const original = saved?.payload.receipt ?? enriched;
   const outcome = matchingOutcome(original, resultView, currentSeq);
   return serializeStateResponse({
     receipt: original,
-    replayed: replayed || !!saved,
+    replayed: recovered || !!saved,
     result_view: resultView,
     view: createStateView(engine, slice, outcome),
   }, slice.metrics!);

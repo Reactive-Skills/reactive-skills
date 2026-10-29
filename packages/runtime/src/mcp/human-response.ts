@@ -1,6 +1,6 @@
 import type { FSMEngine } from '../core/fsm-engine.js';
 import type { SignalEvent } from '../core/types.js';
-import { CONTINUATION_EVENT, continuationRecord, submissionEvent, type Receipt, type SignalHandlingResult } from './continuation-response.js';
+import { CONTINUATION_EVENT, continuationRecord, submissionEvent, unavailableReceipt, type Receipt, type SignalHandlingResult } from './continuation-response.js';
 
 export interface HumanResponse {
   choice: string;
@@ -22,6 +22,8 @@ function responseSignal({ choice, approved }: HumanResponse): string {
   return 'USER_REJECTED';
 }
 
+const signalKey = (decision: SignalEvent, signal: string) => `${decision.id}:${signal}`;
+
 /**
  * Dispatch the human signal batch before delivering any state. Derived per-decision
  * keys let a retry resume a partially dispatched keyed response without re-emission.
@@ -32,17 +34,16 @@ function responseSignal({ choice, approved }: HumanResponse): string {
  * - Branch Coverage: target >=90%
  * - CRAP Score: target <=10
  */
-async function dispatchResponse(engine: FSMEngine, data: HumanResponse, decision: SignalEvent | undefined, keyed: boolean) {
-  const signals = ['USER_RESPONSE', responseSignal(data)];
+async function dispatchResponse(engine: FSMEngine, data: HumanResponse, signals: string[], decision: SignalEvent | undefined, keyed: boolean) {
   const results: SignalHandlingResult[] = [];
   for (const signal of signals) {
     results.push(await engine.handleSignal(signal, data, {
       source: 'human_ingress',
       causationId: keyed ? decision?.id : undefined,
-      idempotencyKey: keyed && decision ? `${decision.id}:${signal}` : undefined,
+      idempotencyKey: keyed && decision ? signalKey(decision, signal) : undefined,
     }));
   }
-  return { signals, results };
+  return results;
 }
 
 /**
@@ -88,6 +89,7 @@ function responseDecision(engine: FSMEngine, data: HumanResponse, key?: string, 
 
 /**
  * Record one human ingress decision, preserving stored data on keyed retry.
+ * A retry that replays an already dispatched signal reports its original outcome as unavailable.
  * Judgment approvals remain restricted to the existing interactive CLI path.
  * # Performance & Risk Budget
  * - Tier: P2 (<100ms local work; existing guards/adapters additional)
@@ -100,18 +102,20 @@ export async function submitHumanResponse(engine: FSMEngine, input: HumanRespons
   const store = engine.getEventStore();
   const existing = submissionEvent(engine, key, 'DECISION_RECORDED');
   const saved = continuationRecord(engine, existing);
-  if (saved && existing) return { receipt: saved.payload.receipt as Receipt, event: existing, replayed: true };
+  if (saved && existing) return { receipt: saved.payload.receipt as Receipt, event: existing };
   if (engine.hasExternalChanges()) throw new Error('RUN_VERSION_CONFLICT: Reload the run before responding.');
   const data = (existing?.payload ?? input) as HumanResponse;
   // Empty choices historically recorded no decision. The first dispatched signal remains its identity.
   const decision = responseDecision(engine, data, key, existing);
   if (data.feedback) engine.updateContext({ user_feedback: data.feedback });
   if (data.choice) engine.updateContext({ user_choice: data.choice });
-  const { signals, results } = await dispatchResponse(engine, data, decision, !!key);
-  const receipt = responseReceipt(engine, signals, results, withOutcome);
+  const signals = ['USER_RESPONSE', responseSignal(data)];
+  const resumed = !!existing && signals.some(signal => store.getEventByIdempotencyKey(signalKey(existing, signal)));
+  const results = await dispatchResponse(engine, data, signals, decision, !!key);
   const event = decision ?? results[0].event;
+  const receipt = resumed ? unavailableReceipt(event) : responseReceipt(engine, signals, results, withOutcome);
   if (key && !withOutcome) {
     store.append(CONTINUATION_EVENT, { receipt, result_view: null }, { causationId: event.id, source: 'mcp', state: engine.getCurrentState() });
   }
-  return { receipt, event, replayed: false };
+  return { receipt, event };
 }

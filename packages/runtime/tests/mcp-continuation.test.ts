@@ -246,7 +246,7 @@ states:
     const engine = new FSMEngine({ skillDir: path.join(workspace, 'skills', 'continuation'), workspaceDir: workspace, jobId: first.view.run_id, eventStore: store });
     try {
       const original = store.getEventByIdempotencyKey('refused-once')!;
-      const retry = JSON.parse(continuationResponse(engine, first.receipt, original, true));
+      const retry = JSON.parse(continuationResponse(engine, first.receipt, original));
       expect(retry.replayed).toBe(true);
       expect(retry.receipt).toEqual(first.receipt);
       expect(retry.view.refusal).toBe(first.view.refusal);
@@ -384,6 +384,40 @@ states:
     expect(retry.result_view).toBeNull();
     expect(retry.view.state).toBe('COMPLETED');
     expect(await events(client)).toEqual(before);
+  });
+
+  it.each([
+    ['emit', 'recordStateDelivery', 1],
+    ['emit', 'generatePromptSlice', 0],
+    ['human', 'recordStateDelivery', 1],
+    ['human', 'generatePromptSlice', 0],
+  ] as const)('recovers an interrupted keyed %s after %s without inventing its result or recounting delivery', async (operation, interrupted, deliveries) => {
+    const client = await connect();
+    if (operation === 'human') await emit(client, 'ASK');
+    const tool = operation === 'emit' ? 'reactive_emit_signal' : 'reactive_respond_human';
+    const args = operation === 'emit'
+      ? { signal: 'CHECK', payload: { exit_code: 0 }, idempotency_key: 'interrupted', return_view: 'compact-v1' }
+      : { choice: 'Approve', approved: true, idempotency_key: 'interrupted', return_view: 'compact-v1' };
+    vi.spyOn(FSMEngine.prototype, interrupted).mockImplementationOnce(() => { throw new Error('RUN_VERSION_CONFLICT: interrupted'); });
+    const lost = await client.callTool({ name: tool, arguments: { job_id: 'continuation-run', ...args } });
+    expect(lost.isError).toBe(true);
+    const before = await events(client);
+    expect(count(before, 'MCP_CONTINUATION_RECORDED')).toBe(0);
+    const retry = await call(await connect(), tool, args);
+    expect(retry.replayed).toBe(true);
+    expect(retry.receipt.result_unavailable).toBe(true);
+    expect(retry.receipt).not.toHaveProperty('transitioned');
+    expect(retry.receipt).not.toHaveProperty('refusalReason');
+    expect(retry.result_view).toBeNull();
+    expect(retry.view.state).toBe('NEXT');
+    expect(retry.view).not.toHaveProperty('refusal');
+    expect(retry.view.strict.turns_since_signal).toBe(1);
+    const after = await events(client);
+    expect(after.slice(0, before.length)).toEqual(before);
+    expect(after.slice(before.length).map((row: {type: string}) => row.type)).toEqual(Array(deliveries).fill('AGENT_TURN_STARTED'));
+    const again = await call(await connect(), tool, args);
+    expect(again.receipt).toEqual(retry.receipt);
+    expect(await events(client)).toEqual(after);
   });
 
   it.each([false, true])('human reply to an unhandled gate returns refusal and stop instructions with strict=%s', async strict => {

@@ -757,7 +757,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
         return await onRun(skill || defaultSkill, job_id, async engine => {
           const response = await submitHumanResponse(engine, { choice, approved, feedback }, idempotency_key, !!return_view);
           const text = return_view
-            ? continuationResponse(engine, response.receipt, response.event, response.replayed)
+            ? continuationResponse(engine, response.receipt, response.event)
             : JSON.stringify(response.receipt, null, 2);
           return { content: [{ type: 'text', text }] };
         });

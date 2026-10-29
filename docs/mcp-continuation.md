@@ -42,8 +42,9 @@ The current view can be later than the original result; compare its sequence wit
 A retry adds no transition, decision, approval request or delivery count and consumes no refetch allowance.
 It never reapplies an old refusal or warning to a later view; those remain available in the original receipt.
 
-If a signal key predates continuation receipts, or execution stopped after the signal committed but before its receipt was saved, the response explicitly marks `receipt.result_unavailable: true` and returns `result_view: null` alongside the current view.
-It does not invent an original transition result or resubmit the signal.
+If a signal key predates continuation receipts, or execution stopped after a signal or human-response signal committed but before its receipt was saved, the response explicitly marks `receipt.result_unavailable: true` and returns `replayed: true` with `result_view: null` alongside the current view.
+It does not invent an original transition result or resubmit a committed signal; an interrupted human response still dispatches any of its signals that never committed.
+Such a recovery counts one delivery only when the current view has none yet, and saves no receipt.
 Use the current view to recover; do not submit a new key merely to recreate a lost response.
 Same-process MCP clients serialize complete mutation operations per immutable run, refreshing cached engines before work.
 State reads remain independent so recovery can inspect a run during an in-flight judgment.
