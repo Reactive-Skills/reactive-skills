@@ -25,7 +25,7 @@ Consume `view` directly after each completed state instead of issuing an additio
 Fetch state for initial delivery, session resume, transcript compaction, stale state or recovery.
 Keep `job_id` set to the immutable `run_id` from the first view, including after completion.
 Continuation rendering never rotates a terminal run.
-A strict continuation calls the same `recordStateDelivery()` helper as a state fetch exactly once.
+An original strict continuation calls the same `recordStateDelivery()` helper as a state fetch exactly once; a lost-response retry's view is not counted (see below).
 Up to `refetch_allowance` repeat fetches of that delivered view remain uncounted; further polling counts toward the idle limit.
 Non-strict runs add no turn bookkeeping.
 
@@ -44,7 +44,9 @@ It never reapplies an old refusal or warning to a later view; those remain avail
 
 If a signal key predates continuation receipts, or execution stopped after a signal or human-response signal committed but before its receipt was saved, the response explicitly marks `receipt.result_unavailable: true` and returns `replayed: true` with `result_view: null` alongside the current view.
 It does not invent an original transition result or resubmit a committed signal; an interrupted human response still dispatches any of its signals that never committed.
-Such a recovery, like any duplicate, appends no delivery or receipt, so it cannot invalidate an original whose guard is still pending; the committing process counts its reached view, and if that process died a later `reactive_state` fetch counts it.
+Such a recovery, like any duplicate, appends no delivery or receipt, so it cannot bump the run version and invalidate an original whose guard is still pending.
+On this opt-in continuation path, the view returned by a lost-response retry of `reactive_emit_signal` or `reactive_respond_human` is therefore not counted as a strict turn: it adds no `AGENT_TURN_STARTED` or `STATE_VIEW_REFETCHED` and does not advance `turns_since_signal`, including when a human-response retry dispatches its remaining signal and reaches a new state in that call.
+Only a committing process that completes its own response counts its reached view.
 A keyed submission's delivery is itself keyed to that submission, so competing processes delivering the same result share one recorded delivery.
 Likewise a keyed signal (emit or human-response) that another server process commits between this process's lookup and its own append is treated as a replay: it evaluates no guard, records no second transition, and returns `result_unavailable`, so the committing process keeps ownership of the original result.
 Use the current view to recover; do not submit a new key merely to recreate a lost response.
