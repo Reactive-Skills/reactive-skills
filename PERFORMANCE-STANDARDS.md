@@ -87,6 +87,8 @@ Accounting is O(b) in serialized bytes, with O(b*r) normalization for a bounded 
 These scans occur outside timed runtime operations and never append measurement events.
 The fixture reads post-persistence `transition_total_ms` from existing `TRANSITION_COMPLETED` records and SDK results, alongside the separate pre-persistence `STATE_TRANSITION` metrics.
 The operation is P3, with the existing per-operation target below 2,000ms, CC target <= 20, branch coverage target >= 60% and CRAP target <= 30; aggregate trace duration has no fixed latency assertion.
+Each function's inline budget records measured values: CC from ESLint's core `complexity` rule summed over the function's span including nested callbacks, branch coverage from V8 coverage of `tests/transport-benchmark.test.ts` with runtime and AXI built, and CRAP = CC² × (1 − coverage)³ + CC.
+`countExchange`, MCP `call` and `measureAxi` currently measure below the 60% branch-coverage target; the network fence runs only in child processes, so its coverage is not measured.
 Cold AXI process time and persistent MCP handler/in-memory round-trip time are distinct observations.
 MCP text, result-object and full stdio-envelope bytes are distinct from input payload, authored Markdown, rendered prompt and artifact-read bytes.
 Byte counts are never token counts; native token heuristics are labeled and normalized independently.

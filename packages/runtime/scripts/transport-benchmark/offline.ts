@@ -4,9 +4,9 @@ import { JudgmentEngine } from '../../src/core/judgment-engine.js';
  * # Performance & Risk Budget
  * - Tier: P3 (offline fixture; per operation target < 2000ms, no suite latency assertion)
  * - Complexity: O(1)
- * - Cyclomatic Complexity (CC): target <= 3
- * - Branch Coverage: target >= 60%
- * - CRAP Score: target <= 30.0
+ * - Cyclomatic Complexity (CC): 3 (measured; threshold <= 20)
+ * - Branch Coverage: 83% (5/6 V8 branches measured; target >= 60%)
+ * - CRAP Score: 3.0 (measured; threshold <= 30.0)
  */
 export function installOfflineAdapter() {
   let attempts = 0;
@@ -18,9 +18,9 @@ export function installOfflineAdapter() {
     /** # Performance & Risk Budget
      * - Tier: P3 (offline fixture)
      * - Complexity: O(1)
-     * - Cyclomatic Complexity (CC): 2
-     * - Branch Coverage: target >= 60%
-     * - CRAP Score: target <= 30.0
+     * - Cyclomatic Complexity (CC): 2 (measured; threshold <= 20)
+     * - Branch Coverage: 50% (1/2 V8 branches measured; target >= 60%)
+     * - CRAP Score: 2.5 (measured; threshold <= 30.0)
      */
     async evaluate(request) {
       attempts += 1;

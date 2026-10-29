@@ -5,10 +5,11 @@ It does not measure model quality, model generation, host scheduling, billing, p
 It uses public `tdd-refactor` manifest, state and projection excerpts pinned in [fixtures/provenance.json](fixtures/provenance.json), plus small synthetic human-gate and legacy cases.
 Every public file is verified against its Git blob hash before execution.
 
-Build through Nx, then write the machine-readable JSON outside the repository:
+Build runtime, then AXI (AXI compiles against runtime's `dist`, so do not build them in parallel), then write the machine-readable JSON outside the repository:
 
 ```bash
-NX_DAEMON=false pnpm exec nx run-many --targets=build --projects=runtime,reactive-skills-axi
+NX_DAEMON=false pnpm exec nx run runtime:build
+NX_DAEMON=false pnpm exec nx run reactive-skills-axi:build
 pnpm --filter @reactive-skills/runtime exec tsx scripts/transport-benchmark/cli.ts > /tmp/transport-cost.json
 ```
 

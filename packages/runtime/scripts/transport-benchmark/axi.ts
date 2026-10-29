@@ -8,9 +8,9 @@ import { repositoryRoot } from './fixtures.js';
  * # Performance & Risk Budget
  * - Tier: P3 (offline fixture; per operation target < 2000ms, no suite latency assertion)
  * - Complexity: O(e+b) fixture events and output bytes
- * - Cyclomatic Complexity (CC): target <= 8
- * - Branch Coverage: target >= 60%
- * - CRAP Score: target <= 30.0
+ * - Cyclomatic Complexity (CC): 8 (measured; threshold <= 20)
+ * - Branch Coverage: 57% (4/7 V8 branches measured; target >= 60%)
+ * - CRAP Score: 13.0 (measured; threshold <= 30.0)
  */
 export function measureAxi(workspace: string) {
   const entry = path.join(repositoryRoot, 'apps', 'axi', 'dist', 'cli', 'index.js');
