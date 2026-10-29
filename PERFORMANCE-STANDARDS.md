@@ -96,7 +96,6 @@ The certificate is skill-wide, covers every run, and records a captured global l
 It is published by atomic rename only after synchronous mirror writes succeed; the existing mirror contract does not promise power-loss fsync durability.
 Failed mirror or certificate writes leave SQLite canonical, and open verifies the surviving certificate before extending a tail or repairing uncertainty.
 Clear, rebuild, migration and database replacement change the ledger generation or rebuild certification; rotation retains completed chunk digests under the renamed segment.
-An initialized-ledger marker distinguishes an intentionally cleared canonical store from a new database that can import legacy JSONL.
 Certificate parsing and atomic publication cost O(c) metadata per append, separately from the bounded incremental hashing work.
 
 #### Forbidden Anti-Patterns
