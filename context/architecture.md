@@ -250,7 +250,7 @@ States can declare an optional `context_scope` array to limit which `context_key
 `state.compact_v1` advertises additive state output selection.
 `core/state-view.ts` builds and renders the shared view for SDK, MCP state/context preparation, AXI invoke/state/emit, and development CLI JSON/XML.
 Existing formats remain selectable by default; compact clients explicitly select `output: "compact-v1"` or `--output compact-v1`.
-The view carries the unchanged rendered prompt, the full current scoped context, leaf-to-root exact contracts without deduplicating same-named signals, tools, run ID and sequence.
+The view carries the unchanged rendered prompt, the full current scoped context, leaf-to-root contracts without deduplicating same-named signals (exact guards, or authored requirements where a transition declares a [payload contract](../docs/payload-contracts.md)), tools, run ID and sequence.
 Active human gates, pending judgment approvals, model hints, strict counters, and signal receipt refusal/decision metadata appear when applicable.
 MCP full-context opt-in replaces scoped context in the compact format; it retains the existing legacy behavior in the legacy format.
 The shared bootloader and compact policy require re-fetching the same run after transcript compaction without synthesizing transitions or approvals.
