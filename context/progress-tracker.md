@@ -48,7 +48,7 @@ The runtime SDK evidence registry is implemented: `evidence-store.ts` defines th
 `docs/evidence-registry.md` documents the SDK contract, limits and retention rules; `PERFORMANCE-STANDARDS.md` budgets the new O(evidence bytes) storage operations.
 The repository map lists both evidence modules.
 Signal declarations validate referenced media before context-update projection, so expanding an update cannot bypass its field contract.
-Run exports bundle only committed references and report damaged unreferenced registrations (e.g. behind a refused signal) instead of aborting; the local store resolves its artifacts directory against the real workspace path, so symlinked workspaces work.
+Run exports with declarations bundle only committed references (without them, every registration is bundled and any damage fails) and report damaged unreferenced registrations (e.g. behind a refused signal) instead of aborting; the local store resolves its artifacts directory against the real workspace path, so symlinked workspaces work.
 Local validation after the MCP state-response integration passed both package builds, 699 runtime tests, 310 AXI tests, and documentation/prose gates.
 
 | Slice | Archetype | Status |
