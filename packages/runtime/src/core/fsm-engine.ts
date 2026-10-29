@@ -981,17 +981,6 @@ export class FSMEngine {
             slice_tokens_est: this.lastSliceMetrics?.slice_tokens_est,
           };
 
-          if (transitionDurationMs > this.maxTransitionDurationMs) {
-            this.eventStore.append('PERF_DEGRADATION', {
-              operation: 'handleSignal',
-              duration_ms: transitionDurationMs,
-              threshold_ms: this.maxTransitionDurationMs,
-              signal: signalName,
-              from: previousState,
-              to: fullTargetPath.join('.'),
-            }, { state: fullTargetPath.join('.') });
-          }
-
           // Execute exit hooks and entry hooks along the transition path
           this.transitionBetweenPaths(prevPath, fullTargetPath, signalName, event.id, payload, metrics);
 
@@ -1008,7 +997,24 @@ export class FSMEngine {
           );
           // Stamped after the persisted transition, snapshot and projections, before queued lifecycle signals drain.
           // A copy, so the already persisted STATE_TRANSITION payload object is left as written.
-          const transitionMetrics: ExecutionMetrics = { ...metrics, transition_total_ms: Number((performance.now() - startTime).toFixed(3)) };
+          const transitionTotalMs = Number((performance.now() - startTime).toFixed(3));
+          const transitionMetrics: ExecutionMetrics = { ...metrics, transition_total_ms: transitionTotalMs };
+          this.eventStore.append(
+            'TRANSITION_COMPLETED',
+            { signal: signalName, from: previousState, to: fullTargetPath.join('.'), metrics: transitionMetrics },
+            { state: fullTargetPath.join('.'), causationId: event.id }
+          );
+
+          if (transitionTotalMs > this.maxTransitionDurationMs) {
+            this.eventStore.append('PERF_DEGRADATION', {
+              operation: 'handleSignal',
+              duration_ms: transitionTotalMs,
+              threshold_ms: this.maxTransitionDurationMs,
+              signal: signalName,
+              from: previousState,
+              to: fullTargetPath.join('.'),
+            }, { state: fullTargetPath.join('.') });
+          }
 
           // Drain queued lifecycle signals with cycle-depth guard (REL-02)
           if (!this.isProcessingQueue && this.signalQueue.length > 0) {

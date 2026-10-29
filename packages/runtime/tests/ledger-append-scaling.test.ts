@@ -154,6 +154,37 @@ describe('transition_total_ms', () => {
       const metrics = result.metrics!;
       expect(metrics.transition_total_ms).toBeGreaterThanOrEqual(persistenceMs);
       expect(metrics.transition_total_ms).toBeGreaterThan(metrics.transition_duration_ms! + 20);
+
+      const [completed] = eventStore.query({ type: 'TRANSITION_COMPLETED', causationId: result.event.id });
+      expect(completed.payload.metrics).toEqual(metrics);
+      expect(completed.payload.metrics.transition_total_ms).toBeGreaterThanOrEqual(persistenceMs);
+    } finally {
+      engine.close();
+    }
+  });
+
+  it('trips PERF_DEGRADATION on a transition slowed by its snapshot save', async () => {
+    const workspaceDir = tempWorkspace();
+    const eventStore = new EventStore({ workspaceDir, skillId: 'test-fsm', runId: createSortableId(), enableSqlite: true });
+    const engine = new FSMEngine({ skillDir, eventStore, workspaceDir, perfThresholds: { maxTransitionDurationMs: 30 } });
+    try {
+      await engine.handleSignal('RUNTIME_READY');
+      const before = eventStore.query({ type: 'PERF_DEGRADATION' }).length;
+
+      const saveSnapshot = eventStore.saveSnapshot.bind(eventStore);
+      (eventStore as any).saveSnapshot = (...args: Parameters<typeof saveSnapshot>) => {
+        const start = performance.now();
+        saveSnapshot(...args);
+        while (performance.now() - start < 60) { /* spin */ }
+      };
+
+      const result = await engine.handleSignal('TEST_RAN', { exit_code: 1 });
+      expect(result.transitioned).toBe(true);
+      const alarms = eventStore.query({ type: 'PERF_DEGRADATION' }).slice(before);
+      expect(alarms).toHaveLength(1);
+      expect(alarms[0].payload).toMatchObject({ operation: 'handleSignal', threshold_ms: 30, signal: 'TEST_RAN' });
+      expect(alarms[0].payload.duration_ms).toBe(result.metrics!.transition_total_ms);
+      expect(alarms[0].payload.duration_ms).toBeGreaterThanOrEqual(60);
     } finally {
       engine.close();
     }

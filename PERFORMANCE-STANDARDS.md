@@ -113,9 +113,9 @@ export interface ExecutionTelemetryMetadata {
   slice_duration_ms: number;
   /** Estimated tokens in active prompt slice */
   slice_tokens_est: number;
-  /** Duration in milliseconds from signal receipt through guard evaluation and target resolution; stamped before the transition is persisted */
+  /** Pre-persistence portion: signal receipt through guard evaluation and target resolution; stamped before the transition is persisted and carried in `STATE_TRANSITION` */
   transition_duration_ms: number;
-  /** Duration in milliseconds from signal receipt through the persisted transition, snapshot save and projections; returned by handleSignal() only, since it is stamped after the STATE_TRANSITION append, and excludes queued lifecycle signals */
+  /** Duration in milliseconds from signal receipt through the persisted transition, snapshot save and projections; persisted in the `TRANSITION_COMPLETED` event appended after projections and returned by handleSignal(); excludes queued lifecycle signals */
   transition_total_ms: number;
   /** Count of tools allowed in active substate */
   allowed_tools_count: number;
@@ -124,7 +124,7 @@ export interface ExecutionTelemetryMetadata {
 
 3. **Degradation Detection Thresholds**:
    - `slice_duration_ms > 10ms` $\rightarrow$ Warning: Template cache miss or heavy filesystem access.
-   - `transition_duration_ms > 25ms` $\rightarrow$ Warning: Slow guard evaluation or SQLite contention.
+   - `transition_total_ms > 25ms` $\rightarrow$ Warning (`PERF_DEGRADATION`, after `TRANSITION_COMPLETED`): Slow guard evaluation, SQLite contention, snapshot save or projections.
    - `idle_turns >= max_idle_turns` $\rightarrow$ Alert: Agent looping without emitting signals.
 
 ---

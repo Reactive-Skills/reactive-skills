@@ -292,9 +292,9 @@ export interface SkillManifest {
 export interface ExecutionMetrics {
   slice_duration_ms?: number;
   slice_tokens_est?: number;
-  /** Signal receipt through guard evaluation and target resolution; persisted in the STATE_TRANSITION payload. */
+  /** Pre-persistence portion: signal receipt through guard evaluation and target resolution; persisted in the STATE_TRANSITION payload. */
   transition_duration_ms?: number;
-  /** Signal receipt through the persisted transition, snapshot save and projections; returned only, as it postdates the STATE_TRANSITION append. */
+  /** Signal receipt through the persisted transition, snapshot save and projections; persisted in the TRANSITION_COMPLETED payload and checked against maxTransitionDurationMs. */
   transition_total_ms?: number;
   allowed_tools_count?: number;
   [key: string]: any;
