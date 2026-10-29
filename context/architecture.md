@@ -30,6 +30,7 @@ reactive-skills/                          # Repo root
 │       │   ├── core/
 │       │   │   ├── types.ts              # Zod schemas & TypeScript interfaces
 │       │   │   ├── event-store.ts        # Append-only JSONL + SQLite event ledger
+│       │   │   ├── jsonl-checkpoint.ts   # Skill-wide byte certificates and chunk verification
 │       │   │   ├── guard-evaluator.ts    # node:vm sandbox invariant evaluator
 │       │   │   ├── guard-module-format.ts # Static ESM/CommonJS check for guardFunction files
 │       │   │   ├── judgment-engine.ts    # Decoupled snap-on judgment engine & circuit breaker
