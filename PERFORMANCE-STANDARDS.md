@@ -223,7 +223,7 @@ $$\text{Tokens Saved} = \sum_{t=1}^{\text{Turns}} \left( \text{Tokens}_{\text{Mo
 
 2. **Agent Convergence Velocity (Behavioral Reduction)**:
    - **Loop Elimination**: Deterministic transition guards (`exit_code == 0`, schema validators) prevent premature completion or aimless loops.
-   - **Bypass Detection**: `max_idle_turns` immediately halts ungrounded turns; up to `max_view_refetches` (default 2) repeat fetches of the same view are uncounted for compaction recovery, using a bounded trailing-event scan (P0).
+   - **Bypass Detection**: `max_idle_turns` immediately halts ungrounded turns; up to `max_view_refetches` (default 2) repeat fetches of the same view are uncounted for compaction recovery, using a bounded trailing-event scan plus an indexed local recovery-credit lookup (P1).
    - **Regression Bubbling**: Failing tests instantly bubble back to exact remediation states (`GREEN_CODE` or `RED_SPEC`) rather than allowing the model to wander.
 
 ---
@@ -286,7 +286,19 @@ The serialized-byte heuristic covers the entire continuation envelope, including
 Keyed operations add one P1 (<25ms target) `MCP_CONTINUATION_RECORDED` append containing only receipt metadata and an original view anchor; unkeyed operations add no receipt event.
 Duplicate lookup uses the existing indexed idempotency key and an indexed O(k) causation query for that submission's child events, without a full-run scan.
 Receipt events are ignored by the bounded delivery scan so they do not reset compaction refetch allowance or create an idle turn.
-Original submissions call `recordStateDelivery()` once; keyed retries, including recovery of an interrupted emit or human response without a saved receipt, add no delivery/refetch or other events, so a lost-response retry's returned view is not counted as a strict turn.
+Original submissions call `recordStateDelivery()` once; saved-receipt retries add no delivery/refetch or other execution events.
+Interrupted emit/human-response recovery records a credit in the additive `recovered_deliveries` SQLite table keyed by `(run_id, view_seq)`, independently of execution sequence, run version, snapshots and JSONL.
+Recording a credit and reading one view's credit are P1 (<25ms target), using primary-key and run-sequence indexes; writes cost O(log D + log N + w) for D credits, N indexed events and the bounded view window w.
+Strict view/refetch scanning remains bounded O(w), plus O(log D) to include an unabsorbed recovery credit.
+Strict counter/bypass reads are P1 with O(log N + log D + d) work over d candidate credits since the latest signal/transition; indexed `(run_id, type, seq)` lookups find that boundary, and the query stops after `max_idle_turns + 1` unabsorbed credits.
+An original keyed ledger append atomically marks only its matching view's credit as absorbed, so another recovered view from that same submission keeps its own turn.
+The view anchor is storage metadata and adds no event-payload or response field.
+Non-SQLite SDK stores retain credits only in memory: view lookup is O(1) and counter reads cost O(n + D) for n retained events; MCP uses SQLite.
+Delivery metadata helpers target CC <=8, branch coverage >=80% and CRAP <=15.
+No full-history event materialization, JSONL mirror write or run-version increment is added to recovery.
+Recovered and saved-receipt continuation rendering disables prompt-slice telemetry appends; in-memory metrics remain available without invalidating a pending guard.
+The additive run/type/sequence index costs O(N log N) on its first installation during store open; subsequent opens reuse it.
+Local delivery metadata is omitted from event exports and cleared by an explicit SQLite rebuild or run deletion.
 `mcp/human-response.ts` dispatches at most two existing human signals before one view delivery, retaining their current precedence and CLI-only judgment approval boundary.
 Queue/receipt/render helpers target CC <= 8, branch coverage >= 90%, CRAP <= 10; human orchestration targets CC <= 12, branch coverage >= 80%, CRAP <= 15.
 Cold replay and existing guard, evidence, child, projection and approval costs remain additional.

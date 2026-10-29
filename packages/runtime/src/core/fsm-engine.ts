@@ -529,8 +529,19 @@ export class FSMEngine {
     return this.strictExecution;
   }
 
+  /**
+   * Include local recovery credits without caching them in a snapshot or ledger turn.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(log N + log D + d), d current-epoch candidates until idle limit + 1 unabsorbed credits
+   * - Cyclomatic Complexity (CC): target <=8
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
   public getTurnsSinceLastSignal(): number {
-    return this.turnsSinceLastSignal;
+    if (!this.strictExecution || this.inBypassState) return this.turnsSinceLastSignal;
+    const limit = (this.getStateDefinition(this.activeStatePath)?.max_idle_turns ?? 2) + 1;
+    return this.turnsSinceLastSignal + this.eventStore.countRecoveredDeliveries(limit);
   }
 
   public isBypassDetected(): boolean {
@@ -538,19 +549,20 @@ export class FSMEngine {
   }
 
   /**
-   * Record one strict turn, reusing the canonical counter for a deduplicated delivery.
+   * Record one strict ledger turn, reusing the canonical counter for a deduplicated delivery.
+   * The ledger counter excludes recovery credits; getTurnsSinceLastSignal/checkBypass compose them without snapshotting or double counting.
    * # Performance & Risk Budget
    * - Tier: P1 (storage budget < 25ms)
-   * - Complexity: O(1) bookkeeping plus EventStore.append persistence/mirror cost
+   * - Complexity: O(1) bookkeeping plus EventStore.append persistence/mirror and P1 recovery-credit check costs
    * - Cyclomatic Complexity (CC): 4
    * - Branch Coverage: 80% (4/5 measured branch entries)
    * - CRAP Score: 4.128 (Threshold <= 15.0)
    * - Measurement: ESLint complexity and V8 coverage from continuation, strict-execution and human-approval tests
    */
-  public recordTurnStart(idempotencyKey?: string): void {
+  public recordTurnStart(idempotencyKey?: string, deliveryViewSeq?: number): void {
     if (!this.strictExecution || this.inBypassState) return;
     const draft = { state: this.getCurrentState(), turns_since_last_signal: this.turnsSinceLastSignal + 1 };
-    const event = this.eventStore.append('AGENT_TURN_STARTED', draft, { state: this.getCurrentState(), idempotencyKey });
+    const event = this.eventStore.append('AGENT_TURN_STARTED', draft, { state: this.getCurrentState(), idempotencyKey, deliveryViewSeq });
     // A keyed delivery another process already recorded is that same turn, not a new one.
     this.turnsSinceLastSignal = event.payload.turns_since_last_signal ?? this.turnsSinceLastSignal;
     this.checkBypass();
@@ -560,14 +572,20 @@ export class FSMEngine {
    * Count a delivered state view, letting up to `max_view_refetches` repeat fetches of the same view through for compaction recovery.
    * An idempotency key makes the count atomic across processes delivering the same submission's result.
    * # Performance & Risk Budget
-   * - Tier: P0 (< 5ms)
-   * - Complexity: O(w), bounded trailing-event window
-   * - Cyclomatic Complexity (CC): target <= 6
-   * - Branch Coverage: target >= 90%
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(w + log D + log N), bounded event window and recovery-credit lookup
+   * - Cyclomatic Complexity (CC): target <= 8
+   * - Branch Coverage: target >= 80%
+   * - CRAP Score: target <=15
    */
   public recordStateDelivery(idempotencyKey?: string): void {
     if (!this.strictExecution || this.inBypassState) return;
-    const { deliveries } = this.currentViewDeliveries();
+    const { deliveries, viewSeq } = this.currentViewDeliveries();
+    // The original response promotes its recovery credit to the existing keyed ledger turn.
+    if (idempotencyKey && this.eventStore.getRecoveredDelivery(viewSeq) === idempotencyKey) {
+      this.recordTurnStart(idempotencyKey, viewSeq);
+      return;
+    }
     const allowance = this.getStateDefinition(this.activeStatePath)?.max_view_refetches ?? 2;
     if (deliveries > 0 && deliveries <= allowance) {
       this.eventStore.append('STATE_VIEW_REFETCHED', {
@@ -576,17 +594,34 @@ export class FSMEngine {
       }, { state: this.getCurrentState(), idempotencyKey });
       return;
     }
-    this.recordTurnStart(idempotencyKey);
+    this.recordTurnStart(idempotencyKey, viewSeq);
+  }
+
+  /**
+   * Account for a recovered current view once without execution events or bypass transitions.
+   * Normal strict-turn checks enforce the resulting idle count; a pending guard keeps its version.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(w + log D + log N), bounded view window and indexed metadata
+   * - Cyclomatic Complexity (CC): target <=8
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
+   */
+  public recordRecoveredStateDelivery(deliveryKey: string): void {
+    if (!this.strictExecution || this.inBypassState) return;
+    const { viewSeq, deliveries } = this.currentViewDeliveries();
+    if (deliveries === 0) this.eventStore.recordRecoveredDelivery(viewSeq, deliveryKey);
   }
 
   /**
    * Sequence of the event that last changed the state view; delivery bookkeeping and telemetry are ignored within the bounded trailing window; when no view-changing event remains in that window, the anchor falls back to the latest event sequence and can advance in non-strict runs.
-   * Informational only: guards and strict counting do not use it.
+   * Identifies local recovery credits; guards do not use it.
    * # Performance & Risk Budget
-   * - Tier: P0 (< 5ms)
-   * - Complexity: O(w), one latest-sequence lookup plus a bounded trailing-event read
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(w + log D + log N), latest-sequence lookup, bounded trailing-event read and recovery credit
    * - Cyclomatic Complexity (CC): target <= 1
    * - Branch Coverage: target >= 90%
+   * - CRAP Score: target <=15
    */
   public getStateViewSeq(): number {
     return this.currentViewDeliveries().viewSeq;
@@ -595,8 +630,8 @@ export class FSMEngine {
   /**
    * Ignore continuation receipts and telemetry; find the last view-changing event and count deliveries after it within a window w = 4 * (max_view_refetches + max_idle_turns + 2).
    * # Performance & Risk Budget
-   * - Tier: P0 (< 5ms)
-   * - Complexity: O(w), one latest-sequence lookup plus a bounded trailing-event read
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(w + log D + log N), latest-sequence lookup, bounded trailing-event read and recovery credit
    * - Cyclomatic Complexity (CC): target <= 8
    * - Branch Coverage: target >= 90%
    * - CRAP Score: target <= 10.0
@@ -606,7 +641,9 @@ export class FSMEngine {
     const stateDef = this.getStateDefinition(this.activeStatePath);
     const window = 4 * ((stateDef?.max_view_refetches ?? 2) + (stateDef?.max_idle_turns ?? 2) + 2);
     const events = this.eventStore.getSince(Math.max(0, latest - window));
-    return this.scanViewDeliveries(events, latest, window);
+    const result = this.scanViewDeliveries(events, latest, window);
+    if (this.eventStore.getRecoveredDelivery(result.viewSeq)) result.deliveries++;
+    return result;
   }
 
   /**
@@ -631,7 +668,7 @@ export class FSMEngine {
   /**
    * # Performance & Risk Budget
    * - Tier: P1 (<25ms target excluding storage)
-   * - Complexity: O(hierarchy depth + diagnostic bytes), independent of history
+   * - Complexity: O(hierarchy depth + diagnostic bytes + log N + d * log N), d current-epoch recovery candidates
    * - Cyclomatic Complexity (CC): target <=12
    * - Branch Coverage: target >=80%
    * - CRAP Score: target <=15
@@ -640,11 +677,12 @@ export class FSMEngine {
     if (!this.strictExecution || this.inBypassState) return;
     const stateDef = this.getStateDefinition(this.activeStatePath);
     const maxIdleTurns = stateDef?.max_idle_turns ?? 2;
-    if (this.turnsSinceLastSignal > maxIdleTurns) {
+    const turns = this.getTurnsSinceLastSignal();
+    if (turns > maxIdleTurns) {
       const bypassTarget = stateDef?.bypass_target ?? 'BYPASS_DETECTED';
       this.eventStore.append('BYPASS_DETECTED', {
         reason: 'Agent exceeded max idle turns without emitting a signal',
-        turns: this.turnsSinceLastSignal,
+        turns,
         max_idle_turns: maxIdleTurns,
         state: this.getCurrentState(),
       }, { state: bypassTarget });
@@ -797,17 +835,18 @@ export class FSMEngine {
   /**
    * Generates the prompt slice for the active state hierarchy.
    * Token estimates cover UTF-8 XML bytes; transports estimate their serialized delivery separately.
+   * Recovered/replayed continuation rendering disables telemetry events to preserve pending run versions.
    *
    * # Performance & Risk Budget
    * - Tier: P0 (< 5ms for bounded state slices)
-   * - Complexity: O(t + c + h + v), template bytes, scoped context, hierarchy and state visits
-   * - Cyclomatic Complexity (CC): existing orchestration unchanged; payload helper measured CC 4
+   * - Complexity: O(t + c + h + v), template bytes, scoped context, hierarchy and state visits; P1 strict recovery-counter lookup additional
+   * - Cyclomatic Complexity (CC): existing slice orchestration plus one telemetry opt-out condition; payload helper measured CC 4
    * - Branch Coverage: target >= 90%
    * - CRAP Score: target <= 10.0
    * - Measured payload path: 100% branches, CRAP 4.0; complete TDD slice p95 0.154787ms (100 samples/10 warmups, Node 22.23.3/Linux).
    * - Caching: L1 compiled Handlebars template delegates
    */
-  public generatePromptSlice(): PromptSlice {
+  public generatePromptSlice(options: { recordTelemetry?: boolean } = {}): PromptSlice {
     const startTime = performance.now();
     const activeLeaf = this.getStateDefinition(this.activeStatePath);
     if (!activeLeaf) {
@@ -939,7 +978,7 @@ export class FSMEngine {
         '  <strict_execution mode="enforced">',
         '    <contract>TODO Card: Load -> Execute -> Emit</contract>',
         `    <contract>Strict mode counts state views until a signal is emitted. Up to ${this.getStateDefinition(this.activeStatePath)?.max_view_refetches ?? 2} repeat fetches of the same view (compaction recovery) are not counted; later repeats count. The current counter and limit are shown below.</contract>`,
-        `    <contract>Views since signal: ${this.turnsSinceLastSignal}. Max idle turns: ${this.getStateDefinition(this.activeStatePath)?.max_idle_turns ?? 2}. Exceeding this triggers auto-abort to BYPASS_DETECTED.</contract>`,
+        `    <contract>Views since signal: ${this.getTurnsSinceLastSignal()}. Max idle turns: ${this.getStateDefinition(this.activeStatePath)?.max_idle_turns ?? 2}. Exceeding this triggers auto-abort to BYPASS_DETECTED.</contract>`,
         '    <contract>Use the listed tools. Tool-call enforcement requires a host adapter that intercepts those calls.</contract>',
         '    <contract>Recovery: reactive-skills-axi reset <skill> then re-invoke.</contract>',
         '  </strict_execution>',
@@ -968,7 +1007,7 @@ export class FSMEngine {
     };
     this.lastSliceMetrics = metrics;
 
-    if (durationMs > this.maxSliceDurationMs) {
+    if (options.recordTelemetry !== false && durationMs > this.maxSliceDurationMs) {
       this.eventStore.append('PERF_DEGRADATION', {
         operation: 'generatePromptSlice',
         duration_ms: durationMs,

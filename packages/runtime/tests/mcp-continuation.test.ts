@@ -268,6 +268,54 @@ states:
     }
   });
 
+  it.each(['replay', 'snapshot'])('restores recovered delivery credits through %s without scanning full history', async recovery => {
+    const skillDir = path.join(workspace, 'skills', 'continuation');
+    const original = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: 'recovered-reopen' });
+    const result = await original.handleSignal('CHECK', { exit_code: 0 }, { idempotencyKey: 'lost' });
+    const first = JSON.parse(continuationResponse(original, unavailableReceipt(result.event), result.event));
+    expect(first.view.strict.turns_since_signal).toBe(1);
+    original.close();
+    const store = new EventStore({ workspaceDir: workspace, skillId: 'continuation', jobId: first.view.run_id, enableSqlite: true });
+    if (recovery === 'replay') vi.spyOn(store, 'getLatestSnapshot').mockReturnValue(null);
+    const restored = new FSMEngine({ skillDir, workspaceDir: workspace, eventStore: store });
+    try {
+      const fullScan = vi.spyOn(store, 'getAll');
+      const version = store.getRunVersion();
+      const retry = JSON.parse(continuationResponse(restored, unavailableReceipt(result.event), result.event));
+      expect(retry.view.strict.turns_since_signal).toBe(1);
+      expect(restored.generatePromptSlice().formattedXml).toContain('Views since signal: 1');
+      expect(store.getRunVersion()).toBe(version);
+      expect(fullScan).not.toHaveBeenCalled();
+      await restored.handleSignal('FINISH');
+      expect(restored.getTurnsSinceLastSignal()).toBe(0);
+      const later = JSON.parse(continuationResponse(restored, unavailableReceipt(result.event), result.event));
+      expect(later.view.state).toBe('COMPLETED');
+      expect(later.view.strict.turns_since_signal).toBe(1);
+      expect(JSON.parse(continuationResponse(restored, unavailableReceipt(result.event), result.event)).view.strict.turns_since_signal).toBe(1);
+    } finally {
+      restored.close();
+    }
+  });
+
+  it('counts a later recovered view even when the same submission delivered an earlier view', async () => {
+    const skillDir = path.join(workspace, 'skills', 'continuation');
+    const engine = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: 'later-recovery' });
+    try {
+      const result = await engine.handleSignal('CHECK', { exit_code: 0 }, { idempotencyKey: 'old-key' });
+      // Interruption after the first delivery, before the continuation receipt is saved.
+      engine.recordStateDelivery(`${result.event.id}:DELIVERY`);
+      await engine.handleSignal('FINISH');
+      const before = engine.getEventStore().getLatestSequence();
+      const retry = JSON.parse(continuationResponse(engine, unavailableReceipt(result.event), result.event));
+      expect(retry.view.state).toBe('COMPLETED');
+      expect(retry.view.strict.turns_since_signal).toBe(1);
+      expect(JSON.parse(continuationResponse(engine, unavailableReceipt(result.event), result.event)).view.strict.turns_since_signal).toBe(1);
+      expect(engine.getEventStore().getLatestSequence()).toBe(before);
+    } finally {
+      engine.close();
+    }
+  });
+
   it('rejects stale view delivery instead of appending a turn or receipt', async () => {
     const skillDir = path.join(workspace, 'skills', 'continuation');
     const stale = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: 'stale-view' });
@@ -300,7 +348,7 @@ states:
         expect(original.replayed).toBe(false);
         expect(retry.replayed).toBe(true);
         expect(retry.view.state).toBe('NEXT');
-        expect([original.view.strict.turns_since_signal, retry.view.strict.turns_since_signal]).toEqual([1, 0]);
+        expect([original.view.strict.turns_since_signal, retry.view.strict.turns_since_signal]).toEqual([1, 1]);
         const rows = duplicate.getEventStore().getAll();
         expect(count(rows, 'SIGNAL_EMITTED')).toBe(1);
         expect(count(rows, 'STATE_TRANSITION')).toBe(1);
@@ -357,6 +405,9 @@ states:
       expect(duplicate.replayed).toBe(true);
       expect(duplicate.result_view).toBeNull();
       expect(duplicate.view.state).toBe('WORK');
+      expect(duplicate.view.strict.turns_since_signal).toBe(1);
+      const repeated = await emit(await connect(), 'SLOW', { idempotency_key: 'pending' });
+      expect(repeated.view.strict.turns_since_signal).toBe(1);
       expect(await events(client)).toEqual(before);
       fs.writeFileSync(path.join(skillDir, 'release'), '');
       const won = await pending;
@@ -373,6 +424,63 @@ states:
       expect(count(rows, 'MCP_CONTINUATION_RECORDED')).toBe(1);
       expect(count(rows, 'AGENT_TURN_STARTED')).toBe(count(before, 'AGENT_TURN_STARTED') + 1);
     } finally {
+      winner.close();
+    }
+  });
+
+  it('keeps slow recovered view rendering from invalidating a pending guard', async () => {
+    const skillDir = path.join(workspace, 'skills', 'continuation');
+    const winner = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: 'slow-recovery' });
+    let duplicate: FSMEngine | undefined;
+    const pending = winner.handleSignal('SLOW', {}, { idempotencyKey: 'slow-render', source: 'mcp' });
+    try {
+      await vi.waitFor(() => expect(fs.existsSync(path.join(skillDir, 'started'))).toBe(true));
+      duplicate = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: winner.getJobId(), perfThresholds: { maxSliceDurationMs: -1 } });
+      const store = duplicate.getEventStore();
+      const event = store.getEventByIdempotencyKey('slow-render')!;
+      const before = store.getRunVersion();
+      const view = JSON.parse(continuationResponse(duplicate, unavailableReceipt(event), event));
+      expect(view.view.strict.turns_since_signal).toBe(1);
+      expect(store.getRunVersion()).toBe(before);
+      expect(store.query({ type: 'PERF_DEGRADATION' })).toHaveLength(0);
+      fs.writeFileSync(path.join(skillDir, 'release'), '');
+      expect((await pending).transitioned).toBe(true);
+    } finally {
+      fs.writeFileSync(path.join(skillDir, 'release'), '');
+      await pending.catch(() => undefined);
+      duplicate?.close();
+      winner.close();
+    }
+  });
+
+  it('absorbs only the matching view when recovery delivers both a pending and refused guard', async () => {
+    const skillDir = path.join(workspace, 'skills', 'continuation');
+    const guardPath = path.join(skillDir, 'guards/paused.mjs');
+    fs.writeFileSync(guardPath, fs.readFileSync(guardPath, 'utf8').replace('return true;', 'return false;'));
+    const winner = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: 'refused-recovery' });
+    const pending = winner.handleSignal('SLOW', {}, { idempotencyKey: 'refused-recovery', source: 'mcp' });
+    try {
+      await vi.waitFor(() => expect(fs.existsSync(path.join(skillDir, 'started'))).toBe(true));
+      const duplicate = new FSMEngine({ skillDir, workspaceDir: workspace, jobId: winner.getJobId() });
+      try {
+        const event = duplicate.getEventStore().getEventByIdempotencyKey('refused-recovery')!;
+        const initial = JSON.parse(continuationResponse(duplicate, unavailableReceipt(event), event));
+        expect(initial.view.strict.turns_since_signal).toBe(1);
+      } finally {
+        duplicate.close();
+      }
+      fs.writeFileSync(path.join(skillDir, 'release'), '');
+      const result = await pending;
+      expect(result.transitioned).toBe(false);
+      const refused = JSON.parse(continuationResponse(winner, unavailableReceipt(result.event), result.event));
+      expect(refused.view.strict.turns_since_signal).toBe(2);
+      const original = JSON.parse(continuationResponse(winner, { ...signalReceipt(winner, result), event_id: result.event.id }, result.event));
+      expect(original.view.seq).toBe(refused.view.seq);
+      expect(original.view.strict.turns_since_signal).toBe(2);
+      expect(winner.getEventStore().countRecoveredDeliveries(3)).toBe(1);
+    } finally {
+      fs.writeFileSync(path.join(skillDir, 'release'), '');
+      await pending.catch(() => undefined);
       winner.close();
     }
   });
@@ -492,11 +600,11 @@ states:
   });
 
   it.each([
-    ['emit', 'recordStateDelivery', 0],
+    ['emit', 'recordStateDelivery', 1],
     ['emit', 'generatePromptSlice', 1],
-    ['human', 'recordStateDelivery', 0],
+    ['human', 'recordStateDelivery', 1],
     ['human', 'generatePromptSlice', 1],
-  ] as const)('recovers an interrupted keyed %s after %s without inventing its result or appending delivery', async (operation, interrupted, turns) => {
+  ] as const)('recovers an interrupted keyed %s after %s with one durable delivery without inventing its result', async (operation, interrupted, turns) => {
     const client = await connect();
     if (operation === 'human') await emit(client, 'ASK');
     const tool = operation === 'emit' ? 'reactive_emit_signal' : 'reactive_respond_human';
@@ -521,7 +629,16 @@ states:
     expect(after).toEqual(before);
     const again = await call(await connect(), tool, args);
     expect(again.receipt).toEqual(retry.receipt);
+    expect(again.view.strict.turns_since_signal).toBe(1);
     expect(await events(client)).toEqual(after);
+    // Recovery supplies the first delivery; the same two repeat fetches remain free.
+    for (let i = 0; i < 2; i++) {
+      expect((await call(client, 'reactive_state', { output: 'compact-v1' })).strict.turns_since_signal).toBe(1);
+    }
+    expect((await call(client, 'reactive_state', { output: 'compact-v1' })).strict.turns_since_signal).toBe(2);
+    const bypass = await client.callTool({ name: 'reactive_state', arguments: { skill_name: 'continuation', job_id: 'continuation-run', output: 'compact-v1' } });
+    expect(bypass.isError).toBe(true);
+    expect(JSON.stringify(bypass)).toContain('BYPASS_DETECTED');
   });
 
   it.each([false, true])('human reply to an unhandled gate returns refusal and stop instructions with strict=%s', async strict => {
@@ -569,6 +686,29 @@ states:
     } finally {
       engine.close();
     }
+  });
+
+  it('counts a recovered human view after completing the remaining signal of an interrupted batch', async () => {
+    const client = await connect();
+    const waiting = await emit(client, 'ASK');
+    const engine = new FSMEngine({ skillDir: path.join(workspace, 'skills', 'continuation'), workspaceDir: workspace, jobId: waiting.view.run_id });
+    try {
+      const decision = engine.getEventStore().append('DECISION_RECORDED', { choice: 'Approve', approved: true }, { source: 'human_ingress', idempotencyKey: 'partial-human' });
+      await engine.handleSignal('USER_RESPONSE', decision.payload, { source: 'human_ingress', causationId: decision.id, idempotencyKey: `${decision.id}:USER_RESPONSE` });
+    } finally {
+      engine.close();
+    }
+    const args = { choice: 'Approve', approved: true, idempotency_key: 'partial-human', return_view: 'compact-v1' };
+    const retry = await call(await connect(), 'reactive_respond_human', args);
+    expect(retry.receipt.result_unavailable).toBe(true);
+    expect(retry.view.state).toBe('NEXT');
+    expect(retry.view.strict.turns_since_signal).toBe(1);
+    const before = await events(client);
+    expect(count(before, 'DECISION_RECORDED')).toBe(1);
+    expect(count(before, 'SIGNAL_EMITTED')).toBe(3);
+    const again = await call(await connect(), 'reactive_respond_human', args);
+    expect(again.view.strict.turns_since_signal).toBe(1);
+    expect(await events(client)).toEqual(before);
   });
 
   it.each(['', 'Review the recorded evidence'])('preserves empty choice and feedback-only response behavior: %s', async feedback => {
