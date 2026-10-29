@@ -161,7 +161,7 @@ MCP text, result-object and full stdio-envelope bytes are distinct from input pa
 Byte counts are never token counts; native token heuristics are labeled and normalized independently.
 Actual model calls/output are zero in the default offline trace; scripted input is reported separately as a proxy.
 The fixture retains per-run ledger/visit counts and every JSONL segment's size, with no claim that unvisited source branches were delivered to a model.
-Replay's known entry-hook context discrepancy is reported as a named expected baseline failure, not suppressed or repaired here.
+Snapshot restore and full replay must match live accepted context; any mismatch fails the fixture (see [Accepted context recovery](#accepted-context-recovery)).
 No public runtime capability is added by this developer-only operation.
 
 ### 1. The Value Dimension: What Do We Save?
