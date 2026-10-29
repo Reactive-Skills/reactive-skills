@@ -114,7 +114,11 @@ function arrayGaps(payload: unknown, paths: string[]): string[] {
     const segments = path.split('.');
     segments.forEach((segment, depth) => {
       const prefix = segments.slice(0, depth).join('.');
-      if (!/^\d+$/.test(segment) || !Array.isArray(depth ? readPath(payload, prefix) : payload)) return;
+      if (!Array.isArray(depth ? readPath(payload, prefix) : payload)) return;
+      if (!/^\d+$/.test(segment)) {
+        errors.push(`payload_paths '${path}' selects non-index property '${segment}' of an array; select array indices or the whole array`);
+        return;
+      }
       const gap = Array.from({ length: Number(segment) }, (_, index) => depth ? `${prefix}.${index}` : `${index}`)
         .find(slot => !paths.some(selected => overlaps(selected, slot)));
       if (gap !== undefined) {

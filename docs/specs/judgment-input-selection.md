@@ -33,6 +33,7 @@ Preflight rejects malformed declarations and a missing capability requirement.
 The selected values keep their nesting: `check.text` arrives as `event.check.text`.
 Numeric segments must use canonical values between 0 and 10000; they index arrays when the payload value is an array and are object keys otherwise, so `byCode.404` on an object selects only that entry.
 Selected indices under a payload array must form a contiguous prefix from 0: `checks.2` also needs `checks.0` and `checks.1`, a child of each, or the whole `checks` array.
+Under a payload array only index segments are accepted; a property such as `checks.length` is refused.
 Input preparation refuses a gap before any adapter request with an error naming the path and the skipped index, so the judge never sees placeholder `null` elements; explicit `null` values from the payload are kept.
 Selecting a parent includes its complete subtree; selecting overlapping children does not modify the source.
 Every selected payload path is required.

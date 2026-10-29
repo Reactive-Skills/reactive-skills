@@ -223,6 +223,17 @@ describe('Opt-in judgment input contract', () => {
     expect(sdk.systemOne).not.toHaveBeenCalled();
   });
 
+  it.each([[['checks.length']], [['checks.0', 'checks.length']], [['grid.0', 'grid.0.length']]])(
+    'refuses non-index array properties %j before any request', async paths => {
+      const candidate = { ...context, event: { ...context.event, payload: {
+        checks: [{ text: 'a' }, { text: 'b' }, { text: 'c' }], grid: [[1, 2]],
+      } } };
+      const result = await JudgmentEngine.evaluate({ ...judgment, payload_paths: paths }, candidate);
+      expect(result).toMatchObject({ passed: false, judgmentSkipped: true, attemptCount: 0 });
+      expect(result.inputInspection!.errors.join('\n')).toMatch(/non-index property 'length' of an array/);
+      expect(sdk.systemOne).not.toHaveBeenCalled();
+    });
+
   it('treats numeric segments of plain objects as keys and sends only the selected entry', async () => {
     const candidate = { ...context, event: { ...context.event, payload: {
       byCode: { 404: { text: 'not found' }, 500: { text: 'excluded server error' } },
