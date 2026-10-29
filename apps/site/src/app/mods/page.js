@@ -4,6 +4,7 @@ import { getModsContentSource } from '@/infrastructure/container';
 import { CommandBlock } from '@/components/common/CommandBlock';
 import flowPlanImage from '@/features/mods/images/flow-plan.png';
 import statusLineImage from '@/features/mods/images/status-line.png';
+import flowImage from '@/features/mods/images/flow.png';
 
 export const metadata = {
   title: 'Mods',
@@ -15,17 +16,30 @@ const SCREENSHOTS = {
   'bq-vitals': [
     {
       src: statusLineImage,
-      alt: 'Claude Code status line reading bq-vitals: ctx 246k/1.0M 25%, $6.10, 5h 2%, 7d 49%',
-      caption: 'The status line: context, cost and rate limits.',
+      alt: 'bq-vitals status line with example context, cost and rate-limit readings, and release-notes active at VALIDATE.',
+      caption: 'The status line: context, cost and rate limits, with the active skill and state. Example readings.',
+      wide: true,
+    },
+    {
+      src: flowImage,
+      alt: 'Live release-notes map at VALIDATE: INTAKE, COLLECT, CLASSIFY and COMPOSE are done; REVIEW is not reached. The plan alongside shows signals, guards and duration bars.',
+      caption: '/flow during validation: completed states, the current state and the path so far.',
     },
     {
       src: flowPlanImage,
-      alt: 'Output of /flow-plan for a caption-summarizer run: seven hops from INIT to COMPLETE with time per state and the exits not taken',
-      caption: '/flow-plan on a finished run: the path taken, time per state and the exits not taken.',
+      alt: 'release-notes /flow-plan at REVIEW: five guarded hops from INTAKE, with duration bars and exits not taken. Example timings.',
+      caption: '/flow-plan at review: the path taken, time per state and the exits not taken. Example timings.',
     },
   ],
 };
 
+/** # Performance & Risk Budget
+ * - Tier: P3 (static render, <2000ms target)
+ * - Complexity: O(m + f + i) mods, features and images
+ * - Cyclomatic Complexity (CC): target <=20
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=30
+ */
 export default function ModsPage() {
   const mods = getModsContentSource().listMods();
 
@@ -77,14 +91,20 @@ export default function ModsPage() {
 
             <div className="mt-8 grid gap-6 lg:grid-cols-2">
               {(SCREENSHOTS[mod.slug] ?? []).map((shot) => (
-                <figure key={shot.caption} className="min-w-0">
-                  <Image
-                    src={shot.src}
-                    alt={shot.alt}
-                    className="h-auto w-full rounded-xl border border-phino-border-strong"
-                    sizes="(min-width: 1024px) 50vw, 100vw"
-                  />
-                  <figcaption className="mt-2 text-xs text-phino-text-muted">{shot.caption}</figcaption>
+                <figure key={shot.caption} className={`min-w-0 ${shot.wide ? 'lg:col-span-2' : ''}`}>
+                  <a href={shot.src.src} target="_blank" rel="noopener noreferrer" className="block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-phino-focus">
+                    <Image
+                      src={shot.src}
+                      alt={shot.alt}
+                      width={shot.src.width}
+                      height={shot.src.height}
+                      className="h-auto w-full rounded-xl border border-phino-border-strong"
+                      sizes={shot.wide ? '100vw' : '(min-width: 1024px) 50vw, 100vw'}
+                    />
+                  </a>
+                  <figcaption className="mt-2 text-xs leading-relaxed text-phino-text-muted">
+                    {shot.caption}
+                  </figcaption>
                 </figure>
               ))}
             </div>

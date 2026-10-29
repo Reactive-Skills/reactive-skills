@@ -92,6 +92,13 @@ Local validation after the MCP state-response integration passed both package bu
 
 ## 🌐 Site
 
+The mods gallery now uses three reproducible 2× PNGs for the bq-vitals status line, live `/flow` map and `/flow-plan` trace.
+`apps/site/src/features/mods/images/capture.mjs`, `capture-host.mjs`, `capture-input.json`, `capture.css`, the bundled font/license and the adjacent README record the public catalog source and regeneration procedure.
+The capture invokes actual mod hooks over real guarded `release-notes` runtime transitions with explicitly labeled example clock and usage data.
+`apps/site/src/app/mods/page.js` supplies descriptive alt text, intrinsic dimensions and full-size links; `apps/site/tests/modsScreenshots.test.js` reproduced the original low-resolution/missing assets before replacement and enforces the resolution/size budget.
+`PERFORMANCE-STANDARDS.md` records the offline authoring and static rendering budgets.
+The capture now draws seam-free duration rectangles and arranges the live-map state list beside its plan to remove the unused right-hand area; all three images are regenerated for visual review before the next validation round.
+
 | Slice | Archetype | Status |
 | :--- | :--- | :--- |
 | Adoption homepage, measured registry stats, registry and blog layout, telemetry nav, guide merge (`docs/specs/0013-site-adoption-ux.md`) | Site | ✅ Done |
