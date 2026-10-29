@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { measureExchange, normalizeText } from '../scripts/transport-benchmark/accounting.js';
+import { measureMcp } from '../scripts/transport-benchmark/mcp.js';
 import { runBenchmark } from '../scripts/transport-benchmark/run.js';
 
 describe('transport benchmark accounting', () => {
@@ -16,6 +20,29 @@ describe('transport benchmark accounting', () => {
     expect(row.raw.result_bytes).toBe(Buffer.byteLength(JSON.stringify(result)));
     expect(row.raw.request_envelope_bytes).toBe(Buffer.byteLength(JSON.stringify(request) + '\n'));
     expect(row.raw.response_envelope_bytes).toBe(Buffer.byteLength(JSON.stringify(response) + '\n'));
+  });
+
+  it('counts non-tool-call requests, error responses and non-text content as zero-payload exchanges', () => {
+    const request = { jsonrpc: '2.0' as const, id: 3, method: 'tools/list' };
+    const error = { jsonrpc: '2.0' as const, id: 3, error: { code: -32601, message: 'Method not found' } };
+    const errorRow = measureExchange(request, error, []);
+    expect(errorRow.raw.input_payload_bytes).toBe(2);
+    expect(errorRow.raw.tool_result_text_bytes).toBe(0);
+    expect(errorRow.raw.result_bytes).toBe(4);
+    expect(errorRow.raw.response_envelope_bytes).toBe(Buffer.byteLength(JSON.stringify(error) + '\n'));
+    const mixed = { jsonrpc: '2.0' as const, id: 3, result: { content: [{ type: 'image', data: 'AA==' }, { type: 'text' }] } };
+    expect(measureExchange(request, mixed, []).raw.tool_result_text_bytes).toBe(0);
+  });
+
+  it('fails an MCP row when the tools/call request frame was not captured', async () => {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-benchmark-mcp-'));
+    const callTool = vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+    try {
+      await expect(measureMcp(workspace)).rejects.toThrow('Missing MCP request: initial');
+    } finally {
+      callTool.mockRestore();
+      fs.rmSync(workspace, { recursive: true, force: true });
+    }
   });
 
   it('normalizes variable UUIDs, ISO timestamps and scratch roots explicitly', () => {

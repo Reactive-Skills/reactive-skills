@@ -9,8 +9,8 @@ import { measureExchange } from './accounting.js';
  * - Tier: P3 (offline fixture; per operation target < 2000ms, no suite latency assertion)
  * - Complexity: O(b+e) delivered bytes and fixture events
  * - Cyclomatic Complexity (CC): 14 (measured; threshold <= 20)
- * - Branch Coverage: 71% (10/14 V8 branches measured; target >= 60%)
- * - CRAP Score: 18.6 (measured; threshold <= 30.0)
+ * - Branch Coverage: 84% (16/19 V8 branches measured; target >= 60%)
+ * - CRAP Score: 14.8 (measured; threshold <= 30.0)
  */
 export async function measureMcp(workspace: string) {
   const server = createReactiveMcpServer({ workspaceDir: workspace, defaultSkill: 'tdd-refactor' });
@@ -46,8 +46,8 @@ export async function measureMcp(workspace: string) {
  * - Tier: P3 (offline fixture; per operation target < 2000ms, no suite latency assertion)
  * - Complexity: O(b) message bytes
  * - Cyclomatic Complexity (CC): 10 (measured; threshold <= 20)
- * - Branch Coverage: 50% (3/6 V8 branches measured; target >= 60%)
- * - CRAP Score: 22.5 (measured; threshold <= 30.0) */
+ * - Branch Coverage: 80% (8/10 V8 branches measured; target >= 60%)
+ * - CRAP Score: 10.8 (measured; threshold <= 30.0) */
   async function call(label: string, name: string, args: Record<string, unknown>, resumed = false, actor = 'script') {
     const startIndex = sent.length;
     const start = performance.now();

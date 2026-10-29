@@ -59,8 +59,8 @@ export function normalizeValue(value: unknown, roots: string[]): unknown {
  * - Tier: P3 (offline fixture; per operation target < 2000ms, no suite latency assertion)
  * - Complexity: O(b)
  * - Cyclomatic Complexity (CC): 10 (measured; threshold <= 20)
- * - Branch Coverage: 50% (5/10 V8 branches measured; target >= 60%)
- * - CRAP Score: 22.5 (measured; threshold <= 30.0) */
+ * - Branch Coverage: 100% (14/14 V8 branches measured; target >= 60%)
+ * - CRAP Score: 10.0 (measured; threshold <= 30.0) */
 function countExchange(request: JSONRPCMessage, response: JSONRPCMessage) {
   const params = 'params' in request ? request.params as { arguments?: unknown } : undefined;
   const result = 'result' in response ? response.result : undefined;
