@@ -530,7 +530,11 @@ export class JudgmentEngine {
       if (!execution.bounded && !prepared) throw error;
       const adapterId = execution.attempts.at(-1)?.adapter ?? judgment.adapter_hint ?? 'jev';
       const cause = error instanceof Error ? error.message : String(error);
-      return finish(this.unevaluable(judgment, adapterId, cause, execution.bounded ? 'bounded_cascade' : 'input_cascade', adapterId));
+      if (!execution.bounded) {
+        return finish({ verdict: false, passed: false, confidence: 0, adapterName: adapterId, latencyMs: 0,
+          band: 'reject', error: `Guard evaluation failed: ${cause}` });
+      }
+      return finish(this.unevaluable(judgment, adapterId, cause, 'bounded_cascade', adapterId));
     }
   }
 

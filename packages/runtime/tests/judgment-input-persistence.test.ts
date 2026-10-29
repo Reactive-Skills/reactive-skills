@@ -106,6 +106,21 @@ describe('Judgment input durability and approval identity', () => {
     }
   });
 
+  it('refuses an adapter-selection fault on an opt-in judgment without requesting approval', async () => {
+    const manifest = definition();
+    delete (manifest.states.REVIEW.transitions.CHECK.judgment as { adapter_hint?: string }).adapter_hint;
+    fs.writeFileSync(path.join(directory, 'skill.yaml'), yaml.dump(manifest));
+    JudgmentEngine.registerAdapter({ id: 'jev', supports: () => true, isConfigured: () => true, evaluate,
+      isAvailable: async () => { throw new Error('selection fault'); } });
+    const engine = open();
+    const result = await engine.handleSignal('CHECK', { check: 'evidence', exit_code: 0 });
+    expect(result.transitioned).toBe(false);
+    expect(result.refusalReason).toMatch(/selection fault/);
+    expect(evaluate).not.toHaveBeenCalled();
+    expect(engine.getPendingApprovals()).toHaveLength(0);
+    expect(engine.getEventStore().query({ type: 'APPROVAL_REQUESTED' })).toHaveLength(0);
+  });
+
   it.each([undefined, ['signal']])('uses the same complete signal shape for approval identity: %j', async paths => {
     evaluate.mockRejectedValue(new Error('offline'));
     const manifest = definition();
