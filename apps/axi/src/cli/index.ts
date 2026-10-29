@@ -12,7 +12,7 @@ const DESCRIPTION = 'AXI-compliant CLI for Reactive Skills Architecture — stat
 
 export const TOP_HELP = `usage: reactive-skills-axi [command] [args] [flags]
 commands[24]:
-  (none)=home, init, upgrade, inspect, validate, vet, preflight, capabilities, context-route, bootloader, events, invoke, state, emit, approve, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard
+  (none)=home, init, upgrade, inspect, validate, vet, preflight, capabilities, context-route, bootloader, events, invoke, state, emit, evidence, approve, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard
 flags[2]:
   --help, --version
 examples:

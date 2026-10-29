@@ -437,3 +437,12 @@ This CLI follows the [AXI (Agent eXperience Interface)](https://axi.md) principl
 ## License
 
 AGPL-3.0-only
+
+### Verified local evidence
+
+`evidence.reference_submission` is advertised by `capabilities` for optional transport negotiation.
+Use `evidence <skill> import <workspace-relative-path> --media-type <type> [--job <run>]` to register a bounded local file and return a JSON `reference` receipt.
+Use `evidence <skill> read '<receipt-JSON>' [--job <run>]` when verified content is needed explicitly.
+`emit --evidence '<JSON>'` binds declared signal payload pointers to `{reference: receipt}` or `{path, media_type}` descriptors, allowing registration and submission in one call.
+Import and emit receipts do not expand registered content; keyed emit retries recover the recorded submission even after the source file is removed.
+See [the evidence contract](../../docs/evidence-registry.md#axi-and-mcp) for binding syntax, limits, retry semantics and the equivalent MCP tools.

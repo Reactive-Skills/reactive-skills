@@ -1,8 +1,9 @@
-# Local evidence registry (SDK)
+# Local evidence registry
 
 The SDK can register evidence once and submit a verified reference in later signals.
-`evidence.local_registry` identifies this SDK capability.
-This change does not add AXI or MCP import tools.
+`evidence.local_registry` identifies the SDK capability.
+AXI and MCP advertise `evidence.reference_submission` through their existing capability discovery endpoints.
+Capability discovery is optional for inline callers; skills requiring the new transport path can declare it under `runtime_requirements.required_capabilities`.
 
 ```ts
 const store = engine.getEventStore();
@@ -75,3 +76,58 @@ Restore into the same immutable run ID; transferring evidence to another run req
 Reopen the destination store after importing events so its version tracking starts at the restored ledger.
 No evidence is garbage-collected by snapshotting, clearing the ledger or exporting.
 Retain the entire run artifact directory for as long as any of its events or snapshots remain replayable.
+
+## AXI and MCP
+
+Import a workspace-relative file and save the returned `reference` receipt for later signals:
+
+```sh
+reactive-skills-axi evidence my-skill import 'draft with spaces.txt' --media-type text/plain --job review
+# JSON: {"reference":{"version":"rsa-evidence/v1", ...}}
+```
+
+The equivalent MCP tool is `reactive_import_evidence` with `path`, `media_type`, optional `skill` and optional `job_id`.
+Import and emit responses contain receipt identity, digest, media type and byte count, without expanding registered content.
+To read verified content explicitly after compaction, use `reactive-skills-axi evidence my-skill read '<receipt-JSON>' --job review` or `reactive_read_evidence` with `reference` and the same skill/run selection.
+Read returns `{reference, content}` with the original UTF-8 text, including canonical JSON text for JSON registrations.
+
+AXI `emit --evidence '<JSON>'` and MCP `reactive_emit_signal`'s optional `evidence` argument accept the same explicit binding map:
+
+```json
+{
+  "/draft": {"path": "draft with spaces.txt", "media_type": "text/plain"}
+}
+```
+
+This folds registration and reference submission into one interface call:
+
+```sh
+reactive-skills-axi emit my-skill CHECK --job review --idempotency-key draft-check-1 \
+  --evidence '{"/draft":{"path":"draft with spaces.txt","media_type":"text/plain"}}'
+```
+
+For an existing registration, replace the import descriptor with `{"reference": <receipt>}`.
+Pointers target legacy signal payload fields, including a declared `/contextUpdates/draft` when appropriate.
+They must match the signal's manifest declaration and media type.
+The map accepts at most 32 bindings; field ancestors must be objects and bound fields must not already appear in the inline payload.
+Bindings cannot overlap or target prototype properties.
+Import descriptors are transport metadata; only `{$evidence: receipt}` values enter the signal's canonical payload.
+Existing `emit @payload.json` still means a file containing signal JSON, and performs no automatic evidence import.
+JSON evidence file bytes must already be canonical; the transport never rewrites a draft during import.
+
+Both transports use the selected-run storage port and submit through `FSMEngine.handleSignal`.
+The core resolver verifies the immutable registered bytes and provides selected content to guards, semantic judgments and projections.
+There is no transport-only guard shortcut and a judgment receives content rather than only a digest.
+An import descriptor is an explicit authorization to read that workspace-relative source under the existing size, media, regular-file and symlink restrictions.
+Transports use the default 1 MiB per-file bound.
+Registration commits before signal submission, so a refusal or interrupted submission may leave an unused registration, subject to the existing export scoping and damage reporting rules.
+The folded operation is not a filesystem-and-ledger transaction; a signal can only accept a committed registration that verifies.
+
+Repeat imports of the same bytes in the same run return the same receipt.
+For a lost emit response, retry with the same `--idempotency-key` / `idempotency_key`, skill and run.
+A folded retry consults the recorded signal before reading the original source, so deletion or modification of that file cannot change the recorded submission.
+The existing core idempotency contract applies: the first recorded signal wins for that key and retries do not transition again.
+The receipt map on a retry comes from that recorded signal, including refusals.
+Use a new key to submit changed evidence.
+Standalone registration plus emit costs two interface calls, folded import-and-emit costs one, and an explicit content read is an additional call.
+Measure the chosen flow end to end, including its import IO and bootstrap, rather than adding registration-free payload estimates to latency savings.
