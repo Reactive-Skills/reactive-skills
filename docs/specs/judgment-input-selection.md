@@ -20,6 +20,9 @@ states:
           required_context_paths: [review.rubric]
           payload_paths: [check.text, check.revision]
           precondition:
+            non_empty:
+              context_paths: [review.rubric]
+              payload_paths: [check.text, check.revision]
             payload_schema:
               exit_code: {type: number, const: 0}
               check.text: {type: string}
@@ -51,6 +54,21 @@ No missing or invalid selection falls back to full-context input.
 Supported types are `string`, finite `number`, `boolean`, non-null `object`, `array` and `null`.
 This is a small declarative validation format, not arbitrary JavaScript or a complete JSON Schema implementation.
 It reads the original submitted payload locally and cannot execute custom guard code, mutate run context or contact an adapter.
+
+`precondition.non_empty` optionally declares `context_paths` and `payload_paths` relative to the original stored context and submitted payload, respectively.
+Each listed path must resolve to a value other than absent/undefined, `null`, an empty or whitespace-only string, an empty array or an object with no own enumerable string keys.
+Whitespace follows JavaScript `String.trim()` semantics.
+The check is shallow: `false`, `0`, `[null]` and `{answer: null}` are present.
+Values are not trimmed or otherwise changed before delivery to the adapter.
+These are local checks, independent of which paths are selected for adapter delivery, like `payload_schema` checks.
+Both path lists are optional; an omitted or empty list adds no checks.
+`payload_schema` may be omitted when `non_empty` is declared, and both forms can be combined.
+Non-empty failures appear in the content-free `missingRequired` and `errors` inspection fields and set `preconditionPassed: false`.
+
+This explicit form preserves existing presence-only declarations: `required_context_paths`, `payload_paths` and payload type checks still accept intentionally empty values, including `null` when its type permits it.
+Add `non_empty` for evidence that must contain a value before judgment.
+The existing `judgment.payload_selection` capability requirement applies; older runtimes reject the unknown precondition field at manifest validation rather than silently omitting the check.
+
 A failed precondition or required-input check refuses locally with `judgmentSkipped: true`, `band: reject` and zero adapter attempts.
 It does not take the judgment's fallback target or create a human-approval request.
 Existing HSM bubbling and subsequent guard handling continue unchanged.
@@ -94,9 +112,10 @@ Legacy human approvals retain their existing matching rules.
 
 ## Performance and verification
 
-Selection and serialization cost O(p²*d*i + b), where p is the selected path count, d is path depth, i is the largest selected array index and b is selected input bytes.
+Selection and serialization cost O(p²*d*i + b + e), where p includes selected and checked paths, d is path depth, i is the largest selected array index, b is selected input bytes and e is the string bytes or object keys examined by non-empty checks.
 No event-history scan or semantic cache is added to judgment preparation.
 Selecting evidence can reduce request bytes; it does not establish a remote latency improvement.
 Wire-request tests use a mocked SDK and assert that unrelated context and unselected payload subtrees are absent.
 Durability tests cover acceptance, local refusal and outage through replay and snapshots.
+Non-empty tests cover manifest-seeded null/empty-array context, shallow value semantics, successful evidence updates and refusal replay without adapter calls.
 No live provider latency or billing measurement is claimed.

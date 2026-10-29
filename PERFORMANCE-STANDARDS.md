@@ -84,16 +84,18 @@ External waiting must be reported separately from P0 local budgets and never as 
 See [the deadline contract](docs/specs/0023-judgment-deadlines.md) for opt-in semantics and compatibility.
 
 Opt-in judgment input preparation and its content-free inspection view are P1 operations (< 25ms local target).
-They cost O(p²*d*i + b) for p selected paths, path depth d, largest selected array index i and selected JSON bytes b; parent/child overlap and contiguous-index checks account for the path term.
+They cost O(p²*d*i + b + e) for p selected/checked paths, path depth d, largest selected array index i, selected JSON bytes b and non-empty checked string bytes/object keys e; parent/child overlap and contiguous-index checks account for the path term.
 Payload numeric segments are limited to 10000 to bound the contiguous-index check on payload arrays.
 Pure declarative payload preconditions and required-evidence validation run before adapter selection and refuse without a model request.
+Explicit `precondition.non_empty` context/payload checks use the same preparation and refusal path, with shallow value checks and no additional I/O, model call or ledger append.
+Presence-only declarations retain their existing semantics; non-empty checks examine only listed values, with constant work for nulls, booleans, numbers and array lengths and O(e) work for string trimming or own enumerable object keys.
 No semantic result cache, cross-run reuse, new ledger append or full-history scan is added by input preparation.
 The existing `GUARD_EVALUATED` record carries content-free `inputInspection` metadata on successes and failures.
 `byteCount` counts candidate state JSON bytes, excluding SDK framing and questions; it is not a measurement of total remote request bytes or tokens.
-Opt-in approval identity hashing is O(b + p²*d*i) and includes selected evidence, the judgment declaration and built-in adapter base URL and model, not credentials or log level.
+Opt-in approval identity hashing is O(b + p²*d*i + e) and includes selected evidence, the judgment declaration and built-in adapter base URL and model, not credentials or log level.
 Existing approval-event queries retain their P2 O(n) behavior; input selection does not add a history query.
 Preparation/hash helpers target CC <= 12, branch coverage >= 80%, CRAP <= 15; pure path/type helpers target CC <= 8, branch coverage >= 90%, CRAP <= 10.
-The AXI inspection view is P2 (< 100ms local target), with O(s + p²*d*i + b) work in manifest states s and input size, and opens no run.
+The AXI inspection view is P2 (< 100ms local target), with O(s + p²*d*i + b + e) work in manifest states s and input size, and opens no run.
 Legacy judgments retain their existing input and evaluation order.
 See [judgment input selection](docs/specs/judgment-input-selection.md) for the capability and inspection contract.
 
