@@ -2,12 +2,14 @@
 
 AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
 
-> 🚀 **What's New in v0.19.0:**
-> - New `vet` command: static checks of a skill's guard code, text, and dependencies, using the same rule set the skills catalog CI can call.
-> - `<command> --help` and `-h` print usage on every command, and `validate` checks `guardFunction` module format.
-> - `invoke` rejects a wrapped `contextUpdates` payload; `jobs` and `reset` accept a skill path or manifest name.
+This is a CLI-only package with the `reactive-skills-axi` and `axi` commands; use `@reactive-skills/runtime` for the programmatic SDK.
+
+> 🚀 **What's New in v0.20.0:**
+> - Breaking 0.x minor release: select `--output compact-v1` for complete state views, import/read local evidence, and inspect an owning guard with `--state` and `--signal`.
+> - Invoke, state and emit use bounded causation lookups; setup pins MCP entries to the installed scoped AXI version.
+> - Review the MCP response and legacy ledger recovery migrations before upgrading existing integrations.
 >
-> [Read Full Release Notes](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.19.0) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Breaking Changes and Migration Notes](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.20.0.md) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

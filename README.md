@@ -5,17 +5,17 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.19.0)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.20.0)
 
 ---
 
-> 🚀 **What's New in v0.19.0:**
-> - New `reactive-skills-axi vet <skill|dir>` statically checks a skill's guard code, text, and dependencies for risky patterns before you run it. It is the first part of the trust work; a trust record and a hardened mode are still to come.
-> - `validate` catches a guard file in the wrong module format before it runs, and `<command> --help` now works on every command.
-> - `invoke` rejects a wrapped `contextUpdates` payload and shows the expected shape; `jobs` and `reset` find runs by skill path or name.
-> - Judgments can limit what the AI judge sees with `context_paths` and `include_payload`; a legacy mixed run store migrates instead of crashing `invoke`.
+> 🚀 **What's New in v0.20.0:**
+> - Breaking 0.x minor release: default MCP state responses deliver one prompt in `formattedXml`, scoped context, and opt-in full recorded context.
+> - Negotiate compact state views and complete MCP continuation responses; local evidence references, judgment deadlines and input selection are optional.
+> - Payload contracts provide typed submission guidance and targeted guard inspection; guards remain authoritative.
+> - Ledger appends mirror new events, and opens verify checkpoints; legacy snapshotless ledgers cannot rebuild unrecorded hook context.
 >
-> [Read Full Release Notes →](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.19.0) · [View Changelog](CHANGELOG.md)
+> [Breaking Changes and Migration Notes →](docs/releases/v0.20.0.md) · [View Changelog](CHANGELOG.md)
 
 ---
 
