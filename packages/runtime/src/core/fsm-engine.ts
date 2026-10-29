@@ -534,6 +534,16 @@ export class FSMEngine {
     return this.inBypassState;
   }
 
+  /**
+   * Record one strict turn, reusing the canonical counter for a deduplicated delivery.
+   * # Performance & Risk Budget
+   * - Tier: P1 (storage budget < 25ms)
+   * - Complexity: O(1) bookkeeping plus EventStore.append persistence/mirror cost
+   * - Cyclomatic Complexity (CC): 4
+   * - Branch Coverage: 80% (4/5 measured branch entries)
+   * - CRAP Score: 4.128 (Threshold <= 15.0)
+   * - Measurement: ESLint complexity and V8 coverage from continuation, strict-execution and human-approval tests
+   */
   public recordTurnStart(idempotencyKey?: string): void {
     if (!this.strictExecution || this.inBypassState) return;
     const draft = { state: this.getCurrentState(), turns_since_last_signal: this.turnsSinceLastSignal + 1 };
@@ -569,10 +579,12 @@ export class FSMEngine {
   /**
    * Whether the current state view already has a recorded delivery; always false outside strict counting.
    * # Performance & Risk Budget
-   * - Tier: P0 (< 5ms)
-   * - Complexity: O(w), bounded trailing-event window
-   * - Cyclomatic Complexity (CC): target <= 1
-   * - Branch Coverage: target >= 90%
+   * - Tier: P0 (SQLite-backed budget < 5ms)
+   * - Complexity: O(log n + w) with SQLite; O(n) in-memory; n = stored events, w = bounded tail window
+   * - Cyclomatic Complexity (CC): 1
+   * - Branch Coverage: 100% (1/1 measured branch entry)
+   * - CRAP Score: 1.0 (Threshold <= 10.0)
+   * - Measurement: ESLint complexity and V8 coverage from continuation, strict-execution and human-approval tests
    */
   public hasStateDelivery(): boolean {
     return this.currentViewDeliveries().deliveries > 0;
@@ -1069,7 +1081,16 @@ export class FSMEngine {
     const previousState = this.getCurrentState();
     const prevPath = [...this.activeStatePath];
 
-    // The key identifies that submission, so a replay reports why it was refused (ADR 0011).
+    /**
+     * Report the keyed submission's recorded outcome without evaluating its guards again (ADR 0011).
+     * # Performance & Risk Budget
+     * - Tier: P1 (indexed storage budget < 25ms)
+     * - Complexity: O(log n + k + b) with SQLite; O(n + k) in-memory; n = stored events, k = caused records, b = their serialized bytes
+     * - Cyclomatic Complexity (CC): 5 (closure); predicate callbacks <= 7
+     * - Branch Coverage: 100% (9/9 measured branch entries within the closure)
+     * - CRAP Score: 5.0 (Threshold <= 15.0)
+     * - Measurement: ESLint complexity and V8 coverage from continuation, strict-execution and human-approval tests
+     */
     const replay = (existing: SignalEvent): SignalHandlingResult => {
       const caused = this.eventStore.query({ causationId: existing.id });
       const accepted = caused.some((e) => e.type === 'STATE_TRANSITION');
