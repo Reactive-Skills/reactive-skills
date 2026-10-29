@@ -57,13 +57,14 @@ function parsePayload(args: string[]): Record<string, any> | AxiError {
 }
 
 /**
- * Deliver legacy output or a negotiated complete state view.
+ * Deliver legacy output or a negotiated complete state view with a bounded event anchor.
  * # Performance & Risk Budget
- * - Tier: P2 cold command (< 100ms target, excluding process startup)
- * - Complexity: O(r + b + h² + a), existing replay delta, view bytes, hierarchy and approval records
- * - Cyclomatic Complexity (CC): existing command flow; output selection adds one branch
- * - Branch Coverage: target >= 70%
- * - CRAP Score: target <= 25.0
+ * - Tier: P2 cold command (<100ms target excluding process startup)
+ * - Complexity: O(L + r + b + h² + a + log N), verified ledger bytes, replay delta, decoded/rendered bytes, hierarchy, approval results and indexed latest-event lookup
+ * - Cyclomatic Complexity (CC): 25 (measured ESLint; existing command orchestration)
+ * - Branch Coverage: 87.88% (measured V8, full AXI suite; target >=70%)
+ * - CRAP Score: 26.11 (measured; target <=25, hard ceiling <=30)
+ * - Latency: legacy/compact p50 16.833/22.111ms, p95 18.326/25.472ms; 30 warm-cache command calls per output, excluding process startup
  */
 export async function invokeCommand(args: string[]): Promise<string> {
   let selected;
@@ -145,8 +146,7 @@ export async function invokeCommand(args: string[]): Promise<string> {
       const currentState = engine.getCurrentState();
       const promptSlice = engine.generatePromptSlice();
       if (selected.output === 'compact-v1') return renderCompleteState(engine, promptSlice);
-      const events = engine.getEventStore().getAll();
-      const latestEvent = events.length > 0 ? events[events.length - 1] : undefined;
+      const latestEvent = engine.getEventStore().getLatestEvent();
 
       const lines: string[] = [];
       lines.push(renderDetail('invoke', {

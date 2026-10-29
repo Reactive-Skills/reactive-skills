@@ -12,9 +12,9 @@ vi.mock('@reactive-skills/runtime', () => ({
       exitConditions: ['RUNTIME_READY'],
     })),
     getEventStore: vi.fn(() => ({
-      getAll: vi.fn(() => [
-        { id: '01a06e96-initial-event-id', type: 'SKILL_INITIALIZED' },
-      ]),
+      getLatestEvent: vi.fn(() => (
+        { id: '01a06e96-initial-event-id', type: 'SKILL_INITIALIZED' }
+      )),
     })),
     getJobId: vi.fn(() => 'default'),
     close: vi.fn(),

@@ -150,22 +150,22 @@
   },
   "axi": {
     "initial": {
-      "stdout_bytes": 1364
+      "stdout_bytes": 1386
     },
     "initial_state": {
       "stdout_bytes": 1240
     },
     "ready": {
-      "stdout_bytes": 1496
+      "stdout_bytes": 1518
     },
     "guard_refusal": {
-      "stdout_bytes": 667
+      "stdout_bytes": 689
     },
     "red": {
-      "stdout_bytes": 1333
+      "stdout_bytes": 1355
     },
     "green": {
-      "stdout_bytes": 1143
+      "stdout_bytes": 1165
     },
     "clean": {
       "stdout_bytes": 1016

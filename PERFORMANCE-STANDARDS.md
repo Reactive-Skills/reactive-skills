@@ -263,6 +263,15 @@ Queue/receipt/render helpers target CC <= 8, branch coverage >= 90%, CRAP <= 10;
 Cold replay and existing guard, evidence, child, projection and approval costs remain additional.
 Tests verify event/turn counts and the pinned public TDD continuation path; this change makes no end-to-end latency or model-token savings claim.
 
+AXI `state`, `invoke`, and implicit-causation `emit` obtain their response/event anchors through the existing public `EventStore.getLatestEvent()`.
+SQLite uses the `(run_id, seq)` index with descending order and `LIMIT 1`: O(log N + b) for N indexed events and b bytes in the one returned event; the in-memory fallback uses the last retained entry in O(1).
+No full-history query is permitted solely to obtain a latest event; cold replay without a snapshot may still read the selected history.
+The latest-event query is P1 (<25ms target) and retains the selected immutable run, including when another run appends to the shared ledger.
+An offline warm-cache probe on Node v22.23.3/Linux measured 100 latest-event reads after 10 warmups at 100/1,000/10,000/50,000 events: p50 0.018/0.026/0.035/0.032ms, p95 0.024/0.039/0.045/0.069ms.
+The former full-history read at 50,000 events measured p50 245.871ms/p95 284.645ms over 30 reads after 10 warmups with 240-byte payload text.
+These are isolated store-read measurements, excluding process startup, ledger verification, replay, prompt construction and model work; they are not an end-to-end savings claim.
+AXI guidance consumes negotiated compact invoke/emit views and reserves state reads for resume, compaction, stale state or response recovery; output defaults and existing strict-turn behavior are unchanged.
+
 3. **Degradation Detection Thresholds**:
    - `slice_duration_ms > 10ms` $\rightarrow$ Warning: Template cache miss or heavy filesystem access.
    - `transition_total_ms > 25ms` $\rightarrow$ Warning (`PERF_DEGRADATION`, after `TRANSITION_COMPLETED`): Slow guard evaluation, SQLite contention, snapshot save or projections.

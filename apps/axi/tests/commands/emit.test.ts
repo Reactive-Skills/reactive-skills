@@ -22,9 +22,9 @@ vi.mock('@reactive-skills/runtime', () => ({
       exitConditions: ['PHASE_1_DONE'],
     })),
     getEventStore: vi.fn(() => ({
-      getAll: vi.fn(() => [
-        { id: '01a06e96-auto-causation-event-id', type: 'SKILL_INITIALIZED' },
-      ]),
+      getLatestEvent: vi.fn(() => (
+        { id: '01a06e96-auto-causation-event-id', type: 'SKILL_INITIALIZED' }
+      )),
     })),
     close: vi.fn(),
   })),
