@@ -114,6 +114,24 @@ describe('ledger append scaling', () => {
     expect(readJsonlIds(storeDir)).toEqual(readSqliteIds(storeDir));
     store.close();
   });
+
+  it('repairs a gap below the JSONL tail on open without duplicating rows on the next append', () => {
+    const workspaceDir = tempWorkspace();
+    const runId = createSortableId();
+    const first = new EventStore({ workspaceDir, skillId: 'gap', runId, enableSqlite: true });
+    for (let index = 0; index < 8; index++) first.append('STEP', { index });
+    first.close();
+    const storeDir = path.join(workspaceDir, '.reactive', 'skills', 'gap');
+    const jsonlPath = path.join(storeDir, 'events.jsonl');
+    const lines = fs.readFileSync(jsonlPath, 'utf8').split('\n').filter(Boolean);
+    lines.splice(3, 1);
+    fs.writeFileSync(jsonlPath, `${lines.join('\n')}\n`);
+
+    const reopened = new EventStore({ workspaceDir, skillId: 'gap', runId, enableSqlite: true });
+    reopened.append('AFTER_REPAIR', {});
+    expect(readJsonlIds(storeDir)).toEqual(readSqliteIds(storeDir));
+    reopened.close();
+  });
 });
 
 describe('transition_total_ms', () => {

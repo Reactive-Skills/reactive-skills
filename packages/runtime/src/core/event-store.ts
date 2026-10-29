@@ -1029,20 +1029,22 @@ export class EventStore {
 
   private rewriteJsonlFromSqlite(): number {
     if (!this.sqliteDriver || !this.storagePath) return 0;
-    return this.withJsonlProjectionLock(() => {
-      const allEvents = this.sqliteDriver!.queryEvents({ allRuns: true });
-      const dir = path.dirname(this.storagePath!);
-      fs.mkdirSync(dir, { recursive: true });
-      const tempPath = `${this.storagePath}.${process.pid}.${Date.now()}.tmp`;
-      fs.writeFileSync(tempPath, allEvents.map(event => JSON.stringify(event)).join('\n') + (allEvents.length ? '\n' : ''), 'utf8');
-      fs.renameSync(tempPath, this.storagePath!);
-      for (const archived of this.getJsonlPaths()) {
-        if (archived !== this.storagePath) {
-          try { fs.unlinkSync(archived); } catch { /* best effort */ }
-        }
+    return this.withJsonlProjectionLock(() => this.rewriteJsonlFromSqliteUnlocked());
+  }
+
+  private rewriteJsonlFromSqliteUnlocked(): number {
+    const allEvents = this.sqliteDriver!.queryEvents({ allRuns: true });
+    const dir = path.dirname(this.storagePath!);
+    fs.mkdirSync(dir, { recursive: true });
+    const tempPath = `${this.storagePath}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(tempPath, allEvents.map(event => JSON.stringify(event)).join('\n') + (allEvents.length ? '\n' : ''), 'utf8');
+    fs.renameSync(tempPath, this.storagePath!);
+    for (const archived of this.getJsonlPaths()) {
+      if (archived !== this.storagePath) {
+        try { fs.unlinkSync(archived); } catch { /* best effort */ }
       }
-      return allEvents.length;
-    });
+    }
+    return allEvents.length;
   }
 
   /**
@@ -1067,8 +1069,13 @@ export class EventStore {
 
   /** Full ID diff between SQLite and JSONL; the caller holds the projection lock. */
   private reconcileJsonlUnlocked(): number {
-    const jsonlIds = new Set(this.readAllJsonlEvents().map(event => event.id));
-    return this.appendJsonlLines(this.sqliteDriver!.queryEvents({ allRuns: true }).filter(event => !jsonlIds.has(event.id)));
+    const jsonlEvents = this.readAllJsonlEvents();
+    const jsonlIds = new Set(jsonlEvents.map(event => event.id));
+    const maxMirroredSeq = jsonlEvents.reduce((max, event) => Math.max(max, event.ledger_seq || 0), 0);
+    const missing = this.sqliteDriver!.queryEvents({ allRuns: true }).filter(event => !jsonlIds.has(event.id));
+    // Appending a gap row below the mirrored maximum would lower the tail watermark the per-append mirror trusts.
+    if (missing.some(event => (event.ledger_seq || 0) < maxMirroredSeq)) { this.rewriteJsonlFromSqliteUnlocked(); return missing.length; }
+    return this.appendJsonlLines(missing);
   }
 
   private appendJsonlLines(events: SignalEvent[]): number {
