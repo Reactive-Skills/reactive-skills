@@ -776,8 +776,7 @@ export class JudgmentEngine {
       const configured = await execution.wait(async () => candidate.isConfigured ? candidate.isConfigured() : candidate.isAvailable());
       return configured ? candidateId : undefined;
     } catch (error) {
-      if (error instanceof JudgmentTimeoutError) throw error;
-      return undefined;
+      return error instanceof JudgmentTimeoutError && candidateId === primaryAdapterId ? candidateId : undefined;
     }
   }
 

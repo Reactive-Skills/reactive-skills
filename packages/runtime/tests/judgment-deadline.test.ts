@@ -48,6 +48,9 @@ describe('Whole judgment deadline and failure accounting', () => {
     expect(result).toMatchObject({ band: 'unevaluable', passed: false, latencyMs: 100, attemptCount: 1 });
     expect(result.fallbackTarget).toBeUndefined();
     expect(result).toHaveProperty('attempts.0', expect.objectContaining({ adapter: 'primary', elapsedMs: 100, outcome: 'timeout', cancellationCause: 'total_deadline', breakerAfter: 'CLOSED' }));
+    expect(result).toHaveProperty('attempts.1', expect.objectContaining({ adapter: 'backup', invoked: false, reason: 'total_deadline' }));
+    expect(result.adapterSelectionReason).toBe('adapter_hint:primary:unevaluable');
+    expect(result.error).toContain('primary is unavailable (Judgment total deadline timed out after 100ms;');
     expect(vi.getTimerCount()).toBe(0);
   });
 
