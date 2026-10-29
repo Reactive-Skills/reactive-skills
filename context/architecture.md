@@ -253,4 +253,4 @@ Active human gates, pending judgment approvals, model hints, strict counters, an
 MCP full-context opt-in replaces scoped context in the compact format; it retains the existing legacy behavior in the legacy format.
 The shared bootloader and compact policy require re-fetching the same run after transcript compaction without synthesizing transitions or approvals.
 Host tool interception and automatic compaction reinjection require a separately implemented adapter.
-The latest guard refusal survives recovery through the already loaded replay delta and an in-memory cache; a subsequent signal supersedes it.
+The latest signal refusal (guard or evidence verification) survives recovery through the already loaded replay delta and an in-memory cache; a subsequent signal supersedes it.
