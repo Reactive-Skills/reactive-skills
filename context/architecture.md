@@ -232,4 +232,13 @@ States can declare an optional `context_scope` array to limit which `context_key
 
 - **First visit:** `contextDelta` is `null`; `scopedContext` contains only scoped keys.
 - **Revisit:** `contextDelta` includes `is_revisit`, `previous_visit_seq`, `changed_keys` (scoped keys that changed), and `new_since_last_visit`.
-- The MCP `reactive_state` response includes `scopedContext`, `contextDelta`, and `visitCount` fields.
+- The MCP `reactive_state` response includes `formattedXml`, `scopedContext`, `contextDelta`, and `isRevisit` fields alongside state, run, tool, and execution metadata.
+- `formattedXml` contains the state instructions and transition contracts once; the default compact JSON omits the redundant `promptSlice` and full recorded `context` fields.
+- Every state fetch includes the current scoped context, including a fresh session re-fetching an existing run after transcript compaction.
+- Clients that need the previous fields can pass `legacy_response: true` to `reactive_state`.
+  `reactive_context_prepare` uses the same compact state delivery under its `context` field and accepts `legacy_response: true` to restore its previous `promptSlice` field.
+- MCP state delivery includes `metrics.slice_tokens_est`, estimated as `ceil(UTF-8 bytes of the complete compact response text / 4)`, including JSON escaping and metadata.
+  This is a byte heuristic, not a tokenizer count, and excludes MCP JSON-RPC framing and tool definitions.
+  Core `PromptSlice.metrics` starts with an XML-byte estimate.
+  MCP serialization updates the live engine's latest slice metrics so its next transition can record the delivered response estimate.
+  Without transport serialization, core metrics remain XML-only and do not represent AXI output.

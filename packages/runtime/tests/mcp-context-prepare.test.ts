@@ -61,7 +61,8 @@ describe('reactive_context_prepare', () => {
     expect(parsed.context_route.skill).toBe('test-fsm');
     expect(parsed.context.source).toBe('reactive_state');
     expect(parsed.context.activeState).toBe('INIT');
-    expect(parsed.context.promptSlice).toEqual(expect.any(String));
+    expect(parsed.context.formattedXml).toContain('<state_goal>');
+    expect(parsed.context).not.toHaveProperty('promptSlice');
     expect(sdkMock.systemOne).toHaveBeenCalledOnce();
   });
 });

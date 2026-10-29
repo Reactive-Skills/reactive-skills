@@ -563,7 +563,16 @@ export class FSMEngine {
   }
 
   /**
-   * Generates the prompt slice for the active state hierarchy
+   * Generates the prompt slice for the active state hierarchy.
+   * Token estimates cover UTF-8 XML bytes; transports estimate their serialized delivery separately.
+   *
+   * # Performance & Risk Budget
+   * - Tier: P0 (< 5ms for bounded state slices)
+   * - Complexity: O(t + c + h + v), template bytes, scoped context, hierarchy and state visits
+   * - Cyclomatic Complexity (CC): unchanged control flow; byte estimation adds no branches
+   * - Branch Coverage: target >= 90%
+   * - CRAP Score: target <= 10.0
+   * - Caching: L1 compiled Handlebars template delegates
    */
   public generatePromptSlice(): PromptSlice {
     const startTime = performance.now();
@@ -718,7 +727,7 @@ export class FSMEngine {
     ].filter(Boolean).join('\n');
 
     const durationMs = Number((performance.now() - startTime).toFixed(3));
-    const estTokens = Math.ceil(formattedXml.length / 4);
+    const estTokens = Math.ceil(Buffer.byteLength(formattedXml, 'utf8') / 4);
     const metrics: ExecutionMetrics = {
       slice_duration_ms: durationMs,
       slice_tokens_est: estTokens,
