@@ -51,7 +51,7 @@ describe('transport benchmark accounting', () => {
     const previous = JudgmentEngine.getAdapter('jev');
     const offline = installOfflineAdapter();
     try {
-      const result = await JudgmentEngine.getAdapter('jev')!.evaluate({ type: 'boolean', criterion: 'Is this offline?', contextSnapshot: {} }, {});
+      const result = await JudgmentEngine.getAdapter('jev')!.evaluate({ type: 'predicate', criterion: 'Is this offline?', contextSnapshot: {} }, {});
       expect(result.verdict).toBe(false);
       expect(result.passed).toBe(false);
       expect(offline.attempts()).toBe(1);
