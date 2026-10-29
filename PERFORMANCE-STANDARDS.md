@@ -131,6 +131,24 @@ $$\text{CRAP}(m) = \text{comp}(m)^2 \times (1 - \text{cov}(m))^3 + \text{comp}(m
 
 ## Token Economy & Metrics Framework
 
+### Exact transport-cost fixture (P3)
+
+`packages/runtime/scripts/transport-benchmark/cli.ts` measures real MCP SDK calls, SDK views and fresh-process AXI commands using pinned public fixtures.
+Run it after building runtime and AXI; [fixture instructions](packages/runtime/scripts/transport-benchmark/README.md) define each byte/timing field and the historical/current baselines.
+Accounting is O(b) in serialized bytes, with O(b*r) normalization for a bounded number of scratch roots; offline ledger inspection is O(e+b) in fixture events and stored bytes.
+These scans occur outside timed runtime operations and never append measurement events.
+The fixture reads post-persistence `transition_total_ms` from existing `TRANSITION_COMPLETED` records and SDK results, alongside the separate pre-persistence `STATE_TRANSITION` metrics.
+The operation is P3, with the existing per-operation target below 2,000ms, CC target <= 20, branch coverage target >= 60% and CRAP target <= 30; aggregate trace duration has no fixed latency assertion.
+Each function's inline budget records measured values: CC from ESLint's core `complexity` rule summed over the function's span including nested callbacks, branch coverage from `@vitest/coverage-v8` branches within the function's span over `tests/transport-benchmark.test.ts` and `tests/transport-benchmark-axi-failures.test.ts` with runtime and AXI built, and CRAP = CC² × (1 − coverage)³ + CC.
+Every measured function meets the 60% branch-coverage target; the network fence runs only in child processes, so its coverage is not measured.
+Cold AXI process time and persistent MCP handler/in-memory round-trip time are distinct observations.
+MCP text, result-object and full stdio-envelope bytes are distinct from input payload, authored Markdown, rendered prompt and artifact-read bytes.
+Byte counts are never token counts; native token heuristics are labeled and normalized independently.
+Actual model calls/output are zero in the default offline trace; scripted input is reported separately as a proxy.
+The fixture retains per-run ledger/visit counts and every JSONL segment's size, with no claim that unvisited source branches were delivered to a model.
+Replay's known entry-hook context discrepancy is reported as a named expected baseline failure, not suppressed or repaired here.
+No public runtime capability is added by this developer-only operation.
+
 ### 1. The Value Dimension: What Do We Save?
 
 Reactive Skills provides two compounding categories of savings:

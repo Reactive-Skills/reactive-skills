@@ -53,6 +53,7 @@ Local validation after the MCP state-response integration passed both package bu
 
 | Slice | Archetype | Status |
 | :--- | :--- | :--- |
+| Exact offline transport-cost fixture (`packages/runtime/scripts/transport-benchmark/`, pinned public TDD files, historical and current deterministic byte baselines, real MCP/SDK/cold AXI trace, ledger/visit/input/artifact accounting, persisted post-transition totals, named replay-context baseline finding); regression coverage including canonical predicate refusal in `packages/runtime/tests/transport-benchmark.test.ts` and `packages/runtime/tests/transport-benchmark-axi-failures.test.ts`, budgets in `PERFORMANCE-STANDARDS.md`; no runtime capability or default changes | Quality | ✅ Done |
 | Decoupled Judgment Engine & Snap-On Adapters (`JudgmentPort`, `CircuitBreaker`) | Core | ✅ Done |
 | Opt-in whole-cascade judgment deadline, explicit same-adapter retry permission, cancellation, aggregate/refusal and per-attempt latency, SDK client reuse, and `judgment.total_deadline` capability (`judgment-engine.ts`, `judgment-execution.ts`, `guard-evaluator.ts`, `types.ts`, `runtime-capabilities.ts`); `judgment-deadline.test.ts`, `judgment-client-lifecycle.test.ts`, `judgment-deadline-persistence.test.ts`, `docs/specs/0023-judgment-deadlines.md`, `.agents/references/repository-map.md` and `PERFORMANCE-STANDARDS.md` | Core | ✅ Done |
 | Semantic Model Capability Tiers (`StateModelDefinition`, `<model_contract>`) | Core | ✅ Done |

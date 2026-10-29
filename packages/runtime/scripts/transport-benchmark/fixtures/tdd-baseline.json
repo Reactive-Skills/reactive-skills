@@ -1,0 +1,18 @@
+{
+  "runtime_commit": "26c885c2fea91927d12e7ce6bb3a9ade1125799e",
+  "catalog_commit": "1fe016bef539e548a60b4c765393ed20f30aea06",
+  "state": "REFACTOR.CLEAN_CODE",
+  "authored_prompt_bytes": 404,
+  "rendered_prompt_bytes": 392,
+  "xml_bytes": 1744,
+  "scoped_context_bytes": 118,
+  "mcp_normalized": {
+    "input_payload_bytes": 24,
+    "tool_result_text_bytes": 2967,
+    "result_bytes": 3191,
+    "request_envelope_bytes": 119,
+    "response_envelope_bytes": 3226
+  },
+  "axi_stdout_bytes_including_newline": 1016,
+  "normalization": "UUIDs and timestamps replaced at fixed lengths; scratch roots replaced by <workspace>; JSON-RPC id 0. The baseline is historical, not a required size for changed interfaces."
+}
