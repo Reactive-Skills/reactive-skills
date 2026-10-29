@@ -130,8 +130,8 @@ The delivery estimate excludes SDK JSON-RPC framing, tool definitions, and other
 AXI renders its own output from the core slice; core XML estimates must not be presented as AXI transport measurements.
 
 MCP state assembly and serialization are P0 operations with O(b) work in response bytes and no additional event-ledger reads.
-Default responses contain one XML prompt and scoped context; `legacy_response: true` explicitly restores duplicate fields for compatibility.
-The legacy response can grow with recorded context and is included in its delivery estimate.
+Every response contains one XML prompt and scoped context; `include_full_context: true` on `reactive_state` adds the full recorded context.
+That response grows with recorded context and is included in its delivery estimate.
 The serializer targets CC <= 8, branch coverage >= 90%, and CRAP <= 10.
 
 3. **Degradation Detection Thresholds**:

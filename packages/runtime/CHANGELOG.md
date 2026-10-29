@@ -1,8 +1,8 @@
 ## [Unreleased]
 
-- fix(mcp): `reactive_state` returns compact JSON with the state prompt once in `formattedXml` and only `scopedContext`, omitting the duplicate `promptSlice` and full recorded `context` fields by default.
-  Clients requiring those previous fields must pass `legacy_response: true`.
-  Active-state `reactive_context_prepare` also omits `promptSlice` by default and accepts the same opt-in to restore it.
+- fix(mcp)!: **Breaking for external MCP clients.** `reactive_state` returns compact JSON with the state prompt once in `formattedXml` and only `scopedContext`; the duplicate `promptSlice` field is removed and the full recorded `context` is omitted by default.
+  Clients that need the full recorded context must pass `include_full_context: true`; read the state prompt from `formattedXml`.
+  Active-state `reactive_context_prepare` also no longer returns `promptSlice`.
 - fix(runtime): core `slice_tokens_est` uses UTF-8 XML bytes rather than UTF-16 character length.
   MCP state responses expose a separate `metrics.slice_tokens_est` based on the complete serialized response text, including escaping and metadata, at four UTF-8 bytes per token.
   These are estimates, not tokenizer measurements; MCP serialization also updates the live engine's latest slice metrics for its next transition.

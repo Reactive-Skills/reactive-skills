@@ -230,7 +230,6 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       token_budget: z.number().int().min(128).max(32768).optional().describe('Maximum context tokens for selected route'),
       state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Small bounded state hints'),
       job_id: z.string().optional().describe('Optional job/run ID for a selected reactive skill'),
-      legacy_response: z.boolean().optional().describe('Restore the duplicate promptSlice field for older clients'),
     },
     /**
      * Prepare the routed state with compact transport accounting.
@@ -241,7 +240,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >= 70%
      * - CRAP Score: target <= 25.0
      */
-    async ({ user_message, candidates, token_budget, state_hints, job_id, legacy_response }) => {
+    async ({ user_message, candidates, token_budget, state_hints, job_id }) => {
       try {
         const decision = await contextRouter.route({
           userMessage: user_message,
@@ -324,7 +323,6 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
               status: 'ready',
               source: 'reactive_state',
               ...state,
-              ...(legacy_response ? { promptSlice: slice.rawPrompt } : {}),
             },
           };
           return {
@@ -372,7 +370,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     {
       skill: z.string().optional().describe('Skill name (defaults to active skill)'),
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
-      legacy_response: z.boolean().optional().describe('Restore duplicate promptSlice and full context fields for older clients'),
+      include_full_context: z.boolean().optional().describe('Also return the full recorded context alongside scopedContext'),
     },
     /**
      * Fetch scoped state, including after a host transcript is compacted.
@@ -383,7 +381,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >= 80%
      * - CRAP Score: target <= 15.0
      */
-    async ({ skill, job_id, legacy_response }) => {
+    async ({ skill, job_id, include_full_context }) => {
       try {
         const engine = getEngine(skill || defaultSkill, job_id, { autoRotateTerminal: true });
 
@@ -410,7 +408,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
           engine.recordTurnStart();
         }
         const slice = engine.generatePromptSlice();
-        const payload = createStateResponse(engine, slice, legacy_response);
+        const payload = createStateResponse(engine, slice, include_full_context);
         return {
           content: [{ type: 'text', text: serializeStateResponse(payload, payload.metrics) }],
         };

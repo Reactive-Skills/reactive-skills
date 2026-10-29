@@ -233,10 +233,10 @@ States can declare an optional `context_scope` array to limit which `context_key
 - **First visit:** `contextDelta` is `null`; `scopedContext` contains only scoped keys.
 - **Revisit:** `contextDelta` includes `is_revisit`, `previous_visit_seq`, `changed_keys` (scoped keys that changed), and `new_since_last_visit`.
 - The MCP `reactive_state` response includes `formattedXml`, `scopedContext`, `contextDelta`, and `isRevisit` fields alongside state, run, tool, and execution metadata.
-- `formattedXml` contains the state instructions and transition contracts once; the default compact JSON omits the redundant `promptSlice` and full recorded `context` fields.
+- `formattedXml` contains the state instructions and transition contracts once; the compact JSON has no separate raw `promptSlice` field and omits the full recorded `context` by default.
 - Every state fetch includes the current scoped context, including a fresh session re-fetching an existing run after transcript compaction.
-- Clients that need the previous fields can pass `legacy_response: true` to `reactive_state`.
-  `reactive_context_prepare` uses the same compact state delivery under its `context` field and accepts `legacy_response: true` to restore its previous `promptSlice` field.
+- Clients that need the full recorded context can pass `include_full_context: true` to `reactive_state`; the response then adds `context` alongside `scopedContext` and the single `formattedXml` prompt.
+  `reactive_context_prepare` uses the same compact state delivery under its `context` field.
 - MCP state delivery includes `metrics.slice_tokens_est`, estimated as `ceil(UTF-8 bytes of the complete compact response text / 4)`, including JSON escaping and metadata.
   This is a byte heuristic, not a tokenizer count, and excludes MCP JSON-RPC framing and tool definitions.
   Core `PromptSlice.metrics` starts with an XML-byte estimate.

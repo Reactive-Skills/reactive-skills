@@ -84,21 +84,17 @@ describe('MCP state delivery', () => {
     expect(Buffer.byteLength(text, 'utf8')).toBeGreaterThan(text.length);
   });
 
-  it.each(['reactive_state', 'reactive_context_prepare'])('%s restores removed fields only with legacy_response', async (tool) => {
+  it('adds the full recorded context to reactive_state only with include_full_context', async () => {
     const result = await client.callTool({
-      name: tool,
-      arguments: {
-        ...(tool === 'reactive_state' ? { skill: 'delivery-test' } : { user_message: 'Run the delivery fixture' }),
-        legacy_response: true,
-      },
+      name: 'reactive_state', arguments: { skill: 'delivery-test', include_full_context: true },
     });
     expect(result.isError).not.toBe(true);
     const text = (result.content as Array<{ text: string }>)[0].text;
-    const response = JSON.parse(text);
-    const state = tool === 'reactive_state' ? response : response.context;
-    expect(state.promptSlice).toBe(promptMarker);
+    const state = JSON.parse(text);
+    expect(state).not.toHaveProperty('promptSlice');
     expect(state.formattedXml).toContain(promptMarker);
-    if (tool === 'reactive_state') expect(state.context.hidden).toBe(hiddenMarker);
+    expect(text.split(JSON.stringify(promptMarker).slice(1, -1))).toHaveLength(2);
+    expect(state.context.hidden).toBe(hiddenMarker);
     expect(state.scopedContext).toEqual({ visible: 'State input' });
     expect(state.metrics.slice_tokens_est).toBe(Math.ceil(Buffer.byteLength(text, 'utf8') / 4));
   });
@@ -151,12 +147,13 @@ describe('MCP state delivery', () => {
     expect(parsed).not.toHaveProperty('context');
     expect(text).not.toContain('Updated unscoped data');
 
-    const legacy = await client.callTool({
-      name: 'reactive_state', arguments: { skill: 'delivery-test', job_id: runId, legacy_response: true },
+    const fullResult = await client.callTool({
+      name: 'reactive_state', arguments: { skill: 'delivery-test', job_id: runId, include_full_context: true },
     });
-    const full = JSON.parse((legacy.content as Array<{ text: string }>)[0].text);
+    const full = JSON.parse((fullResult.content as Array<{ text: string }>)[0].text);
     expect(full.context.hidden).toBe('Updated unscoped data');
     expect(full.scopedContext).toEqual(parsed.scopedContext);
+    expect(full).not.toHaveProperty('promptSlice');
   });
 
   it('estimates core XML from UTF-8 bytes instead of UTF-16 characters', () => {

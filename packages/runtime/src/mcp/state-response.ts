@@ -6,12 +6,12 @@ import type { ExecutionMetrics, PromptSlice } from '../core/types.js';
  *
  * # Performance & Risk Budget
  * - Tier: P0 (< 5ms)
- * - Complexity: O(1) by default, O(c) context keys for legacy compatibility
+ * - Complexity: O(1) by default, O(c) context keys when full context is requested
  * - Cyclomatic Complexity (CC): target <= 8
  * - Branch Coverage: target >= 90%
  * - CRAP Score: target <= 10.0
  */
-export function createStateResponse(engine: FSMEngine, slice: PromptSlice, legacyResponse = false) {
+export function createStateResponse(engine: FSMEngine, slice: PromptSlice, includeFullContext = false) {
   return {
     skill: engine.getManifest().name,
     job_id: engine.getJobName() || engine.getJobId(),
@@ -27,7 +27,7 @@ export function createStateResponse(engine: FSMEngine, slice: PromptSlice, legac
     turns_since_last_signal: engine.getTurnsSinceLastSignal(),
     // Keep the engine's latest slice metrics in sync with this delivery estimate.
     metrics: slice.metrics ?? { slice_tokens_est: 0 },
-    ...(legacyResponse ? { promptSlice: slice.rawPrompt, context: engine.getContext() } : {}),
+    ...(includeFullContext ? { context: engine.getContext() } : {}),
   };
 }
 
