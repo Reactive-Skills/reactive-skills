@@ -5,8 +5,10 @@ import path from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { JudgmentEngine } from '../src/core/judgment-engine.js';
 import { measureExchange, normalizeText } from '../scripts/transport-benchmark/accounting.js';
 import { measureMcp } from '../scripts/transport-benchmark/mcp.js';
+import { installOfflineAdapter } from '../scripts/transport-benchmark/offline.js';
 import { runBenchmark } from '../scripts/transport-benchmark/run.js';
 
 describe('transport benchmark accounting', () => {
@@ -43,6 +45,20 @@ describe('transport benchmark accounting', () => {
       callTool.mockRestore();
       fs.rmSync(workspace, { recursive: true, force: true });
     }
+  });
+
+  it('refuses non-categorical judgments in the offline adapter, counts the attempt and restores the previous adapter', async () => {
+    const previous = JudgmentEngine.getAdapter('jev');
+    const offline = installOfflineAdapter();
+    try {
+      const result = await JudgmentEngine.getAdapter('jev')!.evaluate({ type: 'boolean', criterion: 'Is this offline?', contextSnapshot: {} }, {});
+      expect(result.verdict).toBe(false);
+      expect(result.passed).toBe(false);
+      expect(offline.attempts()).toBe(1);
+    } finally {
+      offline.restore();
+    }
+    expect(JudgmentEngine.getAdapter('jev')).toBe(previous);
   });
 
   it('normalizes variable UUIDs, ISO timestamps and scratch roots explicitly', () => {
