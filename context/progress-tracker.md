@@ -44,6 +44,7 @@
 
 | Slice | Archetype | Status |
 | :--- | :--- | :--- |
+| Exact offline transport-cost fixture (`packages/runtime/scripts/transport-benchmark/`, pinned public TDD files, historical and current deterministic byte baselines, real MCP/SDK/cold AXI trace, ledger/visit/input/artifact accounting, named replay-context baseline finding); regression coverage in `packages/runtime/tests/transport-benchmark.test.ts`, budgets in `PERFORMANCE-STANDARDS.md`; no runtime capability or default changes | Quality | ✅ Done |
 | Decoupled Judgment Engine & Snap-On Adapters (`JudgmentPort`, `CircuitBreaker`) | Core | ✅ Done |
 | Semantic Model Capability Tiers (`StateModelDefinition`, `<model_contract>`) | Core | ✅ Done |
 | Judgment probability thresholds (`min_probability`, `escalate`, `judgment.probability_thresholds`, guard contract drift checks in `validate`) | Core | ✅ Done |
