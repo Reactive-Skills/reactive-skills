@@ -32,6 +32,7 @@ export const STATIC_RUNTIME_CAPABILITIES = [
   'context.preparation',
   'runtime.bootloader',
   'runtime.accepted_update_replay',
+  'evidence.local_registry',
 ] as const;
 
 export type RuntimeTransport = 'axi' | 'mcp';

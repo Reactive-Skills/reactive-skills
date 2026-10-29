@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { validateContextPath } from './judgment-context.js';
+import { EvidenceDeclarationsSchema, type EvidenceDeclarations } from './evidence-resolver.js';
 
 /**
  * Signal Event Schema: Immutable envelope for all events in the reactive skill bus
@@ -299,6 +300,8 @@ export interface SkillManifest {
   description: string;
   initial_state: string;
   runtime_requirements?: RuntimeRequirements;
+  /** Explicit reference fields; canonical records retain receipts, verification uses resolved copies. */
+  evidence?: EvidenceDeclarations;
   strict_execution?: boolean;
   context_keys?: string[];
   default_context?: Record<string, any>;
@@ -497,6 +500,7 @@ export const SkillManifestSchema = z.object({
   description: z.string(),
   initial_state: z.string(),
   runtime_requirements: RuntimeRequirementsSchema.optional(),
+  evidence: EvidenceDeclarationsSchema.optional(),
   strict_execution: z.boolean().optional(),
   context_keys: z.array(z.string()).optional(),
   default_context: z.record(z.any()).optional(),

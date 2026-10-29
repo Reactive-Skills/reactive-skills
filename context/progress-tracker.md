@@ -42,6 +42,15 @@
 
 ## ⚙️ Milestone: v0.6.x — Performance & Documentation Polish (Active)
 
+The runtime SDK evidence registry is implemented: `evidence-store.ts` defines the selected-run storage port and atomic local adapter, and `evidence-resolver.ts` limits materialization to manifest-declared fields.
+`event-store.ts` bundles immutable evidence with run exports; `fsm-engine.ts`, `projection-engine.ts`, `types.ts`, `runtime-capabilities.ts`, and `index.ts` connect verification, replay and SDK discovery.
+`evidence-registry.test.ts` exercises inline/reference parity, replay/snapshots, projection, bundle restore, tamper/missing content, scope, registration races, interrupted publication and concurrent registrars without changing existing guarantee assertions.
+`docs/evidence-registry.md` documents the SDK contract, limits and retention rules; `PERFORMANCE-STANDARDS.md` budgets the new O(evidence bytes) storage operations.
+The repository map lists both evidence modules.
+Signal declarations validate referenced media before context-update projection, so expanding an update cannot bypass its field contract.
+Run exports with declarations bundle only committed references (without them, every registration is bundled and any damage fails) and report damaged unreferenced registrations (e.g. behind a refused signal) instead of aborting; the local store resolves its artifacts directory against the real workspace path, so symlinked workspaces work.
+Local validation after the MCP state-response integration passed both package builds, 699 runtime tests, 310 AXI tests, and documentation/prose gates.
+
 | Slice | Archetype | Status |
 | :--- | :--- | :--- |
 | Decoupled Judgment Engine & Snap-On Adapters (`JudgmentPort`, `CircuitBreaker`) | Core | ✅ Done |
