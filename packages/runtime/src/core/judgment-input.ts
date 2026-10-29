@@ -80,10 +80,6 @@ export function judgmentInputDeclarationErrors(judgment: JudgmentDefinition): st
       errors.push(`required_context_paths '${path}' is outside context_paths`);
     }
   }
-  for (const path of judgment.context_paths ?? []) {
-    const problem = validateContextPath(path);
-    if (problem) errors.push(problem);
-  }
   return errors;
 }
 

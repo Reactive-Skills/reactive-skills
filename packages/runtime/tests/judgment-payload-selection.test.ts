@@ -204,4 +204,11 @@ describe('Opt-in judgment input contract', () => {
       runtime_requirements: { required_capabilities: ['judgment.payload_selection'] },
     }).success).toBe(true);
   });
+
+  it('keeps legacy invalid context path diagnostics to the single field issue', () => {
+    const result = JudgmentDefinitionSchema.safeParse({ type: 'predicate', criterion: 'ok', context_paths: ['a..b'] });
+    expect(result.success).toBe(false);
+    expect(result.error!.issues).toHaveLength(1);
+    expect(result.error!.issues[0].path).toEqual(['context_paths', 0]);
+  });
 });

@@ -396,7 +396,7 @@ export const JudgmentDefinitionSchema = z.object({
  * Tier: P2 manifest validation (< 100ms).
  * Complexity: O(p² + p*d), selected paths/depth; CRAP target <= 25 (CC <= 15, branch coverage >= 70%).
  */ (judgment, ctx) => {
-  for (const message of judgmentInputDeclarationErrors(judgment)) {
+  for (const message of usesJudgmentInputOptions(judgment) ? judgmentInputDeclarationErrors(judgment) : []) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message });
   }
   if (judgment.retry_policy && judgment.total_timeout_ms === undefined) {
