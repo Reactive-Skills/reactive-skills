@@ -11,6 +11,7 @@ import { GuardEvaluationContext } from './guard-evaluator.js';
 import { decideJudgment, resolveJudgmentThreshold } from './judgment-thresholds.js';
 import { scopeJudgmentContext } from './judgment-context.js';
 import { JudgmentExecution, JudgmentTimeoutError } from './judgment-execution.js';
+import { prepareJudgmentInput, usesJudgmentInputOptions } from './judgment-input.js';
 
 interface TypeSafeClientLike {
   systemOne(
@@ -258,7 +259,7 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
 
   /**
    * Tier: P2 adapter orchestration (< 100ms local); external SDK waiting has its own deadline.
-   * Complexity: O(b + p), selected context bytes b and paths p; no ledger reads.
+   * Complexity: O(b + p*d), selected context bytes b and paths p/depth d; no ledger reads.
    * CRAP target <= 25 (CC <= 15 per normalization path, branch coverage >= 70%).
    */
   public async evaluate(
@@ -274,7 +275,9 @@ export class JevJudgmentAdapter implements JudgmentAdapter {
     // A judgment that declares neither field sends the whole run context and the payload.
     const includePayload = req.includePayload !== false;
     const selection = req.contextPaths !== undefined
-      ? scopeJudgmentContext(evalContext.context || {}, req.contextPaths)
+      ? req.inputPrepared
+        ? { context: evalContext.context, sent: Object.keys(evalContext.context), missing: req.contextPaths.filter(path => !Object.hasOwn(evalContext.context, path)) }
+        : scopeJudgmentContext(evalContext.context || {}, req.contextPaths)
       : undefined;
     const state: Record<string, unknown> = {
       ...(includePayload ? { event: evalContext.event?.payload || {} } : {}),
@@ -500,22 +503,34 @@ export class JudgmentEngine {
   /**
    * Evaluate a transition judgment using the snap-on adapter cascade.
    * Tier: P0 bookkeeping (< 5ms), external waiting uses declared deadlines.
-   * Complexity: O(a + b), a <= 2 adapter slots and b request bytes.
-   * CRAP target <= 10 (CC <= 8, branch coverage >= 90%).
+   * Complexity: O(a + p² + p*d + b), a <= 2 adapter slots, paths/depth and selected bytes.
+   * CRAP target <= 15 (CC <= 12, branch coverage >= 80%).
    */
   public static async evaluate(
     judgment: JudgmentDefinition,
     evalContext: GuardEvaluationContext
   ): Promise<JudgmentResult & { fallbackTriggered?: boolean; fallbackTarget?: string }> {
     const execution = new JudgmentExecution(judgment);
+    const prepared = usesJudgmentInputOptions(judgment) ? prepareJudgmentInput(judgment, evalContext) : undefined;
+    const finish = (result: JudgmentResult & { fallbackTriggered?: boolean; fallbackTarget?: string }) => execution.finish({
+      ...result, ...(prepared ? { inputInspection: prepared.inspection } : {}),
+    });
+    if (prepared?.inspection.errors.length) {
+      return finish({ verdict: false, passed: false, confidence: 0, adapterName: 'preflight', latencyMs: 0,
+        band: 'reject', judgmentSkipped: true, error: prepared.inspection.errors.join('; ') });
+    }
+    const adapterContext = prepared?.state ? {
+      ...evalContext, context: prepared.state.context,
+      event: { ...evalContext.event, payload: prepared.state.event ?? {} },
+    } : evalContext;
     try {
-      if (evalContext.humanDecision) return execution.finish(this.humanResult(judgment, evalContext.humanDecision));
-      return execution.finish(await this.evaluateCascade(judgment, evalContext, execution));
+      if (evalContext.humanDecision) return finish(this.humanResult(judgment, evalContext.humanDecision));
+      return finish(await this.evaluateCascade(judgment, adapterContext, execution));
     } catch (error) {
-      if (!execution.bounded) throw error;
+      if (!execution.bounded && !prepared) throw error;
       const adapterId = execution.attempts.at(-1)?.adapter ?? judgment.adapter_hint ?? 'jev';
       const cause = error instanceof Error ? error.message : String(error);
-      return execution.finish(this.unevaluable(judgment, adapterId, cause, 'bounded_cascade', adapterId));
+      return finish(this.unevaluable(judgment, adapterId, cause, execution.bounded ? 'bounded_cascade' : 'input_cascade', adapterId));
     }
   }
 
@@ -533,6 +548,7 @@ export class JudgmentEngine {
       contextSnapshot: evalContext.context || {},
       options: judgment.options,
       rubric: judgment.rubric,
+      ...(usesJudgmentInputOptions(judgment) ? { inputPrepared: true } : {}),
       ...(judgment.context_paths !== undefined ? { contextPaths: judgment.context_paths } : {}),
       ...(judgment.include_payload !== undefined ? { includePayload: judgment.include_payload } : {}),
     };

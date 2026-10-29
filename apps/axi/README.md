@@ -155,6 +155,16 @@ Print the statechart, transitions, and guards for a reactive skill.
 npx -y @reactive-skills/axi inspect skills/my-skill
 ```
 
+Inspect judgment inputs without opening a run or contacting adapters:
+
+```bash
+npx -y @reactive-skills/axi inspect skills/my-skill --judgment-input @candidate.json
+```
+
+The candidate JSON contains `context` and `payload` objects.
+The JSON response lists adapter/destination classes, selected paths, missing required data, candidate state byte counts and full-event inclusion, without the selected content.
+See [judgment input selection](../../docs/specs/judgment-input-selection.md) for the capability and local precondition format.
+
 Output (TOON format):
 - Skill metadata (name, version, description, state count, transition count)
 - States list with descriptions

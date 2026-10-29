@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { validateContextPath } from './judgment-context.js';
 import { EvidenceDeclarationsSchema, type EvidenceDeclarations } from './evidence-resolver.js';
+import { JudgmentInputOptionsSchema, judgmentInputDeclarationErrors, usesJudgmentInputOptions, JUDGMENT_PAYLOAD_SELECTION_CAPABILITY } from './judgment-input.js';
+import type { JudgmentInputOptions, JudgmentInputInspection } from './judgment-input.js';
 
 /**
  * Signal Event Schema: Immutable envelope for all events in the reactive skill bus
@@ -79,7 +81,7 @@ export interface JudgmentEscalation {
   target: string;
 }
 
-export interface JudgmentDefinition {
+export interface JudgmentDefinition extends JudgmentInputOptions {
   type: JudgmentType;
   criterion: string;
   /**
@@ -129,6 +131,8 @@ export interface JudgmentRequest {
   contextPaths?: string[];
   /** From the judgment's `include_payload`. */
   includePayload?: boolean;
+  /** Runtime already projected the complete adapter input; do not apply flat context scoping twice. */
+  inputPrepared?: boolean;
 }
 
 /** What the Jev adapter sent when a judgment declared `context_paths` or `include_payload`. */
@@ -198,6 +202,10 @@ export interface JudgmentResult {
   decidedBy?: JudgmentDecisionSource;
   /** Set by the Jev adapter only when the judgment declared `context_paths` or `include_payload`. */
   contextSent?: JudgmentContextSent;
+  /** Content-free input preflight for judgments using payload selection or preconditions. */
+  inputInspection?: JudgmentInputInspection;
+  /** Local input/precondition refusal before any adapter selection or invocation. */
+  judgmentSkipped?: boolean;
 }
 
 export type JudgmentDecisionSource = 'model' | 'expression' | 'human' | 'self_reported';
@@ -365,6 +373,7 @@ export const JudgmentEscalationSchema = z.object({
 });
 
 export const JudgmentDefinitionSchema = z.object({
+  ...JudgmentInputOptionsSchema.shape,
   type: JudgmentTypeSchema,
   criterion: z.string(),
   min_confidence: ProbabilitySchema.optional(),
@@ -385,8 +394,11 @@ export const JudgmentDefinitionSchema = z.object({
   include_payload: z.boolean().optional(),
 }).superRefine(/**
  * Tier: P2 manifest validation (< 100ms).
- * Complexity: O(1); CRAP target <= 25 (CC <= 15, branch coverage >= 70%).
+ * Complexity: O(p² + p*d), selected paths/depth; CRAP target <= 25 (CC <= 15, branch coverage >= 70%).
  */ (judgment, ctx) => {
+  for (const message of judgmentInputDeclarationErrors(judgment)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+  }
   if (judgment.retry_policy && judgment.total_timeout_ms === undefined) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['retry_policy'], message: 'retry_policy requires total_timeout_ms' });
   }
@@ -510,6 +522,22 @@ export const SkillManifestSchema = z.object({
     output: z.string(),
     trigger_on: z.array(z.string()).optional(),
   })).optional(),
+}).superRefine(/**
+ * Tier: P2 (< 100ms); Complexity: O(s + t), states and transitions; CRAP target <= 25 (CC <= 15, branch coverage >= 70%).
+ */ (manifest, ctx) => {
+  if (manifest.runtime_requirements?.required_capabilities?.includes(JUDGMENT_PAYLOAD_SELECTION_CAPABILITY)) return;
+  const pending = Object.values(manifest.states);
+  while (pending.length) {
+    const state = pending.pop()!;
+    for (const transition of Object.values(state.transitions ?? {})) {
+      if (typeof transition !== 'string' && transition.judgment && usesJudgmentInputOptions(transition.judgment)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['runtime_requirements', 'required_capabilities'],
+          message: `Judgment input projection/preconditions require ${JUDGMENT_PAYLOAD_SELECTION_CAPABILITY}` });
+        return;
+      }
+    }
+    pending.push(...Object.values(state.substates ?? {}));
+  }
 });
 
 export const JobStatusSchema = z.enum(['active', 'completed', 'failed', 'archived']);

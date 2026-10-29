@@ -16,7 +16,9 @@ import {
   StateVisitRecord,
   ContextDelta,
   StateModelDefinition,
+  JudgmentDefinition,
 } from './types.js';
+import { judgmentInputIdentity } from './judgment-input.js';
 import { EventStore, createSortableId } from './event-store.js';
 import { GuardEvaluator } from './guard-evaluator.js';
 import { readSelfReportGrant, type SelfReportGrant } from './approval-grants.js';
@@ -76,6 +78,7 @@ export interface PendingApproval {
   payload: Record<string, any>;
   reason?: string;
   requestedAt: string;
+  judgmentIdentity?: string;
 }
 
 const SELF_REPORT_WARNING = "Decided from the agent's own report because self-reported decisions are enabled for this workspace; reactive-skills-axi approve --revoke-self-reported turns them off.";
@@ -855,11 +858,11 @@ export class FSMEngine {
 
   /**
    * # Performance & Risk Budget
-   * - Tier: P1 (<25ms bookkeeping target; judgments excluded)
-   * - Complexity: O(ancestry + selected evidence bytes)
-   * - Cyclomatic Complexity (CC): target <=12
-   * - Branch Coverage: target >=80%
-   * - CRAP Score: target <=15
+   * - Tier: P2 orchestration; P0/P1 local guard/transition bookkeeping excludes adapter waiting and persistence
+   * - Complexity: O(h + p² + p*d + b) for ancestry and selected judgment input, plus selected evidence bytes; existing approval lookups O(n)
+   * - Cyclomatic Complexity (CC): target <=15 per extracted path
+   * - Branch Coverage: target >=70%
+   * - CRAP Score: target <=25
    */
   private async processSignal(
     signalName: string,
@@ -974,6 +977,9 @@ export class FSMEngine {
               && humanApproval?.state === testPath.join('.')
               && humanApproval.target === transDef.target
               && humanApproval.criterion === transDef.judgment.criterion
+              && humanApproval.judgmentIdentity === judgmentInputIdentity(transDef.judgment, {
+                event, context: this.context, currentState: testPath.join('.'),
+              })
               ? humanApproval.decision
               : undefined,
           },
@@ -1341,7 +1347,10 @@ export class FSMEngine {
     return new FSMEngine({ ...this.reopenOptions, jobId: this.jobId });
   }
 
-  /** Gates in the active state path that no adapter could judge and no person has decided yet. */
+  /**
+   * Gates in the active state path that no adapter could judge and no person has decided yet.
+   * Tier: P2 (< 100ms); Complexity: O(n) approval events; CRAP target <= 25 (CC <= 15, branch coverage >= 70%).
+   */
   public getPendingApprovals(): PendingApproval[] {
     const decided = new Set(this.eventStore.query({ type: 'APPROVAL_DECIDED' }).map((e) => e.payload?.requestId));
     const active = new Set(this.activeStatePath.map((_, i) => this.activeStatePath.slice(0, i + 1).join('.')));
@@ -1362,6 +1371,7 @@ export class FSMEngine {
         payload: e.payload.payload ?? {},
         reason: e.payload.reason,
         requestedAt: e.timestamp,
+        judgmentIdentity: e.payload.judgmentIdentity,
       }));
   }
 
@@ -1388,12 +1398,13 @@ export class FSMEngine {
   /**
    * A decision counts only for its own request's signal and the exact payload the person saw, and
    * only for the first signal it causes.
+   * Tier: P2 (< 100ms); Complexity: O(n) approval events; CRAP target <= 25 (CC <= 15, branch coverage >= 70%).
    */
   private resolveHumanDecision(
     signalName: string,
     payload: Record<string, any>,
     causationId?: string
-  ): { state: string; target: string; criterion: string; decision: 'approve' | 'reject' } | undefined {
+  ): { state: string; target: string; criterion: string; judgmentIdentity?: string; decision: 'approve' | 'reject' } | undefined {
     if (!causationId) return undefined;
     const decided = this.eventStore.query({ type: 'APPROVAL_DECIDED' }).find((e) => e.id === causationId);
     if (!decided || decided.payload?.signal !== signalName) return undefined;
@@ -1403,7 +1414,8 @@ export class FSMEngine {
     const signalsCaused = this.eventStore.query({ causationId: decided.id }).filter((e) => e.type === 'SIGNAL_EMITTED');
     if (signalsCaused.length !== 1) return undefined;
     const decision = decided.payload?.decision === 'approve' ? 'approve' : 'reject';
-    return { state: request.payload.state, target: request.payload.target, criterion: request.payload.criterion, decision };
+    return { state: request.payload.state, target: request.payload.target, criterion: request.payload.criterion,
+      judgmentIdentity: request.payload.judgmentIdentity, decision };
   }
 
   /** Makes the first decision each grant allows in a run visible in the ledger (ADR 0012). */
@@ -1418,22 +1430,30 @@ export class FSMEngine {
     );
   }
 
+  /**
+   * Tier: P2 (< 100ms); Complexity: O(n + p² + p*d + b), approval events and selected input.
+   * CRAP target <= 25 (CC <= 15, branch coverage >= 70%).
+   */
   private recordApprovalRequest(
     state: string,
     signal: string,
     target: string,
-    judgment: { type: string; criterion: string },
+    judgment: JudgmentDefinition,
     payload: Record<string, any>,
     causationId: string,
     reason?: string
   ): void {
+    const judgmentIdentity = judgmentInputIdentity(judgment, {
+      event: { id: causationId, type: signal, seq: 0, timestamp: '', payload: { signal, ...payload } }, context: this.context, currentState: state,
+    });
     const samePending = this.getPendingApprovals().some(
-      (r) => r.state === state && r.signal === signal && JSON.stringify(r.payload) === JSON.stringify(payload)
+      (r) => r.state === state && r.signal === signal && r.judgmentIdentity === judgmentIdentity && JSON.stringify(r.payload) === JSON.stringify(payload)
     );
     if (samePending) return;
     this.eventStore.append(
       'APPROVAL_REQUESTED',
-      { state, signal, target, criterion: judgment.criterion, judgmentType: judgment.type, payload, reason },
+      { state, signal, target, criterion: judgment.criterion, judgmentType: judgment.type, payload, reason,
+        ...(judgmentIdentity ? { judgmentIdentity } : {}) },
       { state, causationId }
     );
   }

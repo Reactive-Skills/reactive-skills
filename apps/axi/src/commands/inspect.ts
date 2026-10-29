@@ -4,9 +4,11 @@ import { FSMEngine } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderDetail, renderError, renderHelp, renderList, renderOutput } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
+import { inspectJudgmentInputs } from './judgment-input-inspection.js';
 
 const SKILLS_DIR = path.resolve(process.cwd(), 'skills');
 
+/** Tier: P2 (< 100ms local); Complexity: O(s + b) states and inspection bytes; CRAP target <= 25 per path (CC <= 15, branch coverage >= 70%). */
 export async function inspectCommand(args: string[]): Promise<string> {
   let targetPath = args[0] ? path.resolve(process.cwd(), args[0]) : '';
   if (!targetPath) {
@@ -35,6 +37,8 @@ export async function inspectCommand(args: string[]): Promise<string> {
   }
 
   try {
+    const inputIndex = args.indexOf('--judgment-input');
+    if (inputIndex !== -1) return inspectJudgmentInputs(skillYamlPath, args[inputIndex + 1]);
     const engine = new FSMEngine({ skillDir: targetPath });
     const manifest = engine.getManifest();
 
