@@ -49,6 +49,7 @@ export interface FSMEngineOptions {
 /** Maximum lifecycle-signal drain steps per top-level handleSignal call.
  *  Prevents cyclic on_enter/on_exit emissions from overflowing the call stack (REL-02). */
 const MAX_QUEUE_DRAIN_DEPTH = 50;
+const VIEW_BOOKKEEPING_EVENTS = new Set(['PERF_DEGRADATION', 'PROJECTION_FAILED', 'MCP_CONTINUATION_RECORDED']);
 const signalSerialByRun = new Map<string, Promise<void>>();
 
 type SignalHandlingResult = {
@@ -579,23 +580,37 @@ export class FSMEngine {
   }
 
   /**
-   * Find the last view-changing event and count deliveries after it within a window w = 4 * (max_view_refetches + max_idle_turns + 2).
+   * Ignore continuation receipts and telemetry; find the last view-changing event and count deliveries after it within a window w = 4 * (max_view_refetches + max_idle_turns + 2).
    * # Performance & Risk Budget
    * - Tier: P0 (< 5ms)
    * - Complexity: O(w), one latest-sequence lookup plus a bounded trailing-event read
-   * - Cyclomatic Complexity (CC): target <= 6
+   * - Cyclomatic Complexity (CC): target <= 8
    * - Branch Coverage: target >= 90%
+   * - CRAP Score: target <= 10.0
    */
   private currentViewDeliveries(): { viewSeq: number; deliveries: number } {
     const latest = this.eventStore.getLatestSequence();
     const stateDef = this.getStateDefinition(this.activeStatePath);
     const window = 4 * ((stateDef?.max_view_refetches ?? 2) + (stateDef?.max_idle_turns ?? 2) + 2);
     const events = this.eventStore.getSince(Math.max(0, latest - window));
+    return this.scanViewDeliveries(events, latest, window);
+  }
+
+  /**
+   * Scan the bounded view window without treating receipt metadata as a new view.
+   * # Performance & Risk Budget
+   * - Tier: P0 (< 5ms)
+   * - Complexity: O(w), bounded trailing-event window
+   * - Cyclomatic Complexity (CC): target <= 8
+   * - Branch Coverage: target >= 90%
+   * - CRAP Score: target <= 10.0
+   */
+  private scanViewDeliveries(events: SignalEvent[], latest: number, window: number): { viewSeq: number; deliveries: number } {
     let deliveries = 0;
     for (let i = events.length - 1; i >= 0; i--) {
       const type = events[i].type;
       if (type === 'AGENT_TURN_STARTED' || type === 'STATE_VIEW_REFETCHED') deliveries++;
-      else if (type !== 'PERF_DEGRADATION' && type !== 'PROJECTION_FAILED') return { viewSeq: events[i].seq, deliveries };
+      else if (!VIEW_BOOKKEEPING_EVENTS.has(type)) return { viewSeq: events[i].seq, deliveries };
     }
     return { viewSeq: latest > window ? latest : 0, deliveries: latest > window ? Number.MAX_SAFE_INTEGER : deliveries };
   }

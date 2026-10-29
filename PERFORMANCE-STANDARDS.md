@@ -223,7 +223,7 @@ export interface ExecutionTelemetryMetadata {
 
 The `slice_tokens_est` metric is a byte heuristic, not a measurement from a model tokenizer.
 Core prompt slicing initially estimates `ceil(Buffer.byteLength(formattedXml, 'utf8') / 4)`.
-MCP `reactive_state` and active-state `reactive_context_prepare` responses instead expose a delivery estimate in their state `metrics`: `ceil(UTF-8 bytes of the complete compact JSON response text / 4)`.
+MCP `reactive_state`, active-state `reactive_context_prepare` and opted-in continuation responses instead expose a delivery estimate in their state `metrics`: `ceil(UTF-8 bytes of the complete compact JSON response text / 4)`.
 This includes escaped prompt text, scoped context, routing metadata where present, and the estimate field itself.
 Serialization stabilizes the estimate before returning the response, including when its decimal digit count changes.
 It updates the live engine's latest slice metrics so the next transition records the delivered estimate.
@@ -249,6 +249,19 @@ Pending judgment approvals use the existing approval read path; its history cost
 Existing prompt slicing and cold-open replay costs are additional and unchanged.
 MCP compact delivery updates the existing live byte estimate but omits telemetry from the model-facing view.
 AXI output bytes and XML bytes are distinct from MCP response bytes; no transport savings percentage is claimed by this change.
+
+MCP `state.continuation_v1` operations deliver the same complete compact view after signal/human response work settles.
+`mcp/continuation-response.ts` queues same-process MCP mutation operations per immutable run with O(1) map bookkeeping and refreshes the engine before work; waiting for earlier operations and external judgments is outside local P0/P1 budgets.
+View assembly/serialization remains P0 with O(b + h² + a + w) work in view bytes b, ancestry h, existing approval-query results a and bounded delivery window w.
+The serialized-byte heuristic covers the entire continuation envelope, including its receipt, original anchor and current view, without exposing another metrics block.
+Keyed operations add one P1 (<25ms target) `MCP_CONTINUATION_RECORDED` append containing only receipt metadata and an original view anchor; unkeyed operations add no receipt event.
+Duplicate lookup uses the existing indexed idempotency key and an indexed O(k) causation query for that submission's child events, without a full-run scan.
+Receipt events are ignored by the bounded delivery scan so they do not reset compaction refetch allowance or create an idle turn.
+Original submissions call `recordStateDelivery()` once; keyed retries add no delivery/refetch events.
+`mcp/human-response.ts` dispatches at most two existing human signals before one view delivery, retaining their current precedence and CLI-only judgment approval boundary.
+Queue/receipt/render helpers target CC <= 8, branch coverage >= 90%, CRAP <= 10; human orchestration targets CC <= 12, branch coverage >= 80%, CRAP <= 15.
+Cold replay and existing guard, evidence, child, projection and approval costs remain additional.
+Tests verify event/turn counts and the pinned public TDD continuation path; this change makes no end-to-end latency or model-token savings claim.
 
 3. **Degradation Detection Thresholds**:
    - `slice_duration_ms > 10ms` $\rightarrow$ Warning: Template cache miss or heavy filesystem access.

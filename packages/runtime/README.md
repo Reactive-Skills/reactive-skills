@@ -383,3 +383,11 @@ See [PERFORMANCE-STANDARDS.md](../../PERFORMANCE-STANDARDS.md) for full latency 
 ## License
 
 MIT
+
+### MCP continuation views
+
+Negotiate `state.continuation_v1`, then select `return_view: "compact-v1"` on `reactive_emit_signal` or `reactive_respond_human` to receive the receipt and complete settled current view together.
+Legacy callers keep their existing receipt shape.
+Consume the returned view before working; refetch only for initial delivery, resume, compaction or recovery, with `job_id` pinned to `run_id`.
+Keyed retries return the saved original receipt separately from the current view and add no transition or delivery count.
+See [the continuation contract](../../docs/mcp-continuation.md) for the envelope, human gates and retry limits.

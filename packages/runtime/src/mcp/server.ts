@@ -19,6 +19,8 @@ import {
 } from '../core/runtime-capabilities.js';
 import { getReactiveBootloader } from '../core/bootloader.js';
 import { createStateResponse, serializeStateResponse } from './state-response.js';
+import { submitHumanResponse } from './human-response.js';
+import { continuationResponse, retrySignalResponse, signalReceipt, withMcpRun } from './continuation-response.js';
 
 export interface ReactiveMcpServerOptions {
   workspaceDir?: string;
@@ -151,6 +153,20 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     });
     engines.set(cacheKey, engine);
     return engine;
+  }
+
+  /**
+   * Pin the selected run before queuing, then refresh it without terminal rotation.
+   * # Performance & Risk Budget
+   * - Tier: P2 (<100ms cold load; queued work additional)
+   * - Complexity: O(r), cold replay delta; O(1) cached selection
+   * - Cyclomatic Complexity (CC): target <=8
+   * - Branch Coverage: target >=90%
+   * - CRAP Score: target <=10
+   */
+  function onRun<T>(skill: string, job: string | undefined, work: (engine: FSMEngine) => Promise<T>): Promise<T> {
+    const selected = getEngine(skill, job);
+    return withMcpRun(workspaceDir, selected, () => selected.hasExternalChanges() ? getEngine(skill, selected.getJobId()) : selected, work);
   }
 
   server.tool(
@@ -490,6 +506,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       skill: z.string().optional().describe('Target skill name'),
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
       idempotency_key: z.string().optional().describe('Optional key that makes duplicate signal submission a no-op'),
+      return_view: z.literal('compact-v1').optional().describe('Opt in after state.continuation_v1 negotiation: original receipt plus complete current view; omit for legacy receipt'),
     },
     /**
      * # Performance & Risk Budget
@@ -499,39 +516,24 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >=90%
      * - CRAP Score: target <=10
      */
-    async ({ signal, payload = {}, evidence, skill, job_id, idempotency_key }) => {
+    async ({ signal, payload = {}, evidence, skill, job_id, idempotency_key, return_view }) => {
       try {
-        const engine = getEngine(skill || defaultSkill, job_id);
-        const metadata = { idempotencyKey: idempotency_key, source: 'mcp' };
-        const submission = evidence === undefined ? undefined
-          : await submitEvidenceSignal(engine, signal, payload, evidence, metadata);
-        const result = submission?.result ?? await engine.handleSignal(signal, payload, metadata);
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(
-                {
-                  skill: engine.getManifest().name,
-                  job_id: engine.getJobName() || engine.getJobId(),
-                  run_id: engine.getJobId(),
-                  transitioned: result.transitioned,
-                  previousState: result.previousState,
-                  newState: result.newState,
-                  isWaitingForHuman: engine.isWaitingForHuman(),
-                  projectionsWritten: result.deliverablesWritten,
-                  ...(submission ? { event_id: result.event.id, evidence: submission.evidence } : {}),
-                  refusalReason: result.refusalReason,
-                  judgmentBasis: result.judgmentBasis,
-                  warning: result.warning,
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
+        return await onRun(skill || defaultSkill, job_id, async engine => {
+          const metadata = { idempotencyKey: idempotency_key, source: 'mcp' };
+          const retry = retrySignalResponse(engine, idempotency_key, !!return_view);
+          if (retry) return { content: [{ type: 'text', text: retry }] };
+          const submission = evidence === undefined ? undefined
+            : await submitEvidenceSignal(engine, signal, payload, evidence, metadata);
+          const result = submission?.result ?? await engine.handleSignal(signal, payload, metadata);
+          const receipt = {
+            ...signalReceipt(engine, result),
+            ...(submission ? { event_id: result.event.id, evidence: submission.evidence } : {}),
+          };
+          const text = return_view
+            ? continuationResponse(engine, { ...receipt, event_id: result.event.id }, result.event)
+            : JSON.stringify(receipt, null, 2);
+          return { content: [{ type: 'text', text }] };
+        });
       } catch (err: any) {
         return {
           content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
@@ -738,64 +740,27 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       feedback: z.string().optional().describe('Optional feedback text'),
       skill: z.string().optional().describe('Target skill name'),
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
+      idempotency_key: z.string().optional().describe('Optional response key for retry without repeating the human decision or signals'),
+      return_view: z.literal('compact-v1').optional().describe('Opt in to original receipt plus complete settled current view'),
     },
-    async ({ choice, approved = true, feedback, skill, job_id }) => {
+    /**
+     * Submit a complete human response batch before optional current-view delivery.
+     * # Performance & Risk Budget
+     * - Tier: P2 (<100ms local work; adapters additional)
+     * - Complexity: O(b + r + k), response bytes, cold replay and indexed request children
+     * - Cyclomatic Complexity (CC): target <=8
+     * - Branch Coverage: target >=90%
+     * - CRAP Score: target <=10
+     */
+    async ({ choice, approved = true, feedback, skill, job_id, idempotency_key, return_view }) => {
       try {
-        const engine = getEngine(skill || defaultSkill, job_id);
-        const signalsEmitted: string[] = [];
-        let transitioned = false;
-        let deliverablesWritten: string[] = [];
-
-        if (feedback) {
-          engine.updateContext({ user_feedback: feedback });
-        }
-        if (choice) {
-          engine.updateContext({ user_choice: choice });
-        }
-        if (choice || feedback) {
-          engine.recordDecision({
-            choice: choice || '',
-            feedback,
-            approved,
-          });
-        }
-
-        const dispatch = async (signalName: string, payload: Record<string, any>) => {
-          signalsEmitted.push(signalName);
-          const res = await engine.handleSignal(signalName, payload, { source: 'human_ingress' });
-          if (res.transitioned) transitioned = true;
-          if (res.deliverablesWritten.length > 0) deliverablesWritten.push(...res.deliverablesWritten);
-        };
-
-        const responseData = { choice, approved, feedback };
-        await dispatch('USER_RESPONSE', responseData);
-
-        if (approved === true || (choice && /approve|yes|accept|confirm|proceed/i.test(choice))) {
-          await dispatch('USER_APPROVED', responseData);
-        } else if (approved === false || (choice && /reject|no|abort|cancel/i.test(choice))) {
-          await dispatch('USER_REJECTED', responseData);
-        } else if (choice && /revision|change|modify|fix/i.test(choice)) {
-          await dispatch('USER_REVISION_REQUESTED', responseData);
-        }
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(
-                {
-                  unpaused: true,
-                  transitioned,
-                  currentState: engine.getCurrentState(),
-                  projectionsWritten: deliverablesWritten,
-                  signalsEmitted,
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
+        return await onRun(skill || defaultSkill, job_id, async engine => {
+          const response = await submitHumanResponse(engine, { choice, approved, feedback }, idempotency_key, !!return_view);
+          const text = return_view
+            ? continuationResponse(engine, response.receipt, response.event, response.replayed)
+            : JSON.stringify(response.receipt, null, 2);
+          return { content: [{ type: 'text', text }] };
+        });
       } catch (err: any) {
         return {
           content: [{ type: 'text', text: JSON.stringify({ error: err.message }) }],
