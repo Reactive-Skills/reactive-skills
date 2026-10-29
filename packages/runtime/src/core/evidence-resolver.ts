@@ -122,6 +122,23 @@ export class EvidenceResolver {
   }
 
   /**
+   * Resolve a canonical event history. Only signals committed by a STATE_TRANSITION are verified;
+   * refused or unhandled signals were never accepted, so their references stay unresolved.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target for <=1MiB)
+   * - Complexity: O(events + selected evidence bytes)
+   * - Cyclomatic Complexity (CC): target <=8
+   * - Branch Coverage: target >=90%
+   * - CRAP Score: target <=10
+   */
+  public resolveEvents(events: SignalEvent[]): SignalEvent[] {
+    if (!this.declarations) return events;
+    const committed = new Set(events.filter(event => event.type === 'STATE_TRANSITION')
+      .map(event => event.causation_id || event.causationId));
+    return events.map(event => event.type === 'SIGNAL_EMITTED' && !committed.has(event.id) ? event : this.resolveEvent(event));
+  }
+
+  /**
    * Validate explicit signal bindings before projecting accepted context updates.
    * # Performance & Risk Budget
    * - Tier: P1 (<25ms target for <=1MiB)

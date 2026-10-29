@@ -284,9 +284,9 @@ export class FSMEngine {
     // so refused and unhandled signals replay without changing context.
     const pendingSignalUpdates = new Map<string, Record<string, any>>();
 
+    // Verify retained content, but apply the canonical receipts to context, never materialized values.
+    this.evidenceResolver.resolveEvents(eventsToReplay);
     for (const e of eventsToReplay) {
-      // Verify retained content, but apply the canonical receipts to context, never materialized values.
-      this.evidenceResolver.resolveEvent(e);
       if (e.type === 'SKILL_INITIALIZED' && e.payload?.active_path) {
         latestPath = e.payload.active_path;
         if (e.payload.context) {

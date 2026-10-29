@@ -1335,7 +1335,7 @@ export class EventStore {
     const events = this.getAll();
     const snapshot = this.getLatestSnapshot();
     const resolver = new EvidenceResolver(declarations, () => this.getEvidenceStore());
-    for (const event of events) resolver.resolveEvent(event);
+    resolver.resolveEvents(events);
     if (snapshot) resolver.resolveContext(snapshot.context);
     const evidence = this.runDir || this.evidenceStore ? this.getEvidenceStore().exportBundle()
       : { version: 'rsa-evidence-bundle/v1' as const, run_id: this.eventContext.run_id!, entries: [] };

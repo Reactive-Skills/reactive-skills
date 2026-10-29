@@ -134,6 +134,35 @@ describe('immutable evidence registry', () => {
     expect(ledger.getEventCount()).toBe(count);
   });
 
+  it.each([...faults, 'malformed'] as const)('recovers after refused %s evidence through replay, snapshot, projection and export', async fault => {
+    fixture(false, false);
+    const ledger = store();
+    const engine = new FSMEngine({ skillDir, workspaceDir: workspace, eventStore: ledger });
+    const bad = fault === 'malformed' ? { $evidence: { bogus: true } } : { $evidence: damage(ledger, textReceipt(ledger, 'other'), fault) };
+    const refused = await engine.handleSignal('CHECK', { draft: bad, contextUpdates: { draft: bad } });
+    expect(refused.refusalReason).toContain('Evidence verification failed');
+    const receipt = textReceipt(ledger);
+    const accepted = await engine.handleSignal('CHECK', { draft: { $evidence: receipt } });
+    expect(accepted.transitioned).toBe(true);
+    expect(fs.readFileSync(accepted.deliverablesWritten[0], 'utf8')).toBe(`${JSON.stringify(bad, null, 2)}"verified"|"verified"`);
+    expect(ledger.query({ type: 'PROJECTION_FAILED' })).toHaveLength(0);
+    for (const snapshot of [true, false]) {
+      const reopened = store(ledger.getEventContext().run_id);
+      if (!snapshot) vi.spyOn(reopened, 'getLatestSnapshot').mockReturnValue(null);
+      const restored = new FSMEngine({ skillDir, workspaceDir: workspace, eventStore: reopened });
+      expect(restored.getCurrentState()).toBe('S2');
+      expect(restored.getContext().draft).toEqual({ $evidence: receipt });
+    }
+    if (fault === 'tamper' || fault === 'missing-blob') {
+      expect(() => engine.exportRun()).toThrow();
+      return;
+    }
+    const exported = engine.exportRun();
+    expect(exported.events.find(event => event.id === refused.event.id)?.payload.draft).toEqual(bad);
+    damage(ledger, receipt, 'missing-blob');
+    expect(() => engine.exportRun()).toThrow();
+  });
+
   it.each(['snapshot', 'replay'] as const)('fails %s restoration and export explicitly when retained evidence is unavailable', async mode => {
     fixture(false, false);
     const ledger = store();
@@ -151,7 +180,8 @@ describe('immutable evidence registry', () => {
     fixture(false, false);
     const ledger = store();
     const receipt = textReceipt(ledger);
-    ledger.append('SIGNAL_EMITTED', { signal: 'CHECK', draft: { $evidence: receipt } });
+    const signal = ledger.append('SIGNAL_EMITTED', { signal: 'CHECK', draft: { $evidence: receipt } });
+    ledger.append('STATE_TRANSITION', { from: 'S1', to: 'S2', signal: 'CHECK' }, { causationId: signal.id });
     damage(ledger, receipt, 'tamper');
     const declarations = EvidenceDeclarationsSchema.parse({ signals: { CHECK: { '/draft': { media_type: 'text/plain', projection: 'utf8' } } } });
     const projection = new ProjectionEngine(skillDir, [{ template: 'view.hbs', output: 'corrupt.txt' }], workspace, undefined, true, declarations);

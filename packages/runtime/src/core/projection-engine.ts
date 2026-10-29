@@ -210,7 +210,7 @@ export class ProjectionEngine {
     try {
       const resolver = new EvidenceResolver(this.evidence, () => eventStore.getEvidenceStore());
       projContext.context = resolver.resolveContext(context);
-      projContext.events = events.map(event => resolver.resolveEvent(event));
+      projContext.events = resolver.resolveEvents(events);
     } catch (error) {
       for (const proj of eligibleProjections) {
         eventStore.append('PROJECTION_FAILED', { template: proj.template, output: proj.output, error: `Evidence verification failed: ${(error as Error).message}` });
