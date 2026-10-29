@@ -209,9 +209,22 @@ The delivery estimate excludes SDK JSON-RPC framing, tool definitions, and other
 AXI renders its own output from the core slice; core XML estimates must not be presented as AXI transport measurements.
 
 MCP state assembly and serialization are P0 operations with O(b) work in response bytes and no additional event-ledger reads.
-Every response contains one XML prompt and scoped context; `include_full_context: true` on `reactive_state` adds the full recorded context.
+Legacy responses contain one XML prompt and scoped context; `include_full_context: true` on `reactive_state` adds the full recorded context.
 That response grows with recorded context and is included in its delivery estimate.
 The serializer targets CC <= 8, branch coverage >= 90%, and CRAP <= 10.
+
+Negotiated `state.compact_v1` delivery builds one shared complete view and serializes compact JSON (or development `xml-v1`).
+The view contains one raw rendered prompt and one scoped context object; full-context opt-in replaces that object rather than duplicating it.
+State view building and rendering target P0 (< 5ms for bounded state content), CC <= 8 per helper, branch coverage >= 90%, and CRAP <= 10.
+Building costs O(h² + b + a): hierarchy depth h, view/contract bytes b, and existing approval-request/decision query results a.
+Rendering is O(b), preserves required values without truncation, and adds no events or projections.
+The sequence anchor uses the existing run-scoped latest-sequence lookup.
+The most recent refusal is restored from the already loaded replay delta (O(r) worst case) and cached for O(1) retrieval in state views.
+A subsequent emitted signal clears it; a new refusal replaces it without adding events.
+Pending judgment approvals use the existing approval read path; its history cost is not claimed to be constant.
+Existing prompt slicing and cold-open replay costs are additional and unchanged.
+MCP compact delivery updates the existing live byte estimate but omits telemetry from the model-facing view.
+AXI output bytes and XML bytes are distinct from MCP response bytes; no transport savings percentage is claimed by this change.
 
 3. **Degradation Detection Thresholds**:
    - `slice_duration_ms > 10ms` $\rightarrow$ Warning: Template cache miss or heavy filesystem access.

@@ -1,3 +1,4 @@
+import { createStateView } from '../core/state-view.js';
 import type { FSMEngine } from '../core/fsm-engine.js';
 import type { ExecutionMetrics, PromptSlice } from '../core/types.js';
 
@@ -6,12 +7,17 @@ import type { ExecutionMetrics, PromptSlice } from '../core/types.js';
  *
  * # Performance & Risk Budget
  * - Tier: P0 (< 5ms)
- * - Complexity: O(1) by default, O(c) context keys when full context is requested
+ * - Complexity: O(1) legacy assembly; O(h² + b + a) compact view, plus O(c) requested context keys
  * - Cyclomatic Complexity (CC): target <= 8
  * - Branch Coverage: target >= 90%
  * - CRAP Score: target <= 10.0
  */
-export function createStateResponse(engine: FSMEngine, slice: PromptSlice, includeFullContext = false) {
+export function createStateResponse(engine: FSMEngine, slice: PromptSlice, includeFullContext = false, output: 'legacy' | 'compact-v1' = 'legacy') {
+  if (output === 'compact-v1') {
+    const view = createStateView(engine, slice);
+    if (includeFullContext) view.context = engine.getContext();
+    return view;
+  }
   return {
     skill: engine.getManifest().name,
     job_id: engine.getJobName() || engine.getJobId(),

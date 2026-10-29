@@ -1,3 +1,4 @@
+import { extractStateOutput, renderCompleteState } from '../state-view-output.js';
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs';
@@ -8,7 +9,23 @@ import { getSuggestions } from '../suggestions.js';
 import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.js';
 
 
+/**
+ * Deliver legacy output or a negotiated complete state view.
+ * # Performance & Risk Budget
+ * - Tier: P2 cold command (< 100ms target, excluding process startup)
+ * - Complexity: O(r + b + h² + a), existing replay delta, view bytes, hierarchy and approval records
+ * - Cyclomatic Complexity (CC): existing command flow; output selection adds one branch
+ * - Branch Coverage: target >= 70%
+ * - CRAP Score: target <= 25.0
+ */
 export async function stateCommand(args: string[]): Promise<string> {
+  let selected;
+  try {
+    selected = extractStateOutput(args);
+  } catch (error) {
+    return renderOutput([renderError((error as Error).message, 'VALIDATION_ERROR', ['Use --output legacy or --output compact-v1'])]);
+  }
+  args = selected.args;
   const { jobId, filteredArgs } = extractJobFlag(args);
   let skillName = filteredArgs[0];
 
@@ -50,6 +67,7 @@ export async function stateCommand(args: string[]): Promise<string> {
     try {
       const currentState = engine.getCurrentState();
       const promptSlice = engine.generatePromptSlice();
+      if (selected.output === 'compact-v1') return renderCompleteState(engine, promptSlice);
       const events = engine.getEventStore().getAll();
       const latestEvent = events.length > 0 ? events[events.length - 1] : undefined;
       const effectiveJobId = (typeof engine.getJobId === 'function' ? engine.getJobId() : jobId) || 'default';

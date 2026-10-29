@@ -1,5 +1,6 @@
+import { extractStateOutput } from '../state-view-output.js';
 import fs from 'node:fs';
-import { EvidenceBindingsSchema, FSMEngine, submitEvidenceSignal, type EvidenceBindings, type EvidenceReceipt } from '@reactive-skills/runtime';
+import { EvidenceBindingsSchema, FSMEngine, createStateView, submitEvidenceSignal, type EvidenceBindings, type EvidenceReceipt } from '@reactive-skills/runtime';
 import { AxiError, storeOpenError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
@@ -189,14 +190,22 @@ function renderEmitOutput(
 }
 
 /**
+ * Deliver legacy output or a negotiated complete state view.
  * # Performance & Risk Budget
  * - Tier: P2 cold engine (<100ms target); P1 evidence IO (<25ms per <=1MiB)
- * - Complexity: O(cold replay delta + payload/evidence bytes + existing causation lookup)
- * - Cyclomatic Complexity (CC): target <=15
+ * - Complexity: O(r + b + h² + a + payload/evidence bytes), existing replay delta, view bytes, hierarchy and approval records
+ * - Cyclomatic Complexity (CC): target <=15; output selection adds one branch
  * - Branch Coverage: target >=90%
  * - CRAP Score: target <=25
  */
 export async function emitCommand(args: string[]): Promise<string> {
+  let selected;
+  try {
+    selected = extractStateOutput(args);
+  } catch (error) {
+    return renderOutput([renderError((error as Error).message, 'VALIDATION_ERROR', ['Use --output legacy or --output compact-v1'])]);
+  }
+  args = selected.args;
   const { jobId, idempotencyKey, filteredArgs } = extractJobFlag(args);
   const { positionals, flagPayload, evidence, unknownFlags } = parseEmitArgs(filteredArgs);
   const skillName = positionals[0];
@@ -262,6 +271,16 @@ export async function emitCommand(args: string[]): Promise<string> {
       const submission = bindings === undefined ? undefined
         : await submitEvidenceSignal(engine, signalName, payload, bindings, metadata);
       const result = submission?.result ?? await engine.handleSignal(signalName, payload, metadata);
+      if (selected.output === 'compact-v1') {
+        return JSON.stringify({
+          transitioned: result.transitioned,
+          event_id: result.event.id,
+          previous_state: result.previousState,
+          deliverables: result.deliverablesWritten,
+          ...(submission ? { evidence: submission.evidence } : {}),
+          view: createStateView(engine, undefined, result),
+        });
+      }
 
       return renderEmitOutput(engine, result, skillName, signalName, jobId, submission?.evidence);
     } finally {

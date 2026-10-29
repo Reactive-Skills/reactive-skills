@@ -19,6 +19,7 @@ export function pinnedAxiPackageSpec(version: string = RUNTIME_VERSION): string 
 }
 
 export const STATIC_RUNTIME_CAPABILITIES = [
+  'state.compact_v1',
   'runtime.preflight',
   'runtime.transport_handshake',
   'judgment',

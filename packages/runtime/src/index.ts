@@ -29,3 +29,4 @@ export * from './telemetry/server.js';
 export * from './telemetry/broker.js';
 export * from './telemetry/port-selection.js';
 export * from './telemetry/dashboard.js';
+export * from './core/state-view.js';

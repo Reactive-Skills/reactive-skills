@@ -122,3 +122,15 @@ Local validation after the MCP state-response integration passed both package bu
 | Remote distributed multi-node message broker | Future | 🗓️ Planned |
 | GUI visual statechart editor (desktop app) | Future | 🗓️ Planned |
 | Plugin registry for community skills | Future | 🗓️ Planned |
+
+## Negotiated compact complete state delivery
+
+- Added `core/state-view.ts` and public SDK exports for one complete recovery-safe view and compact JSON/development XML rendering.
+- Added `state.compact_v1` capability selection to MCP state/context preparation and AXI invoke/state/emit; retained legacy defaults and existing MCP full-context opt-in behavior.
+- Added AXI `state-view-output.ts` parsing/rendering and development CLI output selection.
+- Preserved rendered prompts, declared and inherited context scopes, ordered ancestor contracts and same-signal fall-through; included conditional gates, model hints, strict status and signal receipt refusals.
+- Corrected non-strict orphan strict XML and portable tool-enforcement wording in `fsm-engine.ts`.
+- Updated shared `bootloader.ts`, README, architecture, code standards, integration modes, repository map and performance standards for compaction refetch and actual adapter boundaries.
+- Added interface meaning, scoped sentinel recovery, refusal and restoration regression tests without changing existing guarantee assertions.
+- Restored the most recent guard refusal from existing replay data and cached it for complete views across compaction; no new event types or payload changes.
+- Documented negotiated output flags in AXI command help and development CLI help.

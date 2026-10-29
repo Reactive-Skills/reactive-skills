@@ -20,8 +20,9 @@
 - `packages/runtime/src/core/bootloader.ts`: Versioned authoritative runtime bootloader and stable skill reference helpers.
 - `packages/runtime/src/core/runtime-capabilities.ts`: Runtime version, capability, compatibility, and transport selection contracts.
 - `packages/runtime/src/core/projection-engine.ts`: Handlebars deliverable generator.
+- `packages/runtime/src/core/state-view.ts`: Shared complete state view and compact JSON/development XML renderer.
 - `packages/runtime/src/core/fsm-engine.ts`: State machine loader, state path resolver & bubbling engine.
-- `packages/runtime/src/core/runtime-hooks.ts`: In-harness interceptor hooks (onBeforeAgentTurn, onAfterToolExecution, onHumanResponse).
+- Host tool interception and compaction reinjection require a separately implemented adapter; this release provides AXI and MCP.
 - `packages/runtime/src/core/legacy-adapter.ts`: Backward compatibility wrapper and converter for `SKILL.md`.
 - `packages/runtime/src/core/migration.ts`: Retroactive project migrator and schema upgrader.
 - `packages/runtime/src/core/job-manager.ts`: Run isolation, active pointer resolution & job metadata manager.

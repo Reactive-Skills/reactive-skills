@@ -17,6 +17,15 @@ function normalizeSkillName(skillName: string): string {
   return normalized;
 }
 
+/**
+ * Create the shared runtime selection and recovery contract.
+ * # Performance & Risk Budget
+ * - Tier: P0 (< 5ms)
+ * - Complexity: O(b), bootloader bytes
+ * - Cyclomatic Complexity (CC): target <= 8
+ * - Branch Coverage: target >= 90%
+ * - CRAP Score: target <= 10.0
+ */
 export function createReactiveBootloader(skillName: string): string {
   const name = normalizeSkillName(skillName);
 
@@ -44,6 +53,10 @@ export function createReactiveBootloader(skillName: string): string {
 > Persist the selected runtime in \`payload.contextUpdates\` so later states reuse it.
 > AXI remains the runtime interface. \`npx\` is only its zero-install launcher.
 > Do not repeat version or capability checks after INIT.
+> When capabilities include \`state.compact_v1\`, select MCP \`output: "compact-v1"\` or AXI \`--output compact-v1\` for complete state views.
+> Consume the complete view returned by AXI invoke/emit; fetch state again for resume, recovery, stale state, or a lost response.
+> After host transcript compaction, re-fetch the same immutable run with MCP \`reactive_state\` or AXI \`state ${name} --job <run_id>\` before doing work.
+> This restores the current instructions and recorded scoped context. Do not emit a transition, recreate an approval, or infer missing context to recover it.
 >
 > **CONTEXT ROUTING**
 > Before loading full skill instructions or assembling prompt context, call \`reactive_context_prepare\` with the current user message when MCP is available.
