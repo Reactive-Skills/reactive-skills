@@ -62,6 +62,7 @@ Filesystem read/hash/parse work is O(evidence bytes), and repeated reference occ
 It never replaces canonical event payloads, snapshot context or `engine.getContext()` with expanded evidence.
 Deliverable projections use the declared signal payload, transition payload and context fields; raw event queries still return receipts.
 Missing or corrupt evidence fails restore explicitly, and projection failures produce `PROJECTION_FAILED` instead of an empty value.
+Replay, projection and export verify signal references only when a `STATE_TRANSITION` committed that signal; refused or unhandled signals keep their unverified receipts in the log and leave them unresolved, so a refusal cannot corrupt the run.
 Existing inline streams retain their original bytes and need no registry.
 
 Use `engine.exportRun()` to export canonical events, the latest snapshot, declarations and an evidence bundle together.
