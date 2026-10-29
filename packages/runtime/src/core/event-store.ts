@@ -5,6 +5,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { EventContext, SignalEvent } from './types.js';
 import { LocalEvidenceStore, type EvidenceStore, type EvidenceBundle, type EvidenceReceipt } from './evidence-store.js';
 import { EvidenceResolver, type EvidenceDeclarations } from './evidence-resolver.js';
+import { JsonlCheckpoint, LedgerBoundary, loadCheckpoint, publishCheckpoint, verifyCheckpoint } from './jsonl-checkpoint.js';
+import { isDeepStrictEqual } from 'node:util';
 
 export const EVENT_STORE_SCHEMA_VERSION = 3;
 
@@ -59,6 +61,8 @@ export interface EventQueryOptions {
   sinceSeq?: number;
   /** Only events after this ledger position, across runs when allRuns is set. */
   sinceLedgerSeq?: number;
+  /** Bound a mirror query to the canonical boundary captured under the projection lock. */
+  untilLedgerSeq?: number;
   limit?: number;
   runId?: string;
   allRuns?: boolean;
@@ -138,6 +142,15 @@ export class SQLiteStorageDriver {
     return new Set(rows.map(row => row.name));
   }
 
+  /**
+   * Create additive ledger tables and persistent identity.
+   * # Performance & Risk Budget
+   * - Tier: P2 (< 100ms)
+   * - Complexity: O(1) schema and index declarations
+   * - Cyclomatic Complexity (CC): target <= 2
+   * - Branch Coverage: target >= 70%
+   * - CRAP Score: target <= 25.0
+   */
   private createCurrentTables(): void {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS runs (
@@ -192,6 +205,12 @@ export class SQLiteStorageDriver {
         last_seq INTEGER NOT NULL DEFAULT 0
       );
       INSERT OR IGNORE INTO ledger_counter (id, last_seq) VALUES (1, 0);
+      CREATE TABLE IF NOT EXISTS ledger_identity (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        generation TEXT NOT NULL,
+        mirror_initialized INTEGER NOT NULL DEFAULT 0
+      );
+      INSERT OR IGNORE INTO ledger_identity (id, generation) VALUES (1, lower(hex(randomblob(16))));
       CREATE TABLE IF NOT EXISTS projections (
         run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
         name TEXT NOT NULL,
@@ -249,6 +268,15 @@ export class SQLiteStorageDriver {
     this.ensureRun(this.defaultRunId, { skillId: this.defaultSkillId });
   }
 
+  /**
+   * Migrate legacy rows and invalidate certificates from the prior generation.
+   * # Performance & Risk Budget
+   * - Tier: P3 (< 2000ms)
+   * - Complexity: O(N log N) legacy event migration
+   * - Cyclomatic Complexity (CC): target <= 20
+   * - Branch Coverage: target >= 60%
+   * - CRAP Score: target <= 30.0
+   */
   private migrateLegacySchema(): void {
     const legacyEventColumns = this.tableColumns('events');
     const legacyOrder = legacyEventColumns.has('ledger_seq') ? 'COALESCE(ledger_seq, rowid), seq, rowid' : 'seq, rowid';
@@ -267,6 +295,7 @@ export class SQLiteStorageDriver {
       this.createCurrentTables();
 
       const perRunSeq = new Map<string, number>();
+      this.db.exec('UPDATE ledger_identity SET generation = lower(hex(randomblob(16))), mirror_initialized = 1 WHERE id = 1');
       const insert = this.db.prepare(`
         INSERT INTO events (
           id, event_id, ledger_seq, seq, timestamp, occurred_at, type, event_type,
@@ -427,11 +456,21 @@ export class SQLiteStorageDriver {
     });
   }
 
+  /**
+   * Insert an explicit historical position and invalidate any prior mirror certificate.
+   * # Performance & Risk Budget
+   * - Tier: P1 (< 25ms)
+   * - Complexity: O(log N) indexed insert
+   * - Cyclomatic Complexity (CC): 2
+   * - Branch Coverage: target >= 80%
+   * - CRAP Score: target <= 15.0
+   */
   public insertEvent(event: SignalEvent): void {
     this.withBusyRetry(() => {
       this.db.exec('BEGIN IMMEDIATE');
       try {
         this.insertEventInternal(event);
+        this.db.exec('UPDATE ledger_identity SET generation = lower(hex(randomblob(16))) WHERE id = 1');
         this.db.exec('COMMIT');
       } catch (error) {
         try { this.db.exec('ROLLBACK'); } catch { /* transaction already closed */ }
@@ -443,6 +482,15 @@ export class SQLiteStorageDriver {
   public beginTransaction(): void { this.db.exec('BEGIN IMMEDIATE'); }
   public commitTransaction(): void { this.db.exec('COMMIT'); }
 
+  /**
+   * Read an indexed event range, including a captured global mirror boundary.
+   * # Performance & Risk Budget
+   * - Tier: P1 (< 25ms) for bounded ranges; P3 for unbounded repair
+   * - Complexity: O(log N + k) indexed range; O(N) unbounded history
+   * - Cyclomatic Complexity (CC): target <= 12
+   * - Branch Coverage: target >= 80%
+   * - CRAP Score: target <= 15.0
+   */
   public queryEvents(options: EventQueryOptions = {}): SignalEvent[] {
     let sql = 'SELECT * FROM events WHERE 1=1';
     const params: any[] = [];
@@ -453,6 +501,7 @@ export class SQLiteStorageDriver {
     if (options.causationId) { sql += ' AND causation_id = ?'; params.push(options.causationId); }
     if (options.sinceSeq !== undefined) { sql += ' AND seq > ?'; params.push(options.sinceSeq); }
     if (options.sinceLedgerSeq !== undefined) { sql += ' AND ledger_seq > ?'; params.push(options.sinceLedgerSeq); }
+    if (options.untilLedgerSeq !== undefined) { sql += ' AND ledger_seq <= ?'; params.push(options.untilLedgerSeq); }
     sql += options.allRuns ? ' ORDER BY ledger_seq ASC, rowid ASC' : ' ORDER BY seq ASC';
     if (options.limit) { sql += ' LIMIT ?'; params.push(options.limit); }
     return (this.db.prepare(sql).all(...params) as any[]).map(row => this.rowToEvent(row));
@@ -466,6 +515,28 @@ export class SQLiteStorageDriver {
   public getLatestLedgerSequence(): number {
     const row = this.db.prepare('SELECT ledger_seq FROM events ORDER BY ledger_seq DESC LIMIT 1').get() as { ledger_seq: number } | undefined;
     return row ? Number(row.ledger_seq) : 0;
+  }
+
+  /**
+   * Capture skill-wide identity and committed boundary in one SQLite read snapshot.
+   * # Performance & Risk Budget
+   * - Tier: P1 (< 25ms)
+   * - Complexity: O(log N) indexed boundary lookup; no event decoding
+   * - Cyclomatic Complexity (CC): 1
+   * - Branch Coverage: target >= 80%
+   * - CRAP Score: target <= 15.0
+   */
+  public getLedgerBoundary(): LedgerBoundary & { mirrorInitialized: number } {
+    const row = this.db.prepare(`SELECT generation,
+      COALESCE((SELECT ledger_seq FROM events ORDER BY ledger_seq DESC LIMIT 1), 0) AS ledgerSeq,
+      (SELECT MAX(version) FROM schema_version) AS schema,
+      mirror_initialized AS mirrorInitialized FROM ledger_identity WHERE id = 1`).get() as LedgerBoundary & { mirrorInitialized: number };
+    return row;
+  }
+
+  /** Persistent bootstrap marker: an intentionally cleared canonical store must not reimport its old mirror. */
+  public markMirrorInitialized(): void {
+    this.db.exec('UPDATE ledger_identity SET mirror_initialized = 1 WHERE id = 1 AND mirror_initialized = 0');
   }
 
   public getEventCount(runId = this.defaultRunId): number {
@@ -488,6 +559,15 @@ export class SQLiteStorageDriver {
     return Boolean(row);
   }
 
+  /**
+   * Import legacy rows, invalidating certification when historical positions may change.
+   * # Performance & Risk Budget
+   * - Tier: P3 (< 2000ms)
+   * - Complexity: O(k log N) for k supplied events
+   * - Cyclomatic Complexity (CC): 5
+   * - Branch Coverage: target >= 60%
+   * - CRAP Score: target <= 30.0
+   */
   public importEvents(events: SignalEvent[]): number {
     if (events.length === 0) return 0;
     return this.withBusyRetry(() => {
@@ -499,6 +579,7 @@ export class SQLiteStorageDriver {
           this.insertEventInternal(event, true);
           imported += 1;
         }
+        if (imported > 0) this.db.exec('UPDATE ledger_identity SET generation = lower(hex(randomblob(16))) WHERE id = 1');
         this.db.exec('COMMIT');
         return imported;
       } catch (error) {
@@ -617,6 +698,15 @@ export class SQLiteStorageDriver {
     };
   }
 
+  /**
+   * Delete one run and invalidate skill-wide certificates transactionally.
+   * # Performance & Risk Budget
+   * - Tier: P3 (< 2000ms)
+   * - Complexity: O(n) deleted run rows
+   * - Cyclomatic Complexity (CC): 2
+   * - Branch Coverage: target >= 60%
+   * - CRAP Score: target <= 30.0
+   */
   public clear(): void {
     this.db.exec('BEGIN IMMEDIATE');
     try {
@@ -625,6 +715,7 @@ export class SQLiteStorageDriver {
       this.db.prepare('DELETE FROM state_snapshots WHERE run_id = ?').run(this.defaultRunId);
       this.db.prepare('DELETE FROM projection_watermarks WHERE run_id = ?').run(this.defaultRunId);
       this.db.prepare('DELETE FROM runs WHERE run_id = ?').run(this.defaultRunId);
+      this.db.exec('UPDATE ledger_identity SET generation = lower(hex(randomblob(16))), mirror_initialized = 1 WHERE id = 1');
       this.db.exec('COMMIT');
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch { /* transaction already closed */ }
@@ -632,10 +723,20 @@ export class SQLiteStorageDriver {
     }
   }
 
+  /**
+   * Clear all canonical rows and invalidate every prior certificate.
+   * # Performance & Risk Budget
+   * - Tier: P3 (< 2000ms)
+   * - Complexity: O(N) deleted ledger rows
+   * - Cyclomatic Complexity (CC): 2
+   * - Branch Coverage: target >= 60%
+   * - CRAP Score: target <= 30.0
+   */
   public clearAll(): void {
     this.db.exec('BEGIN IMMEDIATE');
     try {
       this.db.exec('DELETE FROM events; DELETE FROM projections; DELETE FROM state_snapshots; DELETE FROM projection_watermarks; DELETE FROM run_counters; DELETE FROM runs; UPDATE ledger_counter SET last_seq = 0 WHERE id = 1;');
+      this.db.exec('UPDATE ledger_identity SET generation = lower(hex(randomblob(16))), mirror_initialized = 1 WHERE id = 1');
       this.db.exec('COMMIT');
     } catch (error) {
       try { this.db.exec('ROLLBACK'); } catch { /* transaction already closed */ }
@@ -700,6 +801,8 @@ export class EventStore {
   private readonly explicitRunId: boolean;
   private lockFd: number | null = null;
   private lockPath: string | null = null;
+  /** Certificate being extended while this instance holds the projection lock. */
+  private mirrorCheckpoint: JsonlCheckpoint | undefined;
 
   /**
    * Opens canonical storage; evidence port construction remains lazy.
@@ -825,6 +928,15 @@ export class EventStore {
     this.lockPath = null;
   }
 
+  /**
+   * Load bounded recent state and verify the skill-wide mirror before normal execution.
+   * # Performance & Risk Budget
+   * - Tier: P2 (< 100ms); uncertain or legacy mirrors use P3 repair
+   * - Complexity: O(bytes + c + r) certified open, r = bounded recent events; O(N) legacy repair
+   * - Cyclomatic Complexity (CC): target <= 15
+   * - Branch Coverage: target >= 70%
+   * - CRAP Score: target <= 25.0
+   */
   private initializeStorage(): void {
     if (this.sqliteDriver) {
       if (!this.explicitRunId && this.sqliteDriver.getEventCount(this.eventContext.run_id) === 0) {
@@ -835,15 +947,19 @@ export class EventStore {
         }
       }
       const latest = this.sqliteDriver.getLatestSequence(this.eventContext.run_id);
-      if (latest > 0) {
+      const boundary = this.readOnly ? null : this.sqliteDriver.getLedgerBoundary();
+      if (latest > 0 || boundary?.mirrorInitialized === 1 || (boundary && boundary.ledgerSeq > 0)) {
         this.seqCounter = latest;
         this.events = this.sqliteDriver.getRecentEvents(this.maxInMemoryEvents, this.eventContext.run_id);
-        if (!this.readOnly) this.syncJsonlFromSqlite();
+        if (!this.readOnly) this.verifyJsonlOnOpen();
         return;
       }
       if (this.readOnly) return;
     }
-    if (!this.storagePath || !fs.existsSync(this.storagePath)) return;
+    if (!this.storagePath || !fs.existsSync(this.storagePath)) {
+      if (this.sqliteDriver && !this.readOnly) this.verifyJsonlOnOpen();
+      return;
+    }
     const fileEvents = this.readAllJsonlEvents();
     if (this.sqliteDriver && fileEvents.length > 0) {
       const runIds = [...new Set(fileEvents.map(event => event.run_id).filter((value): value is string => Boolean(value)))];
@@ -855,12 +971,23 @@ export class EventStore {
       this.sqliteDriver.rebuildEvents(this.deduplicateById(normalized));
       this.seqCounter = this.sqliteDriver.getLatestSequence(this.eventContext.run_id);
       this.events = this.sqliteDriver.getRecentEvents(this.maxInMemoryEvents, this.eventContext.run_id);
+      this.syncJsonlFromSqlite();
       return;
     }
     this.events = fileEvents.slice(-this.maxInMemoryEvents);
     this.seqCounter = this.events.reduce((max, event) => Math.max(max, event.seq), 0);
+    if (this.sqliteDriver) this.verifyJsonlOnOpen();
   }
 
+  /**
+   * Import legacy run stores before initializeStorage verifies the combined canonical mirror.
+   * # Performance & Risk Budget
+   * - Tier: P3 (< 2000ms)
+   * - Complexity: O(legacy bytes + k log N) imported events
+   * - Cyclomatic Complexity (CC): target <= 20
+   * - Branch Coverage: target >= 60%
+   * - CRAP Score: target <= 30.0
+   */
   private importLegacyRunStores(scopeDir: string, skillId: string): void {
     if (!this.sqliteDriver || this.readOnly) return;
     const legacyJobsDir = path.join(scopeDir, 'jobs');
@@ -917,7 +1044,6 @@ export class EventStore {
       }
     }
     if (mappingChanged) fs.writeFileSync(mappingPath, JSON.stringify(mapping, null, 2), 'utf8');
-    this.syncJsonlFromSqlite();
   }
 
   private readLegacyJsonl(filePath: string, runId: string, skillId: string): SignalEvent[] {
@@ -965,18 +1091,33 @@ export class EventStore {
     }
   }
 
-  private readAllJsonlEvents(): SignalEvent[] {
-    if (!this.storagePath) return [];
+  /**
+   * Decode the full projection only for import or repair, retaining malformed-line evidence.
+   * # Performance & Risk Budget
+   * - Tier: P3 (< 2000ms)
+   * - Complexity: O(total bytes + N) time and memory
+   * - Cyclomatic Complexity (CC): 7
+   * - Branch Coverage: target >= 60%
+   * - CRAP Score: target <= 30.0
+   */
+  private readJsonlProjection(): { events: SignalEvent[]; malformed: boolean } {
     const events: SignalEvent[] = [];
+    let malformed = false;
     for (const jsonlPath of this.getJsonlPaths()) {
       if (!fs.existsSync(jsonlPath)) continue;
       const lines = fs.readFileSync(jsonlPath, 'utf8').split('\n').filter(line => line.trim());
       for (const line of lines) {
-        try { events.push(JSON.parse(line) as SignalEvent); } catch { /* skip incomplete or malformed line */ }
+        try {
+          const event = JSON.parse(line);
+          if (event && typeof event.id === 'string') events.push(event as SignalEvent);
+          else malformed = true;
+        } catch { malformed = true; }
       }
     }
-    return events;
+    return { events, malformed };
   }
+
+  private readAllJsonlEvents(): SignalEvent[] { return this.readJsonlProjection().events; }
 
   private deduplicateById(events: SignalEvent[]): SignalEvent[] {
     const byId = new Map<string, SignalEvent>();
@@ -996,6 +1137,15 @@ export class EventStore {
     return [...archived, ...(fs.existsSync(this.storagePath) ? [this.storagePath] : [])];
   }
 
+  /**
+   * Rotate the active segment and carry its existing chunk certificate to its new name.
+   * # Performance & Risk Budget
+   * - Tier: P1 (< 25ms)
+   * - Complexity: O(s) segment inventory, no historical byte reads
+   * - Cyclomatic Complexity (CC): target <= 8
+   * - Branch Coverage: target >= 80%
+   * - CRAP Score: target <= 15.0
+   */
   private rotateJsonlIfNeeded(nextLineBytes: number): void {
     if (!this.storagePath || !fs.existsSync(this.storagePath)) return;
     const currentBytes = fs.statSync(this.storagePath).size;
@@ -1009,6 +1159,8 @@ export class EventStore {
       archivePath = path.join(dir, `${baseName}-${String(segment).padStart(6, '0')}.jsonl`);
     }
     fs.renameSync(this.storagePath, archivePath);
+    const segmentCheckpoint = this.mirrorCheckpoint?.segments.find(segment => segment.name === path.basename(this.storagePath!));
+    if (segmentCheckpoint) segmentCheckpoint.name = path.basename(archivePath);
   }
 
   private withJsonlProjectionLock<T>(operation: () => T): T {
@@ -1043,13 +1195,36 @@ export class EventStore {
     }
   }
 
+  /**
+   * Rewrite and certify a mirror under the shared projection lock.
+   * # Performance & Risk Budget
+   * - Tier: P3 (< 2000ms)
+   * - Complexity: O(N + bytes) across all runs
+   * - Cyclomatic Complexity (CC): target <= 2
+   * - Branch Coverage: target >= 60%
+   * - CRAP Score: target <= 30.0
+   */
   private rewriteJsonlFromSqlite(): number {
     if (!this.sqliteDriver || !this.storagePath) return 0;
-    return this.withJsonlProjectionLock(() => this.rewriteJsonlFromSqliteUnlocked());
+    return this.withJsonlProjectionLock(() => {
+      const boundary = this.sqliteDriver!.getLedgerBoundary();
+      const written = this.rewriteJsonlFromSqliteUnlocked(boundary.ledgerSeq);
+      this.certifyJsonlUnlocked(boundary);
+      return written;
+    });
   }
 
-  private rewriteJsonlFromSqliteUnlocked(): number {
-    const allEvents = this.sqliteDriver!.queryEvents({ allRuns: true });
+  /**
+   * Rewrite a captured canonical range, removing obsolete rotated segments.
+   * # Performance & Risk Budget
+   * - Tier: P3 (< 2000ms)
+   * - Complexity: O(N + bytes) time and memory
+   * - Cyclomatic Complexity (CC): target <= 4
+   * - Branch Coverage: target >= 60%
+   * - CRAP Score: target <= 30.0
+   */
+  private rewriteJsonlFromSqliteUnlocked(untilLedgerSeq?: number): number {
+    const allEvents = this.sqliteDriver!.queryEvents({ allRuns: true, untilLedgerSeq });
     const dir = path.dirname(this.storagePath!);
     fs.mkdirSync(dir, { recursive: true });
     const tempPath = `${this.storagePath}.${process.pid}.${Date.now()}.tmp`;
@@ -1076,22 +1251,109 @@ export class EventStore {
   public syncJsonlFromSqlite(): number {
     if (!this.sqliteDriver || !this.storagePath) return 0;
     try {
-      return this.withJsonlProjectionLock(() => this.reconcileJsonlUnlocked());
+      return this.withJsonlProjectionLock(() => this.repairAndCheckpointUnlocked());
     } catch (error) {
       console.warn('EventStore: JSONL projection repair deferred', error);
       return 0;
     }
   }
 
-  /** Full ID diff between SQLite and JSONL; the caller holds the projection lock. */
-  private reconcileJsonlUnlocked(): number {
-    const jsonlEvents = this.readAllJsonlEvents();
+  /**
+   * Full canonical diff; malformed, duplicate, foreign or changed rows require a rewrite.
+   * # Performance & Risk Budget
+   * - Tier: P3 (< 2000ms)
+   * - Complexity: O(N + bytes) time and memory across all runs and segments
+   * - Cyclomatic Complexity (CC): 8
+   * - Branch Coverage: target >= 60%
+   * - CRAP Score: target <= 30.0
+   */
+  private reconcileJsonlUnlocked(untilLedgerSeq?: number): number {
+    const { events: jsonlEvents, malformed } = this.readJsonlProjection();
     const jsonlIds = new Set(jsonlEvents.map(event => event.id));
     const maxMirroredSeq = jsonlEvents.reduce((max, event) => Math.max(max, event.ledger_seq || 0), 0);
-    const missing = this.sqliteDriver!.queryEvents({ allRuns: true }).filter(event => !jsonlIds.has(event.id));
+    const canonical = this.sqliteDriver!.queryEvents({ allRuns: true, untilLedgerSeq });
+    const byId = new Map(canonical.map(event => [event.id, JSON.parse(JSON.stringify(event))]));
+    const invalid = jsonlIds.size !== jsonlEvents.length || jsonlEvents.some((event, index) =>
+      !isDeepStrictEqual(event, byId.get(event.id)) || (index > 0 && (event.ledger_seq || 0) <= (jsonlEvents[index - 1].ledger_seq || 0)));
+    const missing = canonical.filter(event => !jsonlIds.has(event.id));
     // Appending a gap row below the mirrored maximum would lower the tail watermark the per-append mirror trusts.
-    if (missing.some(event => (event.ledger_seq || 0) < maxMirroredSeq)) { this.rewriteJsonlFromSqliteUnlocked(); return missing.length; }
+    if (invalid || malformed || missing.some(event => (event.ledger_seq || 0) < maxMirroredSeq)) {
+      this.rewriteJsonlFromSqliteUnlocked(untilLedgerSeq);
+      return missing.length;
+    }
     return this.appendJsonlLines(missing);
+  }
+
+  /**
+   * Verify the complete certificate on open before selecting the bounded tail path.
+   * # Performance & Risk Budget
+   * - Tier: P2 (< 100ms)
+   * - Complexity: O(total JSONL bytes + chunk metadata); no historical event decoding on clean opens
+   * - Cyclomatic Complexity (CC): 4
+   * - Branch Coverage: target >= 70%
+   * - CRAP Score: target <= 25.0
+   */
+  private verifyJsonlOnOpen(): void {
+    try {
+      this.withJsonlProjectionLock(() => {
+        const boundary = this.sqliteDriver!.getLedgerBoundary();
+        const checkpoint = loadCheckpoint(`${this.storagePath!}.checkpoint.json`);
+        if (!checkpoint || !verifyCheckpoint(checkpoint, this.getJsonlPaths(), boundary)) {
+          this.repairAndCheckpointUnlocked(boundary);
+        } else if (checkpoint.ledgerSeq < boundary.ledgerSeq) {
+          this.extendCheckpointUnlocked(checkpoint, boundary);
+        }
+      });
+    } catch (error) { console.warn('EventStore: JSONL projection repair deferred', error); }
+  }
+
+  /**
+   * Establish a valid mirror before publishing a fresh skill-wide certificate.
+   * # Performance & Risk Budget
+   * - Tier: P3 (< 2000ms)
+   * - Complexity: O(N + bytes) full repair and hashing
+   * - Cyclomatic Complexity (CC): 1
+   * - Branch Coverage: target >= 60%
+   * - CRAP Score: target <= 30.0
+   */
+  private repairAndCheckpointUnlocked(boundary = this.sqliteDriver!.getLedgerBoundary()): number {
+    const repaired = this.reconcileJsonlUnlocked(boundary.ledgerSeq);
+    this.certifyJsonlUnlocked(boundary);
+    return repaired;
+  }
+
+  /**
+   * Publish only the captured generation and boundary; a later committed tail stays uncertified.
+   * # Performance & Risk Budget
+   * - Tier: P2 (< 100ms); incremental use is P1 (< 25ms)
+   * - Complexity: O(new bytes + one chunk + chunk metadata), full repair O(total bytes)
+   * - Cyclomatic Complexity (CC): 2
+   * - Branch Coverage: target >= 80%
+   * - CRAP Score: target <= 15.0
+   */
+  private certifyJsonlUnlocked(boundary: LedgerBoundary, previous?: JsonlCheckpoint): void {
+    const current = this.sqliteDriver!.getLedgerBoundary();
+    if (current.generation !== boundary.generation) throw new Error('Ledger generation changed during repair');
+    if (current.mirrorInitialized === 0) this.sqliteDriver!.markMirrorInitialized();
+    publishCheckpoint(`${this.storagePath!}.checkpoint.json`, this.getJsonlPaths(), boundary, previous);
+  }
+
+  /**
+   * Extend a certified mirror with the bounded canonical tail, including rows from other runs.
+   * # Performance & Risk Budget
+   * - Tier: P1 (< 25ms)
+   * - Complexity: O(k + new bytes + one chunk + chunk metadata), k = new rows
+   * - Cyclomatic Complexity (CC): 1
+   * - Branch Coverage: target >= 80%
+   * - CRAP Score: target <= 15.0
+   */
+  private extendCheckpointUnlocked(checkpoint: JsonlCheckpoint, boundary: LedgerBoundary): number {
+    this.mirrorCheckpoint = checkpoint;
+    try {
+      const written = this.appendJsonlLines(this.sqliteDriver!.queryEvents({ allRuns: true, sinceLedgerSeq: checkpoint.ledgerSeq, untilLedgerSeq: boundary.ledgerSeq }));
+      this.certifyJsonlUnlocked(boundary, checkpoint);
+      return written;
+    } finally { this.mirrorCheckpoint = undefined; }
   }
 
   private appendJsonlLines(events: SignalEvent[]): number {
@@ -1132,24 +1394,32 @@ export class EventStore {
   }
 
   /**
-   * Mirror SQLite rows newer than the JSONL tail. The tail is the shared watermark, so rows another
-   * writer already mirrored are skipped and rows a failed mirror left behind are picked up.
-   * Gaps below the tail are repaired only by the full reconcile on open or an explicit repair.
+   * Mirror rows newer than the shared checkpoint. Inventory changes trigger full repair; unchanged
+   * historical digests are retained, and open verifies every byte to catch external edits.
+   * A failed mirror leaves the prior checkpoint for recovery by the next open or append.
    *
    * # Performance & Risk Budget
    * - Tier: P1 (< 25ms)
-   * - Complexity: O(k + l) where k = rows appended since the last mirror (usually 1), l = last JSONL line length
-   * - Cyclomatic Complexity (CC): 3
-   * - Branch Coverage: 100%
-   * - CRAP Score: 3.0 (Threshold <= 15.0)
+   * - Complexity: O(k + new bytes + 64 KiB + c), k = new rows, c = certificate chunk metadata
+   * - Cyclomatic Complexity (CC): target <= 12
+   * - Branch Coverage: target >= 80%
+   * - CRAP Score: target <= 15.0
    */
   private mirrorNewEventsToJsonl(): number {
     if (!this.sqliteDriver || !this.storagePath) return 0;
     try {
       return this.withJsonlProjectionLock(() => {
-        const tailLedgerSeq = this.readJsonlTailLedgerSeq();
-        if (tailLedgerSeq === null) return this.reconcileJsonlUnlocked();
-        return this.appendJsonlLines(this.sqliteDriver!.queryEvents({ allRuns: true, sinceLedgerSeq: tailLedgerSeq }));
+        const boundary = this.sqliteDriver!.getLedgerBoundary();
+        const checkpoint = loadCheckpoint(`${this.storagePath!}.checkpoint.json`);
+        const paths = this.getJsonlPaths();
+        // Stats here only protect incremental certificate extension. Open still hashes every byte.
+        const inventoryMatches = checkpoint && paths.length === checkpoint.segments.length && paths.every((file, index) =>
+          path.basename(file) === checkpoint.segments[index].name && fs.statSync(file).size === checkpoint.segments[index].length);
+        if (!checkpoint || !inventoryMatches || checkpoint.generation !== boundary.generation || checkpoint.schema !== boundary.schema
+          || checkpoint.ledgerSeq > boundary.ledgerSeq) {
+          return this.repairAndCheckpointUnlocked(boundary);
+        }
+        return this.extendCheckpointUnlocked(checkpoint, boundary);
       });
     } catch (error) {
       console.warn('EventStore: JSONL projection repair deferred', error);
@@ -1157,47 +1427,18 @@ export class EventStore {
     }
   }
 
-  /**
-   * Ledger position of the last JSONL line, or null when the mirror is missing, ends in a partial line
-   * or the line carries no ledger position, so the caller falls back to the full reconcile.
-   *
-   * # Performance & Risk Budget
-   * - Tier: P1 (< 25ms)
-   * - Complexity: O(l) where l = last line length; reads backwards from the end of the file
-   * - Cyclomatic Complexity (CC): 7
-   * - Branch Coverage: 85%
-   * - CRAP Score: 7.2 (Threshold <= 15.0)
-   */
-  private readJsonlTailLedgerSeq(): number | null {
-    let fd: number;
-    try { fd = fs.openSync(this.storagePath!, 'r'); } catch { return null; }
-    try {
-      const size = fs.fstatSync(fd).size;
-      for (let window = 4096; ; window *= 4) {
-        const start = Math.max(0, size - window);
-        const buffer = Buffer.alloc(size - start);
-        fs.readSync(fd, buffer, 0, buffer.length, start);
-        // A missing final newline means an interrupted write, so its ledger position cannot be trusted.
-        if (buffer.length === 0 || buffer[buffer.length - 1] !== 0x0a) return null;
-        const text = buffer.toString('utf8', 0, buffer.length - 1);
-        const newline = text.lastIndexOf('\n');
-        if (newline < 0 && start > 0) continue;
-        try {
-          const ledgerSeq = Number((JSON.parse(text.slice(newline + 1)) as SignalEvent).ledger_seq);
-          return Number.isInteger(ledgerSeq) && ledgerSeq > 0 ? ledgerSeq : null;
-        } catch {
-          return null;
-        }
-      }
-    } finally {
-      fs.closeSync(fd);
-    }
-  }
-
   /** Compatibility name retained for callers that repair the JSONL mirror. */
   public syncJsonlToSqlite(): number { return this.syncJsonlFromSqlite(); }
 
-  /** Explicit legacy import path. SQLite remains canonical after this operation. */
+  /**
+   * Explicit legacy import path. Rebuild invalidates the generation; full repair certifies the new one.
+   * # Performance & Risk Budget
+   * - Tier: P3 (< 2000ms)
+   * - Complexity: O(N log N + bytes) in imported events and mirror bytes
+   * - Cyclomatic Complexity (CC): 4
+   * - Branch Coverage: target >= 60%
+   * - CRAP Score: target <= 30.0
+   */
   public rebuildFromJsonl(): number {
     if (!this.sqliteDriver) throw new Error('rebuildFromJsonl requires a SQLite driver to be enabled');
     if (!this.storagePath) throw new Error('rebuildFromJsonl requires a storagePath (JSONL audit log)');
@@ -1206,6 +1447,7 @@ export class EventStore {
     this.sqliteDriver.rebuildEvents(events);
     this.events = this.sqliteDriver.getRecentEvents(this.maxInMemoryEvents, this.eventContext.run_id);
     this.seqCounter = this.sqliteDriver.getLatestSequence(this.eventContext.run_id);
+    this.syncJsonlFromSqlite();
     return events.length;
   }
 
@@ -1214,7 +1456,7 @@ export class EventStore {
    *
    * # Performance & Risk Budget
    * - Tier: P1 (< 25ms)
-   * - Complexity: O(1) SQLite insert plus O(k) mirror rows (k = rows since the last mirror, usually 1)
+   * - Complexity: O(1) SQLite insert plus O(k + new bytes + 64 KiB + c) mirror; k = new rows, c = chunk metadata
    * - Cyclomatic Complexity (CC): 8
    * - Branch Coverage: 90%
    * - CRAP Score: 8.1 (Threshold <= 15.0)
