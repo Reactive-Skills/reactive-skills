@@ -63,8 +63,14 @@ Inline-only guard, replay, snapshot and projection paths do not open a registry.
 |-----------|-----------------|----------------------|
 | `LocalEvidenceStore.importFile` / `registerJson` | P1, <25ms target for a warm local file up to 1 MiB | O(bytes + source path depth), plus O(k log k) for sorting JSON object keys; default 1 MiB and configurable hard ceiling 16 MiB per blob |
 | `EvidenceStore.read` / declared field resolution | P1, <25ms target for up to 1 MiB per selected field | O(selected bytes + pointer depth); verify registration, SHA-256, length, media type and encoding on each read |
+| AXI/MCP evidence import, explicit read and `submitEvidenceSignal` | P2 cold bootstrap <100ms; P1 <25ms local evidence work per <=1 MiB field, excluding guards/judgments | O(cold replay delta + selected evidence bytes + pointer traversal/copies); at most 32 bindings, fixed 1 MiB import limit per file in the default transport store |
 | Replay / snapshot evidence verification | P2, <100ms target for bounded local evidence | O(replayed events + selected evidence bytes); no mutable source reads or model calls |
 | `exportRun` / `exportBundle` / `restoreBundle` | P3, <2000ms target for bounded bundles | O(events + all registered bytes); with declarations, bundles registrations referenced by committed events/snapshots and verifies unreferenced ones only to report damage in `skipped`; without declarations, bundles and verifies every registration |
+
+Transport binding metadata stays outside task JSON and does not require additional event-ledger scans.
+A folded import-and-emit uses one interface call; standalone registration then emit uses two, while explicit content read adds another call only when requested.
+End-to-end latency must include bootstrap, registration, hashing, persistence, projections and transport overhead for the chosen flow; the per-field budget does not cap a multi-field submission's total time.
+Keyed retries consult the existing indexed signal record before reopening an import source, then retain core idempotency semantics.
 
 These targets are budgets, not measured end-to-end model savings or guaranteed filesystem latency.
 Hashing, parsing, copying, directory checks, atomic publication and file/directory synchronization add real storage cost to a reference submission.

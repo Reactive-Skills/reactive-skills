@@ -4,6 +4,7 @@
 - `packages/runtime/src/core/types.ts`: Zod schemas & TypeScript types for FSM, signals, and projections.
 - `packages/runtime/src/core/event-store.ts`: Immutable append-only event ledger (JSONL + native SQLite driver).
 - `packages/runtime/src/core/evidence-store.ts`: Selected-run EvidenceStore port, immutable local registrations and portable evidence bundles.
+- `packages/runtime/src/core/evidence-submission.ts`: Shared AXI/MCP binding schema, local import, explicit read and idempotent reference submission.
 - `packages/runtime/src/core/evidence-resolver.ts`: Explicit manifest field schemas and ephemeral evidence views for guards, replay and projections.
 - `packages/runtime/src/core/jsonl-checkpoint.ts`: Skill-wide JSONL byte certificates, bounded chunk hashing and complete open-time verification.
 - `packages/runtime/src/core/guard-evaluator.ts`: Sandbox evaluator for transition conditions.

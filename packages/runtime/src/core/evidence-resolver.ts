@@ -17,7 +17,7 @@ function pointerSegments(pointer: string): string[] {
   return segments;
 }
 
-const EvidencePointerSchema = z.string().superRefine((pointer, context) => {
+export const EvidencePointerSchema = z.string().superRefine((pointer, context) => {
   try { pointerSegments(pointer); }
   catch (error) { context.addIssue({ code: z.ZodIssueCode.custom, message: (error as Error).message }); }
 });

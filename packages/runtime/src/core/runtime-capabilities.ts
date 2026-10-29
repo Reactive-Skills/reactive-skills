@@ -33,6 +33,7 @@ export const STATIC_RUNTIME_CAPABILITIES = [
   'runtime.bootloader',
   'runtime.accepted_update_replay',
   'evidence.local_registry',
+  'evidence.reference_submission',
 ] as const;
 
 export type RuntimeTransport = 'axi' | 'mcp';

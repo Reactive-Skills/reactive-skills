@@ -2,6 +2,7 @@ export * from './core/types.js';
 export * from './core/event-store.js';
 export * from './core/evidence-store.js';
 export * from './core/evidence-resolver.js';
+export * from './core/evidence-submission.js';
 export * from './core/guard-evaluator.js';
 export * from './core/guard-module-format.js';
 export * from './core/judgment-engine.js';

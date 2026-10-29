@@ -137,12 +137,21 @@ export const COMMANDS: Record<string, CommandSpec> = {
     ]),
     run: async (args) => (await import('../commands/state.js')).stateCommand(args),
   },
+  evidence: {
+    usage: usage([
+      `Usage: ${BIN} evidence <skill> import <workspace-relative-path> --media-type <type> [--job <run>]`,
+      `Or:    ${BIN} evidence <skill> read <receipt-JSON> [--job <run>]`,
+      'Import returns JSON receipt metadata. Only read returns verified content.',
+    ]),
+    run: async (args) => (await import('../commands/evidence.js')).evidenceCommand(args),
+  },
   emit: {
     usage: usage([
       `Usage: ${BIN} emit <skill-name> <signal-name> [<JSON|@file> | --payload <JSON|@file>] [--job <job-id>] [--idempotency-key <key>]`,
       `Or:    ${BIN} emit <skill-name> <event-id> <signal-name> [<JSON|@file> | --payload <JSON|@file>] [--job <job-id>] [--idempotency-key <key>]`,
       '',
       'Send a signal to a skill run.',
+      '--evidence <JSON> binds declared payload pointers to {reference: receipt} or {path, media_type}.',
       '--payload is the signal payload. Put context changes under contextUpdates,',
       'e.g. \'{"contextUpdates":{"mission":"ship"}}\'; they are merged into the run context.',
       `Example: ${BIN} emit my-skill TEST_RAN --payload '{"exit_code":0}'`,

@@ -42,6 +42,13 @@
 
 ## ⚙️ Milestone: v0.6.x — Performance & Documentation Polish (Active)
 
+AXI and MCP expose bounded local evidence import, explicit verified reads and an optional `evidence.reference_submission` capability.
+`core/evidence-submission.ts` shares explicit field binding and keyed retry handling between AXI `commands/evidence.ts` / `commands/emit.ts` and MCP `server.ts`.
+Imports return compact receipts; folded import-and-emit records immutable references through the existing SDK resolver, preserving guard/judgment/projection and export behavior.
+`apps/axi/tests/commands/evidence.test.ts`, `evidence-cli.test.ts` and runtime `mcp-evidence.test.ts` exercise both real interfaces, paths with spaces, JSON, escaped field pointers, denial, malformed/damaged/cross-run references, semantic judgment content, inline compatibility, concurrent submissions and lost-response retries.
+Import parser errors suppress content snippets; malformed AXI `--evidence` bindings and read receipts fail as `VALIDATION_ERROR` before the run opens; both package builds, 765 runtime tests, 357 AXI tests and documentation/prose gates pass locally.
+`docs/evidence-registry.md`, `apps/axi/README.md`, `.agents/references/repository-map.md`, CLI command help and `PERFORMANCE-STANDARDS.md` describe the transport contract and budgets.
+
 The runtime SDK evidence registry is implemented: `evidence-store.ts` defines the selected-run storage port and atomic local adapter, and `evidence-resolver.ts` limits materialization to manifest-declared fields.
 `event-store.ts` bundles immutable evidence with run exports; `fsm-engine.ts`, `projection-engine.ts`, `types.ts`, `runtime-capabilities.ts`, and `index.ts` connect verification, replay and SDK discovery.
 `evidence-registry.test.ts` exercises inline/reference parity, replay/snapshots, projection, bundle restore, tamper/missing content, scope, registration races, interrupted publication and concurrent registrars without changing existing guarantee assertions.
