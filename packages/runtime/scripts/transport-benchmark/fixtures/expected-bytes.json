@@ -1,0 +1,180 @@
+{
+  "runtime_commit": "3e30d6c",
+  "description": "Normalized deterministic byte fields after compact MCP state delivery; timings, raw byte lengths and ledger sizes remain observations.",
+  "tdd_baseline": {
+    "state": "REFACTOR.CLEAN_CODE",
+    "rendered_prompt_bytes": 392,
+    "xml_bytes": 1744,
+    "scoped_context_bytes": 118,
+    "allowed_tools": [
+      "view_file",
+      "write_to_file",
+      "replace_file_content",
+      "run_command"
+    ],
+    "contracts": [
+      "[REFACTOR.CLEAN_CODE] On signal 'CLEANING_DONE' -> transition to 'REFACTOR.PERF_AUDIT'",
+      "[REFACTOR] On signal 'GLOBAL_ABORT' -> transition to 'RED_SPEC'",
+      "[REFACTOR] On signal 'TEST_RAN' -> transition to 'GREEN_CODE' (guard: event.payload.exit_code != 0)"
+    ]
+  },
+  "mcp": {
+    "initial": {
+      "input_payload_bytes": 24,
+      "tool_result_text_bytes": 2252,
+      "result_bytes": 2395,
+      "request_envelope_bytes": 119,
+      "response_envelope_bytes": 2430
+    },
+    "prepare": {
+      "input_payload_bytes": 115,
+      "tool_result_text_bytes": 2631,
+      "result_bytes": 2824,
+      "request_envelope_bytes": 220,
+      "response_envelope_bytes": 2859
+    },
+    "ready": {
+      "input_payload_bytes": 49,
+      "tool_result_text_bytes": 455,
+      "result_bytes": 542,
+      "request_envelope_bytes": 150,
+      "response_envelope_bytes": 577
+    },
+    "guard_refusal": {
+      "input_payload_bytes": 70,
+      "tool_result_text_bytes": 310,
+      "result_bytes": 389,
+      "request_envelope_bytes": 171,
+      "response_envelope_bytes": 424
+    },
+    "red": {
+      "input_payload_bytes": 70,
+      "tool_result_text_bytes": 461,
+      "result_bytes": 548,
+      "request_envelope_bytes": 171,
+      "response_envelope_bytes": 583
+    },
+    "green": {
+      "input_payload_bytes": 70,
+      "tool_result_text_bytes": 472,
+      "result_bytes": 559,
+      "request_envelope_bytes": 171,
+      "response_envelope_bytes": 594
+    },
+    "clean": {
+      "input_payload_bytes": 24,
+      "tool_result_text_bytes": 2350,
+      "result_bytes": 2518,
+      "request_envelope_bytes": 119,
+      "response_envelope_bytes": 2553
+    },
+    "resume_empty_transcript": {
+      "input_payload_bytes": 24,
+      "tool_result_text_bytes": 2350,
+      "result_bytes": 2518,
+      "request_envelope_bytes": 119,
+      "response_envelope_bytes": 2553
+    },
+    "failure": {
+      "input_payload_bytes": 37,
+      "tool_result_text_bytes": 88,
+      "result_bytes": 146,
+      "request_envelope_bytes": 132,
+      "response_envelope_bytes": 181
+    },
+    "gate_ready": {
+      "input_payload_bytes": 44,
+      "tool_result_text_bytes": 240,
+      "result_bytes": 314,
+      "request_envelope_bytes": 145,
+      "response_envelope_bytes": 349
+    },
+    "gate": {
+      "input_payload_bytes": 27,
+      "tool_result_text_bytes": 1698,
+      "result_bytes": 1819,
+      "request_envelope_bytes": 122,
+      "response_envelope_bytes": 1854
+    },
+    "human_response": {
+      "input_payload_bytes": 62,
+      "tool_result_text_bytes": 168,
+      "result_bytes": 232,
+      "request_envelope_bytes": 165,
+      "response_envelope_bytes": 267
+    },
+    "legacy_prepare": {
+      "input_payload_bytes": 126,
+      "tool_result_text_bytes": 688,
+      "result_bytes": 814,
+      "request_envelope_bytes": 231,
+      "response_envelope_bytes": 849
+    },
+    "concurrent-a": {
+      "input_payload_bytes": 48,
+      "tool_result_text_bytes": 2257,
+      "result_bytes": 2400,
+      "request_envelope_bytes": 143,
+      "response_envelope_bytes": 2435
+    },
+    "concurrent-b": {
+      "input_payload_bytes": 48,
+      "tool_result_text_bytes": 2257,
+      "result_bytes": 2400,
+      "request_envelope_bytes": 143,
+      "response_envelope_bytes": 2435
+    }
+  },
+  "sdk": {
+    "initial": {
+      "result_bytes": 3088
+    },
+    "clean": {
+      "result_bytes": 3018
+    },
+    "snapshot": {
+      "result_bytes": 3018
+    },
+    "replay": {
+      "result_bytes": 3018
+    },
+    "concurrent-0": {
+      "result_bytes": 3385
+    },
+    "concurrent-1": {
+      "result_bytes": 3385
+    },
+    "legacy": {
+      "result_bytes": 1647
+    }
+  },
+  "axi": {
+    "initial": {
+      "stdout_bytes": 1364
+    },
+    "initial_state": {
+      "stdout_bytes": 1240
+    },
+    "ready": {
+      "stdout_bytes": 1496
+    },
+    "guard_refusal": {
+      "stdout_bytes": 667
+    },
+    "red": {
+      "stdout_bytes": 1333
+    },
+    "green": {
+      "stdout_bytes": 1143
+    },
+    "clean": {
+      "stdout_bytes": 1016
+    },
+    "resume_empty_transcript": {
+      "stdout_bytes": 1016
+    },
+    "failure": {
+      "stdout_bytes": 164
+    }
+  }
+}

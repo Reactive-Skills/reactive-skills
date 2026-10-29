@@ -1,0 +1,62 @@
+{
+  "repository": "https://github.com/Reactive-Skills/skills",
+  "commit": "1fe016bef539e548a60b4c765393ed20f30aea06",
+  "skill": "tdd-refactor",
+  "files": [
+    {
+      "path": "skill.yaml",
+      "git_blob": "e197899a57f17e1b7d61b76407dee0e3de802ded",
+      "bytes": 3897
+    },
+    {
+      "path": "states/audit_verify.md",
+      "git_blob": "04e2cb258b4f8e0027cca7180b1c848e6a2bc678",
+      "bytes": 382
+    },
+    {
+      "path": "states/clean_code.md",
+      "git_blob": "296154e57e1974abdcc40f93d1f06a0fc7d988b4",
+      "bytes": 404
+    },
+    {
+      "path": "states/completed.md",
+      "git_blob": "2b44fd4bf7510347219a4375b3417512f16c43cf",
+      "bytes": 257
+    },
+    {
+      "path": "states/green_code.md",
+      "git_blob": "f44c87d5969e032e93dac3035672ee00317a486a",
+      "bytes": 615
+    },
+    {
+      "path": "states/init.md",
+      "git_blob": "2bf45d837ebdb47a3a42df8fa573367024ae34b8",
+      "bytes": 681
+    },
+    {
+      "path": "states/perf_audit.md",
+      "git_blob": "ffc180e88df085ac5d39053f1d5ed489d9795ab2",
+      "bytes": 431
+    },
+    {
+      "path": "states/red_spec.md",
+      "git_blob": "1a18cbde54da6f90fb1875aa32d7f85dbe515fd3",
+      "bytes": 785
+    },
+    {
+      "path": "states/setup_runtime.md",
+      "git_blob": "4ce86f5ae4ca4d2d3bc2f6cca0ebb26d805203c6",
+      "bytes": 553
+    },
+    {
+      "path": "templates/refactor_summary.md.hbs",
+      "git_blob": "99ed4a2dd5204acba5592337e73561f4c64265f4",
+      "bytes": 568
+    },
+    {
+      "path": "templates/state_snapshot.json.hbs",
+      "git_blob": "a9f4ecd6b3649f2128fccbaeadefbde6fda2bbda",
+      "bytes": 174
+    }
+  ]
+}
