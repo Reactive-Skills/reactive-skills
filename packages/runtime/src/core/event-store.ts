@@ -1323,6 +1323,7 @@ export class EventStore {
   /**
    * Portable canonical events/snapshot plus the evidence their committed references use; never exports an unchecked reference alone.
    * Damaged registrations no committed event or snapshot references are reported in `evidence.skipped`, not bundled.
+   * Without declarations, references cannot be identified, so every registration is bundled and any damage fails the export.
    *
    * # Performance & Risk Budget
    * - Tier: P3 (<2000ms target)
@@ -1339,7 +1340,7 @@ export class EventStore {
     const resolver = new EvidenceResolver(declarations, () => this.getEvidenceStore(), receipt => referenced.push(receipt));
     resolver.resolveEvents(events);
     if (snapshot) resolver.resolveContext(snapshot.context);
-    const evidence = this.runDir || this.evidenceStore ? this.getEvidenceStore().exportBundle(referenced)
+    const evidence = this.runDir || this.evidenceStore ? this.getEvidenceStore().exportBundle(declarations ? referenced : undefined)
       : { version: 'rsa-evidence-bundle/v1' as const, run_id: this.eventContext.run_id!, entries: [] };
     this.assertRunVersion(version);
     return { events, snapshot, evidence, ...(declarations ? { evidence_fields: declarations } : {}) };

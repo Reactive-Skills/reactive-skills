@@ -212,6 +212,25 @@ describe('immutable evidence registry', () => {
     expect(restored.exportRun().evidence.entries).toEqual(exported.evidence.entries);
   });
 
+  it('bundles every registration when the lower-level export omits declarations', async () => {
+    fixture(false, false);
+    const ledger = store();
+    const engine = new FSMEngine({ skillDir, workspaceDir: workspace, eventStore: ledger });
+    const receipt = textReceipt(ledger);
+    expect((await engine.handleSignal('CHECK', { draft: { $evidence: receipt } })).transitioned).toBe(true);
+    const exported = ledger.exportRun();
+    expect(exported.evidence.entries.map(entry => entry.receipt)).toEqual([receipt]);
+    const destination = path.join(workspace, 'restored');
+    fs.mkdirSync(destination);
+    const imported = store(receipt.run_id, destination);
+    imported.getEvidenceStore().restoreBundle(exported.evidence);
+    imported.getSqliteDriver()!.importEvents(exported.events);
+    const restored = new FSMEngine({ skillDir, workspaceDir: destination, eventStore: store(receipt.run_id, destination) });
+    expect(restored.getContext().draft).toEqual({ $evidence: receipt });
+    damage(ledger, receipt, 'missing-blob');
+    expect(() => ledger.exportRun()).toThrow();
+  });
+
   it('never opens a registry for old inline replay, snapshot restore, guards or projections', async () => {
     fixture(false, true);
     const ledger = store();

@@ -66,7 +66,7 @@ Replay, projection and export verify signal references only when a `STATE_TRANSI
 Existing inline streams retain their original bytes and need no registry.
 
 Use `engine.exportRun()` to export canonical events, the latest snapshot, declarations and an evidence bundle together.
-The lower-level `eventStore.exportRun(declarations)` requires the same declarations to verify referenced content.
+The lower-level `eventStore.exportRun(declarations)` requires the same declarations to verify and scope referenced content; called without declarations, it bundles every registration in the run and fails on any damaged registration.
 Exports check the selected run's version and bundle every registration referenced by committed events or the exported snapshot, including those used only by older events.
 Damaged referenced content fails the export; damaged registrations nothing committed references, such as one behind a refused signal, are left out and listed in `evidence.skipped`.
 Snapshots retain receipts beside the run's immutable registry; copying a snapshot without its artifacts or bundle is incomplete.
