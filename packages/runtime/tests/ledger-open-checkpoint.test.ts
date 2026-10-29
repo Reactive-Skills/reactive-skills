@@ -334,6 +334,23 @@ describe('verified ledger open', () => {
     expect(reconcile).not.toHaveBeenCalled();
   }, 30_000);
 
+  it('treats a projection lock not yet readable as an owner record as held, not stale', () => {
+    const f = fixture();
+    const store = f.open();
+    const before = mirror(f.files());
+    fs.writeFileSync(`${f.current}.lock`, '');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    store.append('WHILE_LOCKED', {});
+    expect(fs.existsSync(`${f.current}.lock`)).toBe(true);
+    expect(mirror(f.files())).toEqual(before);
+    expect(warn).toHaveBeenCalledWith('EventStore: JSONL projection repair deferred', expect.any(Error));
+    fs.unlinkSync(`${f.current}.lock`);
+    store.close();
+    const reopened = f.open();
+    expect(mirror(f.files())).toEqual(reopened.getSqliteDriver()!.queryEvents({ allRuns: true }));
+    reopened.close();
+  });
+
   it.each(['before', 'after'])('repairs or verifies after process termination %s checkpoint publication', async position => {
     const f = fixture();
     const source = pathToFileURL(path.resolve('packages/runtime/src/core/event-store.ts')).href;

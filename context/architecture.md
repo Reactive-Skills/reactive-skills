@@ -254,3 +254,12 @@ MCP full-context opt-in replaces scoped context in the compact format; it retain
 The shared bootloader and compact policy require re-fetching the same run after transcript compaction without synthesizing transitions or approvals.
 Host tool interception and automatic compaction reinjection require a separately implemented adapter.
 The latest signal refusal (guard or evidence verification) survives recovery through the already loaded replay delta and an in-memory cache; a subsequent signal supersedes it.
+
+### MCP continuation delivery
+
+After negotiating `state.continuation_v1`, MCP emit and human-response tools accept `return_view: "compact-v1"` and return the original receipt/anchor beside one complete current view.
+`mcp/continuation-response.ts` queues same-process MCP mutation work per immutable run and counts original deliveries through `recordStateDelivery()`.
+Keyed submissions persist only receipt metadata and the original view anchor; retry views may be newer, but retries add no delivery, transition or refetch event.
+`mcp/human-response.ts` retains existing human signal precedence and keeps judgment approval in the interactive CLI.
+Legacy receipt defaults, guards, lifecycle draining, projections and bounded compaction refetch semantics remain intact.
+See [the response contract](../docs/mcp-continuation.md).

@@ -49,6 +49,7 @@ export interface FSMEngineOptions {
 /** Maximum lifecycle-signal drain steps per top-level handleSignal call.
  *  Prevents cyclic on_enter/on_exit emissions from overflowing the call stack (REL-02). */
 const MAX_QUEUE_DRAIN_DEPTH = 50;
+const VIEW_BOOKKEEPING_EVENTS = new Set(['PERF_DEGRADATION', 'PROJECTION_FAILED', 'MCP_CONTINUATION_RECORDED']);
 const signalSerialByRun = new Map<string, Promise<void>>();
 
 type SignalHandlingResult = {
@@ -65,6 +66,8 @@ type SignalHandlingResult = {
   judgmentBasis?: 'self_reported' | 'human';
   /** Shown with every self-reported decision so the operator and the agent can see it (ADR 0012). */
   warning?: string;
+  /** Set when an existing keyed submission answered this call instead of a new evaluation. */
+  replayed?: true;
 };
 
 /** A gate no adapter could judge, waiting for a person to decide it (ADR 0012). */
@@ -533,25 +536,35 @@ export class FSMEngine {
     return this.inBypassState;
   }
 
-  public recordTurnStart(): void {
+  /**
+   * Record one strict turn, reusing the canonical counter for a deduplicated delivery.
+   * # Performance & Risk Budget
+   * - Tier: P1 (storage budget < 25ms)
+   * - Complexity: O(1) bookkeeping plus EventStore.append persistence/mirror cost
+   * - Cyclomatic Complexity (CC): 4
+   * - Branch Coverage: 80% (4/5 measured branch entries)
+   * - CRAP Score: 4.128 (Threshold <= 15.0)
+   * - Measurement: ESLint complexity and V8 coverage from continuation, strict-execution and human-approval tests
+   */
+  public recordTurnStart(idempotencyKey?: string): void {
     if (!this.strictExecution || this.inBypassState) return;
-    this.eventStore.append('AGENT_TURN_STARTED', {
-      state: this.getCurrentState(),
-      turns_since_last_signal: this.turnsSinceLastSignal + 1,
-    }, { state: this.getCurrentState() });
-    this.turnsSinceLastSignal++;
+    const draft = { state: this.getCurrentState(), turns_since_last_signal: this.turnsSinceLastSignal + 1 };
+    const event = this.eventStore.append('AGENT_TURN_STARTED', draft, { state: this.getCurrentState(), idempotencyKey });
+    // A keyed delivery another process already recorded is that same turn, not a new one.
+    this.turnsSinceLastSignal = event.payload.turns_since_last_signal ?? this.turnsSinceLastSignal;
     this.checkBypass();
   }
 
   /**
    * Count a delivered state view, letting up to `max_view_refetches` repeat fetches of the same view through for compaction recovery.
+   * An idempotency key makes the count atomic across processes delivering the same submission's result.
    * # Performance & Risk Budget
    * - Tier: P0 (< 5ms)
    * - Complexity: O(w), bounded trailing-event window
    * - Cyclomatic Complexity (CC): target <= 6
    * - Branch Coverage: target >= 90%
    */
-  public recordStateDelivery(): void {
+  public recordStateDelivery(idempotencyKey?: string): void {
     if (!this.strictExecution || this.inBypassState) return;
     const { deliveries } = this.currentViewDeliveries();
     const allowance = this.getStateDefinition(this.activeStatePath)?.max_view_refetches ?? 2;
@@ -559,10 +572,10 @@ export class FSMEngine {
       this.eventStore.append('STATE_VIEW_REFETCHED', {
         state: this.getCurrentState(),
         refetches: deliveries,
-      }, { state: this.getCurrentState() });
+      }, { state: this.getCurrentState(), idempotencyKey });
       return;
     }
-    this.recordTurnStart();
+    this.recordTurnStart(idempotencyKey);
   }
 
   /**
@@ -579,23 +592,37 @@ export class FSMEngine {
   }
 
   /**
-   * Find the last view-changing event and count deliveries after it within a window w = 4 * (max_view_refetches + max_idle_turns + 2).
+   * Ignore continuation receipts and telemetry; find the last view-changing event and count deliveries after it within a window w = 4 * (max_view_refetches + max_idle_turns + 2).
    * # Performance & Risk Budget
    * - Tier: P0 (< 5ms)
    * - Complexity: O(w), one latest-sequence lookup plus a bounded trailing-event read
-   * - Cyclomatic Complexity (CC): target <= 6
+   * - Cyclomatic Complexity (CC): target <= 8
    * - Branch Coverage: target >= 90%
+   * - CRAP Score: target <= 10.0
    */
   private currentViewDeliveries(): { viewSeq: number; deliveries: number } {
     const latest = this.eventStore.getLatestSequence();
     const stateDef = this.getStateDefinition(this.activeStatePath);
     const window = 4 * ((stateDef?.max_view_refetches ?? 2) + (stateDef?.max_idle_turns ?? 2) + 2);
     const events = this.eventStore.getSince(Math.max(0, latest - window));
+    return this.scanViewDeliveries(events, latest, window);
+  }
+
+  /**
+   * Scan the bounded view window without treating receipt metadata as a new view.
+   * # Performance & Risk Budget
+   * - Tier: P0 (< 5ms)
+   * - Complexity: O(w), bounded trailing-event window
+   * - Cyclomatic Complexity (CC): target <= 8
+   * - Branch Coverage: target >= 90%
+   * - CRAP Score: target <= 10.0
+   */
+  private scanViewDeliveries(events: SignalEvent[], latest: number, window: number): { viewSeq: number; deliveries: number } {
     let deliveries = 0;
     for (let i = events.length - 1; i >= 0; i--) {
       const type = events[i].type;
       if (type === 'AGENT_TURN_STARTED' || type === 'STATE_VIEW_REFETCHED') deliveries++;
-      else if (type !== 'PERF_DEGRADATION' && type !== 'PROJECTION_FAILED') return { viewSeq: events[i].seq, deliveries };
+      else if (!VIEW_BOOKKEEPING_EVENTS.has(type)) return { viewSeq: events[i].seq, deliveries };
     }
     return { viewSeq: latest > window ? latest : 0, deliveries: latest > window ? Number.MAX_SAFE_INTEGER : deliveries };
   }
@@ -1042,38 +1069,51 @@ export class FSMEngine {
     const previousState = this.getCurrentState();
     const prevPath = [...this.activeStatePath];
 
+    /**
+     * Report the keyed submission's recorded outcome without evaluating its guards again (ADR 0011).
+     * # Performance & Risk Budget
+     * - Tier: P1 (indexed storage budget < 25ms)
+     * - Complexity: O(log n + k + b) with SQLite; O(n + k) in-memory; n = stored events, k = caused records, b = their serialized bytes
+     * - Cyclomatic Complexity (CC): 5 (closure); predicate callbacks <= 7
+     * - Branch Coverage: 100% (9/9 measured branch entries within the closure)
+     * - CRAP Score: 5.0 (Threshold <= 15.0)
+     * - Measurement: ESLint complexity and V8 coverage from continuation, strict-execution and human-approval tests
+     */
+    const replay = (existing: SignalEvent): SignalHandlingResult => {
+      const caused = this.eventStore.query({ causationId: existing.id });
+      const accepted = caused.some((e) => e.type === 'STATE_TRANSITION');
+      const refusedEvent = caused.find((e) => e.type === 'SIGNAL_REFUSED');
+      const refusal = accepted
+        ? undefined
+        : refusedEvent
+          ? { payload: { error: refusedEvent.payload?.reason } }
+          : caused
+            .filter((e) => e.type === 'GUARD_EVALUATED' && !e.payload?.passed && !e.payload?.fallbackTarget && e.payload?.error)
+            .at(-1);
+      return {
+        transitioned: false,
+        previousState,
+        newState: previousState,
+        event: existing,
+        deliverablesWritten: [],
+        replayed: true,
+        ...(refusal ? { refusalReason: String(refusal.payload.error) } : {}),
+      };
+    };
     if (metadata.idempotencyKey) {
       const existing = this.eventStore.getEventByIdempotencyKey(metadata.idempotencyKey);
-      if (existing) {
-        // The key identifies that submission, so a replay reports why it was refused (ADR 0011).
-        const caused = this.eventStore.query({ causationId: existing.id });
-        const accepted = caused.some((e) => e.type === 'STATE_TRANSITION');
-        const refusedEvent = caused.find((e) => e.type === 'SIGNAL_REFUSED');
-        const refusal = accepted
-          ? undefined
-          : refusedEvent
-            ? { payload: { error: refusedEvent.payload?.reason } }
-            : caused
-              .filter((e) => e.type === 'GUARD_EVALUATED' && !e.payload?.passed && !e.payload?.fallbackTarget && e.payload?.error)
-              .at(-1);
-        return {
-          transitioned: false,
-          previousState,
-          newState: previousState,
-          event: existing,
-          deliverablesWritten: [],
-          ...(refusal ? { refusalReason: String(refusal.payload.error) } : {}),
-        };
-      }
+      if (existing) return replay(existing);
     }
     // After the idempotency lookup, so a replay returns its stored result even on a stale engine.
     if (checkCurrent) this.assertCurrent();
     const expectedRunVersion = this.eventStore.getRunVersion();
 
+    const eventId = createSortableId();
     const event = this.eventStore.append(
       'SIGNAL_EMITTED',
       { signal: signalName, ...payload },
       {
+        id: eventId,
         source: metadata.source,
         causationId: metadata.causationId,
         requestId: metadata.requestId,
@@ -1081,6 +1121,8 @@ export class FSMEngine {
         state: previousState,
       }
     );
+    // Another process committed the same key after our lookup; its submission owns the transition.
+    if (event.id !== eventId) return replay(event);
     const signalRunVersion = this.eventStore.getRunVersion();
     if (signalRunVersion < expectedRunVersion) {
       this.eventStore.assertRunVersion(expectedRunVersion);

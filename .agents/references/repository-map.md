@@ -30,6 +30,9 @@
 
 ## MCP & Telemetry
 - `packages/runtime/src/mcp/server.ts`: Stdio Model Context Protocol (MCP) server integration.
+- `packages/runtime/src/mcp/continuation-response.ts`: Per-run MCP operation queue and complete continuation envelope with durable keyed receipt metadata.
+- `packages/runtime/src/mcp/human-response.ts`: Human response recording and ordered signal dispatch before view delivery.
+- `docs/mcp-continuation.md`: Negotiated continuation response, retry and strict delivery contract.
 - `packages/runtime/src/telemetry/server.ts`: Real-time telemetry server and SSE event streamer.
 
 ## CLI & Tests

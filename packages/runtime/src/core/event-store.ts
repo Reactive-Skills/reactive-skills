@@ -1139,6 +1139,15 @@ export class EventStore {
     if (segmentCheckpoint) segmentCheckpoint.name = path.basename(archivePath);
   }
 
+  /**
+   * Run a mirror operation under the cross-process projection lock; only a dead owner's lock is stolen.
+   * # Performance & Risk Budget
+   * - Tier: P1 (< 25ms) uncontended; bounded 40 x 10ms wait under contention
+   * - Complexity: O(attempts)
+   * - Cyclomatic Complexity (CC): target <= 8
+   * - Branch Coverage: target >= 80%
+   * - CRAP Score: target <= 15.0
+   */
   private withJsonlProjectionLock<T>(operation: () => T): T {
     if (!this.storagePath) return operation();
     const lockPath = `${this.storagePath}.lock`;
@@ -1154,7 +1163,8 @@ export class EventStore {
           const owner = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
           process.kill(owner.pid, 0);
         } catch (ownerError: any) {
-          if (ownerError.code === 'ESRCH' || ownerError.code === 'ENOENT' || ownerError instanceof SyntaxError) {
+          // An unparseable lock is a holder between open and write, not a dead owner; stealing it admits two writers.
+          if (ownerError.code === 'ESRCH' || ownerError.code === 'ENOENT') {
             try { fs.unlinkSync(lockPath); } catch { /* another repairer may have removed it */ }
             continue;
           }
@@ -1433,6 +1443,7 @@ export class EventStore {
     type: string,
     payload: T,
     metadata: {
+      id?: string;
       source?: string;
       causationId?: string;
       correlationId?: string;
@@ -1446,7 +1457,7 @@ export class EventStore {
     } = {},
   ): SignalEvent<T> {
     const event: SignalEvent<T> = {
-      id: createSortableId(), seq: 0, timestamp: new Date().toISOString(), type, payload,
+      id: metadata.id || createSortableId(), seq: 0, timestamp: new Date().toISOString(), type, payload,
       source: metadata.source, causationId: metadata.causationId, state: metadata.state,
       event_id: '', occurred_at: new Date().toISOString(), event_type: type,
       causation_id: metadata.causationId,

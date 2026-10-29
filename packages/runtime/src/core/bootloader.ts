@@ -54,7 +54,9 @@ export function createReactiveBootloader(skillName: string): string {
 > AXI remains the runtime interface. \`npx\` is only its zero-install launcher.
 > Do not repeat version or capability checks after INIT.
 > When capabilities include \`state.compact_v1\`, select MCP \`output: "compact-v1"\` or AXI \`--output compact-v1\` for complete state views.
-> Consume the complete view returned by AXI invoke/emit; fetch state again for resume, recovery, stale state, or a lost response.
+> When MCP capabilities include \`state.continuation_v1\`, select \`return_view: "compact-v1"\` on \`reactive_emit_signal\` and \`reactive_respond_human\`.
+> Consume the complete view returned by MCP continuation or AXI invoke/emit; fetch state again for resume, recovery, stale state, or a lost response.
+> Pin MCP \`job_id\` to the returned immutable \`run_id\`; use the same idempotency key when retrying a lost continuation response. Its saved receipt and result anchor describe the original submission, while \`view\` describes the current state.
 > After host transcript compaction, re-fetch the same immutable run with MCP \`reactive_state\` and \`job_id: <run_id>\` or AXI \`state ${name} --job <run_id>\` before doing work.
 > This restores the current instructions and recorded scoped context. Do not emit a transition, recreate an approval, or infer missing context to recover it.
 >
