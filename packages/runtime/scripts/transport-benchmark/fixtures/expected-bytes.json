@@ -1,6 +1,6 @@
 {
-  "runtime_commit": "3e30d6c",
-  "description": "Normalized deterministic byte fields after compact MCP state delivery; timings, raw byte lengths and ledger sizes remain observations.",
+  "runtime_commit": "d4beaf6",
+  "description": "Current regression expectations for normalized deterministic byte fields from the compact state view runtime; timings, raw byte lengths and ledger sizes remain observations. Historical baseline values live in tdd-baseline.json.",
   "tdd_baseline": {
     "state": "REFACTOR.CLEAN_CODE",
     "rendered_prompt_bytes": 392,
