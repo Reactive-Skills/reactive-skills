@@ -103,10 +103,7 @@ export default function ModsPage() {
                     />
                   </a>
                   <figcaption className="mt-2 text-xs leading-relaxed text-phino-text-muted">
-                    {shot.caption}{' '}
-                    <a href={shot.src.src} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-phino-text">
-                      Open full-size image
-                    </a>
+                    {shot.caption}
                   </figcaption>
                 </figure>
               ))}
