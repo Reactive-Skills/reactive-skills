@@ -110,7 +110,7 @@ To measure token savings and detect latency degradation without introducing runt
 export interface ExecutionTelemetryMetadata {
   /** Duration in milliseconds for prompt slice generation */
   slice_duration_ms: number;
-  /** Estimated tokens in active prompt slice */
+  /** Estimated tokens at four UTF-8 bytes per token; see delivery scope below */
   slice_tokens_est: number;
   /** Duration in milliseconds for signal handling and guard evaluation */
   transition_duration_ms: number;
@@ -118,6 +118,21 @@ export interface ExecutionTelemetryMetadata {
   allowed_tools_count: number;
 }
 ```
+
+The `slice_tokens_est` metric is a byte heuristic, not a measurement from a model tokenizer.
+Core prompt slicing initially estimates `ceil(Buffer.byteLength(formattedXml, 'utf8') / 4)`.
+MCP `reactive_state` and active-state `reactive_context_prepare` responses instead expose a delivery estimate in their state `metrics`: `ceil(UTF-8 bytes of the complete compact JSON response text / 4)`.
+This includes escaped prompt text, scoped context, routing metadata where present, and the estimate field itself.
+Serialization stabilizes the estimate before returning the response, including when its decimal digit count changes.
+It updates the live engine's latest slice metrics so the next transition records the delivered estimate.
+These in-memory metrics are not restored across process restarts; re-fetch state to establish a fresh delivery estimate.
+The delivery estimate excludes SDK JSON-RPC framing, tool definitions, and other harness context.
+AXI renders its own output from the core slice; core XML estimates must not be presented as AXI transport measurements.
+
+MCP state assembly and serialization are P0 operations with O(b) work in response bytes and no additional event-ledger reads.
+Every response contains one XML prompt and scoped context; `include_full_context: true` on `reactive_state` adds the full recorded context.
+That response grows with recorded context and is included in its delivery estimate.
+The serializer targets CC <= 8, branch coverage >= 90%, and CRAP <= 10.
 
 3. **Degradation Detection Thresholds**:
    - `slice_duration_ms > 10ms` $\rightarrow$ Warning: Template cache miss or heavy filesystem access.

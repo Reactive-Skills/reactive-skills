@@ -291,6 +291,7 @@ export interface SkillManifest {
  */
 export interface ExecutionMetrics {
   slice_duration_ms?: number;
+  /** Approximate tokens at four UTF-8 bytes per token; scope depends on the delivery boundary. */
   slice_tokens_est?: number;
   transition_duration_ms?: number;
   allowed_tools_count?: number;

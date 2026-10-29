@@ -16,12 +16,23 @@ import {
   RUNTIME_VERSION,
 } from '../core/runtime-capabilities.js';
 import { getReactiveBootloader } from '../core/bootloader.js';
+import { createStateResponse, serializeStateResponse } from './state-response.js';
 
 export interface ReactiveMcpServerOptions {
   workspaceDir?: string;
   defaultSkill?: string;
 }
 
+/**
+ * Register MCP tools and resources with lazy per-run engines.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P2 (< 100ms)
+ * - Complexity: O(u), registered tool and resource schemas; no eager replay
+ * - Cyclomatic Complexity (CC): target <= 15 for registration
+ * - Branch Coverage: target >= 70%
+ * - CRAP Score: target <= 25.0
+ */
 export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}): McpServer {
   const workspaceDir = options.workspaceDir || process.cwd();
   let defaultSkill = options.defaultSkill || 'test-fsm';
@@ -220,6 +231,15 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Small bounded state hints'),
       job_id: z.string().optional().describe('Optional job/run ID for a selected reactive skill'),
     },
+    /**
+     * Prepare the routed state with compact transport accounting.
+     * # Performance & Risk Budget
+     * - Tier: P2 for local preparation (< 100ms, excluding remote routing)
+     * - Complexity: O(b + r), response bytes plus cold replay delta
+     * - Cyclomatic Complexity (CC): target <= 15
+     * - Branch Coverage: target >= 70%
+     * - CRAP Score: target <= 25.0
+     */
     async ({ user_message, candidates, token_budget, state_hints, job_id }) => {
       try {
         const decision = await contextRouter.route({
@@ -296,26 +316,17 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
           if (engine.isStrictExecution()) engine.recordTurnStart();
           const slice = engine.generatePromptSlice();
+          const state = createStateResponse(engine, slice);
+          const payload = {
+            context_route: decision,
+            context: {
+              status: 'ready',
+              source: 'reactive_state',
+              ...state,
+            },
+          };
           return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({
-                context_route: decision,
-                context: {
-                  status: 'ready',
-                  source: 'reactive_state',
-                  skill: engine.getManifest().name,
-                  job_id: engine.getJobName() || engine.getJobId(),
-                  run_id: engine.getJobId(),
-                  activeState: engine.getCurrentState(),
-                  promptSlice: slice.rawPrompt,
-                  formattedXml: slice.formattedXml,
-                  allowedTools: slice.allowedTools,
-                  scopedContext: slice.scopedContext,
-                  contextDelta: slice.contextDelta,
-                },
-              }, null, 2),
-            }],
+            content: [{ type: 'text', text: serializeStateResponse(payload, state.metrics) }],
           };
         } catch (reactiveError) {
           const skillMdPath = path.join(skillDir, 'SKILL.md');
@@ -359,8 +370,18 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     {
       skill: z.string().optional().describe('Skill name (defaults to active skill)'),
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
+      include_full_context: z.boolean().optional().describe('Also return the full recorded context alongside scopedContext'),
     },
-    async ({ skill, job_id }) => {
+    /**
+     * Fetch scoped state, including after a host transcript is compacted.
+     * # Performance & Risk Budget
+     * - Tier: P2 cold bootstrap (< 100ms), P0 cached serialization (< 5ms)
+     * - Complexity: O(b + r), response bytes plus cold replay delta
+     * - Cyclomatic Complexity (CC): target <= 12
+     * - Branch Coverage: target >= 80%
+     * - CRAP Score: target <= 15.0
+     */
+    async ({ skill, job_id, include_full_context }) => {
       try {
         const engine = getEngine(skill || defaultSkill, job_id, { autoRotateTerminal: true });
 
@@ -375,9 +396,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
                     recovery: 'Run reactive-skills-axi reset ' + engine.cliSkillReference() + ' then re-invoke.',
                     strict_execution: engine.isStrictExecution(),
                     turns_since_last_signal: engine.getTurnsSinceLastSignal(),
-                  },
-                  null,
-                  2
+                  }
                 ),
               },
             ],
@@ -389,35 +408,9 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
           engine.recordTurnStart();
         }
         const slice = engine.generatePromptSlice();
-        const activeState = engine.getCurrentState();
-        const isWaiting = engine.isWaitingForHuman();
-
+        const payload = createStateResponse(engine, slice, include_full_context);
         return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(
-                {
-                   skill: engine.getManifest().name,
-                   job_id: engine.getJobName() || engine.getJobId(),
-                   run_id: engine.getJobId(),
-                   activeState,
-                   isWaitingForHuman: isWaiting,
-                   allowedTools: slice.allowedTools,
-                   promptSlice: slice.rawPrompt,
-                   formattedXml: slice.formattedXml,
-                   context: engine.getContext(),
-                   scopedContext: slice.scopedContext,
-                   contextDelta: slice.contextDelta,
-                   isRevisit: !!slice.contextDelta?.is_revisit,
-                   strict_execution: engine.isStrictExecution(),
-                   turns_since_last_signal: engine.getTurnsSinceLastSignal(),
-                 },
-                null,
-                2
-              ),
-            },
-          ],
+          content: [{ type: 'text', text: serializeStateResponse(payload, payload.metrics) }],
         };
       } catch (err: any) {
         if (err.message?.startsWith('BYPASS_DETECTED')) {

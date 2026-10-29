@@ -32,6 +32,7 @@
 | Workspace Sync Engine | Ops | ✅ Done |
 | Sync from a git ref (`ref` in `sync.json`, `--ref`), SemVer downgrade refusal (`--allow-downgrade`), working-tree branch and dirty warnings, per-skill source provenance in `sync-state.json` (#40) | Ops | ✅ Done |
 | Context Scoping & Delta Delivery | Core | ✅ Done |
+| Compact MCP state delivery: one XML prompt, scoped context, opt-in `include_full_context`, and UTF-8 response estimates (`src/mcp/state-response.ts`, `server.ts`, `core/fsm-engine.ts`, `core/types.ts`; `mcp-lean-state.test.ts`, `mcp-context-prepare.test.ts`; `context/architecture.md`, `PERFORMANCE-STANDARDS.md`, runtime changelog) | Runtime / MCP | ✅ Verified: 611 runtime tests, 310 AXI tests, both builds, docs and prose gates |
 | Strict Execution Mode (bypass detection, idle-turn limit) | Core | ✅ Done |
 | Performance Budget Tests (P0/P1 latency assertions) | Quality | ✅ Done |
 | Signal Queue Cycle Guard (REL-02, MAX_QUEUE_DRAIN_DEPTH) | Core | ✅ Done |
