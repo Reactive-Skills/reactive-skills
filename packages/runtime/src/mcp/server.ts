@@ -166,6 +166,16 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
    * - Branch Coverage: target >=90%
    * - CRAP Score: target <=10
    */
+  // Last view sequence this session delivered per run. A run without one is a resume
+  // (new session after a crash, or a job switch), so it receives the complete view.
+  const deliveredViews = new Map<string, number>();
+  function rememberView(engine: FSMEngine): void {
+    deliveredViews.set(engine.getJobId() || 'default', engine.getStateViewSeq());
+  }
+  function deltaAnchor(engine: FSMEngine, returnView: string | undefined, sinceSeq: number | undefined): number | undefined {
+    return returnView === 'delta-v1' ? sinceSeq ?? deliveredViews.get(engine.getJobId() || 'default') : undefined;
+  }
+
   function onRun<T>(skill: string, job: string | undefined, work: (engine: FSMEngine) => Promise<T>): Promise<T> {
     const selected = getEngine(skill, job);
     return withMcpRun(workspaceDir, selected, () => selected.hasExternalChanges() ? getEngine(skill, selected.getJobId()) : selected, work);
@@ -338,6 +348,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
           engine.recordStateDelivery();
           const slice = engine.generatePromptSlice();
           const state = createStateResponse(engine, slice, false, output);
+          rememberView(engine);
           const payload = {
             context_route: decision,
             context: {
@@ -432,6 +443,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
         const payload = since_seq === undefined || include_full_context
           ? createStateResponse(engine, slice, include_full_context, output)
           : createDeltaView(engine, since_seq, slice);
+        rememberView(engine);
         return {
           content: [{ type: 'text', text: serializeStateResponse(payload, slice.metrics!) }],
         };
@@ -512,7 +524,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
       idempotency_key: z.string().optional().describe('Optional key that makes duplicate signal submission a no-op'),
       return_view: z.enum(['compact-v1', 'delta-v1']).optional().describe('Opt in after state.continuation_v1 negotiation: original receipt plus current view; delta-v1 (state.delta_v1) omits context unchanged since the prior view; omit for legacy receipt'),
-      since_seq: z.number().int().nonnegative().optional().describe('delta-v1 anchor: last view seq the agent saw (defaults to the view before this signal)'),
+      since_seq: z.number().int().nonnegative().optional().describe('delta-v1 anchor: last view seq the agent saw (defaults to the last view this session delivered for the run; none gives the complete view)'),
     },
     /**
      * # Performance & Risk Budget
@@ -525,7 +537,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     async ({ signal, payload = {}, evidence, skill, job_id, idempotency_key, return_view, since_seq }) => {
       try {
         return await onRun(skill || defaultSkill, job_id, async engine => {
-          const anchor = return_view === 'delta-v1' ? since_seq ?? engine.getStateViewSeq() : undefined;
+          const anchor = deltaAnchor(engine, return_view, since_seq);
           const metadata = { idempotencyKey: idempotency_key, source: 'mcp' };
           const retry = retrySignalResponse(engine, idempotency_key, !!return_view);
           if (retry) return { content: [{ type: 'text', text: retry }] };
@@ -540,6 +552,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
           const text = return_view
             ? continuationResponse(engine, original, result.event, anchor)
             : JSON.stringify(receipt, null, 2);
+          if (return_view) rememberView(engine);
           return { content: [{ type: 'text', text }] };
         });
       } catch (err: any) {
@@ -776,7 +789,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
       idempotency_key: z.string().optional().describe('Optional response key for retry without repeating the human decision or signals'),
       return_view: z.enum(['compact-v1', 'delta-v1']).optional().describe('Opt in to original receipt plus settled current view; delta-v1 omits context unchanged since the prior view'),
-      since_seq: z.number().int().nonnegative().optional().describe('delta-v1 anchor: last view seq the agent saw (defaults to the view before this response)'),
+      since_seq: z.number().int().nonnegative().optional().describe('delta-v1 anchor: last view seq the agent saw (defaults to the last view this session delivered for the run; none gives the complete view)'),
     },
     /**
      * Submit a complete human response batch before optional current-view delivery.
@@ -790,11 +803,12 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
     async ({ choice, approved = true, feedback, skill, job_id, idempotency_key, return_view, since_seq }) => {
       try {
         return await onRun(skill || defaultSkill, job_id, async engine => {
-          const anchor = return_view === 'delta-v1' ? since_seq ?? engine.getStateViewSeq() : undefined;
+          const anchor = deltaAnchor(engine, return_view, since_seq);
           const response = await submitHumanResponse(engine, { choice, approved, feedback }, idempotency_key, !!return_view);
           const text = return_view
             ? continuationResponse(engine, response.receipt, response.event, anchor)
             : JSON.stringify(response.receipt, null, 2);
+          if (return_view) rememberView(engine);
           return { content: [{ type: 'text', text }] };
         });
       } catch (err: any) {

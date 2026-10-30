@@ -88,8 +88,8 @@ export function createStateView(engine: FSMEngine, slice = engine.generatePrompt
   };
 }
 
-/** Instructions plus only the context the ledger changed since the agent's last seen sequence. */
-export interface DeltaStateView extends Omit<StateView, 'format'> {
+/** Instructions plus only the context the ledger changed since the agent's last seen sequence; the recovery policy stays in the complete view. */
+export interface DeltaStateView extends Omit<StateView, 'format' | 'policy'> {
   format: 'delta-v1';
   since_seq: number;
   /** Changed keys recorded exactly as the triggering submission supplied them; their values are not echoed. */
@@ -97,7 +97,7 @@ export interface DeltaStateView extends Omit<StateView, 'format'> {
 }
 
 /**
- * Build a ledger-anchored view: complete instructions and contracts, but only the scoped context that
+ * Build a ledger-anchored view: complete instructions and contracts without the recovery policy, but only the scoped context that
  * changed after `sinceSeq` or that the anchored view's scope did not expose. Values recorded exactly as
  * `supplied` by the triggering submission are named, not echoed. Falls back to the complete view when
  * the ledger window cannot be folded safely.
@@ -112,6 +112,7 @@ export function createDeltaView(engine: FSMEngine, sinceSeq: number, slice = eng
   const view = createStateView(engine, slice, outcome);
   const changes = engine.contextChangesSince(sinceSeq);
   if (!changes) return view;
+  const { policy: _recoveryPolicy, ...instructions } = view;
   const seen = engine.visibleContextKeys(changes.anchorPath ?? engine.getActiveStatePath());
   const context: Record<string, unknown> = {};
   const accepted: string[] = [];
@@ -121,7 +122,7 @@ export function createDeltaView(engine: FSMEngine, sinceSeq: number, slice = eng
     if (key in supplied && JSON.stringify(supplied[key]) === JSON.stringify(value)) accepted.push(key);
     else context[key] = value;
   }
-  return { ...view, format: 'delta-v1', since_seq: sinceSeq, context, ...(accepted.length ? { context_accepted: accepted } : {}) };
+  return { ...instructions, format: 'delta-v1', since_seq: sinceSeq, context, ...(accepted.length ? { context_accepted: accepted } : {}) };
 }
 
 /**
