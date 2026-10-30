@@ -399,6 +399,7 @@ MIT
 
 `reactive_emit_signal` and `reactive_respond_human` return the receipt and the settled current view together.
 The default `delta-v1` view omits context unchanged since the last delivered view; `return_view: "compact-v1"` selects the complete view, and `return_view: "none"` keeps the legacy receipt for one release.
+Receipt `projectionsWritten` paths are relative to the workspace that `reactive_capabilities` reports; `receipt_paths: "absolute"` keeps absolute paths for one release.
 Consume the returned view before working; refetch only for initial delivery, resume, compaction or recovery, with `job_id` pinned to `run_id`.
 Keyed retries with a saved receipt return it separately from the current view and add no transition or delivery count.
 Recovery without a saved receipt counts an undelivered current view once per run and view sequence using local SQLite metadata outside the run version.

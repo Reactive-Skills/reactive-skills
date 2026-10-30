@@ -24,6 +24,7 @@ export const STATIC_RUNTIME_CAPABILITIES = [
   'state.continuation_v1',
   'state.delta_v1',
   'state.runtime_actions',
+  'receipt.relative_paths',
   'runtime.preflight',
   'runtime.transport_handshake',
   'judgment',

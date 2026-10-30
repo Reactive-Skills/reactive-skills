@@ -47,6 +47,7 @@
 Experimental runtime-executed states are implemented in `packages/runtime/src/core/runtime-actions.ts` (schema, validation, pure decider, ledger fold) and `runtime-action-executor.ts` (executor port and shell-free local adapter), wired through `types.ts`, `fsm-engine.ts`, `runtime-capabilities.ts` (`state.runtime_actions`), `index.ts`, MCP `server.ts` and AXI `commands/state.ts` / `invoke.ts`.
 `runtime-actions.test.ts` covers the decider, validation, the four interruption points plus a killed process, strict MCP delivery accounting, shell-free argv and path containment; `skill-vet.test.ts` covers the new `guard/runtime-command` vet rule.
 Prototype fixtures for tdd-refactor and test-coverage-gate live in `packages/runtime/tests/fixtures/runtime-actions/` with provenance; `docs/runtime-actions.md` holds the contract and the measured table, and `PERFORMANCE-STANDARDS.md` the budgets.
+After merging the workspace-relative receipt paths and the shorter bootloader from `main`, the measured table is annotated as predating both changes; it has not been re-measured.
 The variants deliver less than the main runtime on both skills but more than flat on both; no other saving is claimed.
 
 Explicit shallow non-empty judgment preconditions are implemented in `packages/runtime/src/core/judgment-input.ts` as `precondition.non_empty.context_paths` / `payload_paths`, retaining existing presence/type checks and the bounded judgment cascade.
@@ -230,6 +231,14 @@ Unquantified token-efficiency wording for AXI in the site concepts, overview, qu
 The wording distinguishes unvisited source instructions from delivered context, includes protocol and retained-transcript costs, and makes no general reduction claim.
 Performance budgets, including P0 <5 ms, remain explicitly labeled engineering targets.
 Local validation passed both package builds, the full runtime and AXI suites, site tests, documentation invariants, the public prose gate and a targeted scan for the removed percentage claims.
+
+## Workspace-relative receipt paths and a shorter bootloader
+
+- MCP emit and human-response receipts now report `projectionsWritten` relative to the server workspace (`formatReceiptPaths()` in `mcp/continuation-response.ts`); `receipt_paths: "absolute"` keeps absolute paths for one release, and capability `receipt.relative_paths` advertises the change.
+- Formatting happens only at the response boundary, so saved receipts in the ledger keep absolute paths and keyed retries return the requested form.
+- Merged two pairs of overlapping bootloader sentences without removing an instruction.
+- Measured with the 0.20.0 report's harness on the 21 pinned catalog skills; results are in the pull request.
+- Added `tests/mcp-receipt-paths.test.ts` for the relative default, the absolute opt-in, human responses, retries and paths outside the workspace.
 
 ## Ledger-anchored delivery and lean MCP defaults
 

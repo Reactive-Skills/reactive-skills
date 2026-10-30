@@ -22,7 +22,7 @@ import { getReactiveBootloader } from '../core/bootloader.js';
 import { createStateResponse, serializeStateResponse } from './state-response.js';
 import { createDeltaView } from '../core/state-view.js';
 import { submitHumanResponse } from './human-response.js';
-import { continuationResponse, retrySignalResponse, signalReceipt, unavailableReceipt, withMcpRun } from './continuation-response.js';
+import { continuationResponse, formatReceiptPaths, retrySignalResponse, signalReceipt, unavailableReceipt, withMcpRun, type Receipt } from './continuation-response.js';
 
 export interface ReactiveMcpServerOptions {
   workspaceDir?: string;
@@ -527,6 +527,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       idempotency_key: z.string().optional().describe('Retry key; duplicates are no-ops'),
       return_view: z.enum(['delta-v1', 'compact-v1', 'none']).optional().describe('Default delta-v1; compact-v1 complete; none legacy receipt (one release)'),
       since_seq: z.number().int().nonnegative().optional().describe('Last view seq seen; default: last one this session delivered, else complete view'),
+      receipt_paths: z.enum(['relative', 'absolute']).optional().describe('Projection paths: default workspace-relative; absolute (one release)'),
     },
     /**
      * # Performance & Risk Budget
@@ -536,13 +537,14 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >=90%
      * - CRAP Score: target <=10
      */
-    async ({ signal, payload = {}, evidence, skill, job_id, idempotency_key, return_view: requested, since_seq }) => {
+    async ({ signal, payload = {}, evidence, skill, job_id, idempotency_key, return_view: requested, since_seq, receipt_paths }) => {
       const return_view = requested === 'none' ? undefined : requested ?? 'delta-v1';
+      const format = (receipt: Receipt) => formatReceiptPaths(receipt, workspaceDir, receipt_paths);
       try {
         return await onRun(skill || defaultSkill, job_id, async engine => {
           const anchor = deltaAnchor(engine, return_view, since_seq);
           const metadata = { idempotencyKey: idempotency_key, source: 'mcp' };
-          const retry = retrySignalResponse(engine, idempotency_key, !!return_view);
+          const retry = retrySignalResponse(engine, idempotency_key, !!return_view, format);
           if (retry) return { content: [{ type: 'text', text: retry }] };
           const automatic = evidence === undefined ? inlineEvidenceBindings(engine, signal, payload, idempotency_key) : undefined;
           const submission = automatic ? await submitEvidenceSignal(engine, signal, automatic.payload, automatic.bindings, metadata)
@@ -556,8 +558,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
           };
           const original = result.replayed ? unavailableReceipt(result.event) : { ...receipt, event_id: result.event.id };
           const text = return_view
-            ? continuationResponse(engine, original, result.event, anchor)
-            : JSON.stringify(receipt, null, 2);
+            ? continuationResponse(engine, original, result.event, anchor, format)
+            : JSON.stringify(format(receipt), null, 2);
           if (return_view) rememberView(engine);
           return { content: [{ type: 'text', text }] };
         });
@@ -796,6 +798,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       idempotency_key: z.string().optional().describe('Retry key; no repeated decision'),
       return_view: z.enum(['delta-v1', 'compact-v1', 'none']).optional().describe('Default delta-v1; compact-v1 complete; none legacy receipt (one release)'),
       since_seq: z.number().int().nonnegative().optional().describe('Last view seq seen; default: last one this session delivered, else complete view'),
+      receipt_paths: z.enum(['relative', 'absolute']).optional().describe('Projection paths: default workspace-relative; absolute (one release)'),
     },
     /**
      * Submit a complete human response batch before optional current-view delivery.
@@ -806,15 +809,16 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >=90%
      * - CRAP Score: target <=10
      */
-    async ({ choice, approved = true, feedback, skill, job_id, idempotency_key, return_view: requested, since_seq }) => {
+    async ({ choice, approved = true, feedback, skill, job_id, idempotency_key, return_view: requested, since_seq, receipt_paths }) => {
       const return_view = requested === 'none' ? undefined : requested ?? 'delta-v1';
+      const format = (receipt: Receipt) => formatReceiptPaths(receipt, workspaceDir, receipt_paths);
       try {
         return await onRun(skill || defaultSkill, job_id, async engine => {
           const anchor = deltaAnchor(engine, return_view, since_seq);
           const response = await submitHumanResponse(engine, { choice, approved, feedback }, idempotency_key, !!return_view);
           const text = return_view
-            ? continuationResponse(engine, response.receipt, response.event, anchor)
-            : JSON.stringify(response.receipt, null, 2);
+            ? continuationResponse(engine, response.receipt, response.event, anchor, format)
+            : JSON.stringify(format(response.receipt), null, 2);
           if (return_view) rememberView(engine);
           return { content: [{ type: 'text', text }] };
         });
