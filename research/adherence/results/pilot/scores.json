@@ -1,0 +1,848 @@
+[
+ {
+  "cell": "tdd-flat-150k",
+  "rep": 1,
+  "status": "completed",
+  "context_tokens_at_task": 111625,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 3.88944825,
+   "input_tokens": 268,
+   "cache_read_tokens": 1471473,
+   "cache_creation_tokens": 145743,
+   "output_tokens": 11815,
+   "model_turns": 14,
+   "wall_clock_ms": 141195
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-flat-150k",
+  "rep": 2,
+  "status": "completed",
+  "context_tokens_at_task": 112273,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 3.8833729999999993,
+   "input_tokens": 236,
+   "cache_read_tokens": 1357772,
+   "cache_creation_tokens": 145359,
+   "output_tokens": 12420,
+   "model_turns": 13,
+   "wall_clock_ms": 149431
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-flat-150k",
+  "rep": 3,
+  "status": "completed",
+  "context_tokens_at_task": 111375,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 3.88218775,
+   "input_tokens": 236,
+   "cache_read_tokens": 1324871,
+   "cache_creation_tokens": 146931,
+   "output_tokens": 11932,
+   "model_turns": 13,
+   "wall_clock_ms": 192603
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-flat-compaction",
+  "rep": 1,
+  "status": "completed",
+  "context_tokens_at_task": 13306,
+  "compacted": true,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 3.8217552500000007,
+   "input_tokens": 236,
+   "cache_read_tokens": 387866,
+   "cache_creation_tokens": 154215,
+   "output_tokens": 7949,
+   "model_turns": 13,
+   "wall_clock_ms": 140356
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-flat-compaction",
+  "rep": 2,
+  "status": "completed",
+  "context_tokens_at_task": 13423,
+  "compacted": true,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 3.9380262499999987,
+   "input_tokens": 268,
+   "cache_read_tokens": 414370,
+   "cache_creation_tokens": 156097,
+   "output_tokens": 8300,
+   "model_turns": 14,
+   "wall_clock_ms": 150039
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-flat-compaction",
+  "rep": 3,
+  "status": "completed",
+  "context_tokens_at_task": 13497,
+  "compacted": true,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 3.8648037500000005,
+   "input_tokens": 236,
+   "cache_read_tokens": 390930,
+   "cache_creation_tokens": 154612,
+   "output_tokens": 7459,
+   "model_turns": 13,
+   "wall_clock_ms": 137962
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-flat-immediate",
+  "rep": 1,
+  "status": "completed",
+  "context_tokens_at_task": 10556,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 0.60474175,
+   "input_tokens": 262,
+   "cache_read_tokens": 133287,
+   "cache_creation_tokens": 17793,
+   "output_tokens": 3992,
+   "model_turns": 11,
+   "wall_clock_ms": 59119
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-flat-immediate",
+  "rep": 2,
+  "status": "completed",
+  "context_tokens_at_task": 10560,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 0.5645644999999999,
+   "input_tokens": 230,
+   "cache_read_tokens": 114178,
+   "cache_creation_tokens": 16724,
+   "output_tokens": 3717,
+   "model_turns": 10,
+   "wall_clock_ms": 81677
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-flat-immediate",
+  "rep": 3,
+  "status": "completed",
+  "context_tokens_at_task": 10565,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 0.5692502500000001,
+   "input_tokens": 230,
+   "cache_read_tokens": 114481,
+   "cache_creation_tokens": 16772,
+   "output_tokens": 3789,
+   "model_turns": 10,
+   "wall_clock_ms": 51420
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-reactive-150k",
+  "rep": 1,
+  "status": "completed",
+  "context_tokens_at_task": 112682,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 4.1140835000000004,
+   "input_tokens": 396,
+   "cache_read_tokens": 1843974,
+   "cache_creation_tokens": 148090,
+   "output_tokens": 13461,
+   "model_turns": 18,
+   "wall_clock_ms": 177582
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 1,
+   "skill_reread_bytes": 3689,
+   "skill_bytes_total": 12512,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-reactive-150k",
+  "rep": 2,
+  "status": "completed",
+  "context_tokens_at_task": 112234,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 3.9805962499999996,
+   "input_tokens": 364,
+   "cache_read_tokens": 1687665,
+   "cache_creation_tokens": 147103,
+   "output_tokens": 11974,
+   "model_turns": 17,
+   "wall_clock_ms": 171631
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 1,
+   "skill_reread_bytes": 3679,
+   "skill_bytes_total": 12474,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-reactive-150k",
+  "rep": 3,
+  "status": "completed",
+  "context_tokens_at_task": 111165,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 4.112349,
+   "input_tokens": 428,
+   "cache_read_tokens": 2000756,
+   "cache_creation_tokens": 149170,
+   "output_tokens": 12211,
+   "model_turns": 19,
+   "wall_clock_ms": 169695
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 9547,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-reactive-compaction",
+  "rep": 1,
+  "status": "completed",
+  "context_tokens_at_task": 11888,
+  "compacted": true,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 4.0085239999999995,
+   "input_tokens": 492,
+   "cache_read_tokens": 593641,
+   "cache_creation_tokens": 155795,
+   "output_tokens": 7823,
+   "model_turns": 21,
+   "wall_clock_ms": 263995
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 1,
+   "skill_reread_bytes": 3637,
+   "skill_bytes_total": 12381,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-reactive-compaction",
+  "rep": 2,
+  "status": "completed",
+  "context_tokens_at_task": 11832,
+  "compacted": true,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 4.0003925,
+   "input_tokens": 460,
+   "cache_read_tokens": 504051,
+   "cache_creation_tokens": 155947,
+   "output_tokens": 9346,
+   "model_turns": 20,
+   "wall_clock_ms": 249489
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 1,
+   "skill_reread_bytes": 3679,
+   "skill_bytes_total": 12398,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-reactive-compaction",
+  "rep": 3,
+  "status": "completed",
+  "context_tokens_at_task": 12604,
+  "compacted": true,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 4.330061749999999,
+   "input_tokens": 492,
+   "cache_read_tokens": 603065,
+   "cache_creation_tokens": 156857,
+   "output_tokens": 11653,
+   "model_turns": 21,
+   "wall_clock_ms": 265807
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 1,
+   "skill_reread_bytes": 3679,
+   "skill_bytes_total": 13360,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-reactive-immediate",
+  "rep": 1,
+  "status": "completed",
+  "context_tokens_at_task": 11470,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 0.51216425,
+   "input_tokens": 390,
+   "cache_read_tokens": 207897,
+   "cache_creation_tokens": 12743,
+   "output_tokens": 3751,
+   "model_turns": 15,
+   "wall_clock_ms": 65006
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 8770,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-reactive-immediate",
+  "rep": 2,
+  "status": "completed",
+  "context_tokens_at_task": 11620,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 0.516656,
+   "input_tokens": 422,
+   "cache_read_tokens": 224744,
+   "cache_creation_tokens": 11841,
+   "output_tokens": 4111,
+   "model_turns": 16,
+   "wall_clock_ms": 84350
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 8754,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "tdd-reactive-immediate",
+  "rep": 3,
+  "status": "completed",
+  "context_tokens_at_task": 11620,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 0.5209135,
+   "input_tokens": 422,
+   "cache_read_tokens": 226014,
+   "cache_creation_tokens": 12053,
+   "output_tokens": 4097,
+   "model_turns": 16,
+   "wall_clock_ms": 73639
+  },
+  "tdd": {
+   "order_violations": [],
+   "skipped_gates": [],
+   "missing_outputs": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 4,
+    "failed": 0
+   },
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 8744,
+   "skill_source_reads": 0,
+   "recoveries": [],
+   "self_report_mismatches": 0
+  }
+ },
+ {
+  "cell": "workflow-flat",
+  "rep": 1,
+  "status": "completed",
+  "context_tokens_at_task": 8999,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 0.35859800000000003,
+   "input_tokens": 228,
+   "cache_read_tokens": 112272,
+   "cache_creation_tokens": 8894,
+   "output_tokens": 2740,
+   "model_turns": 9,
+   "wall_clock_ms": 79086
+  },
+  "workflow": {
+   "wrong_skill_reads": [],
+   "wrong_skill_choices": [],
+   "sequence_errors": [],
+   "skipped_steps": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 2,
+    "failed": 0
+   },
+   "bytes_before_first_correct_action": 3129,
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 3129,
+   "skill_source_reads": 0,
+   "recoveries": []
+  }
+ },
+ {
+  "cell": "workflow-flat",
+  "rep": 2,
+  "status": "completed",
+  "context_tokens_at_task": 8997,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 0.40466425000000006,
+   "input_tokens": 260,
+   "cache_read_tokens": 132897,
+   "cache_creation_tokens": 9701,
+   "output_tokens": 3228,
+   "model_turns": 10,
+   "wall_clock_ms": 47054
+  },
+  "workflow": {
+   "wrong_skill_reads": [],
+   "wrong_skill_choices": [],
+   "sequence_errors": [],
+   "skipped_steps": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 2,
+    "failed": 0
+   },
+   "bytes_before_first_correct_action": 2665,
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 2665,
+   "skill_source_reads": 0,
+   "recoveries": []
+  }
+ },
+ {
+  "cell": "workflow-flat",
+  "rep": 3,
+  "status": "completed",
+  "context_tokens_at_task": 9001,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 0.37344800000000006,
+   "input_tokens": 196,
+   "cache_read_tokens": 102472,
+   "cache_creation_tokens": 9045,
+   "output_tokens": 3032,
+   "model_turns": 8,
+   "wall_clock_ms": 76076
+  },
+  "workflow": {
+   "wrong_skill_reads": [],
+   "wrong_skill_choices": [],
+   "sequence_errors": [],
+   "skipped_steps": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 2,
+    "failed": 0
+   },
+   "bytes_before_first_correct_action": 7639,
+   "skill_rereads": 0,
+   "skill_reread_bytes": 0,
+   "skill_bytes_total": 7639,
+   "skill_source_reads": 0,
+   "recoveries": []
+  }
+ },
+ {
+  "cell": "workflow-reactive",
+  "rep": 1,
+  "status": "completed",
+  "context_tokens_at_task": 9037,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 0.5223387500000001,
+   "input_tokens": 292,
+   "cache_read_tokens": 184115,
+   "cache_creation_tokens": 15526,
+   "output_tokens": 2976,
+   "model_turns": 11,
+   "wall_clock_ms": 62923
+  },
+  "workflow": {
+   "wrong_skill_reads": [],
+   "wrong_skill_choices": [],
+   "sequence_errors": [],
+   "skipped_steps": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 2,
+    "failed": 0
+   },
+   "bytes_before_first_correct_action": 11829,
+   "skill_rereads": 1,
+   "skill_reread_bytes": 9463,
+   "skill_bytes_total": 16106,
+   "skill_source_reads": 1,
+   "recoveries": []
+  }
+ },
+ {
+  "cell": "workflow-reactive",
+  "rep": 2,
+  "status": "completed",
+  "context_tokens_at_task": 9038,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 0.558326,
+   "input_tokens": 324,
+   "cache_read_tokens": 204144,
+   "cache_creation_tokens": 15259,
+   "output_tokens": 3698,
+   "model_turns": 12,
+   "wall_clock_ms": 106290
+  },
+  "workflow": {
+   "wrong_skill_reads": [],
+   "wrong_skill_choices": [],
+   "sequence_errors": [],
+   "skipped_steps": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 2,
+    "failed": 0
+   },
+   "bytes_before_first_correct_action": 16684,
+   "skill_rereads": 2,
+   "skill_reread_bytes": 14542,
+   "skill_bytes_total": 20238,
+   "skill_source_reads": 1,
+   "recoveries": []
+  }
+ },
+ {
+  "cell": "workflow-reactive",
+  "rep": 3,
+  "status": "completed",
+  "context_tokens_at_task": 9037,
+  "compacted": false,
+  "usage": {
+   "model_usage_keys": [
+    "claude-fable-5-1"
+   ],
+   "cost_usd": 0.42979900000000004,
+   "input_tokens": 292,
+   "cache_read_tokens": 158356,
+   "cache_creation_tokens": 10961,
+   "output_tokens": 3082,
+   "model_turns": 11,
+   "wall_clock_ms": 44104
+  },
+  "workflow": {
+   "wrong_skill_reads": [],
+   "wrong_skill_choices": [],
+   "sequence_errors": [],
+   "skipped_steps": [],
+   "correct": true,
+   "acceptance": {
+    "passed": 2,
+    "failed": 0
+   },
+   "bytes_before_first_correct_action": 2361,
+   "skill_rereads": 1,
+   "skill_reread_bytes": 219,
+   "skill_bytes_total": 6858,
+   "skill_source_reads": 0,
+   "recoveries": []
+  }
+ }
+]

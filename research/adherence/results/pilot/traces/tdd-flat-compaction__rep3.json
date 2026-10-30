@@ -1,0 +1,352 @@
+{
+ "prompt_version": "adherence-prompts/1",
+ "cell": {
+  "id": "tdd-flat-compaction",
+  "question": 1,
+  "task": "tdd",
+  "arm": "flat",
+  "pressure": "compaction"
+ },
+ "rep": 3,
+ "model": "claude-fable-5-1",
+ "claude_code_version": "2.1.314",
+ "filler_seed": 20261033,
+ "status": "completed",
+ "context_tokens_at_task": 13497,
+ "events": [
+  {
+   "t": 0,
+   "kind": "user_message",
+   "role": "skill_load",
+   "bytes": 206
+  },
+  {
+   "t": 1496,
+   "kind": "assistant_turn",
+   "message_id": "1",
+   "context_tokens": 9015,
+   "output_tokens": 8
+  },
+  {
+   "t": 2475,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat .skills/tdd-refactor/SKILL.md",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 2692,
+   "tool_use_id": "1"
+  },
+  {
+   "t": 4293,
+   "kind": "assistant_turn",
+   "message_id": "2",
+   "context_tokens": 10320,
+   "output_tokens": 120
+  },
+  {
+   "t": 6439,
+   "kind": "user_message",
+   "role": "filler",
+   "bytes": 140341
+  },
+  {
+   "t": 31945,
+   "kind": "assistant_turn",
+   "message_id": "3",
+   "context_tokens": 87653,
+   "output_tokens": 8
+  },
+  {
+   "t": 37107,
+   "kind": "user_message",
+   "role": "filler",
+   "bytes": 113701
+  },
+  {
+   "t": 42030,
+   "kind": "assistant_turn",
+   "message_id": "4",
+   "context_tokens": 145961,
+   "output_tokens": 1
+  },
+  {
+   "t": 43775,
+   "kind": "user_message",
+   "role": "filler",
+   "bytes": 8105
+  },
+  {
+   "t": 49346,
+   "kind": "assistant_turn",
+   "message_id": "5",
+   "context_tokens": 149770,
+   "output_tokens": 3
+  },
+  {
+   "t": 53728,
+   "kind": "user_message",
+   "role": "compact",
+   "bytes": 8
+  },
+  {
+   "t": 94258,
+   "kind": "compact_boundary",
+   "pre_tokens": 150681,
+   "post_tokens": 3219,
+   "summary_bytes": 7527,
+   "summary_names_phases": true
+  },
+  {
+   "t": 94261,
+   "kind": "user_message",
+   "role": "task",
+   "bytes": 273
+  },
+  {
+   "t": 95599,
+   "kind": "assistant_turn",
+   "message_id": "6",
+   "context_tokens": 13497,
+   "output_tokens": 8
+  },
+  {
+   "t": 96785,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat src/auth.ts && echo ---- && cat tests/auth.test.ts && echo ---- && cat package.json && ls",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 2296,
+   "tool_use_id": "2"
+  },
+  {
+   "t": 97836,
+   "kind": "assistant_turn",
+   "message_id": "7",
+   "context_tokens": 14906,
+   "output_tokens": 32
+  },
+  {
+   "t": 100263,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat scripts/check.mjs | head -60; python3 - <<'EOF' [308 bytes]\nEOF\nnpm test; echo EXIT=$?",
+   "writes": [
+    "scripts/check.mjs",
+    "tests/auth.test.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 4757,
+   "tool_use_id": "3",
+   "test_summary": {
+    "pass": 5,
+    "fail": 1
+   }
+  },
+  {
+   "t": 100742,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 1,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "e65be01964fe58d5",
+    "tests/auth.test.ts": "09f49081bb9cec8a"
+   }
+  },
+  {
+   "t": 101776,
+   "kind": "assistant_turn",
+   "message_id": "8",
+   "context_tokens": 17407,
+   "output_tokens": 57
+  },
+  {
+   "t": 104192,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "python3 - <<'EOF' [302 bytes]\nEOF\nnpm test 2>&1 | tail -8; echo EXIT=${PIPESTATUS[0]}",
+   "writes": [
+    "src/auth.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 105,
+   "tool_use_id": "4",
+   "test_summary": {
+    "pass": 6,
+    "fail": 0
+   }
+  },
+  {
+   "t": 104626,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "eb544104ac62f4e4",
+    "tests/auth.test.ts": "09f49081bb9cec8a"
+   }
+  },
+  {
+   "t": 106126,
+   "kind": "assistant_turn",
+   "message_id": "9",
+   "context_tokens": 17874,
+   "output_tokens": 80
+  },
+  {
+   "t": 111818,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat > src/auth.ts <<'EOF' [1162 bytes]\nEOF\nnpm test 2>&1 | tail -8; echo EXIT=${PIPESTATUS[0]}",
+   "writes": [
+    "src/auth.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 105,
+   "tool_use_id": "5",
+   "test_summary": {
+    "pass": 6,
+    "fail": 0
+   }
+  },
+  {
+   "t": 112510,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "97758989c24cce73",
+    "tests/auth.test.ts": "09f49081bb9cec8a"
+   }
+  },
+  {
+   "t": 118964,
+   "kind": "assistant_turn",
+   "message_id": "10",
+   "context_tokens": 18753,
+   "output_tokens": 9
+  },
+  {
+   "t": 119046,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "npm test 2>&1 | tail -6; echo TEST_EXIT=${PIPESTATUS[0]}; npm run lint 2>&1 | tail -2; echo LINT_EXIT=${PIPESTATUS[0]}; npm run typecheck 2>&1 | tail -2; echo TYPECHECK_EXIT=${PIPESTATUS[0]}",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 152,
+   "tool_use_id": "6",
+   "test_summary": {
+    "pass": 6,
+    "fail": 0
+   }
+  },
+  {
+   "t": 119461,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "97758989c24cce73",
+    "tests/auth.test.ts": "09f49081bb9cec8a"
+   }
+  },
+  {
+   "t": 119639,
+   "kind": "check",
+   "check": "lint",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "97758989c24cce73",
+    "tests/auth.test.ts": "09f49081bb9cec8a"
+   }
+  },
+  {
+   "t": 119972,
+   "kind": "check",
+   "check": "typecheck",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "97758989c24cce73",
+    "tests/auth.test.ts": "09f49081bb9cec8a"
+   }
+  },
+  {
+   "t": 121177,
+   "kind": "assistant_turn",
+   "message_id": "11",
+   "context_tokens": 19405,
+   "output_tokens": 41
+  },
+  {
+   "t": 128911,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "mkdir -p .docs && cat > .docs/tdd-refactor-summary.md <<'EOF' [1526 bytes]\nEOF\ngit status --short",
+   "writes": [
+    ".docs/tdd-refactor-summary.md"
+   ],
+   "is_error": false,
+   "result_bytes": 46,
+   "tool_use_id": "7"
+  },
+  {
+   "t": 134968,
+   "kind": "assistant_turn",
+   "message_id": "12",
+   "context_tokens": 20382,
+   "output_tokens": 400
+  },
+  {
+   "t": 137109,
+   "kind": "user_message",
+   "role": "nudge",
+   "bytes": 80
+  },
+  {
+   "t": 137962,
+   "kind": "assistant_turn",
+   "message_id": "13",
+   "context_tokens": 20835,
+   "output_tokens": 5
+  }
+ ],
+ "usage": {
+  "model_usage_keys": [
+   "claude-fable-5-1"
+  ],
+  "cost_usd": 3.8648037500000005,
+  "input_tokens": 236,
+  "cache_read_tokens": 390930,
+  "cache_creation_tokens": 154612,
+  "output_tokens": 7459,
+  "model_turns": 13,
+  "wall_clock_ms": 137962
+ },
+ "baseline_hashes": {
+  "src/auth.ts": "e65be01964fe58d5",
+  "tests/auth.test.ts": "14b342d296c7cd0d"
+ },
+ "final_files": {
+  "src/auth.ts": "97758989c24cce73",
+  "tests/auth.test.ts": "09f49081bb9cec8a",
+  ".work/triage.md": null
+ },
+ "acceptance": {
+  "passed": 4,
+  "failed": 0
+ },
+ "end_checks": {
+  "test": 0,
+  "lint": 0,
+  "typecheck": 0
+ },
+ "summary_present": true,
+ "runtime_final_state": null
+}

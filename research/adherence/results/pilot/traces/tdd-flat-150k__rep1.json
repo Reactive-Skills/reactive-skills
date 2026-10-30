@@ -1,0 +1,399 @@
+{
+ "prompt_version": "adherence-prompts/1",
+ "cell": {
+  "id": "tdd-flat-150k",
+  "question": 1,
+  "task": "tdd",
+  "arm": "flat",
+  "pressure": "filler150k"
+ },
+ "rep": 1,
+ "model": "claude-fable-5-1",
+ "claude_code_version": "2.1.314",
+ "filler_seed": 20261031,
+ "status": "completed",
+ "context_tokens_at_task": 111625,
+ "events": [
+  {
+   "t": 0,
+   "kind": "user_message",
+   "role": "skill_load",
+   "bytes": 206
+  },
+  {
+   "t": 1584,
+   "kind": "assistant_turn",
+   "message_id": "1",
+   "context_tokens": 9021,
+   "output_tokens": 8
+  },
+  {
+   "t": 2563,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat .skills/tdd-refactor/SKILL.md",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 2692,
+   "tool_use_id": "1"
+  },
+  {
+   "t": 4307,
+   "kind": "assistant_turn",
+   "message_id": "2",
+   "context_tokens": 10325,
+   "output_tokens": 139
+  },
+  {
+   "t": 5982,
+   "kind": "user_message",
+   "role": "filler",
+   "bytes": 140233
+  },
+  {
+   "t": 40822,
+   "kind": "assistant_turn",
+   "message_id": "3",
+   "context_tokens": 87696,
+   "output_tokens": 8
+  },
+  {
+   "t": 46733,
+   "kind": "user_message",
+   "role": "filler",
+   "bytes": 41229
+  },
+  {
+   "t": 51465,
+   "kind": "assistant_turn",
+   "message_id": "4",
+   "context_tokens": 111196,
+   "output_tokens": 8
+  },
+  {
+   "t": 53230,
+   "kind": "user_message",
+   "role": "task",
+   "bytes": 273
+  },
+  {
+   "t": 55062,
+   "kind": "assistant_turn",
+   "message_id": "5",
+   "context_tokens": 111625,
+   "output_tokens": 8
+  },
+  {
+   "t": 56114,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "ls -a && cat package.json && echo ---- && cat src/auth.ts && echo ---- && cat tests/auth.test.ts && echo ---- && git status --short",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 2339,
+   "tool_use_id": "2"
+  },
+  {
+   "t": 58592,
+   "kind": "assistant_turn",
+   "message_id": "6",
+   "context_tokens": 112946,
+   "output_tokens": 16
+  },
+  {
+   "t": 58592,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat scripts/check.mjs && echo ---- && ls -R .harness .docs 2>/dev/null; cat .gitignore",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 3739,
+   "tool_use_id": "3"
+  },
+  {
+   "t": 59899,
+   "kind": "assistant_turn",
+   "message_id": "7",
+   "context_tokens": 114792,
+   "output_tokens": 71
+  },
+  {
+   "t": 62608,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "python3 - <<'EOF' [343 bytes]\nEOF\nnpm test 2>&1 | tail -30; echo \"exit=${PIPESTATUS[0]}\"",
+   "writes": [
+    "tests/auth.test.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 536,
+   "tool_use_id": "4",
+   "test_summary": {
+    "pass": 5,
+    "fail": 1
+   }
+  },
+  {
+   "t": 62610,
+   "kind": "user_message",
+   "role": "filler_during",
+   "bytes": 70505
+  },
+  {
+   "t": 63068,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 1,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "e65be01964fe58d5",
+    "tests/auth.test.ts": "09f49081bb9cec8a"
+   }
+  },
+  {
+   "t": 100066,
+   "kind": "assistant_turn",
+   "message_id": "8",
+   "context_tokens": 146194,
+   "output_tokens": 6
+  },
+  {
+   "t": 101331,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "python3 - <<'EOF' [337 bytes]\nEOF\nnpm test 2>&1 | grep -E '^# (tests|pass|fail)'; echo \"exit=${PIPESTATUS[0]}\"",
+   "writes": [
+    "src/auth.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 34,
+   "tool_use_id": "5",
+   "test_summary": {
+    "pass": 6,
+    "fail": 0
+   }
+  },
+  {
+   "t": 102222,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "eb544104ac62f4e4",
+    "tests/auth.test.ts": "09f49081bb9cec8a"
+   }
+  },
+  {
+   "t": 103848,
+   "kind": "assistant_turn",
+   "message_id": "9",
+   "context_tokens": 150462,
+   "output_tokens": 89
+  },
+  {
+   "t": 109969,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat > src/auth.ts <<'EOF' [1186 bytes]\nEOF\nnpm test 2>&1 | grep -E '^# (tests|pass|fail)'; echo \"exit=${PIPESTATUS[0]}\"",
+   "writes": [
+    "src/auth.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 34,
+   "tool_use_id": "6",
+   "test_summary": {
+    "pass": 6,
+    "fail": 0
+   }
+  },
+  {
+   "t": 110392,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "f454c07fb724ec1f",
+    "tests/auth.test.ts": "09f49081bb9cec8a"
+   }
+  },
+  {
+   "t": 117184,
+   "kind": "assistant_turn",
+   "message_id": "10",
+   "context_tokens": 151329,
+   "output_tokens": 2
+  },
+  {
+   "t": 117256,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "npm test 2>&1 | grep -E '^# (tests|pass|fail)'; echo \"perf-audit test exit=${PIPESTATUS[0]}\"",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 50,
+   "tool_use_id": "7",
+   "test_summary": {
+    "pass": 6,
+    "fail": 0
+   }
+  },
+  {
+   "t": 117669,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "f454c07fb724ec1f",
+    "tests/auth.test.ts": "09f49081bb9cec8a"
+   }
+  },
+  {
+   "t": 120123,
+   "kind": "assistant_turn",
+   "message_id": "11",
+   "context_tokens": 151874,
+   "output_tokens": 16
+  },
+  {
+   "t": 120123,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "npm run lint 2>&1 | tail -3; echo \"lint exit=${PIPESTATUS[0]}\"",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 74,
+   "tool_use_id": "8"
+  },
+  {
+   "t": 120320,
+   "kind": "check",
+   "check": "lint",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "f454c07fb724ec1f",
+    "tests/auth.test.ts": "09f49081bb9cec8a"
+   }
+  },
+  {
+   "t": 120994,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "npm run typecheck 2>&1 | tail -3; echo \"typecheck exit=${PIPESTATUS[0]}\"",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 80,
+   "tool_use_id": "9"
+  },
+  {
+   "t": 121342,
+   "kind": "check",
+   "check": "typecheck",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "f454c07fb724ec1f",
+    "tests/auth.test.ts": "09f49081bb9cec8a"
+   }
+  },
+  {
+   "t": 122242,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "npm test 2>&1 | grep -E '^# (tests|pass|fail)'; echo \"test exit=${PIPESTATUS[0]}\"",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 39,
+   "tool_use_id": "10",
+   "test_summary": {
+    "pass": 6,
+    "fail": 0
+   }
+  },
+  {
+   "t": 122673,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "f454c07fb724ec1f",
+    "tests/auth.test.ts": "09f49081bb9cec8a"
+   }
+  },
+  {
+   "t": 123689,
+   "kind": "assistant_turn",
+   "message_id": "12",
+   "context_tokens": 152549,
+   "output_tokens": 46
+  },
+  {
+   "t": 131416,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "mkdir -p .docs && cat > .docs/tdd-refactor-summary.md <<'EOF' [1441 bytes]\nEOF\ngit status --short",
+   "writes": [
+    ".docs/tdd-refactor-summary.md"
+   ],
+   "is_error": false,
+   "result_bytes": 46,
+   "tool_use_id": "11"
+  },
+  {
+   "t": 137954,
+   "kind": "assistant_turn",
+   "message_id": "13",
+   "context_tokens": 153472,
+   "output_tokens": 481
+  },
+  {
+   "t": 139790,
+   "kind": "user_message",
+   "role": "nudge",
+   "bytes": 80
+  },
+  {
+   "t": 141195,
+   "kind": "assistant_turn",
+   "message_id": "14",
+   "context_tokens": 154003,
+   "output_tokens": 5
+  }
+ ],
+ "usage": {
+  "model_usage_keys": [
+   "claude-fable-5-1"
+  ],
+  "cost_usd": 3.88944825,
+  "input_tokens": 268,
+  "cache_read_tokens": 1471473,
+  "cache_creation_tokens": 145743,
+  "output_tokens": 11815,
+  "model_turns": 14,
+  "wall_clock_ms": 141195
+ },
+ "baseline_hashes": {
+  "src/auth.ts": "e65be01964fe58d5",
+  "tests/auth.test.ts": "14b342d296c7cd0d"
+ },
+ "final_files": {
+  "src/auth.ts": "f454c07fb724ec1f",
+  "tests/auth.test.ts": "09f49081bb9cec8a",
+  ".work/triage.md": null
+ },
+ "acceptance": {
+  "passed": 4,
+  "failed": 0
+ },
+ "end_checks": {
+  "test": 0,
+  "lint": 0,
+  "typecheck": 0
+ },
+ "summary_present": true,
+ "runtime_final_state": null
+}

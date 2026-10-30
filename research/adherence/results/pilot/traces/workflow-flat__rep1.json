@@ -1,0 +1,283 @@
+{
+ "prompt_version": "adherence-prompts/1",
+ "cell": {
+  "id": "workflow-flat",
+  "question": 2,
+  "task": "workflow",
+  "arm": "flat",
+  "pressure": "immediate"
+ },
+ "rep": 1,
+ "model": "claude-fable-5-1",
+ "claude_code_version": "2.1.314",
+ "filler_seed": 20261031,
+ "status": "completed",
+ "context_tokens_at_task": 8999,
+ "events": [
+  {
+   "t": 0,
+   "kind": "user_message",
+   "role": "task",
+   "bytes": 174
+  },
+  {
+   "t": 4667,
+   "kind": "assistant_turn",
+   "message_id": "1",
+   "context_tokens": 8999,
+   "output_tokens": 2
+  },
+  {
+   "t": 6013,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat ISSUE.md && echo ---- && find .skills -type f | head -50 && echo ---- && git status --short && git log --oneline | head -5 && ls",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 528,
+   "tool_use_id": "1"
+  },
+  {
+   "t": 11233,
+   "kind": "assistant_turn",
+   "message_id": "2",
+   "context_tokens": 9527,
+   "output_tokens": 20
+  },
+  {
+   "t": 11233,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat .skills/triage-bug/SKILL.md .skills/regression-fix/SKILL.md .skills/release-note/SKILL.md && echo ---- && cat package.json CHANGELOG.md && find src tests scripts docs -type f && echo ---- && cat src/*.js tests/* 2>/dev/null",
+   "writes": [],
+   "is_error": true,
+   "result_bytes": 3129,
+   "tool_use_id": "2"
+  },
+  {
+   "t": 16372,
+   "kind": "assistant_turn",
+   "message_id": "3",
+   "context_tokens": 11083,
+   "output_tokens": 20
+  },
+  {
+   "t": 16372,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat src/cart.ts && echo ---- && cat scripts/check.mjs && echo ---- && cat docs/API.md",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 4482,
+   "tool_use_id": "3"
+  },
+  {
+   "t": 19487,
+   "kind": "assistant_turn",
+   "message_id": "4",
+   "context_tokens": 13214,
+   "output_tokens": 85
+  },
+  {
+   "t": 28040,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "mkdir -p .work && cat > .work/triage.md <<'EOF' [1145 bytes]\nEOF\ncat >> tests/cart.test.ts <<'EOF' [195 bytes]\nEOF\nnpm test 2>&1 | tail -25",
+   "writes": [
+    ".work/triage.md",
+    "tests/cart.test.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 725,
+   "tool_use_id": "4",
+   "test_summary": {
+    "pass": 3,
+    "fail": 1
+   }
+  },
+  {
+   "t": 28547,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 1,
+   "source": "agent",
+   "hashes": {
+    "src/cart.ts": "318a1669d0ff6662",
+    "tests/cart.test.ts": "68afe9485c8f93f7",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "d78a497ba7f205ef"
+   }
+  },
+  {
+   "t": 31641,
+   "kind": "assistant_turn",
+   "message_id": "5",
+   "context_tokens": 14479,
+   "output_tokens": 42
+  },
+  {
+   "t": 34878,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "sed -i 's|const saving = (line.unitPrice \\* discount.percent) / 100;|const saving = (lineTotal(line) * discount.percent) / 100;|' src/cart.ts && grep -n saving src/cart.ts && npm test 2>&1 | grep -E '^# (tests|pass|fail)' && npm run lint 2>&1 | tail -1 && npm run typecheck 2>&1 | tail -1",
+   "writes": [
+    "src/cart.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 255,
+   "tool_use_id": "5",
+   "test_summary": {
+    "pass": 4,
+    "fail": 0
+   }
+  },
+  {
+   "t": 35353,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/cart.ts": "ec604fa85026ff76",
+    "tests/cart.test.ts": "68afe9485c8f93f7",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "d78a497ba7f205ef"
+   }
+  },
+  {
+   "t": 35583,
+   "kind": "check",
+   "check": "lint",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/cart.ts": "ec604fa85026ff76",
+    "tests/cart.test.ts": "68afe9485c8f93f7",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "d78a497ba7f205ef"
+   }
+  },
+  {
+   "t": 35942,
+   "kind": "check",
+   "check": "typecheck",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/cart.ts": "ec604fa85026ff76",
+    "tests/cart.test.ts": "68afe9485c8f93f7",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "d78a497ba7f205ef"
+   }
+  },
+  {
+   "t": 38726,
+   "kind": "assistant_turn",
+   "message_id": "6",
+   "context_tokens": 15287,
+   "output_tokens": 38
+  },
+  {
+   "t": 45011,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "python3 - <<'EOF' [210 bytes]\nEOF\ncat CHANGELOG.md && git checkout -q -b fix/issue-42-discount-quantity && git add src/cart.ts tests/cart.test.ts CHANGELOG.md .work/triage.md && git commit -q -m \"$(cat <<'EOF' [356 bytes]\nEOF\n)\" && git log --oneline -2 && git status --short",
+   "writes": [
+    "src/cart.ts",
+    "tests/cart.test.ts",
+    ".work/triage.md"
+   ],
+   "is_error": false,
+   "result_bytes": 273,
+   "tool_use_id": "6"
+  },
+  {
+   "t": 50435,
+   "kind": "assistant_turn",
+   "message_id": "7",
+   "context_tokens": 15961,
+   "output_tokens": 2
+  },
+  {
+   "t": 50929,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "git remote -v",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 31,
+   "tool_use_id": "7"
+  },
+  {
+   "t": 57841,
+   "kind": "assistant_turn",
+   "message_id": "8",
+   "context_tokens": 16217,
+   "output_tokens": 357
+  },
+  {
+   "t": 68251,
+   "kind": "user_message",
+   "role": "nudge",
+   "bytes": 80
+  },
+  {
+   "t": 79086,
+   "kind": "assistant_turn",
+   "message_id": "9",
+   "context_tokens": 16627,
+   "output_tokens": 1
+  }
+ ],
+ "usage": {
+  "model_usage_keys": [
+   "claude-fable-5-1"
+  ],
+  "cost_usd": 0.35859800000000003,
+  "input_tokens": 228,
+  "cache_read_tokens": 112272,
+  "cache_creation_tokens": 8894,
+  "output_tokens": 2740,
+  "model_turns": 9,
+  "wall_clock_ms": 79086
+ },
+ "baseline_hashes": {
+  "src/cart.ts": "318a1669d0ff6662",
+  "tests/cart.test.ts": "d977be2edd899bad",
+  "CHANGELOG.md": "d9f593f404545885",
+  "docs/API.md": "5f16aa0fbfd80cd8",
+  "package.json": "a3c3139ed81e2df6"
+ },
+ "final_files": {
+  "src/cart.ts": "ec604fa85026ff76",
+  "tests/cart.test.ts": "68afe9485c8f93f7",
+  "CHANGELOG.md": "cab7b3197ef43b27",
+  "docs/API.md": "5f16aa0fbfd80cd8",
+  "package.json": "a3c3139ed81e2df6",
+  ".work/triage.md": "d78a497ba7f205ef"
+ },
+ "final_checks": {
+  "triage_sections": 4,
+  "changelog_fixed_entry": true,
+  "distractor_artifacts": []
+ },
+ "acceptance": {
+  "passed": 2,
+  "failed": 0
+ },
+ "end_checks": {
+  "test": 0,
+  "lint": 0,
+  "typecheck": 0
+ },
+ "summary_present": false,
+ "runtime_final_state": null
+}
