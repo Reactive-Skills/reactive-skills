@@ -1,4 +1,22 @@
 
+## [Unreleased]
+
+### Breaking changes
+
+- **Workspace-relative MCP receipt paths:** Receipt `projectionsWritten` entries from `reactive_emit_signal` and `reactive_respond_human` are now paths relative to the MCP server's workspace (the `workspace` that `reactive_capabilities` reports), for example `.docs/jobs/default/summary.md`, instead of absolute paths. Resolve them against that workspace, or pass `receipt_paths: "absolute"` to keep absolute paths; that option remains for one release. Saved receipts in the ledger keep absolute paths, so a keyed retry returns the form the retry requests. Capability: `receipt.relative_paths`. A path outside the workspace stays absolute.
+
+| Tool | Option | Default | Other values |
+|---|---|---|---|
+| `reactive_emit_signal`, `reactive_respond_human` | `receipt_paths` | `relative` | `absolute` (previous receipt paths, one release) |
+
+### Changes
+
+- **Shorter bootloader:** Two pairs of overlapping bootloader sentences are merged (the AXI `--output compact-v1` guidance, and the note that `npx` only launches AXI). No instruction was removed.
+
+### New features
+
+- **Runtime-executed states (experimental):** A manifest that requires the new `state.runtime_actions` capability can declare `runtime_action` on a leaf state: a command with literal arguments and a timeout, a workspace path check, a JSON Schema subset check of a recorded value, or a pure expression over context, with declared success and failure transitions. The runtime runs it without a model turn, records `RUNTIME_ACTION_STARTED` and `RUNTIME_ACTION_COMPLETED` evidence, and dispatches the outcome signal through ordinary signal handling. Pending actions resume from the ledger before a view is delivered; a recorded result is reused, and an action interrupted after it started runs again. `reactive-skills-axi vet` reports declared commands as `guard/runtime-command`. The shape may change; see [docs/runtime-actions.md](docs/runtime-actions.md) for the rules and the measured prototype.
+
 ## [0.21.0] - 2026-10-30
 
 - This 0.x minor release includes breaking changes; see the [release notes and upgrade checklist](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.21.0.md).

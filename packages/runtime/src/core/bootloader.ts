@@ -49,14 +49,13 @@ export function createReactiveBootloader(skillName: string): string {
 > Otherwise use \`npx -y @reactive-skills/axi capabilities --json\`, then use zero-install AXI.
 > MCP uses \`reactive_state\` and \`reactive_emit_signal\`.
 > Direct AXI uses \`reactive-skills-axi state|emit ${name}\`.
-> Zero-install AXI uses \`npx -y @reactive-skills/axi state|emit ${name}\`.
+> Zero-install AXI uses \`npx -y @reactive-skills/axi state|emit ${name}\`; \`npx\` is only its launcher.
 > Emit \`RUNTIME_READY\` with \`transport\`, \`launcher\`, \`runtime_version\`, \`axi_version\`, \`compatible\`, and \`capabilities\`.
 > Persist the selected runtime in \`payload.contextUpdates\` so later states reuse it.
-> AXI remains the runtime interface. \`npx\` is only its zero-install launcher.
 > Do not repeat version or capability checks after INIT.
-> MCP \`reactive_state\` returns the complete compact-v1 view, and \`reactive_emit_signal\` and \`reactive_respond_human\` return a delta-v1 view by default. When AXI capabilities include \`state.compact_v1\`, select \`--output compact-v1\`.
+> MCP \`reactive_state\` returns the complete compact-v1 view, and \`reactive_emit_signal\` and \`reactive_respond_human\` return a delta-v1 view by default. When AXI capabilities include \`state.compact_v1\`, keep \`--output compact-v1\` on invoke, emit and recovery state commands.
 > A delta-v1 view repeats instructions and contracts but omits this recovery policy and context unchanged since your last view. Consume the view returned by MCP continuation or AXI invoke/emit; fetch the complete state again for resume, recovery, stale state, or a lost response.
-> Do not follow a successful AXI invoke or emit with a redundant state command. Keep \`--output compact-v1\` on invoke, emit and recovery state commands when supported.
+> Do not follow a successful AXI invoke or emit with a redundant state command.
 > Compact output retains scoped context, exact transition contracts, active gates and refusal warnings. Use \`inspect <skill-path>\` for guard details or \`<command> --help\` for usage; \`--output legacy\` selects terminal output with suggestions.
 > AXI does not count state deliveries as strict turns; strict-mode status text does not provide MCP turn enforcement.
 > Pin MCP \`job_id\` to the returned immutable \`run_id\`; use the same idempotency key when retrying a lost continuation response. Its saved receipt and result anchor describe the original submission, while \`view\` describes the current state.
