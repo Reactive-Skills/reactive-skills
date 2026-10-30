@@ -108,7 +108,7 @@ describe('MCP resume delivers the complete view from the ledger', () => {
     const recovered = await call('reactive_state', { job_id: runId, output: 'compact-v1' });
     expect(recovered).toEqual(ledgerView(runId));
     expect(recovered.context).toEqual({ notes: NOTES, target: 'src/app.ts' });
-    const legacy = await call('reactive_state', { job_id: runId });
+    const legacy = await call('reactive_state', { job_id: runId, output: 'legacy' });
     expect(legacy.scopedContext).toEqual(recovered.context);
     expect(legacy.formattedXml).toContain('Plan the change to src/app.ts.');
   });

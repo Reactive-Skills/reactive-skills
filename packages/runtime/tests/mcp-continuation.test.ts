@@ -137,18 +137,29 @@ states:
     expect(count(rows, 'CHILD_RUN_STARTED')).toBe(signal === 'CHILD' ? 1 : 0);
   });
 
-  it('preserves legacy receipts and advertises opt-in continuation schemas', async () => {
+  it('preserves legacy receipts behind return_view none and advertises continuation schemas', async () => {
     const client = await connect();
     const { tools } = await client.listTools();
     for (const name of ['reactive_emit_signal', 'reactive_respond_human']) {
       expect(tools.find(tool => tool.name === name)?.inputSchema.properties).toHaveProperty('return_view');
     }
-    expect((await call(client, 'reactive_capabilities')).capabilities).toContain('state.continuation_v1');
-    const receipt = await call(client, 'reactive_emit_signal', { signal: 'AGAIN' });
+    expect((await call(client, 'reactive_capabilities')).capabilities).toEqual(expect.arrayContaining(['state.continuation_v1', 'state.delta_v1']));
+    const receipt = await call(client, 'reactive_emit_signal', { signal: 'AGAIN', return_view: 'none' });
     expect(receipt.newState).toBe('WORK');
     expect(receipt.view).toBeUndefined();
     expect(receipt.receipt).toBeUndefined();
     expect(count(await events(client), 'AGENT_TURN_STARTED')).toBe(0);
+  });
+
+  it('returns the receipt plus a delta-v1 view when return_view is omitted', async () => {
+    const client = await connect();
+    const initial = await call(client, 'reactive_state', {});
+    expect(initial.format).toBe('compact-v1');
+    const result = await call(client, 'reactive_emit_signal', { signal: 'CHECK', payload: { exit_code: 0 } });
+    expect(result.receipt).toMatchObject({ transitioned: true, previousState: 'WORK', newState: 'NEXT' });
+    expect(result.view).toMatchObject({ format: 'delta-v1', state: 'NEXT', since_seq: initial.seq });
+    expect(result.view).not.toHaveProperty('policy');
+    expect(count(await events(client), 'AGENT_TURN_STARTED')).toBe(2);
   });
 
   it.each([false, true])('retries a lost response across reconnect=%s without any ledger writes, distinguishing original from current view', async reopen => {
@@ -500,8 +511,8 @@ states:
 
   it('keeps human legacy receipt fields and keyed cross-tool collisions explicit', async () => {
     const client = await connect();
-    await call(client, 'reactive_emit_signal', { signal: 'ASK' });
-    const receipt = await call(client, 'reactive_respond_human', { choice: 'Reject', approved: false });
+    await call(client, 'reactive_emit_signal', { signal: 'ASK', return_view: 'none' });
+    const receipt = await call(client, 'reactive_respond_human', { choice: 'Reject', approved: false, return_view: 'none' });
     expect(Object.keys(receipt).sort()).toEqual(['currentState', 'projectionsWritten', 'signalsEmitted', 'transitioned', 'unpaused']);
     expect(receipt.currentState).toBe('WORK');
     await emit(client, 'AGAIN', { idempotency_key: 'shared-key' });
@@ -587,7 +598,7 @@ states:
 
   it('marks an older receipt unavailable when a legacy key is retried in continuation mode', async () => {
     const client = await connect();
-    await call(client, 'reactive_emit_signal', { signal: 'CHECK', payload: { exit_code: 0 }, idempotency_key: 'legacy-once' });
+    await call(client, 'reactive_emit_signal', { signal: 'CHECK', payload: { exit_code: 0 }, idempotency_key: 'legacy-once', return_view: 'none' });
     await emit(client, 'FINISH');
     const before = await events(client);
     const retry = await emit(client, 'CHECK', { idempotency_key: 'legacy-once' });
@@ -659,7 +670,7 @@ states:
   it('preserves approval default precedence and supports keyed legacy human retries', async () => {
     const client = await connect();
     await emit(client, 'ASK');
-    const args = { choice: 'Reject', idempotency_key: 'legacy-human' };
+    const args = { choice: 'Reject', idempotency_key: 'legacy-human', return_view: 'none' };
     const first = await call(client, 'reactive_respond_human', args);
     expect(first.signalsEmitted).toEqual(['USER_RESPONSE', 'USER_APPROVED']);
     expect(first.currentState).toBe('NEXT');

@@ -20,108 +20,108 @@
   },
   "mcp": {
     "initial": {
-      "input_payload_bytes": 24,
+      "input_payload_bytes": 42,
       "tool_result_text_bytes": 2329,
       "result_bytes": 2472,
-      "request_envelope_bytes": 119,
+      "request_envelope_bytes": 137,
       "response_envelope_bytes": 2507
     },
     "prepare": {
-      "input_payload_bytes": 115,
+      "input_payload_bytes": 133,
       "tool_result_text_bytes": 2708,
       "result_bytes": 2901,
-      "request_envelope_bytes": 220,
+      "request_envelope_bytes": 238,
       "response_envelope_bytes": 2936
     },
     "ready": {
-      "input_payload_bytes": 49,
+      "input_payload_bytes": 70,
       "tool_result_text_bytes": 455,
       "result_bytes": 542,
-      "request_envelope_bytes": 150,
+      "request_envelope_bytes": 171,
       "response_envelope_bytes": 577
     },
     "guard_refusal": {
-      "input_payload_bytes": 70,
+      "input_payload_bytes": 91,
       "tool_result_text_bytes": 310,
       "result_bytes": 389,
-      "request_envelope_bytes": 171,
+      "request_envelope_bytes": 192,
       "response_envelope_bytes": 424
     },
     "red": {
-      "input_payload_bytes": 70,
+      "input_payload_bytes": 91,
       "tool_result_text_bytes": 461,
       "result_bytes": 548,
-      "request_envelope_bytes": 171,
+      "request_envelope_bytes": 192,
       "response_envelope_bytes": 583
     },
     "green": {
-      "input_payload_bytes": 70,
+      "input_payload_bytes": 91,
       "tool_result_text_bytes": 472,
       "result_bytes": 559,
-      "request_envelope_bytes": 171,
+      "request_envelope_bytes": 192,
       "response_envelope_bytes": 594
     },
     "clean": {
-      "input_payload_bytes": 24,
+      "input_payload_bytes": 42,
       "tool_result_text_bytes": 2427,
       "result_bytes": 2595,
-      "request_envelope_bytes": 119,
+      "request_envelope_bytes": 137,
       "response_envelope_bytes": 2630
     },
     "resume_empty_transcript": {
-      "input_payload_bytes": 24,
+      "input_payload_bytes": 42,
       "tool_result_text_bytes": 2427,
       "result_bytes": 2595,
-      "request_envelope_bytes": 119,
+      "request_envelope_bytes": 137,
       "response_envelope_bytes": 2630
     },
     "failure": {
-      "input_payload_bytes": 37,
+      "input_payload_bytes": 55,
       "tool_result_text_bytes": 88,
       "result_bytes": 146,
-      "request_envelope_bytes": 132,
+      "request_envelope_bytes": 150,
       "response_envelope_bytes": 181
     },
     "gate_ready": {
-      "input_payload_bytes": 44,
+      "input_payload_bytes": 65,
       "tool_result_text_bytes": 240,
       "result_bytes": 314,
-      "request_envelope_bytes": 145,
+      "request_envelope_bytes": 166,
       "response_envelope_bytes": 349
     },
     "gate": {
-      "input_payload_bytes": 27,
+      "input_payload_bytes": 45,
       "tool_result_text_bytes": 1128,
       "result_bytes": 1243,
-      "request_envelope_bytes": 122,
+      "request_envelope_bytes": 140,
       "response_envelope_bytes": 1278
     },
     "human_response": {
-      "input_payload_bytes": 62,
+      "input_payload_bytes": 83,
       "tool_result_text_bytes": 168,
       "result_bytes": 232,
-      "request_envelope_bytes": 165,
+      "request_envelope_bytes": 186,
       "response_envelope_bytes": 267
     },
     "legacy_prepare": {
-      "input_payload_bytes": 126,
+      "input_payload_bytes": 144,
       "tool_result_text_bytes": 688,
       "result_bytes": 814,
-      "request_envelope_bytes": 231,
+      "request_envelope_bytes": 249,
       "response_envelope_bytes": 849
     },
     "concurrent-a": {
-      "input_payload_bytes": 48,
+      "input_payload_bytes": 66,
       "tool_result_text_bytes": 2334,
       "result_bytes": 2477,
-      "request_envelope_bytes": 143,
+      "request_envelope_bytes": 161,
       "response_envelope_bytes": 2512
     },
     "concurrent-b": {
-      "input_payload_bytes": 48,
+      "input_payload_bytes": 66,
       "tool_result_text_bytes": 2334,
       "result_bytes": 2477,
-      "request_envelope_bytes": 143,
+      "request_envelope_bytes": 161,
       "response_envelope_bytes": 2512
     }
   },

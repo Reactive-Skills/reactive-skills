@@ -126,7 +126,7 @@ describe('Reactive MCP Server Integration', () => {
     expect(tools['reactive_state']).toBeDefined();
 
     const handler = tools['reactive_state'];
-    const result = await handler.handler({ skill: 'test-fsm' }, {} as any);
+    const result = await handler.handler({ output: 'legacy', skill: 'test-fsm' }, {} as any);
     expect(result.content[0].type).toBe('text');
 
     const parsed = JSON.parse(result.content[0].text);
@@ -139,7 +139,7 @@ describe('Reactive MCP Server Integration', () => {
     const tools = (server as any)._registeredTools;
 
     const emitHandler = tools['reactive_emit_signal'];
-    const result = await emitHandler.handler({ signal: 'RUNTIME_READY', skill: 'test-fsm' }, {} as any);
+    const result = await emitHandler.handler({ return_view: 'none', signal: 'RUNTIME_READY', skill: 'test-fsm' }, {} as any);
 
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.transitioned).toBe(true);
@@ -227,7 +227,7 @@ describe('Reactive MCP Server Integration', () => {
     const tools = (server as any)._registeredTools;
 
     const handler = tools['reactive_state'];
-    const result = await handler.handler({ skill: 'test-fsm' }, {} as any);
+    const result = await handler.handler({ output: 'legacy', skill: 'test-fsm' }, {} as any);
 
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.strict_execution).toBe(true);
@@ -240,11 +240,11 @@ describe('Reactive MCP Server Integration', () => {
 
     const handler = tools['reactive_state'];
 
-    const res1 = await handler.handler({}, {} as any);
+    const res1 = await handler.handler({ output: 'legacy',}, {} as any);
     const parsed1 = JSON.parse(res1.content[0].text);
     expect(parsed1.turns_since_last_signal).toBe(1);
 
-    const res2 = await handler.handler({}, {} as any);
+    const res2 = await handler.handler({ output: 'legacy',}, {} as any);
     const parsed2 = JSON.parse(res2.content[0].text);
     expect(parsed2.turns_since_last_signal).toBe(1);
     expect(res2.isError).toBeUndefined();
@@ -256,13 +256,13 @@ describe('Reactive MCP Server Integration', () => {
     const handler = tools['reactive_state'];
 
     // Default active job
-    const defaultRes = await handler.handler({ skill: 'test-fsm' }, {} as any);
+    const defaultRes = await handler.handler({ output: 'legacy', skill: 'test-fsm' }, {} as any);
     const defaultParsed = JSON.parse(defaultRes.content[0].text);
     expect(defaultParsed.job_id).toBe('default');
     expect(defaultParsed.activeState).toBe('INIT');
 
     // Targeted custom job
-    const customRes = await handler.handler({ skill: 'test-fsm', job_id: 'slice-custom' }, {} as any);
+    const customRes = await handler.handler({ output: 'legacy', skill: 'test-fsm', job_id: 'slice-custom' }, {} as any);
     const customParsed = JSON.parse(customRes.content[0].text);
     expect(customParsed.job_id).toBe('slice-custom');
     expect(customParsed.activeState).toBe('INIT');
@@ -274,7 +274,7 @@ describe('Reactive MCP Server Integration', () => {
     const stateHandler = tools['reactive_state'];
     const queryHandler = tools['reactive_query'];
 
-    await stateHandler.handler({ skill: 'test-fsm' }, {} as any);
+    await stateHandler.handler({ output: 'legacy', skill: 'test-fsm' }, {} as any);
     const jobManager = new JobManager(tempDir);
     jobManager.updateJob('test-fsm', 'default', {
       status: 'completed',
@@ -285,7 +285,7 @@ describe('Reactive MCP Server Integration', () => {
     expect(jobManager.getActiveJobId('test-fsm'))
       .toBe(jobManager.resolveRunId('test-fsm', 'default'));
 
-    const rotated = await stateHandler.handler({ skill: 'test-fsm' }, {} as any);
+    const rotated = await stateHandler.handler({ output: 'legacy', skill: 'test-fsm' }, {} as any);
     const parsed = JSON.parse(rotated.content[0].text);
     expect(parsed.activeState).toBe('INIT');
     expect(parsed.job_id).not.toBe('default');
@@ -300,7 +300,7 @@ describe('Reactive MCP Server Integration', () => {
     const stateHandler = tools['reactive_state'];
 
     // Advance job-alpha
-    const emitRes = await emitHandler.handler({
+    const emitRes = await emitHandler.handler({ return_view: 'none',
       signal: 'RUNTIME_READY',
       skill: 'test-fsm',
       job_id: 'job-alpha',
@@ -311,7 +311,7 @@ describe('Reactive MCP Server Integration', () => {
     expect(emitParsed.newState).toBe('RED_SPEC');
 
     // Verify job-beta is independent and remains at INIT
-    const betaStateRes = await stateHandler.handler({
+    const betaStateRes = await stateHandler.handler({ output: 'legacy',
       skill: 'test-fsm',
       job_id: 'job-beta',
     }, {} as any);
@@ -320,7 +320,7 @@ describe('Reactive MCP Server Integration', () => {
     expect(betaParsed.activeState).toBe('INIT');
 
     // Verify job-alpha is at RED_SPEC
-    const alphaStateRes = await stateHandler.handler({
+    const alphaStateRes = await stateHandler.handler({ output: 'legacy',
       skill: 'test-fsm',
       job_id: 'job-alpha',
     }, {} as any);
@@ -337,8 +337,8 @@ describe('Reactive MCP Server Integration', () => {
 
     // Emit signals on two jobs so they are created
     const emitHandler = tools['reactive_emit_signal'];
-    await emitHandler.handler({ signal: 'RUNTIME_READY', skill: 'test-fsm', job_id: 'job-one' }, {} as any);
-    await emitHandler.handler({ signal: 'RUNTIME_READY', skill: 'test-fsm', job_id: 'job-two' }, {} as any);
+    await emitHandler.handler({ return_view: 'none', signal: 'RUNTIME_READY', skill: 'test-fsm', job_id: 'job-one' }, {} as any);
+    await emitHandler.handler({ return_view: 'none', signal: 'RUNTIME_READY', skill: 'test-fsm', job_id: 'job-two' }, {} as any);
 
     const listJobsHandler = tools['reactive_list_jobs'];
     const res = await listJobsHandler.handler({ skill: 'test-fsm' }, {} as any);
@@ -362,7 +362,7 @@ describe('Reactive MCP Server Integration', () => {
 
     // Create job-target
     const emitHandler = tools['reactive_emit_signal'];
-    await emitHandler.handler({ signal: 'RUNTIME_READY', skill: 'test-fsm', job_id: 'job-target' }, {} as any);
+    await emitHandler.handler({ return_view: 'none', signal: 'RUNTIME_READY', skill: 'test-fsm', job_id: 'job-target' }, {} as any);
 
     const switchHandler = tools['reactive_switch_job'];
     const res = await switchHandler.handler({ skill: 'test-fsm', job_id: 'job-target' }, {} as any);
@@ -380,7 +380,7 @@ describe('Reactive MCP Server Integration', () => {
 
     // Create job-archive-me
     const emitHandler = tools['reactive_emit_signal'];
-    await emitHandler.handler({ signal: 'RUNTIME_READY', skill: 'test-fsm', job_id: 'job-archive-me' }, {} as any);
+    await emitHandler.handler({ return_view: 'none', signal: 'RUNTIME_READY', skill: 'test-fsm', job_id: 'job-archive-me' }, {} as any);
 
     const archiveHandler = tools['reactive_archive_job'];
     const res = await archiveHandler.handler({ skill: 'test-fsm', job_id: 'job-archive-me' }, {} as any);
@@ -399,7 +399,7 @@ describe('Reactive MCP Server Integration', () => {
 
     // Emit to advance state
     const emitHandler = tools['reactive_emit_signal'];
-    await emitHandler.handler({ signal: 'RUNTIME_READY', skill: 'test-fsm' }, {} as any);
+    await emitHandler.handler({ return_view: 'none', signal: 'RUNTIME_READY', skill: 'test-fsm' }, {} as any);
 
     const resetHandler = tools['reactive_reset'];
     const res = await resetHandler.handler({ skill: 'test-fsm' }, {} as any);
@@ -411,7 +411,7 @@ describe('Reactive MCP Server Integration', () => {
 
     // Check that state on fresh job is INIT
     const stateHandler = tools['reactive_state'];
-    const stateRes = await stateHandler.handler({ skill: 'test-fsm' }, {} as any);
+    const stateRes = await stateHandler.handler({ output: 'legacy', skill: 'test-fsm' }, {} as any);
     const stateParsed = JSON.parse(stateRes.content[0].text);
     expect(stateParsed.activeState).toBe('INIT');
   });

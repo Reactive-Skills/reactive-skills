@@ -71,7 +71,7 @@ states:
       expect((await call('reactive_import_evidence', descriptor)).body.reference).toEqual(reference);
       fs.unlinkSync(path.join(workspace, descriptor.path));
     }
-    const args = { signal: 'CHECK', evidence: { '/draft': folded ? descriptor : { reference } }, idempotency_key: 'once' };
+    const args = { signal: 'CHECK', return_view: 'none' as const, evidence: { '/draft': folded ? descriptor : { reference } }, idempotency_key: 'once' };
     const first = await call('reactive_emit_signal', args);
     expect(first.result.isError).not.toBe(true);
     expect(first.body.transitioned).toBe(true);

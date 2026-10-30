@@ -64,8 +64,8 @@ describe('MCP state delivery', () => {
     const result = await client.callTool({
       name: tool,
       arguments: tool === 'reactive_state'
-        ? { skill: 'delivery-test' }
-        : { user_message: 'Run the delivery fixture' },
+        ? { skill: 'delivery-test', output: 'legacy' }
+        : { user_message: 'Run the delivery fixture', output: 'legacy' },
     });
     expect(result.isError).not.toBe(true);
     const text = (result.content as Array<{ text: string }>)[0].text;
@@ -86,7 +86,7 @@ describe('MCP state delivery', () => {
 
   it('adds the full recorded context to reactive_state only with include_full_context', async () => {
     const result = await client.callTool({
-      name: 'reactive_state', arguments: { skill: 'delivery-test', include_full_context: true },
+      name: 'reactive_state', arguments: { skill: 'delivery-test', include_full_context: true, output: 'legacy' },
     });
     expect(result.isError).not.toBe(true);
     const text = (result.content as Array<{ text: string }>)[0].text;
@@ -103,11 +103,11 @@ describe('MCP state delivery', () => {
     const state = await client.callTool({
       name: tool,
       arguments: tool === 'reactive_state'
-        ? { skill: 'delivery-test', job_id: 'delivery-run' }
-        : { user_message: 'Run the delivery fixture', job_id: 'delivery-run' },
+        ? { skill: 'delivery-test', job_id: 'delivery-run', output: 'legacy' }
+        : { user_message: 'Run the delivery fixture', job_id: 'delivery-run', output: 'legacy' },
     });
     const text = (state.content as Array<{ text: string }>)[0].text;
-    await client.callTool({ name: 'reactive_emit_signal', arguments: { skill: 'delivery-test', signal: 'FINISH', job_id: 'delivery-run' } });
+    await client.callTool({ name: 'reactive_emit_signal', arguments: { skill: 'delivery-test', signal: 'FINISH', job_id: 'delivery-run', return_view: 'none' } });
     const events = await client.callTool({
       name: 'reactive_query_events',
       arguments: { skill: 'delivery-test', type: 'STATE_TRANSITION', job_id: 'delivery-run' },
@@ -117,12 +117,12 @@ describe('MCP state delivery', () => {
   });
 
   it('refetches the persisted state prompt and scoped inputs in a fresh MCP session', async () => {
-    const initial = await client.callTool({ name: 'reactive_state', arguments: { skill: 'delivery-test', job_id: 'refetch-run' } });
+    const initial = await client.callTool({ name: 'reactive_state', arguments: { skill: 'delivery-test', job_id: 'refetch-run', output: 'legacy' } });
     const runId = JSON.parse((initial.content as Array<{ text: string }>)[0].text).run_id;
     const updated = await client.callTool({
       name: 'reactive_emit_signal',
       arguments: {
-        skill: 'delivery-test', job_id: 'refetch-run', signal: 'UPDATE',
+        skill: 'delivery-test', job_id: 'refetch-run', signal: 'UPDATE', return_view: 'none',
         payload: { contextUpdates: { visible: 'Latest persisted input', hidden: 'Updated unscoped data' } },
       },
     });
@@ -135,7 +135,7 @@ describe('MCP state delivery', () => {
     await server.connect(serverTransport);
     await client.connect(clientTransport);
 
-    const refetched = await client.callTool({ name: 'reactive_state', arguments: { skill: 'delivery-test', job_id: runId } });
+    const refetched = await client.callTool({ name: 'reactive_state', arguments: { skill: 'delivery-test', job_id: runId, output: 'legacy' } });
     expect(refetched.isError).not.toBe(true);
     const text = (refetched.content as Array<{ text: string }>)[0].text;
     const parsed = JSON.parse(text);
@@ -148,7 +148,7 @@ describe('MCP state delivery', () => {
     expect(text).not.toContain('Updated unscoped data');
 
     const fullResult = await client.callTool({
-      name: 'reactive_state', arguments: { skill: 'delivery-test', job_id: runId, include_full_context: true },
+      name: 'reactive_state', arguments: { skill: 'delivery-test', job_id: runId, include_full_context: true, output: 'legacy' },
     });
     const full = JSON.parse((fullResult.content as Array<{ text: string }>)[0].text);
     expect(full.context.hidden).toBe('Updated unscoped data');

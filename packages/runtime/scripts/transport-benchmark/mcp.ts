@@ -78,27 +78,28 @@ export async function measureMcp(workspace: string) {
     const discoveryResponse = received.find((frame) => 'id' in frame && 'id' in discoveryRequest && frame.id === discoveryRequest.id);
     if (!discoveryResponse) throw new Error('Missing MCP tools/list response');
     const discovery = measureExchange(discoveryRequest, discoveryResponse, [workspace]);
-    await call('initial', 'reactive_state', { skill: 'tdd-refactor' });
+    // The pinned accounting measures the legacy delivery, so it requests those outputs explicitly.
+    await call('initial', 'reactive_state', { skill: 'tdd-refactor', output: 'legacy' });
     await call('prepare', 'reactive_context_prepare', {
-      user_message: 'Run the TDD workflow',
+      user_message: 'Run the TDD workflow', output: 'legacy',
       candidates: [{ id: 'tdd', skill: 'tdd-refactor', summary: 'TDD workflow' }],
     });
-    await call('ready', 'reactive_emit_signal', { skill: 'tdd-refactor', signal: 'RUNTIME_READY' });
-    await call('guard_refusal', 'reactive_emit_signal', { skill: 'tdd-refactor', signal: 'TEST_RAN', payload: { exit_code: 0 } });
-    await call('red', 'reactive_emit_signal', { skill: 'tdd-refactor', signal: 'TEST_RAN', payload: { exit_code: 1 } });
-    await call('green', 'reactive_emit_signal', { skill: 'tdd-refactor', signal: 'TEST_RAN', payload: { exit_code: 0 } });
-    await call('clean', 'reactive_state', { skill: 'tdd-refactor' });
-    await call('resume_empty_transcript', 'reactive_state', { skill: 'tdd-refactor' }, true);
-    await call('failure', 'reactive_state', { skill: 'benchmark-missing-fixture' });
-    await call('gate_ready', 'reactive_emit_signal', { skill: 'benchmark-human', signal: 'READY' });
-    await call('gate', 'reactive_state', { skill: 'benchmark-human' });
-    await call('human_response', 'reactive_respond_human', { skill: 'benchmark-human', choice: 'Approve', approved: true }, false, 'human_fixture');
+    await call('ready', 'reactive_emit_signal', { skill: 'tdd-refactor', return_view: 'none', signal: 'RUNTIME_READY' });
+    await call('guard_refusal', 'reactive_emit_signal', { skill: 'tdd-refactor', return_view: 'none', signal: 'TEST_RAN', payload: { exit_code: 0 } });
+    await call('red', 'reactive_emit_signal', { skill: 'tdd-refactor', return_view: 'none', signal: 'TEST_RAN', payload: { exit_code: 1 } });
+    await call('green', 'reactive_emit_signal', { skill: 'tdd-refactor', return_view: 'none', signal: 'TEST_RAN', payload: { exit_code: 0 } });
+    await call('clean', 'reactive_state', { skill: 'tdd-refactor', output: 'legacy' });
+    await call('resume_empty_transcript', 'reactive_state', { skill: 'tdd-refactor', output: 'legacy' }, true);
+    await call('failure', 'reactive_state', { skill: 'benchmark-missing-fixture', output: 'legacy' });
+    await call('gate_ready', 'reactive_emit_signal', { skill: 'benchmark-human', return_view: 'none', signal: 'READY' });
+    await call('gate', 'reactive_state', { skill: 'benchmark-human', output: 'legacy' });
+    await call('human_response', 'reactive_respond_human', { skill: 'benchmark-human', return_view: 'none', choice: 'Approve', approved: true }, false, 'human_fixture');
     await call('legacy_prepare', 'reactive_context_prepare', {
-      user_message: 'Inspect the target',
+      user_message: 'Inspect the target', output: 'legacy',
       candidates: [{ id: 'legacy', skill: 'benchmark-legacy', summary: 'Inspect the target' }],
     });
     await Promise.all(['concurrent-a', 'concurrent-b'].map((job_id) =>
-      call(job_id, 'reactive_state', { skill: 'tdd-refactor', job_id })));
+      call(job_id, 'reactive_state', { skill: 'tdd-refactor', job_id, output: 'legacy' })));
     return { rows, handshake, discovery };
   } finally {
     await client.close();

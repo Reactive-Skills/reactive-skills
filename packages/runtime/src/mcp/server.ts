@@ -260,7 +260,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       token_budget: z.number().int().min(128).max(32768).optional().describe('Maximum context tokens for selected route'),
       state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Small bounded state hints'),
       job_id: z.string().optional().describe('Optional job/run ID for a selected reactive skill'),
-      output: z.enum(['legacy', 'compact-v1']).optional().describe('Negotiated state view format; defaults to legacy'),
+      output: z.enum(['legacy', 'compact-v1']).optional().describe('State view format; defaults to compact-v1, legacy is kept for one release'),
     },
     /**
      * Prepare the routed state with compact transport accounting.
@@ -347,7 +347,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
           engine.recordStateDelivery();
           const slice = engine.generatePromptSlice();
-          const state = createStateResponse(engine, slice, false, output);
+          const state = createStateResponse(engine, slice, false, output ?? 'compact-v1');
           rememberView(engine);
           const payload = {
             context_route: decision,
@@ -403,7 +403,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       skill: z.string().optional().describe('Skill name (defaults to active skill)'),
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
       include_full_context: z.boolean().optional().describe('Return full recorded context (replaces scoped context in compact-v1)'),
-      output: z.enum(['legacy', 'compact-v1']).optional().describe('Select compact-v1 after negotiating state.compact_v1; defaults to legacy'),
+      output: z.enum(['legacy', 'compact-v1']).optional().describe('State view format; defaults to compact-v1, legacy is kept for one release'),
       since_seq: z.number().int().nonnegative().optional().describe('Return delta-v1: context unchanged since this view seq is omitted; omit after resume or compaction for the complete view'),
     },
     /**
@@ -441,7 +441,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
         engine.recordStateDelivery();
         const slice = engine.generatePromptSlice();
         const payload = since_seq === undefined || include_full_context
-          ? createStateResponse(engine, slice, include_full_context, output)
+          ? createStateResponse(engine, slice, include_full_context, output ?? 'compact-v1')
           : createDeltaView(engine, since_seq, slice);
         rememberView(engine);
         return {
@@ -523,7 +523,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       skill: z.string().optional().describe('Target skill name'),
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
       idempotency_key: z.string().optional().describe('Optional key that makes duplicate signal submission a no-op'),
-      return_view: z.enum(['compact-v1', 'delta-v1']).optional().describe('Opt in after state.continuation_v1 negotiation: original receipt plus current view; delta-v1 (state.delta_v1) omits context unchanged since the prior view; omit for legacy receipt'),
+      return_view: z.enum(['delta-v1', 'compact-v1', 'none']).optional().describe('Original receipt plus current view; defaults to delta-v1, which omits context unchanged since the prior view; none returns the legacy receipt for one release'),
       since_seq: z.number().int().nonnegative().optional().describe('delta-v1 anchor: last view seq the agent saw (defaults to the last view this session delivered for the run; none gives the complete view)'),
     },
     /**
@@ -534,7 +534,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >=90%
      * - CRAP Score: target <=10
      */
-    async ({ signal, payload = {}, evidence, skill, job_id, idempotency_key, return_view, since_seq }) => {
+    async ({ signal, payload = {}, evidence, skill, job_id, idempotency_key, return_view: requested, since_seq }) => {
+      const return_view = requested === 'none' ? undefined : requested ?? 'delta-v1';
       try {
         return await onRun(skill || defaultSkill, job_id, async engine => {
           const anchor = deltaAnchor(engine, return_view, since_seq);
@@ -788,7 +789,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       skill: z.string().optional().describe('Target skill name'),
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
       idempotency_key: z.string().optional().describe('Optional response key for retry without repeating the human decision or signals'),
-      return_view: z.enum(['compact-v1', 'delta-v1']).optional().describe('Opt in to original receipt plus settled current view; delta-v1 omits context unchanged since the prior view'),
+      return_view: z.enum(['delta-v1', 'compact-v1', 'none']).optional().describe('Original receipt plus settled current view; defaults to delta-v1; none returns the legacy receipt for one release'),
       since_seq: z.number().int().nonnegative().optional().describe('delta-v1 anchor: last view seq the agent saw (defaults to the last view this session delivered for the run; none gives the complete view)'),
     },
     /**
@@ -800,7 +801,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >=90%
      * - CRAP Score: target <=10
      */
-    async ({ choice, approved = true, feedback, skill, job_id, idempotency_key, return_view, since_seq }) => {
+    async ({ choice, approved = true, feedback, skill, job_id, idempotency_key, return_view: requested, since_seq }) => {
+      const return_view = requested === 'none' ? undefined : requested ?? 'delta-v1';
       try {
         return await onRun(skill || defaultSkill, job_id, async engine => {
           const anchor = deltaAnchor(engine, return_view, since_seq);

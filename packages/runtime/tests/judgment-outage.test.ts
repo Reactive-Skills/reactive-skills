@@ -608,7 +608,7 @@ states:
       const server = createReactiveMcpServer({ workspaceDir, defaultSkill: 'outage-skill' });
       const emit = (server as any)._registeredTools['reactive_emit_signal'];
       const result = await emit.handler({ signal, payload, skill: 'outage-skill' }, {} as any);
-      return JSON.parse(result.content[0].text);
+      return JSON.parse(result.content[0].text).receipt;
     };
 
     it('includes refusalReason when an outage refuses the signal', async () => {
