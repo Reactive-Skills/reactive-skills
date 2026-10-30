@@ -183,7 +183,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
   server.tool(
     'reactive_capabilities',
-    'Get runtime version and capabilities for one-time INIT transport negotiation',
+    'Runtime version and capabilities, once at INIT',
     {},
     async () => {
       const capabilities = await getRuntimeCapabilities({
@@ -206,9 +206,9 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
   server.tool(
     'reactive_bootloader',
-    'Get the authoritative runtime bootloader for a reactive skill',
+    'Runtime bootloader for a skill',
     {
-      skill_name: z.string().min(1).regex(/^[A-Za-z0-9._-]+$/).describe('Reactive skill name'),
+      skill_name: z.string().min(1).regex(/^[A-Za-z0-9._-]+$/).describe('Skill'),
     },
     async ({ skill_name }) => {
       try {
@@ -226,12 +226,12 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
   server.tool(
     'reactive_context_route',
-    'Use Jev to select the smallest useful skill and context slice before prompt assembly',
+    'Route to the smallest useful skill and context',
     {
-      user_message: z.string().min(1).describe('Current user task or message'),
-      candidates: z.array(contextCandidateSchema).optional().describe('Optional skill metadata; omit to use local manifest discovery'),
-      token_budget: z.number().int().min(128).max(32768).optional().describe('Maximum context tokens for selected route'),
-      state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Small bounded state hints'),
+      user_message: z.string().min(1).describe('Current user message'),
+      candidates: z.array(contextCandidateSchema).optional().describe('Skill metadata; omit to discover'),
+      token_budget: z.number().int().min(128).max(32768).optional().describe('Max context tokens'),
+      state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Bounded state hints'),
     },
     async ({ user_message, candidates, token_budget, state_hints }) => {
       try {
@@ -253,14 +253,14 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
   server.tool(
     'reactive_context_prepare',
-    'Route with Jev, then load only the selected skill context before prompt assembly',
+    'Route, then load only the selected skill context',
     {
-      user_message: z.string().min(1).describe('Current user task or message'),
-      candidates: z.array(contextCandidateSchema).optional().describe('Optional skill metadata; omit to use local skill discovery'),
-      token_budget: z.number().int().min(128).max(32768).optional().describe('Maximum context tokens for selected route'),
-      state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Small bounded state hints'),
-      job_id: z.string().optional().describe('Optional job/run ID for a selected reactive skill'),
-      output: z.enum(['legacy', 'compact-v1']).optional().describe('State view format; defaults to compact-v1, legacy is kept for one release'),
+      user_message: z.string().min(1).describe('Current user message'),
+      candidates: z.array(contextCandidateSchema).optional().describe('Skill metadata; omit to discover'),
+      token_budget: z.number().int().min(128).max(32768).optional().describe('Max context tokens'),
+      state_hints: z.record(z.union([z.string(), z.number(), z.boolean()])).optional().describe('Bounded state hints'),
+      job_id: z.string().optional().describe('Run ID for the selected skill'),
+      output: z.enum(['legacy', 'compact-v1']).optional().describe('Default compact-v1; legacy for one release'),
     },
     /**
      * Prepare the routed state with compact transport accounting.
@@ -398,13 +398,13 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 1. TOOL: reactive_state
   server.tool(
     'reactive_state',
-    'Get current state, prompt slice, and allowed tools for the active reactive skill',
+    'Current state view; complete unless since_seq is given',
     {
-      skill: z.string().optional().describe('Skill name (defaults to active skill)'),
-      job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
-      include_full_context: z.boolean().optional().describe('Return full recorded context (replaces scoped context in compact-v1)'),
-      output: z.enum(['legacy', 'compact-v1']).optional().describe('State view format; defaults to compact-v1, legacy is kept for one release'),
-      since_seq: z.number().int().nonnegative().optional().describe('Return delta-v1: context unchanged since this view seq is omitted; omit after resume or compaction for the complete view'),
+      skill: z.string().optional().describe('Skill; default active'),
+      job_id: z.string().optional().describe('Run ID; default active'),
+      include_full_context: z.boolean().optional().describe('Full recorded context instead of scoped'),
+      output: z.enum(['legacy', 'compact-v1']).optional().describe('Default compact-v1; legacy for one release'),
+      since_seq: z.number().int().nonnegative().optional().describe('Return delta-v1 since this view seq; omit after resume or compaction'),
     },
     /**
      * Fetch scoped state, including after a host transcript is compacted.
@@ -464,7 +464,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
   server.tool(
     'reactive_import_evidence',
-    'Import a bounded workspace-relative local file into the selected run; return receipt metadata only',
+    'Import a workspace file as evidence; returns its receipt',
     {
       path: z.string().min(1).max(4096),
       media_type: EvidenceMediaTypeSchema,
@@ -492,7 +492,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
   server.tool(
     'reactive_read_evidence',
-    'Explicitly read verified registered content in the selected run, including after compaction',
+    'Read registered evidence content by receipt',
     { reference: EvidenceReceiptSchema, skill: z.string().optional(), job_id: z.string().optional() },
     /**
      * # Performance & Risk Budget
@@ -515,16 +515,16 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 2. TOOL: reactive_emit_signal
   server.tool(
     'reactive_emit_signal',
-    'Emit an event signal into the reactive bus, evaluating transition guards and updating deliverable projections',
+    'Emit a signal; returns the receipt and next view',
     {
-      signal: z.string().describe('Signal name (e.g. CHECK_PASSED, CHARTER_DRAFTED)'),
-      payload: z.record(z.any()).optional().describe('Signal payload data (e.g. exit_code, file_path)'),
-      evidence: EvidenceBindingsSchema.optional().describe('Declared payload pointer to {reference: receipt} or {path, media_type}; kept separate from task JSON'),
-      skill: z.string().optional().describe('Target skill name'),
-      job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
-      idempotency_key: z.string().optional().describe('Optional key that makes duplicate signal submission a no-op'),
-      return_view: z.enum(['delta-v1', 'compact-v1', 'none']).optional().describe('Original receipt plus current view; defaults to delta-v1, which omits context unchanged since the prior view; none returns the legacy receipt for one release'),
-      since_seq: z.number().int().nonnegative().optional().describe('delta-v1 anchor: last view seq the agent saw (defaults to the last view this session delivered for the run; none gives the complete view)'),
+      signal: z.string().describe('Signal name'),
+      payload: z.record(z.any()).optional().describe('Signal payload'),
+      evidence: EvidenceBindingsSchema.optional().describe('Declared pointer to {reference} or {path, media_type}'),
+      skill: z.string().optional().describe('Skill'),
+      job_id: z.string().optional().describe('Run ID; default active'),
+      idempotency_key: z.string().optional().describe('Retry key; duplicates are no-ops'),
+      return_view: z.enum(['delta-v1', 'compact-v1', 'none']).optional().describe('Default delta-v1; compact-v1 complete; none legacy receipt (one release)'),
+      since_seq: z.number().int().nonnegative().optional().describe('Last view seq seen; default: last one this session delivered, else complete view'),
     },
     /**
      * # Performance & Risk Budget
@@ -571,11 +571,11 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 3. TOOL: reactive_query (SQL on events.db)
   server.tool(
     'reactive_query',
-    'Execute a read-only SQL query against the SQLite event store (.reactive/events.db)',
+    'Read-only SQL over the event store',
     {
-      sql: z.string().describe('SQL query string (e.g. SELECT * FROM events ORDER BY seq DESC LIMIT 10)'),
-      skill: z.string().optional().describe('Skill context for event store'),
-      job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
+      sql: z.string().describe('Read-only SQL over events'),
+      skill: z.string().optional().describe('Skill'),
+      job_id: z.string().optional().describe('Run ID; default active'),
     },
     async ({ sql, skill, job_id }) => {
       try {
@@ -606,14 +606,14 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // Typed query surface for normal event inspection; raw SQL remains a legacy read-only escape hatch.
   server.tool(
     'reactive_query_events',
-    'Query events with bounded typed filters from the selected skill store',
+    'Query run events by type, state or seq',
     {
-      type: z.string().optional().describe('Event type filter'),
-      state: z.string().optional().describe('State filter'),
-      sinceSeq: z.number().int().nonnegative().optional().describe('Return events after this sequence'),
-      limit: z.number().int().positive().max(1000).optional().describe('Maximum number of events'),
-      skill: z.string().optional().describe('Skill context for event store'),
-      job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
+      type: z.string().optional().describe('Event type'),
+      state: z.string().optional().describe('State'),
+      sinceSeq: z.number().int().nonnegative().optional().describe('Events after this seq'),
+      limit: z.number().int().positive().max(1000).optional().describe('Max events'),
+      skill: z.string().optional().describe('Skill'),
+      job_id: z.string().optional().describe('Run ID; default active'),
     },
     async ({ type, state, sinceSeq, limit, skill, job_id }) => {
       try {
@@ -634,7 +634,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 4. TOOL: reactive_list_skills
   server.tool(
     'reactive_list_skills',
-    'List all available reactive skills in the workspace and global registry',
+    'List available skills',
     {},
     async () => {
       const skillsFound: Array<{ name: string; path: string; type: string; statesCount: number }> = [];
@@ -703,12 +703,12 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 5. TOOL: reactive_inspect
   server.tool(
     'reactive_inspect',
-    'Inspect the statechart, or select an owning state and signal for exact guard expressions and module source without executing guards',
+    'Inspect the statechart, or exact guards for one state and signal',
     {
-      skill: z.string().optional().describe('Skill name to inspect'),
-      job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
-      state: z.string().optional().describe('Owning state path for targeted guard inspection; requires signal'),
-      signal: z.string().optional().describe('Signal owned by state; requires state'),
+      skill: z.string().optional().describe('Skill'),
+      job_id: z.string().optional().describe('Run ID; default active'),
+      state: z.string().optional().describe('Owning state path; needs signal'),
+      signal: z.string().optional().describe('Signal owned by state; needs state'),
     },
     /**
      * # Performance & Risk Budget
@@ -743,9 +743,9 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 6. TOOL: reactive_invoke_skill
   server.tool(
     'reactive_invoke_skill',
-    'Invoke a child reactive skill or legacy SKILL.md, recording parent/child event provenance',
+    'Invoke a child skill with provenance',
     {
-      skill: z.string().describe('Skill name or path to invoke'),
+      skill: z.string().describe('Skill name or path'),
     },
     async ({ skill }) => {
       try {
@@ -784,16 +784,16 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 7. TOOL: reactive_respond_human
   server.tool(
     'reactive_respond_human',
-    'Submit user approval or feedback to unpause a Human-in-the-Loop (HITL) gate',
+    'Submit a human decision at a gate',
     {
-      choice: z.string().describe('User selected choice (e.g. Approve Plan)'),
-      approved: z.boolean().optional().describe('Explicit approval boolean flag'),
-      feedback: z.string().optional().describe('Optional feedback text'),
-      skill: z.string().optional().describe('Target skill name'),
-      job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
-      idempotency_key: z.string().optional().describe('Optional response key for retry without repeating the human decision or signals'),
-      return_view: z.enum(['delta-v1', 'compact-v1', 'none']).optional().describe('Original receipt plus settled current view; defaults to delta-v1; none returns the legacy receipt for one release'),
-      since_seq: z.number().int().nonnegative().optional().describe('delta-v1 anchor: last view seq the agent saw (defaults to the last view this session delivered for the run; none gives the complete view)'),
+      choice: z.string().describe('Selected choice'),
+      approved: z.boolean().optional().describe('Approved'),
+      feedback: z.string().optional().describe('Feedback'),
+      skill: z.string().optional().describe('Skill'),
+      job_id: z.string().optional().describe('Run ID; default active'),
+      idempotency_key: z.string().optional().describe('Retry key; no repeated decision'),
+      return_view: z.enum(['delta-v1', 'compact-v1', 'none']).optional().describe('Default delta-v1; compact-v1 complete; none legacy receipt (one release)'),
+      since_seq: z.number().int().nonnegative().optional().describe('Last view seq seen; default: last one this session delivered, else complete view'),
     },
     /**
      * Submit a complete human response batch before optional current-view delivery.
@@ -828,9 +828,9 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 7. TOOL: reactive_migrate
   server.tool(
     'reactive_migrate',
-    'Retroactively upgrade an existing project workspace to the latest Event Modeling and CQRS schema standards',
+    'Migrate a workspace to the current schema',
     {
-      targetDir: z.string().optional().describe('Project directory path (defaults to current workspace)'),
+      targetDir: z.string().optional().describe('Project dir; default workspace'),
     },
     async ({ targetDir }) => {
       try {
@@ -877,9 +877,9 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 9. TOOL: reactive_list_jobs
   server.tool(
     'reactive_list_jobs',
-    'List all historical and active execution jobs for a skill with status metadata',
+    'List jobs for a skill',
     {
-      skill: z.string().optional().describe('Skill name (defaults to active skill)'),
+      skill: z.string().optional().describe('Skill; default active'),
     },
     async ({ skill }) => {
       try {
@@ -921,10 +921,10 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 10. TOOL: reactive_switch_job
   server.tool(
     'reactive_switch_job',
-    'Switch the active execution job pointer for a reactive skill and synchronize deliverables',
+    'Switch the active job',
     {
-      skill: z.string().optional().describe('Name of the reactive skill (defaults to active skill)'),
-      job_id: z.string().describe('Target job ID to set as active'),
+      skill: z.string().optional().describe('Skill; default active'),
+      job_id: z.string().describe('Job ID to activate'),
     },
     async ({ skill, job_id }) => {
       try {
@@ -987,10 +987,10 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 11. TOOL: reactive_archive_job
   server.tool(
     'reactive_archive_job',
-    'Archive an execution job for a reactive skill and rotate active pointer if archived was active',
+    'Archive a job',
     {
-      skill: z.string().optional().describe('Name of the reactive skill (defaults to active skill)'),
-      job_id: z.string().optional().describe('Job ID to archive (defaults to active job)'),
+      skill: z.string().optional().describe('Skill; default active'),
+      job_id: z.string().optional().describe('Job ID; default active'),
     },
     async ({ skill, job_id }) => {
       try {
@@ -1047,10 +1047,10 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 12. TOOL: reactive_reset
   server.tool(
     'reactive_reset',
-    'Reset a reactive skill session, archive completed/stuck jobs, and rotate to a fresh run',
+    'Archive the run and start a fresh one',
     {
-      skill: z.string().optional().describe('Skill name (defaults to active skill)'),
-      purge: z.boolean().optional().describe('Permanently delete all events and jobs rather than archiving'),
+      skill: z.string().optional().describe('Skill; default active'),
+      purge: z.boolean().optional().describe('Delete events and jobs instead of archiving'),
     },
     async ({ skill, purge }) => {
       try {
@@ -1124,20 +1124,20 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
   // 13. TOOL: reactive_sync
   server.tool(
     'reactive_sync',
-    'Copy skills from ordered sources into a physical central directory, then link or copy them to agent satellites',
+    'Sync skills to the central directory and satellites',
     {
-      skill: z.string().optional().describe('Skill name to sync (optional, syncs all skills if omitted)'),
-      link: z.boolean().optional().describe('Use directory junctions / symlinks for zero-drift live editing (default: true)'),
-      copy: z.boolean().optional().describe('Force physical copy instead of junctions (default: false)'),
-      dryRun: z.boolean().optional().describe('Preview sync actions without touching disk (default: false)'),
-      source: z.string().optional().describe('Custom source directory (optional)'),
-      target: z.string().optional().describe('Custom target directory (optional)'),
-      central: z.string().optional().describe('Physical central skill directory (optional)'),
-      config: z.string().optional().describe('Sync config file (optional)'),
-      physicalTargets: z.array(z.string()).optional().describe('Satellites that require physical copies'),
-      showConfig: z.boolean().optional().describe('Show resolved sync configuration without writing'),
-      ref: z.string().optional().describe('Read skills from this committed git branch, tag or commit of each source instead of its working tree'),
-      allowDowngrade: z.boolean().optional().describe('Replace an installed skill even when the source skill.yaml version is older (default: false)'),
+      skill: z.string().optional().describe('Skill; all if omitted'),
+      link: z.boolean().optional().describe('Link instead of copy (default true)'),
+      copy: z.boolean().optional().describe('Copy instead of link'),
+      dryRun: z.boolean().optional().describe('Preview without writing'),
+      source: z.string().optional().describe('Source directory'),
+      target: z.string().optional().describe('Target directory'),
+      central: z.string().optional().describe('Central skill directory'),
+      config: z.string().optional().describe('Sync config file'),
+      physicalTargets: z.array(z.string()).optional().describe('Satellites needing copies'),
+      showConfig: z.boolean().optional().describe('Show resolved config only'),
+      ref: z.string().optional().describe('Git ref to read sources from instead of working tree'),
+      allowDowngrade: z.boolean().optional().describe('Replace even if source version is older'),
     },
     async ({ skill, link = true, copy = false, dryRun = false, source, target, central, config, physicalTargets, showConfig = false, ref, allowDowngrade = false }) => {
       try {
