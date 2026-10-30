@@ -90,6 +90,7 @@ Heuristics are deliberately conservative and the catalog is tuned against the pu
 | --- | --- | --- |
 | `guard/sandbox-escape` | high | An inline guard or judgment expression reaches for constructors, prototypes, globals or modules that can break out of the vm sandbox. |
 | `guard/path-escape` | high | guardFunction path points outside the skill directory. |
+| `guard/runtime-command` | medium | A `runtime_action` state declares a command the runtime runs itself, without a model turn (experimental). Review the command and its arguments. |
 
 ### Prompt injection in prose
 

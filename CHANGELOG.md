@@ -9,6 +9,10 @@
 |---|---|---|---|
 | `reactive_emit_signal`, `reactive_respond_human` | `receipt_paths` | `relative` | `absolute` (previous receipt paths, one release) |
 
+### New features
+
+- **Runtime-executed states (experimental):** A manifest that requires the new `state.runtime_actions` capability can declare `runtime_action` on a leaf state: a command with literal arguments and a timeout, a workspace path check, a JSON Schema subset check of a recorded value, or a pure expression over context, with declared success and failure transitions. The runtime runs it without a model turn, records `RUNTIME_ACTION_STARTED` and `RUNTIME_ACTION_COMPLETED` evidence, and dispatches the outcome signal through ordinary signal handling. Pending actions resume from the ledger before a view is delivered; a recorded result is reused, and an action interrupted after it started runs again. `reactive-skills-axi vet` reports declared commands as `guard/runtime-command`. The shape may change; see [docs/runtime-actions.md](docs/runtime-actions.md) for the rules and the measured prototype.
+
 ### Changes
 
 - **Shorter bootloader:** Two pairs of overlapping bootloader sentences are merged (the AXI `--output compact-v1` guidance, and the note that `npx` only launches AXI). No instruction was removed.

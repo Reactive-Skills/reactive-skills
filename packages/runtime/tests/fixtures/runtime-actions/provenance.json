@@ -1,0 +1,140 @@
+{
+  "repository": "https://github.com/Reactive-Skills/skills",
+  "commit": "80d1c72d4c5fdf3182eec07ac0e3312a274652df",
+  "license": "MIT (catalog LICENSE)",
+  "purpose": "Test fixtures for the experimental runtime_action prototype. Not catalog releases; the catalog is unchanged.",
+  "skills": {
+    "tdd-refactor": {
+      "changes": [
+        "skill.yaml: requires state.runtime_actions; RED_RUN, GREEN_RUN and AUDIT_VERIFY are runtime_action commands; RED_SPEC emits TEST_WRITTEN and GREEN_CODE emits CODE_WRITTEN instead of TEST_RAN; run_command removed from those two states; red_result, green_result and audit_result added to context_keys; default target_file and test_file use .mjs so the fixture suite runs with node.",
+        "states/red_spec.md, states/green_code.md: the model writes the test or code and no longer runs the suite.",
+        "states/audit_verify.md: omitted; the state is runtime-executed."
+      ],
+      "files": [
+        {
+          "path": "skill.yaml",
+          "git_blob": "25d9cccabc19f34a373fd6e1c26604d28e19a84d",
+          "upstream_git_blob": "e197899a57f17e1b7d61b76407dee0e3de802ded",
+          "modified": true
+        },
+        {
+          "path": "states/clean_code.md",
+          "git_blob": "296154e57e1974abdcc40f93d1f06a0fc7d988b4",
+          "upstream_git_blob": "296154e57e1974abdcc40f93d1f06a0fc7d988b4",
+          "modified": false
+        },
+        {
+          "path": "states/completed.md",
+          "git_blob": "2b44fd4bf7510347219a4375b3417512f16c43cf",
+          "upstream_git_blob": "2b44fd4bf7510347219a4375b3417512f16c43cf",
+          "modified": false
+        },
+        {
+          "path": "states/green_code.md",
+          "git_blob": "b35a265ef9db379f02486188d6613571ac8ba2be",
+          "upstream_git_blob": "f44c87d5969e032e93dac3035672ee00317a486a",
+          "modified": true
+        },
+        {
+          "path": "states/init.md",
+          "git_blob": "2bf45d837ebdb47a3a42df8fa573367024ae34b8",
+          "upstream_git_blob": "2bf45d837ebdb47a3a42df8fa573367024ae34b8",
+          "modified": false
+        },
+        {
+          "path": "states/perf_audit.md",
+          "git_blob": "ffc180e88df085ac5d39053f1d5ed489d9795ab2",
+          "upstream_git_blob": "ffc180e88df085ac5d39053f1d5ed489d9795ab2",
+          "modified": false
+        },
+        {
+          "path": "states/red_spec.md",
+          "git_blob": "3b053ab49c71eea49d59b5b30d48874f206f1f9a",
+          "upstream_git_blob": "1a18cbde54da6f90fb1875aa32d7f85dbe515fd3",
+          "modified": true
+        },
+        {
+          "path": "states/setup_runtime.md",
+          "git_blob": "4ce86f5ae4ca4d2d3bc2f6cca0ebb26d805203c6",
+          "upstream_git_blob": "4ce86f5ae4ca4d2d3bc2f6cca0ebb26d805203c6",
+          "modified": false
+        },
+        {
+          "path": "templates/refactor_summary.md.hbs",
+          "git_blob": "99ed4a2dd5204acba5592337e73561f4c64265f4",
+          "upstream_git_blob": "99ed4a2dd5204acba5592337e73561f4c64265f4",
+          "modified": false
+        },
+        {
+          "path": "templates/state_snapshot.json.hbs",
+          "git_blob": "a9f4ecd6b3649f2128fccbaeadefbde6fda2bbda",
+          "upstream_git_blob": "a9f4ecd6b3649f2128fccbaeadefbde6fda2bbda",
+          "modified": false
+        }
+      ]
+    },
+    "test-coverage-gate": {
+      "changes": [
+        "skill.yaml: requires state.runtime_actions; CONFIGURE is a json_schema check of thresholds; BASELINE and MEASURE are runtime_action commands declared for the fixture project; MEASURE_REPORT is a path_exists check; INTAKE no longer collects commands; ANALYZE parses the report; middleware hooks omitted (the runtime does not run them).",
+        "states/intake.md, states/analyze.md: adjusted to the declared commands.",
+        "states/configure.md, states/baseline.md, states/measure.md: omitted; the states are runtime-executed."
+      ],
+      "files": [
+        {
+          "path": "skill.yaml",
+          "git_blob": "a45d63c6888b777d8201d1da20f5d1b7a59ed6bd",
+          "upstream_git_blob": "a6476b08f2b18b58a18148fcf20fe306d2b395e4",
+          "modified": true
+        },
+        {
+          "path": "states/analyze.md",
+          "git_blob": "7626f877b62770fde8617eae2ffc01c8936b115b",
+          "upstream_git_blob": "91dffb7566d109f398cab6163987b65b0c0e4bb4",
+          "modified": true
+        },
+        {
+          "path": "states/blocked.md",
+          "git_blob": "751e95f335038aca7bdaad30c9aec35d440b91b4",
+          "upstream_git_blob": "751e95f335038aca7bdaad30c9aec35d440b91b4",
+          "modified": false
+        },
+        {
+          "path": "states/error.md",
+          "git_blob": "08fb9786b709724c5d5e6936855aea04066ef457",
+          "upstream_git_blob": "08fb9786b709724c5d5e6936855aea04066ef457",
+          "modified": false
+        },
+        {
+          "path": "states/gate.md",
+          "git_blob": "33dcfb9f69ec4655dcc7b3d479cc2cca8ef0e6d3",
+          "upstream_git_blob": "33dcfb9f69ec4655dcc7b3d479cc2cca8ef0e6d3",
+          "modified": false
+        },
+        {
+          "path": "states/intake.md",
+          "git_blob": "cdeebbd67da67e278c23df494b0ae8ad53513275",
+          "upstream_git_blob": "d2651b4b1a08e5905e01356bd52fc8550d247783",
+          "modified": true
+        },
+        {
+          "path": "states/success.md",
+          "git_blob": "cd051bcaeaa1f30b4bcf2aa3341f22ecac7d5adf",
+          "upstream_git_blob": "cd051bcaeaa1f30b4bcf2aa3341f22ecac7d5adf",
+          "modified": false
+        },
+        {
+          "path": "templates/coverage_report.md.hbs",
+          "git_blob": "0e0986cc64c167d7762f5e80653dd80dc6c8c7cf",
+          "upstream_git_blob": "0e0986cc64c167d7762f5e80653dd80dc6c8c7cf",
+          "modified": false
+        },
+        {
+          "path": "templates/state_snapshot.json.hbs",
+          "git_blob": "34d9811867a4d24773029fc6b413290a63b35ab0",
+          "upstream_git_blob": "34d9811867a4d24773029fc6b413290a63b35ab0",
+          "modified": false
+        }
+      ]
+    }
+  }
+}

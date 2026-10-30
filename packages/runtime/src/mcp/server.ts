@@ -345,6 +345,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
             };
           }
 
+          await engine.resumeRuntimeActions();
           engine.recordStateDelivery();
           const slice = engine.generatePromptSlice();
           const state = createStateResponse(engine, slice, false, output ?? 'compact-v1');
@@ -438,6 +439,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
           };
         }
 
+        await engine.resumeRuntimeActions();
         engine.recordStateDelivery();
         const slice = engine.generatePromptSlice();
         const payload = since_seq === undefined || include_full_context

@@ -4,6 +4,7 @@ import { validateContextPath } from './judgment-context.js';
 import { EvidenceDeclarationsSchema, type EvidenceDeclarations } from './evidence-resolver.js';
 import { JudgmentInputOptionsSchema, judgmentInputDeclarationErrors, usesJudgmentInputOptions, JUDGMENT_PAYLOAD_SELECTION_CAPABILITY } from './judgment-input.js';
 import type { JudgmentInputOptions, JudgmentInputInspection } from './judgment-input.js';
+import { RuntimeActionSchema, runtimeActionManifestIssues, type RuntimeAction } from './runtime-actions.js';
 
 /**
  * Signal Event Schema: Immutable envelope for all events in the reactive skill bus
@@ -281,6 +282,7 @@ export interface StateDefinition {
   max_idle_turns?: number; // Max turns before bypass detection triggers (default 2)
   max_view_refetches?: number; // Uncounted repeat fetches of the same strict view, for compaction recovery (default 2)
   bypass_target?: string; // Target state when bypass is detected (default "BYPASS_DETECTED")
+  runtime_action?: RuntimeAction; // Experimental: the runtime runs this state itself and never delivers it to the model
 }
 
 /**
@@ -507,6 +509,7 @@ export const StateSchema: z.ZodType<StateDefinition> = z.lazy(() =>
     max_idle_turns: z.number().int().positive().optional(),
     max_view_refetches: z.number().int().nonnegative().optional(),
     bypass_target: z.string().optional(),
+    runtime_action: RuntimeActionSchema.optional(),
   })
 );
 
@@ -530,6 +533,9 @@ export const SkillManifestSchema = z.object({
 }).superRefine(/**
  * Tier: P2 (< 100ms); Complexity: O(s + t), states and transitions; CRAP target <= 25 (CC <= 15, branch coverage >= 70%).
  */ (manifest, ctx) => {
+  for (const issue of runtimeActionManifestIssues(manifest as SkillManifest)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: issue.path, message: issue.message });
+  }
   if (manifest.runtime_requirements?.required_capabilities?.includes(JUDGMENT_PAYLOAD_SELECTION_CAPABILITY)) return;
   const pending = Object.values(manifest.states);
   while (pending.length) {

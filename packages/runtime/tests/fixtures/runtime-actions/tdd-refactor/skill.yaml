@@ -1,0 +1,176 @@
+# Test fixture: experimental runtime_action variant of the public tdd-refactor 2.0.6 skill.
+# Provenance and the list of changes are in ../provenance.json. Not a catalog release.
+schema_version: "2.1.0"
+name: tdd-refactor
+version: "2.0.6"
+description: >-
+  Hierarchical TDD & Refactoring state machine with nested micro-cycles,
+  regression detection, event bubbling, and live projections
+initial_state: INIT
+strict_execution: true
+runtime_requirements:
+  required_capabilities:
+    - state.runtime_actions
+context_keys:
+  - requirement
+  - target_file
+  - test_file
+  - refactor_cycles
+  - clean_passes
+  - red_result
+  - green_result
+  - audit_result
+default_context:
+  requirement: null
+  target_file: src/auth.mjs
+  test_file: tests/auth.test.mjs
+  refactor_cycles: 0
+  clean_passes: 0
+states:
+  INIT:
+    description: 'Bootloader: Verify reactive runtime environment'
+    prompt_template: states/init.md
+    transitions:
+      RUNTIME_READY:
+        target: RED_SPEC
+      SETUP_REQUIRED:
+        target: SETUP_RUNTIME
+  SETUP_RUNTIME:
+    description: Auto-configure harness MCP server
+    prompt_template: states/setup_runtime.md
+    tools:
+      - run_command
+    transitions:
+      SETUP_COMPLETE:
+        target: RED_SPEC
+        guard: payload.exit_code == 0
+      SETUP_FAILED:
+        target: ERROR
+        guard: payload.exit_code != 0
+  RED_SPEC:
+    description: Author a strictly failing test specifying the new requirement
+    prompt_template: states/red_spec.md
+    tools:
+      - view_file
+      - write_to_file
+      - replace_file_content
+    on_enter:
+      - emit_signal: ENTERED_RED_PHASE
+    transitions:
+      TEST_WRITTEN:
+        target: RED_RUN
+  RED_RUN:
+    description: The runtime runs the test suite and requires it to fail
+    runtime_action:
+      kind: command
+      command: node
+      args:
+        - tests/auth.test.mjs
+      timeout_ms: 30000
+      expect_exit: nonzero
+      record_as: red_result
+      on_success: RED_CONFIRMED
+      on_failure: RED_NOT_FAILING
+    transitions:
+      RED_CONFIRMED:
+        target: GREEN_CODE
+      RED_NOT_FAILING:
+        target: RED_SPEC
+  GREEN_CODE:
+    description: Write minimal implementation code to turn the test suite green
+    prompt_template: states/green_code.md
+    tools:
+      - view_file
+      - write_to_file
+      - replace_file_content
+    on_enter:
+      - emit_signal: ENTERED_GREEN_PHASE
+    transitions:
+      CODE_WRITTEN:
+        target: GREEN_RUN
+  GREEN_RUN:
+    description: The runtime runs the test suite and requires it to pass
+    runtime_action:
+      kind: command
+      command: node
+      args:
+        - tests/auth.test.mjs
+      timeout_ms: 30000
+      record_as: green_result
+      on_success: GREEN_CONFIRMED
+      on_failure: GREEN_STILL_FAILING
+    transitions:
+      GREEN_CONFIRMED:
+        target: REFACTOR
+      GREEN_STILL_FAILING:
+        target: GREEN_CODE
+  REFACTOR:
+    description: 'Composite state: Clean Code, Optimize Architecture, and Verify Invariants'
+    initial_substate: CLEAN_CODE
+    on_enter:
+      - set_context:
+          refactor_cycles: 1
+      - emit_signal: REFACTOR_CYCLE_STARTED
+    on_exit:
+      - emit_signal: REFACTOR_CYCLE_CONCLUDED
+    transitions:
+      GLOBAL_ABORT:
+        target: RED_SPEC
+      TEST_RAN:
+        target: GREEN_CODE
+        guard: event.payload.exit_code != 0
+    substates:
+      CLEAN_CODE:
+        description: Simplify naming, remove duplication, and extract deep helpers
+        prompt_template: states/clean_code.md
+        tools:
+          - view_file
+          - write_to_file
+          - replace_file_content
+          - run_command
+        transitions:
+          CLEANING_DONE:
+            target: REFACTOR.PERF_AUDIT
+      PERF_AUDIT:
+        description: >-
+          Analyze complexity, eliminate unnecessary allocations and redundant
+          I/O
+        prompt_template: states/perf_audit.md
+        tools:
+          - view_file
+          - write_to_file
+          - replace_file_content
+          - run_command
+        transitions:
+          AUDIT_PASSED:
+            target: AUDIT_VERIFY
+  AUDIT_VERIFY:
+    description: The runtime runs the full verification suite
+    runtime_action:
+      kind: command
+      command: node
+      args:
+        - tests/auth.test.mjs
+      timeout_ms: 60000
+      record_as: audit_result
+      on_success: ALL_CHECKS_PASSED
+      on_failure: REGRESSION_DETECTED
+    transitions:
+      ALL_CHECKS_PASSED:
+        target: COMPLETED
+      REGRESSION_DETECTED:
+        target: GREEN_CODE
+  COMPLETED:
+    description: TDD Refactor cycle finished successfully
+    prompt_template: states/completed.md
+    on_enter:
+      - emit_signal: DELIVERABLE_READY
+  ERROR:
+    description: Runtime setup failed
+  BYPASS_DETECTED:
+    description: "Terminal State: Bypass detected - Agent operated outside signal contract"
+deliverable_projections:
+  - template: templates/refactor_summary.md.hbs
+    output: .docs/tdd-refactor-summary.md
+  - template: templates/state_snapshot.json.hbs
+    output: .docs/state-snapshot.json

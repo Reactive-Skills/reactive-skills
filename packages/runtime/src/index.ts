@@ -32,3 +32,13 @@ export * from './telemetry/port-selection.js';
 export * from './telemetry/dashboard.js';
 export * from './core/state-view.js';
 export * from './core/payload-contract.js';
+export {
+  RUNTIME_ACTIONS_CAPABILITY,
+  RuntimeActionSchema,
+  decideRuntimeOutcome,
+  type RuntimeAction,
+  type RuntimeActionObservation,
+  type RuntimeActionRecord,
+  type RuntimeActionSummary,
+} from './core/runtime-actions.js';
+export { LocalRuntimeActionExecutor, type RuntimeActionExecutor, type RuntimeActionInput } from './core/runtime-action-executor.js';

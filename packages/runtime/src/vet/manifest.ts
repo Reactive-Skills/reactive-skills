@@ -18,12 +18,20 @@ export interface GuardUse {
   line: number;
 }
 
+/** A command a `runtime_action` state declares; the runtime runs it without a model turn. */
+export interface RuntimeCommandUse {
+  /** Executable and literal arguments as written. */
+  argv: string;
+  line: number;
+}
+
 export interface SkillManifestInfo {
   /** Manifest file name relative to the skill, when one exists. */
   file?: string;
   /** Set when a manifest exists but could not be read or parsed. */
   problem?: string;
   guards: GuardUse[];
+  runtimeCommands?: RuntimeCommandUse[];
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -80,6 +88,7 @@ export function readSkillManifest(skillDir: string): SkillManifestInfo {
 
   const lines = text.split('\n');
   const guards: GuardUse[] = [];
+  const runtimeCommands: RuntimeCommandUse[] = [];
   const seen = new WeakSet<object>();
   let nodes = 0;
   let cursor = 1;
@@ -90,6 +99,11 @@ export function readSkillManifest(skillDir: string): SkillManifestInfo {
     for (const state of Object.values(states)) {
       if (!isRecord(state) || seen.has(state) || ++nodes >= MAX_NODES) continue;
       seen.add(state);
+      const action = state.runtime_action;
+      if (isRecord(action) && action.kind === 'command' && typeof action.command === 'string') {
+        const args = Array.isArray(action.args) ? action.args.filter((arg): arg is string => typeof arg === 'string') : [];
+        runtimeCommands.push({ argv: [action.command, ...args].join(' ').slice(0, 200), line: locate(lines, 'command', action.command, 1) });
+      }
       const transitions = state.transitions;
       if (isRecord(transitions)) {
         for (const transition of Object.values(transitions)) {
@@ -116,5 +130,5 @@ export function readSkillManifest(skillDir: string): SkillManifestInfo {
     }
   };
   walkStates(parsed.states);
-  return { file, guards };
+  return { file, guards, runtimeCommands };
 }

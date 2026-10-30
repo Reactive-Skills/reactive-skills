@@ -6,6 +6,7 @@ vi.mock('@reactive-skills/runtime', () => ({
   createSortableId: vi.fn(() => '01a06e96-test-sortable-id'),
   FSMEngine: vi.fn().mockImplementation(() => ({
     getCurrentState: vi.fn(() => 'INIT'),
+    resumeRuntimeActions: vi.fn(async () => []),
     generatePromptSlice: vi.fn(() => ({
       rawPrompt: 'Verify reactive runtime instructions',
       allowedTools: ['run_command', 'view_file'],
