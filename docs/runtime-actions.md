@@ -105,17 +105,17 @@ AXI emit output shows the new state's prompt, not recorded context.
 
 Two catalog skills (catalog commit `80d1c72`) were converted into test fixtures under `packages/runtime/tests/fixtures/runtime-actions/`; the catalog itself is unchanged.
 The measurement used the harness and definitions of the 0.20.0 context measurement report on each skill's declared canonical path: delivered context is the declared common sources and references plus every tool argument and result, divided by the catalog skill's flat fixture.
-Workspace roots in receipts are replaced by a fixed placeholder, because their length differs between machines and every receipt repeats them.
+Receipt projection paths are workspace-relative on both runtimes, so workspace location does not affect the byte counts.
 Token counts are offline `o200k_base` estimates; they move by about ±0.05 between runs with no byte change.
 
 | Skill | Transport | Main runtime, catalog skill (bytes / tokens over flat) | This runtime, runtime-action variant | States delivered to the model: flat / main / variant |
 |---|---|---|---|---|
-| tdd-refactor | MCP default | 3.252 / 3.758 | 2.969 / 3.370 | 7 / 7 / 6 |
-| tdd-refactor | MCP continuation | 3.286 / 3.769 | 2.998 / 3.386 | 7 / 7 / 6 |
-| tdd-refactor | AXI default | 2.903 / 3.424 | 2.635 / 3.054 | 7 / 7 / 6 |
-| test-coverage-gate | MCP default | 2.231 / 2.601 | 1.670 / 1.883 | 7 / 7 / 4 |
-| test-coverage-gate | MCP continuation | 2.249 / 2.615 | 1.680 / 1.888 | 7 / 7 / 4 |
-| test-coverage-gate | AXI default | 2.021 / 2.446 | 1.527 / 1.793 | 7 / 7 / 4 |
+| tdd-refactor | MCP default | 3.178 / 3.592 | 2.903 / 3.303 | 7 / 7 / 6 |
+| tdd-refactor | MCP continuation | 3.211 / 3.649 | 2.932 / 3.312 | 7 / 7 / 6 |
+| tdd-refactor | AXI default | 2.884 / 3.436 | 2.616 / 3.095 | 7 / 7 / 6 |
+| test-coverage-gate | MCP default | 2.205 / 2.579 | 1.652 / 1.855 | 7 / 7 / 4 |
+| test-coverage-gate | MCP continuation | 2.224 / 2.599 | 1.662 / 1.872 | 7 / 7 / 4 |
+| test-coverage-gate | AXI default | 2.010 / 2.457 | 1.517 / 1.785 | 7 / 7 / 4 |
 
 Neither variant delivers less than flat on either skill.
 The variants deliver less than the main runtime running the catalog skill on every transport.
@@ -126,12 +126,12 @@ Runtime-executed portion, 20 repetitions over MCP default, p50 / nearest-rank p9
 
 | Skill | State | Action | Runtime portion |
 |---|---|---|---|
-| tdd-refactor | RED_RUN | 50.1 / 61.8 | 84 / 94 |
-| tdd-refactor | GREEN_RUN | 56.6 / 64.2 | 90 / 109 |
-| tdd-refactor | AUDIT_VERIFY | 52.0 / 64.4 | 85 / 100 |
-| test-coverage-gate | CONFIGURE | 0.10 / 0.22 | 21 / 27 |
-| test-coverage-gate | BASELINE | 134.2 / 151.7 | 156 / 175 |
-| test-coverage-gate | MEASURE | 175.6 / 203.9 | 200 / 227 |
-| test-coverage-gate | MEASURE_REPORT | 0.13 / 0.42 | 24 / 31 |
+| tdd-refactor | RED_RUN | 52.1 / 61.6 | 79 / 93 |
+| tdd-refactor | GREEN_RUN | 50.1 / 63.4 | 87 / 103 |
+| tdd-refactor | AUDIT_VERIFY | 49.3 / 60.2 | 81 / 95 |
+| test-coverage-gate | CONFIGURE | 0.07 / 0.20 | 20 / 25 |
+| test-coverage-gate | BASELINE | 130.0 / 149.9 | 152 / 180 |
+| test-coverage-gate | MEASURE | 170.8 / 186.9 | 198 / 215 |
+| test-coverage-gate | MEASURE_REPORT | 0.11 / 0.20 | 23 / 30 |
 
 Model generation time for the turns that were removed was not measured.
