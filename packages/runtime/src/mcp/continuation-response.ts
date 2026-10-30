@@ -186,8 +186,21 @@ export function continuationResponse(engine: FSMEngine, receipt: Receipt, event:
     replayed: recovered || !!saved,
     result_view: resultView,
     // A replayed or recovered submission is a resume: deliver the complete view.
-    view: sinceSeq === undefined || recovered || saved ? createStateView(engine, slice, outcome) : createDeltaView(engine, sinceSeq, slice, outcome),
+    view: sinceSeq === undefined || recovered || saved ? createStateView(engine, slice, outcome) : createDeltaView(engine, sinceSeq, slice, outcome, suppliedContext(engine, event)),
   }, slice.metrics!);
+}
+
+/**
+ * Context the submitting agent supplied with a signal; decisions supply none.
+ * # Performance & Risk Budget
+ * - Tier: P0 (<5ms)
+ * - Complexity: O(k + u), declared keys and explicit updates
+ * - Cyclomatic Complexity (CC): target <=2
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+function suppliedContext(engine: FSMEngine, event: SignalEvent): Record<string, unknown> {
+  return event.type === 'SIGNAL_EMITTED' ? engine.suppliedContextUpdates(event.payload) : {};
 }
 
 /**

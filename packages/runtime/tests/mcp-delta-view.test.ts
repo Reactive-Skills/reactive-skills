@@ -51,13 +51,27 @@ describe('MCP ledger-anchored delta views', () => {
     const first = await call('reactive_state', { output: 'compact-v1' });
     const toBuild = await call('reactive_emit_signal', { signal: 'NOTED', payload: { contextUpdates: { notes: LARGE } }, return_view: 'delta-v1' });
     expect(toBuild.view).toMatchObject({ format: 'delta-v1', state: 'BUILD', since_seq: first.seq });
-    // notes changed; target was outside the INTAKE scope, so the agent has not seen it yet.
-    expect(toBuild.view.context).toEqual({ notes: LARGE, target: 'src/app.ts' });
+    // target was outside the INTAKE scope, so the agent has not seen it; notes is the agent's own value.
+    expect(toBuild.view.context).toEqual({ target: 'src/app.ts' });
+    expect(toBuild.view.context_accepted).toEqual(['notes']);
+    expect(JSON.stringify(toBuild)).not.toContain('Recorded intake notes');
     expect(toBuild.view.contracts.join('\n')).toContain('BUILD: DONE -> COMPLETED');
     const again = await call('reactive_emit_signal', { signal: 'BUILT', payload: { result: 'ok' }, return_view: 'delta-v1' });
     expect(again.view.format).toBe('delta-v1');
-    expect(again.view.context).toEqual({ result: 'ok' });
+    expect(again.view.context).toEqual({});
+    expect(again.view.context_accepted).toEqual(['result']);
     expect(JSON.stringify(again)).not.toContain('Recorded intake notes');
+  });
+
+  it('sends a supplied value that a later patch changed before commit', async () => {
+    const skill = path.join(workspace, 'skills', 'delta', 'skill.yaml');
+    const manifest = JSON.parse(fs.readFileSync(skill, 'utf8'));
+    manifest.states.BUILD.on_enter = [{ set_context: { notes: 'normalized by entry hook' } }];
+    fs.writeFileSync(skill, JSON.stringify(manifest));
+    await call('reactive_state', { output: 'compact-v1', skill: 'delta' });
+    const moved = await call('reactive_emit_signal', { signal: 'NOTED', payload: { contextUpdates: { notes: LARGE } }, return_view: 'delta-v1' });
+    expect(moved.view.context).toEqual({ notes: 'normalized by entry hook', target: 'src/app.ts' });
+    expect(moved.view).not.toHaveProperty('context_accepted');
   });
 
   it('answers reactive_state with since_seq as a delta and without it as the complete view', async () => {

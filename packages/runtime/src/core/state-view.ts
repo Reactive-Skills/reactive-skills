@@ -92,29 +92,36 @@ export function createStateView(engine: FSMEngine, slice = engine.generatePrompt
 export interface DeltaStateView extends Omit<StateView, 'format'> {
   format: 'delta-v1';
   since_seq: number;
+  /** Changed keys recorded exactly as the triggering submission supplied them; their values are not echoed. */
+  context_accepted?: string[];
 }
 
 /**
  * Build a ledger-anchored view: complete instructions and contracts, but only the scoped context that
- * changed after `sinceSeq` or that the anchored view's scope did not expose. Falls back to the
- * complete view when the ledger window cannot be folded safely.
+ * changed after `sinceSeq` or that the anchored view's scope did not expose. Values recorded exactly as
+ * `supplied` by the triggering submission are named, not echoed. Falls back to the complete view when
+ * the ledger window cannot be folded safely.
  * # Performance & Risk Budget
  * - Tier: P1 (< 25ms; complete view assembly plus indexed events after the anchor)
- * - Complexity: O(h² + b + a + w + e), complete view plus events after the anchor
+ * - Complexity: O(h² + b + a + w + e + s), complete view, events after the anchor and supplied value bytes
  * - Cyclomatic Complexity (CC): target <= 8
  * - Branch Coverage: target >= 90%
  * - CRAP Score: target <= 10.0
  */
-export function createDeltaView(engine: FSMEngine, sinceSeq: number, slice = engine.generatePromptSlice(), outcome: StateViewOutcome = {}): StateView | DeltaStateView {
+export function createDeltaView(engine: FSMEngine, sinceSeq: number, slice = engine.generatePromptSlice(), outcome: StateViewOutcome = {}, supplied: Record<string, unknown> = {}): StateView | DeltaStateView {
   const view = createStateView(engine, slice, outcome);
   const changes = engine.contextChangesSince(sinceSeq);
   if (!changes) return view;
   const seen = engine.visibleContextKeys(changes.anchorPath ?? engine.getActiveStatePath());
   const context: Record<string, unknown> = {};
+  const accepted: string[] = [];
   for (const [key, value] of Object.entries(view.context)) {
-    if (changes.keys.has(key) || (seen !== null && !seen.has(key))) context[key] = value;
+    if (!changes.keys.has(key) && (seen === null || seen.has(key))) continue;
+    // The agent already holds a value it just submitted; name it instead of echoing it.
+    if (key in supplied && JSON.stringify(supplied[key]) === JSON.stringify(value)) accepted.push(key);
+    else context[key] = value;
   }
-  return { ...view, format: 'delta-v1', since_seq: sinceSeq, context };
+  return { ...view, format: 'delta-v1', since_seq: sinceSeq, context, ...(accepted.length ? { context_accepted: accepted } : {}) };
 }
 
 /**

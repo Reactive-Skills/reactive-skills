@@ -458,6 +458,19 @@ export class FSMEngine {
   }
 
   /**
+   * Context values a signal payload asks to record: declared context keys, then explicit updates.
+   * # Performance & Risk Budget
+   * - Tier: P0 (< 5ms)
+   * - Complexity: O(k + u), declared keys and explicit updates
+   * - Cyclomatic Complexity (CC): target <= 2
+   * - Branch Coverage: target >= 90%
+   * - CRAP Score: target <= 10.0
+   */
+  public suppliedContextUpdates(payload: Record<string, any> | undefined): Record<string, any> {
+    return { ...this.contextKeyUpdates(payload), ...payload?.contextUpdates };
+  }
+
+  /**
    * Payload fields named in the manifest's context_keys.
    */
   private contextKeyUpdates(payload: Record<string, any> | undefined): Record<string, any> {
