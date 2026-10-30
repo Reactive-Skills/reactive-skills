@@ -26,6 +26,11 @@ import { FSMEngine, EventStore, JobManager, LegacySkillAdapter, ProjectionEngine
 Optional authored `payload_contract` metadata describes typed transition inputs while the original guards remain enforced.
 See [payload contracts and targeted guard inspection](../../docs/payload-contracts.md) for manifest examples, inspection APIs and measured costs.
 
+### Runtime-Executed States (Experimental)
+
+A manifest that requires `state.runtime_actions` can mark mechanical states with `runtime_action`: the runtime runs a declared command, path check, schema check or expression itself, records the result as ledger evidence and follows the declared success or failure transition without delivering the state to the model.
+See [runtime-executed states](../../docs/runtime-actions.md) for the safety rules, recovery semantics and the measured prototype.
+
 ### Semantic Judgment Adapter
 
 `JevJudgmentAdapter` uses the production `@typesafe-ai/sdk` package and calls TypeSafe AI's System One API directly.

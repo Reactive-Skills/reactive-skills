@@ -136,6 +136,15 @@ Rehydration remains P2 (<100ms target), O(delta events + context patch bytes + s
 Events predating recorded patches replay only their accepted signal updates; the installed manifest cannot supply authoritative historical hook assignments.
 Ledgers written before recorded patches therefore rely on their snapshot for hook-assigned context, and a no-snapshot replay of such a ledger does not reconstruct it.
 
+### Runtime-executed states (experimental)
+
+`core/runtime-actions.ts` holds the pure parts: the outcome decider and record builder are P0 (< 5ms), O(1); the JSON Schema subset check is P0 for values under 64 KiB, O(v + s) value and schema nodes, with at most five errors; expressions are P0 and cut off at 100 ms; manifest validation is P2 (< 100ms), O(s + t), including the runtime-only cycle search, O(r).
+The pending-action fold is P0, O(w) over the events since the snapshot written when the state was entered.
+`FSMEngine.resumeRuntimeActions()` is an O(d) definition lookup when the active state is model-visible, so view delivery pays nothing else for runs without runtime states.
+Each runtime state adds two ledger appends (P1) plus one ordinary signal transition; the command itself is P3, bounded by its declared `timeout_ms`, with O(1) retained output (2,048 bytes per stream).
+Helpers target CC <= 10 (the schema check 14), branch coverage >= 90% and CRAP <= 15.
+Measured bytes, model-visible states and the runtime-executed wall-clock portion for the two prototype fixtures are in [docs/runtime-actions.md](docs/runtime-actions.md); no other saving is claimed.
+
 ### 1. Algorithmic Complexity (Big-O)
 
 #### Allowed Patterns

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import yaml from 'js-yaml';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
@@ -488,5 +489,56 @@ describe('strict MCP delivery through runtime-executed states', () => {
     expect(events.filter((event) => event.type === 'AGENT_TURN_STARTED').map((event) => event.payload.state))
       .toEqual(['INIT', 'RED_SPEC', 'GREEN_CODE', 'REFACTOR.CLEAN_CODE', 'REFACTOR.PERF_AUDIT', 'COMPLETED']);
     assertLedgerRecovery(engine, ws);
+  });
+});
+
+describe('test-coverage-gate prototype variant', () => {
+  const COVERAGE = fileURLPath('./fixtures/runtime-actions/test-coverage-gate');
+  const thresholds = { lines: 80, statements: 80, branches: 70, functions: 80 };
+
+  function coverageWorkspace() {
+    const workspaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rsa-runtime-coverage-'));
+    workspaces.push(workspaceDir);
+    const skillDir = path.join(workspaceDir, 'skills', 'test-coverage-gate');
+    fs.cpSync(COVERAGE, skillDir, { recursive: true });
+    fs.mkdirSync(path.join(workspaceDir, 'src'));
+    fs.mkdirSync(path.join(workspaceDir, 'tests'));
+    fs.writeFileSync(path.join(workspaceDir, 'src', 'math.mjs'), 'export const add = (a, b) => a + b;\nexport const sub = (a, b) => a - b;\n');
+    fs.writeFileSync(path.join(workspaceDir, 'tests', 'math.test.mjs'), "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { add } from '../src/math.mjs';\ntest('add', () => assert.equal(add(1, 2), 3));\n");
+    return { workspaceDir, skillDir };
+  }
+
+  it('runs schema, baseline, coverage and report checks in one emit, then delivers ANALYZE', async () => {
+    const ws = coverageWorkspace();
+    const engine = open(ws);
+    const result = await engine.handleSignal('INTAKE_READY', { target_dir: '.', thresholds });
+    expect(result.runtimeActions?.map((action) => [action.state, action.kind, action.outcome])).toEqual([
+      ['CONFIGURE', 'json_schema', 'success'], ['BASELINE', 'command', 'success'], ['MEASURE', 'command', 'success'], ['MEASURE_REPORT', 'path_exists', 'success'],
+    ]);
+    expect(result.newState).toBe('ANALYZE');
+    expect(fs.readFileSync(path.join(ws.workspaceDir, 'lcov.info'), 'utf8')).toContain('SF:src/math.mjs');
+    expect(engine.getContext()).toMatchObject({ configuration_result: { valid: true }, baseline_result: { exit_code: 0 }, measure_result: { exit_code: 0 } });
+    assertLedgerRecovery(engine, ws);
+  }, 30_000);
+
+  it('routes invalid thresholds to ERROR with the schema errors recorded', async () => {
+    const ws = coverageWorkspace();
+    const engine = open(ws);
+    const result = await engine.handleSignal('INTAKE_READY', { target_dir: '.', thresholds: { lines: 120 } });
+    expect(result.newState).toBe('ERROR');
+    expect(engine.getContext().configuration_result).toMatchObject({ outcome: 'failure', valid: false, errors: expect.arrayContaining(['$.lines: above maximum 100', '$.statements: required']) });
+  });
+
+  it('records provenance for every fixture file against the pinned public catalog', () => {
+    const provenance = JSON.parse(fs.readFileSync(fileURLPath('./fixtures/runtime-actions/provenance.json'), 'utf8'));
+    expect(provenance.commit).toBe('80d1c72d4c5fdf3182eec07ac0e3312a274652df');
+    for (const [skill, entry] of Object.entries<any>(provenance.skills)) {
+      for (const file of entry.files) {
+        const bytes = fs.readFileSync(path.join(fileURLPath(`./fixtures/runtime-actions/${skill}/`), file.path));
+        const blob = createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`), bytes])).digest('hex');
+        expect(blob, `${skill}/${file.path}`).toBe(file.git_blob);
+        expect(file.modified, `${skill}/${file.path}`).toBe(file.git_blob !== file.upstream_git_blob);
+      }
+    }
   });
 });

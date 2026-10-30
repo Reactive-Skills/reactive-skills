@@ -1,0 +1,169 @@
+# Test fixture: experimental runtime_action variant of the public test-coverage-gate 1.0.1 skill.
+# Provenance and the list of changes are in ../provenance.json. Not a catalog release.
+# Commands are declared here for the fixture project, never taken from the model.
+schema_version: "2.0.0"
+name: "test-coverage-gate"
+version: "1.0.1"
+description: "Test coverage quality gate that establishes a clean baseline, measures statement, branch, function, and line coverage, analyzes gaps, and blocks release below explicit thresholds."
+initial_state: "INTAKE"
+
+runtime_requirements:
+  required_capabilities:
+    - "state.runtime_actions"
+
+context_keys:
+  - "target_dir"
+  - "thresholds"
+  - "configuration_result"
+  - "baseline_result"
+  - "measure_result"
+  - "coverage_report"
+  - "coverage_metrics"
+  - "coverage_gaps"
+  - "gate_decision"
+  - "deliverable_path"
+
+default_context:
+  target_dir: "."
+  thresholds: null
+  coverage_report: "lcov.info"
+  coverage_metrics: null
+  coverage_gaps: []
+  gate_decision: null
+  deliverable_path: null
+
+states:
+  INTAKE:
+    description: "Collect the target and quality thresholds"
+    prompt_template: "states/intake.md"
+    tools: ["view_file"]
+    transitions:
+      INTAKE_READY:
+        target: "CONFIGURE"
+        guard: "event.payload.target_dir != null && event.payload.thresholds != null"
+      INTAKE_INVALID:
+        target: "ERROR"
+        guard: "event.payload.target_dir == null || event.payload.thresholds == null"
+
+  CONFIGURE:
+    description: "The runtime validates the threshold schema"
+    runtime_action:
+      kind: "json_schema"
+      value: "thresholds"
+      schema:
+        type: "object"
+        required: ["lines", "statements", "branches", "functions"]
+        additionalProperties: false
+        properties:
+          lines: { type: "number", minimum: 0, maximum: 100 }
+          statements: { type: "number", minimum: 0, maximum: 100 }
+          branches: { type: "number", minimum: 0, maximum: 100 }
+          functions: { type: "number", minimum: 0, maximum: 100 }
+      record_as: "configuration_result"
+      on_success: "CONFIGURATION_READY"
+      on_failure: "CONFIGURATION_FAILED"
+    transitions:
+      CONFIGURATION_READY:
+        target: "BASELINE"
+      CONFIGURATION_FAILED:
+        target: "ERROR"
+
+  BASELINE:
+    description: "The runtime runs the unmodified test suite and requires a clean baseline"
+    runtime_action:
+      kind: "command"
+      command: "node"
+      args: ["--test", "tests/math.test.mjs"]
+      timeout_ms: 120000
+      record_as: "baseline_result"
+      on_success: "BASELINE_PASSED"
+      on_failure: "BASELINE_FAILED"
+    transitions:
+      BASELINE_PASSED:
+        target: "MEASURE"
+      BASELINE_FAILED:
+        target: "ERROR"
+
+  MEASURE:
+    description: "The runtime runs coverage collection and writes a machine-readable report"
+    runtime_action:
+      kind: "command"
+      command: "node"
+      args: ["--test", "--experimental-test-coverage", "--test-reporter=lcov", "--test-reporter-destination=lcov.info", "tests/math.test.mjs"]
+      timeout_ms: 120000
+      record_as: "measure_result"
+      on_success: "COVERAGE_COLLECTED"
+      on_failure: "MEASUREMENT_FAILED"
+    transitions:
+      COVERAGE_COLLECTED:
+        target: "MEASURE_REPORT"
+      MEASUREMENT_FAILED:
+        target: "ERROR"
+
+  MEASURE_REPORT:
+    description: "The runtime confirms the coverage report exists"
+    runtime_action:
+      kind: "path_exists"
+      path: "lcov.info"
+      type: "file"
+      on_success: "REPORT_READY"
+      on_failure: "REPORT_MISSING"
+    transitions:
+      REPORT_READY:
+        target: "ANALYZE"
+      REPORT_MISSING:
+        target: "ERROR"
+
+  ANALYZE:
+    description: "Parse the coverage report, compare metrics with thresholds and identify actionable gaps"
+    prompt_template: "states/analyze.md"
+    tools: ["view_file", "write_to_file", "grep_search"]
+    transitions:
+      GAPS_ANALYZED:
+        target: "GATE"
+        guard: "event.payload.coverage_metrics != null && Array.isArray(event.payload.coverage_gaps)"
+      ANALYSIS_FAILED:
+        target: "ERROR"
+        guard: "event.payload.coverage_metrics == null || !Array.isArray(event.payload.coverage_gaps)"
+
+  GATE:
+    description: "Human quality gate for threshold exceptions and release blocking"
+    prompt_template: "states/gate.md"
+    tools: ["view_file"]
+    human_gate:
+      type: "choice"
+      tool: "ask_question"
+      options:
+        - "Accept coverage result"
+        - "Request gap remediation"
+        - "Block release"
+    transitions:
+      USER_APPROVED:
+        target: "SUCCESS"
+        guard: "event.payload.approved === true"
+      USER_REQUEST_REMEDIATION:
+        target: "MEASURE"
+        guard: "event.payload.remediation_requested === true"
+      USER_REJECTED:
+        target: "BLOCKED"
+        guard: "event.payload.rejected === true"
+
+  SUCCESS:
+    description: "Terminal state: coverage gate passed"
+    prompt_template: "states/success.md"
+
+  BLOCKED:
+    description: "Terminal state: coverage gate blocked release"
+    prompt_template: "states/blocked.md"
+
+  ERROR:
+    description: "Terminal state: coverage workflow failed"
+    prompt_template: "states/error.md"
+
+deliverable_projections:
+  - template: "templates/coverage_report.md.hbs"
+    output: ".docs/test-coverage-gate/coverage-report.md"
+    trigger_on: ["STATE_TRANSITION"]
+  - template: "templates/state_snapshot.json.hbs"
+    output: ".docs/test-coverage-gate/state.json"
+    trigger_on: ["STATE_TRANSITION"]
