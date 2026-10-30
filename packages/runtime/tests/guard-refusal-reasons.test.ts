@@ -126,7 +126,7 @@ describe('Guard refusal reasons (#32)', () => {
     const emit = (server as any)._registeredTools['reactive_emit_signal'];
 
     const response = await emit.handler({ signal: 'CHECK_REASON', skill: 'guard-skill', payload: {} }, {} as any);
-    const parsed = JSON.parse(response.content[0].text);
+    const parsed = JSON.parse(response.content[0].text).receipt;
 
     expect(parsed.transitioned).toBe(false);
     expect(parsed.refusalReason).toBe('criterion C2 has no evidence_method');
@@ -137,7 +137,7 @@ describe('Guard refusal reasons (#32)', () => {
     const emit = (server as any)._registeredTools['reactive_emit_signal'];
 
     const response = await emit.handler({ signal: 'CHECK_MESSAGE', skill: 'guard-skill', payload: { ok: false } }, {} as any);
-    const parsed = JSON.parse(response.content[0].text);
+    const parsed = JSON.parse(response.content[0].text).receipt;
 
     expect(parsed.transitioned).toBe(false);
     expect(parsed.refusalReason).toBe('Set payload.ok to true once every criterion has evidence.');

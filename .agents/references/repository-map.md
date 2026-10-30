@@ -23,7 +23,8 @@
 - `packages/runtime/src/core/bootloader.ts`: Versioned authoritative runtime bootloader and stable skill reference helpers.
 - `packages/runtime/src/core/runtime-capabilities.ts`: Runtime version, capability, compatibility, and transport selection contracts.
 - `packages/runtime/src/core/projection-engine.ts`: Handlebars deliverable generator.
-- `packages/runtime/src/core/state-view.ts`: Shared complete state view and compact JSON/development XML renderer.
+- `packages/runtime/src/core/state-view.ts`: Shared complete and ledger-anchored delta state views, plus the compact JSON/development XML renderer.
+- `packages/runtime/src/core/context-ledger.ts`: Pure fold of committed context changes after a ledger sequence, used by delta views.
 - `packages/runtime/src/core/fsm-engine.ts`: State machine loader, state path resolver & bubbling engine.
 - Host tool interception and compaction reinjection require a separately implemented adapter; this release provides AXI and MCP.
 - `packages/runtime/src/core/legacy-adapter.ts`: Backward compatibility wrapper and converter for `SKILL.md`.

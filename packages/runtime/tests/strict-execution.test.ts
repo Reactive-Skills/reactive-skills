@@ -162,7 +162,7 @@ describe('Strict Execution Mode', () => {
       const tools = (server as any)._registeredTools;
 
       const handler = tools['reactive_state'];
-      const result = await handler.handler({ skill: 'test-fsm' }, {} as any);
+      const result = await handler.handler({ output: 'legacy', skill: 'test-fsm' }, {} as any);
 
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.strict_execution).toBe(true);
@@ -208,7 +208,7 @@ describe('Strict Execution Mode', () => {
     it('keeps counting repeat polling past the refetch allowance and bypasses (max_idle_turns = 2)', async () => {
       const server = createReactiveMcpServer({ workspaceDir: tempDir, defaultSkill: '_test_fsm_skill' });
       const handler = (server as any)._registeredTools['reactive_state'];
-      const fetch = async () => handler.handler({}, {} as any);
+      const fetch = async () => handler.handler({ output: 'legacy',}, {} as any);
       const turns = async () => JSON.parse((await fetch()).content[0].text).turns_since_last_signal;
 
       expect(await turns()).toBe(1);
@@ -230,7 +230,7 @@ describe('Strict Execution Mode', () => {
       fs.cpSync(path.join(tempDir, 'skills', '_test_fsm_skill'), skillDir, { recursive: true });
       const server = createReactiveMcpServer({ workspaceDir, defaultSkill: 'rooted' });
       const handler = (server as any)._registeredTools['reactive_state'];
-      const call = async () => JSON.parse((await handler.handler({ job_id: 'stuck' }, {} as any)).content[0].text);
+      const call = async () => JSON.parse((await handler.handler({ output: 'legacy', job_id: 'stuck' }, {} as any)).content[0].text);
 
       for (let i = 0; i < 4; i++) await call();
       const bypassed = await call();
@@ -249,7 +249,7 @@ describe('Strict Execution Mode', () => {
       const tools = (server as any)._registeredTools;
 
       const handler = tools['reactive_state'];
-      const result = await handler.handler({ skill: 'test-fsm' }, {} as any);
+      const result = await handler.handler({ output: 'legacy', skill: 'test-fsm' }, {} as any);
 
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.formattedXml).toContain('<strict_execution');

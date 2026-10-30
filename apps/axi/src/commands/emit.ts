@@ -1,6 +1,6 @@
 import { extractStateOutput } from '../state-view-output.js';
 import fs from 'node:fs';
-import { EvidenceBindingsSchema, FSMEngine, createStateView, submitEvidenceSignal, type EvidenceBindings, type EvidenceReceipt } from '@reactive-skills/runtime';
+import { EvidenceBindingsSchema, FSMEngine, createStateView, inlineEvidenceBindings, submitEvidenceSignal, type EvidenceBindings, type EvidenceReceipt } from '@reactive-skills/runtime';
 import { AxiError, storeOpenError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
@@ -266,7 +266,9 @@ export async function emitCommand(args: string[]): Promise<string> {
       }
 
       const metadata = { source: 'cli', causationId: eventId, idempotencyKey };
-      const submission = bindings === undefined ? undefined
+      const automatic = bindings === undefined ? inlineEvidenceBindings(engine, signalName, payload, idempotencyKey) : undefined;
+      const submission = automatic ? await submitEvidenceSignal(engine, signalName, automatic.payload, automatic.bindings, metadata)
+        : bindings === undefined ? undefined
         : await submitEvidenceSignal(engine, signalName, payload, bindings, metadata);
       const result = submission?.result ?? await engine.handleSignal(signalName, payload, metadata);
       if (selected.output === 'compact-v1') {
@@ -275,12 +277,12 @@ export async function emitCommand(args: string[]): Promise<string> {
           event_id: result.event.id,
           previous_state: result.previousState,
           deliverables: result.deliverablesWritten,
-          ...(submission ? { evidence: submission.evidence } : {}),
+          ...(submission && !automatic ? { evidence: submission.evidence } : {}),
           view: createStateView(engine, undefined, result),
         });
       }
 
-      return renderEmitOutput(engine, result, skillName, signalName, jobId, submission?.evidence);
+      return renderEmitOutput(engine, result, skillName, signalName, jobId, automatic ? undefined : submission?.evidence);
     } finally {
       engine.close?.();
     }

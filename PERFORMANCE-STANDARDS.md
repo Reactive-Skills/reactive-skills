@@ -307,6 +307,16 @@ Queue/receipt/render helpers target CC <= 8, branch coverage >= 90%, CRAP <= 10;
 Cold replay and existing guard, evidence, child, projection and approval costs remain additional.
 Tests verify event/turn counts and the pinned public TDD continuation path; this change makes no end-to-end latency or model-token savings claim.
 
+MCP `state.delta_v1` views reuse the complete view assembly and add one indexed read of the events after the anchor sequence.
+`core/context-ledger.ts` folds the committed context patches in that window with the replay rules: P1 (<25ms target), O(e + p) for e events and their patch keys, CC <= 12, branch coverage >= 90%, CRAP <= 15.
+Delta assembly is P1 with O(h² + b + a + w + e + s) work, adding supplied-value bytes s for the accepted-key comparison; it targets CC <= 8, branch coverage >= 90% and CRAP <= 10.
+The per-session anchor map in the MCP server is O(1) per delivery and holds one sequence per delivered run.
+An unfoldable window falls back to the complete view instead of a partial one.
+
+Automatic evidence references (`inlineEvidenceBindings` in `core/evidence-submission.ts`) are P1 (<25ms target per <=1MiB registered value) with O(declared fields × pointer depth + converted bytes) work, CC <= 8, branch coverage >= 90%, CRAP <= 10.
+They run only for signals with declared evidence fields and string values at or above `AUTO_EVIDENCE_MIN_BYTES` (300 UTF-8 bytes by default), reuse content-addressed registration, and skip keyed retries.
+The default threshold is the smallest size in a matched pilot sweep at which conversion delivered no more bytes than inline text, with and without one resume; it is a measured default, not a size guarantee for other workloads.
+
 AXI `state`, `invoke`, and implicit-causation `emit` obtain their response/event anchors through the existing public `EventStore.getLatestEvent()`.
 SQLite uses the `(run_id, seq)` index with descending order and `LIMIT 1`: O(log N + b) for N indexed events and b bytes in the one returned event; the in-memory fallback uses the last retained entry in O(1).
 No full-history query is permitted solely to obtain a latest event; cold replay without a snapshot may still read the selected history.

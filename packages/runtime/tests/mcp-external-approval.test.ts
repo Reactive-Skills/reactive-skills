@@ -79,7 +79,7 @@ describe('Writes from another process', () => {
     const call = async (tool: string, args: Record<string, unknown>) =>
       JSON.parse((await tools[tool].handler(args, {} as any)).content[0].text);
 
-    const refused = await call('reactive_emit_signal', { signal: 'SUBMIT', skill: 'approval-skill', job_id: 'review-run', payload: { summary: 'done' } });
+    const refused = await call('reactive_emit_signal', { return_view: 'none', signal: 'SUBMIT', skill: 'approval-skill', job_id: 'review-run', payload: { summary: 'done' } });
     expect(refused.transitioned).toBe(false);
 
     // Stands in for reactive-skills-axi approve, which opens its own engine in its own process.
@@ -89,10 +89,10 @@ describe('Writes from another process', () => {
     const decided = await approver.decideApproval(request.id, 'approve', 'interactive_terminal');
     expect(decided.newState).toBe('DONE');
 
-    const state = await call('reactive_state', { skill: 'approval-skill', job_id: 'review-run' });
+    const state = await call('reactive_state', { output: 'legacy', skill: 'approval-skill', job_id: 'review-run' });
     expect(state.activeState).toBe('DONE');
 
-    const again = await call('reactive_emit_signal', { signal: 'SUBMIT', skill: 'approval-skill', job_id: 'review-run', payload: {} });
+    const again = await call('reactive_emit_signal', { return_view: 'none', signal: 'SUBMIT', skill: 'approval-skill', job_id: 'review-run', payload: {} });
     expect(again.previousState).toBe('DONE');
     expect(approver.getEventStore().query({ type: 'APPROVAL_REQUESTED' })).toHaveLength(1);
   });
@@ -115,15 +115,15 @@ describe('Writes from another process', () => {
     const call = async (tool: string, args: Record<string, unknown>) =>
       JSON.parse((await tools[tool].handler(args, {} as any)).content[0].text);
 
-    await call('reactive_state', { skill: 'approval-skill', job_id: 'busy-run' });
-    const inFlight = call('reactive_emit_signal', { signal: 'SUBMIT_MODEL', skill: 'approval-skill', job_id: 'busy-run', payload: {} });
+    await call('reactive_state', { output: 'legacy', skill: 'approval-skill', job_id: 'busy-run' });
+    const inFlight = call('reactive_emit_signal', { return_view: 'none', signal: 'SUBMIT_MODEL', skill: 'approval-skill', job_id: 'busy-run', payload: {} });
     await evaluating;
 
     const other = new FSMEngine({ skillDir: path.join(workspaceDir, 'skills', 'approval-skill'), workspaceDir, jobId: 'busy-run' });
     closers.push(other);
     // A direct append stands in for another process; in one process, signals on a run are serialized.
     other.getEventStore().append('NOTE', { from: 'another process' });
-    await call('reactive_state', { skill: 'approval-skill', job_id: 'busy-run' });
+    await call('reactive_state', { output: 'legacy', skill: 'approval-skill', job_id: 'busy-run' });
     release();
 
     const result = await inFlight;

@@ -54,6 +54,7 @@ describe('reactive_context_prepare', () => {
     const result = await tools['reactive_context_prepare'].handler({
       user_message: 'Run the state machine test',
       candidates: [{ id: 'test', skill: 'test-fsm', summary: 'Run a state machine test' }],
+      output: 'legacy',
     }, {} as any);
     const parsed = JSON.parse(result.content[0].text);
 

@@ -86,6 +86,21 @@ describe.each(['axi', 'mcp'] as const)('%s evidence interface', transport => {
     expect(fs.readFileSync(path.join(workspace, 'result.txt'), 'utf8')).toBe(draft);
   });
 
+  it('records a large inline value as an automatic reference without echoing it', async () => {
+    const output = await emit(undefined, undefined, { draft });
+    expect(output).not.toContain('substantial evidence');
+    expect(output).not.toContain('"evidence"');
+    expect(fs.readFileSync(path.join(workspace, 'result.txt'), 'utf8')).toBe(draft);
+    const engine = inspectRun();
+    try {
+      const committed = engine.getEventStore().query({ type: 'SIGNAL_EMITTED' }).at(-1)!.payload;
+      expect(committed.draft.$evidence).toMatchObject({ byte_length: Buffer.byteLength(draft), sha256: createHash('sha256').update(draft).digest('hex') });
+      expect(JSON.parse(await read(committed.draft.$evidence)).content).toBe(draft);
+    } finally {
+      engine.close();
+    }
+  });
+
   it('imports exact bytes idempotently, reads on request, and submits an explicit reference', async () => {
     const first = await importEvidence();
     const receipt = JSON.parse(first).reference;

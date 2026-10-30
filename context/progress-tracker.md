@@ -224,3 +224,13 @@ Unquantified token-efficiency wording for AXI in the site concepts, overview, qu
 The wording distinguishes unvisited source instructions from delivered context, includes protocol and retained-transcript costs, and makes no general reduction claim.
 Performance budgets, including P0 <5 ms, remain explicitly labeled engineering targets.
 Local validation passed both package builds, the full runtime and AXI suites, site tests, documentation invariants, the public prose gate and a targeted scan for the removed percentage claims.
+
+## Ledger-anchored delivery and lean MCP defaults
+
+- Added `delta-v1` state views: instructions and contracts plus only the scoped context the ledger committed after the anchored view sequence (`core/context-ledger.ts`, `core/state-view.ts`); values the submission supplied are named in `context_accepted`.
+- The recovery policy is sent only in the complete view; the MCP server anchors deltas on the last view it delivered per run in the session, so a crash, job switch, retry or `reactive_state` without `since_seq` receives the complete ledger view.
+- MCP defaults are now `return_view: delta-v1` and `output: compact-v1`; `return_view: none` and `output: legacy` keep the previous shapes for one release.
+- Inline values at declared text evidence fields of at least 300 bytes become evidence references automatically on MCP and AXI emit; the threshold came from a matched pilot sweep.
+- Shortened MCP tool and parameter descriptions.
+- An experiment that replaced large changed context values with on-demand references produced no references on the measured fixtures and was dropped.
+- Added tests for delta folding, scope widening, resume after a crash, host compaction and a job switch, and automatic evidence references; the runtime and AXI suites, documentation invariants and prose gate pass.

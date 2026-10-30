@@ -131,6 +131,79 @@ export async function submitEvidenceSignal(
   return { result, evidence: receipts(result.event.payload, fields) };
 }
 
+/** Measured default: below this many UTF-8 bytes a receipt costs more than inline text. */
+export const AUTO_EVIDENCE_MIN_BYTES = 300;
+
+/**
+ * Configured automatic-reference threshold; `off` disables conversion.
+ * # Performance & Risk Budget
+ * - Tier: P0 (<5ms target)
+ * - Complexity: O(1)
+ * - Cyclomatic Complexity (CC): target <=4
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+export function autoEvidenceMinBytes(value = process.env.REACTIVE_AUTO_EVIDENCE_MIN_BYTES): number {
+  if (value === undefined || value === '') return AUTO_EVIDENCE_MIN_BYTES;
+  if (value === 'off') return Number.POSITIVE_INFINITY;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) throw new Error('REACTIVE_AUTO_EVIDENCE_MIN_BYTES must be a positive integer or off.');
+  return parsed;
+}
+
+/**
+ * Remove one inline field so the explicit binding path can replace it with a receipt.
+ * # Performance & Risk Budget
+ * - Tier: P0 (<5ms target)
+ * - Complexity: O(pointer depth + copied ancestor fields)
+ * - Cyclomatic Complexity (CC): target <=4
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+function unbind(value: Record<string, unknown>, pointer: string[]): Record<string, unknown> {
+  const [head, ...tail] = pointer;
+  if (tail.length === 0) {
+    const { [head]: _removed, ...rest } = value;
+    return rest;
+  }
+  return { ...value, [head]: unbind(value[head] as Record<string, unknown>, tail) };
+}
+
+/**
+ * Turn large inline values at declared evidence fields into the binding an agent could have sent,
+ * so the committed payload is identical to an explicit reference submission. Retries and smaller
+ * values are left inline because a receipt would cost more than it saves.
+ * # Performance & Risk Budget
+ * - Tier: P1 (<25ms target per <=1MiB registered value)
+ * - Complexity: O(declared fields * pointer depth + converted bytes)
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+export function inlineEvidenceBindings(
+  engine: FSMEngine,
+  signal: string,
+  payload: Record<string, unknown>,
+  idempotencyKey?: string,
+  minBytes = autoEvidenceMinBytes(),
+): { payload: Record<string, unknown>; bindings: EvidenceBindings } | undefined {
+  const fields = engine.getManifest().evidence?.signals?.[signal] ?? {};
+  if (!Number.isFinite(minBytes) || Object.keys(fields).length === 0) return undefined;
+  if (idempotencyKey && engine.getEventStore().getEventByIdempotencyKey(idempotencyKey)) return undefined;
+  let stripped = payload;
+  const bindings: EvidenceBindings = {};
+  for (const [pointer, field] of Object.entries(fields)) {
+    let value: unknown = payload;
+    for (const part of segments(pointer)) {
+      value = value !== null && typeof value === 'object' && Object.hasOwn(value, part) ? (value as Record<string, unknown>)[part] : undefined;
+    }
+    if (field.media_type === 'application/json' || typeof value !== 'string' || Buffer.byteLength(value, 'utf8') < minBytes) continue;
+    bindings[pointer] = { reference: engine.getEventStore().getEvidenceStore().registerText(value, field.media_type) };
+    stripped = unbind(stripped, segments(pointer));
+  }
+  return Object.keys(bindings).length ? { payload: stripped, bindings } : undefined;
+}
+
 /**
  * Explicit content read only. The selected-run port verifies the registration and bytes.
  * # Performance & Risk Budget

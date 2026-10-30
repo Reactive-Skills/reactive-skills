@@ -27,6 +27,7 @@ import { LegacySkillAdapter } from './legacy-adapter.js';
 import { ProjectionEngine } from './projection-engine.js';
 import { JobManager, isJobTerminal } from './job-manager.js';
 import { EvidenceResolver } from './evidence-resolver.js';
+import { contextChangesSince, type LedgerContextChanges } from './context-ledger.js';
 
 export interface FSMEngineOptions {
   skillDir: string;
@@ -454,6 +455,19 @@ export class FSMEngine {
 
   public updateContext(updates: Record<string, any>): void {
     this.context = { ...this.context, ...updates };
+  }
+
+  /**
+   * Context values a signal payload asks to record: declared context keys, then explicit updates.
+   * # Performance & Risk Budget
+   * - Tier: P0 (< 5ms)
+   * - Complexity: O(k + u), declared keys and explicit updates
+   * - Cyclomatic Complexity (CC): target <= 2
+   * - Branch Coverage: target >= 90%
+   * - CRAP Score: target <= 10.0
+   */
+  public suppliedContextUpdates(payload: Record<string, any> | undefined): Record<string, any> {
+    return { ...this.contextKeyUpdates(payload), ...payload?.contextUpdates };
   }
 
   /**
@@ -1741,15 +1755,19 @@ export class FSMEngine {
   }
 
   /**
-   * Compute the scoped context for the active state: only include context_keys
-   * declared in this state's (or any ancestor's) `context_scope`. Internal
-   * keys (starting with _) and context_keys not in any scope are always included.
+   * Context keys a state view at this path exposes; null means the whole context is visible.
+   * # Performance & Risk Budget
+   * - Tier: P0 (< 5ms)
+   * - Complexity: O(h + k), hierarchy depth and declared context keys
+   * - Cyclomatic Complexity (CC): target <= 8
+   * - Branch Coverage: target >= 90%
+   * - CRAP Score: target <= 10.0
    */
-   private computeScopedContext(): Record<string, any> {
+  public visibleContextKeys(statePath: string[] = this.activeStatePath): Set<string> | null {
     const scopeKeys = new Set<string>();
     let hasAnyScopeDeclaration = false;
-    for (let i = 1; i <= this.activeStatePath.length; i++) {
-      const def = this.getStateDefinition(this.activeStatePath.slice(0, i));
+    for (let i = 1; i <= statePath.length; i++) {
+      const def = this.getStateDefinition(statePath.slice(0, i));
       if (def?.context_scope !== undefined) {
         hasAnyScopeDeclaration = true;
         for (const key of def!.context_scope) {
@@ -1757,18 +1775,44 @@ export class FSMEngine {
         }
       }
     }
+    if (!hasAnyScopeDeclaration) return null;
+    const visible = new Set<string>();
+    for (const key of this.manifest.context_keys || []) {
+      if (scopeKeys.has(key) || key.startsWith('_')) visible.add(key);
+    }
+    return visible;
+  }
 
+  /**
+   * Ledger-derived context changes after a sequence of this run; null when the full view is required.
+   * # Performance & Risk Budget
+   * - Tier: P1 (< 25ms)
+   * - Complexity: O(e + p), indexed events after the sequence and their patch keys
+   * - Cyclomatic Complexity (CC): target <= 4
+   * - Branch Coverage: target >= 90%
+   * - CRAP Score: target <= 10.0
+   */
+  public contextChangesSince(seq: number): LedgerContextChanges | null {
+    if (!Number.isInteger(seq) || seq < 0 || seq > this.eventStore.getLatestSequence()) return null;
+    return contextChangesSince(this.eventStore.query({ sinceSeq: seq }), this.manifest.context_keys || []);
+  }
+
+  /**
+   * Compute the scoped context for the active state: only include context_keys
+   * declared in this state's (or any ancestor's) `context_scope`. Internal
+   * keys (starting with _) and context_keys not in any scope are always included.
+   */
+   private computeScopedContext(): Record<string, any> {
+    const visible = this.visibleContextKeys();
     // No context_scope declared on any state in the active path: return full context
-    if (!hasAnyScopeDeclaration) {
+    if (!visible) {
       return { ...this.context };
     }
 
     // context_scope was explicitly declared (even if empty): scope to those keys
     const scoped: Record<string, any> = {};
-    for (const key of this.manifest.context_keys || []) {
-      if (scopeKeys.has(key) || key.startsWith('_')) {
-        scoped[key] = this.context[key];
-      }
+    for (const key of visible) {
+      scoped[key] = this.context[key];
     }
     return scoped;
   }
