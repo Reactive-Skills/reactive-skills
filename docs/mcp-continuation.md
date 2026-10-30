@@ -14,6 +14,9 @@ With `compact-v1` the envelope looks like this:
 ```
 
 The abbreviated example omits other receipt and conditional state fields.
+Receipt `projectionsWritten` paths are relative to the server's workspace, the `workspace` field of `reactive_capabilities` (capability `receipt.relative_paths`).
+`receipt_paths: "absolute"` returns absolute paths instead and is kept for one release.
+The option shapes only the response: saved receipts keep absolute paths, so a keyed retry returns the form that the retry requests.
 `view` uses the same complete state contract as `reactive_state` with `output: "compact-v1"`: one rendered prompt, one current scoped context, ordered leaf/ancestor contracts, tools, run identity and active gate/refusal/model/strict metadata.
 The view is generated after persisted transitions, queued lifecycle signals, declared child invocation and projections settle.
 It describes the state actually reached, including self-loops and terminal states.

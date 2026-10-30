@@ -35,10 +35,10 @@
     },
     "ready": {
       "input_payload_bytes": 70,
-      "tool_result_text_bytes": 455,
-      "result_bytes": 542,
+      "tool_result_text_bytes": 407,
+      "result_bytes": 494,
       "request_envelope_bytes": 171,
-      "response_envelope_bytes": 577
+      "response_envelope_bytes": 529
     },
     "guard_refusal": {
       "input_payload_bytes": 91,
@@ -49,17 +49,17 @@
     },
     "red": {
       "input_payload_bytes": 91,
-      "tool_result_text_bytes": 461,
-      "result_bytes": 548,
+      "tool_result_text_bytes": 413,
+      "result_bytes": 500,
       "request_envelope_bytes": 192,
-      "response_envelope_bytes": 583
+      "response_envelope_bytes": 535
     },
     "green": {
       "input_payload_bytes": 91,
-      "tool_result_text_bytes": 472,
-      "result_bytes": 559,
+      "tool_result_text_bytes": 424,
+      "result_bytes": 511,
       "request_envelope_bytes": 192,
-      "response_envelope_bytes": 594
+      "response_envelope_bytes": 546
     },
     "clean": {
       "input_payload_bytes": 42,

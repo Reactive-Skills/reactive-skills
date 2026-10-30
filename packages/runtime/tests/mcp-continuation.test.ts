@@ -249,7 +249,7 @@ states:
       expect(result.view.prompt.toLowerCase()).toContain(instruction.toLowerCase());
       expect(result.view.context).toHaveProperty('target_file', 'src/auth.ts');
       expect(result.view.strict.turns_since_signal).toBe(1);
-      for (const output of result.receipt.projectionsWritten) expect(fs.existsSync(output)).toBe(true);
+      for (const output of result.receipt.projectionsWritten) expect(fs.existsSync(path.resolve(workspace, output))).toBe(true);
     }
     const rows = await call(client, 'reactive_query', { skill: 'tdd-refactor', job_id: initial.run_id, sql: 'SELECT type FROM events ORDER BY seq' });
     expect(count(rows, 'AGENT_TURN_STARTED')).toBe(7);
