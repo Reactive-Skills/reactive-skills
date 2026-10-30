@@ -1,0 +1,98 @@
+{
+  "model": "claude-haiku-5-5",
+  "effort": "medium",
+  "claude_code_version": "2.1.314",
+  "tools": [
+    "Bash",
+    "Read",
+    "Write",
+    "Edit",
+    "Glob",
+    "Grep"
+  ],
+  "seed": 20261030,
+  "reps": 1,
+  "max_budget_usd_per_run": 3,
+  "max_wall_ms_per_run": 2700000,
+  "filler_chunk_bytes": 90000,
+  "pressure": {
+    "immediate": {
+      "before_tokens": 0,
+      "during_tokens": 0,
+      "compact": false
+    },
+    "filler50k": {
+      "before_tokens": 35000,
+      "during_tokens": 15000,
+      "compact": false
+    },
+    "filler150k": {
+      "before_tokens": 20000,
+      "during_tokens": 8000,
+      "compact": false
+    },
+    "compaction": {
+      "before_tokens": 20000,
+      "during_tokens": 0,
+      "compact": true
+    }
+  },
+  "cells": [
+    {
+      "id": "tdd-flat-immediate",
+      "question": 1,
+      "task": "tdd",
+      "arm": "flat",
+      "pressure": "immediate"
+    },
+    {
+      "id": "tdd-flat-150k",
+      "question": 1,
+      "task": "tdd",
+      "arm": "flat",
+      "pressure": "filler150k"
+    },
+    {
+      "id": "tdd-flat-compaction",
+      "question": 1,
+      "task": "tdd",
+      "arm": "flat",
+      "pressure": "compaction"
+    },
+    {
+      "id": "tdd-reactive-immediate",
+      "question": 1,
+      "task": "tdd",
+      "arm": "reactive",
+      "pressure": "immediate"
+    },
+    {
+      "id": "tdd-reactive-150k",
+      "question": 1,
+      "task": "tdd",
+      "arm": "reactive",
+      "pressure": "filler150k"
+    },
+    {
+      "id": "tdd-reactive-compaction",
+      "question": 1,
+      "task": "tdd",
+      "arm": "reactive",
+      "pressure": "compaction"
+    },
+    {
+      "id": "workflow-flat",
+      "question": 2,
+      "task": "workflow",
+      "arm": "flat",
+      "pressure": "immediate"
+    },
+    {
+      "id": "workflow-reactive",
+      "question": 2,
+      "task": "workflow",
+      "arm": "reactive",
+      "pressure": "immediate"
+    }
+  ]
+}

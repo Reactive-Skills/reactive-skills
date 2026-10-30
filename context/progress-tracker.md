@@ -255,3 +255,11 @@ The R5 guard-context train is unassigned, because v0.21.0 carries the delivered-
 Candidate verification on Node 22.22.0: `pnpm nx run-many -t build test lint` passes every target except `site:lint`, whose 17 errors are identical before and after this change in untouched site files; CI does not run lint.
 Both package builds, 1,033 runtime tests, 389 AXI tests (one existing skip), 64 site tests, documentation/prose gates and the production site build pass.
 `RELEASE_TAG=v0.21.0 node scripts/verify-release-tag.js` passes; no release tag was created or pushed during preparation.
+
+## Adherence pilot harness
+
+- Added `research/adherence/`: a harness that runs headless Claude Code on public and synthetic fixtures. It compares a flat `SKILL.md` with the reactive skill under context pressure (immediate, ~50k, ~150k, post-compaction), and compares a six-skill flat library with a hierarchical router skill for a three-step workflow.
+- The flat `tdd-refactor` skill is generated from the pinned public manifest. The reactive arm runs the pinned files unchanged through the AXI CLI. The `ship-bugfix` router's guards read files and run the suite themselves.
+- Scorers work from observed edits, shell writes, a check log and test-runner summaries, and both arms are scored the same way. Raw streams stay outside the repository, and the committed traces hold no tool output.
+- The pilot covers tdd-refactor at immediate, ~150k and post-compaction, plus the three-skill workflow, three repetitions per cell, with a cost projection for the full grid in `research/adherence/results/pilot/`.
+- `research/adherence` `npm test` covers scorer cases, generated-skill freshness, pinned-file hashes, guard refusals and a privacy scan of committed files. Its P3 budget is in `PERFORMANCE-STANDARDS.md`.

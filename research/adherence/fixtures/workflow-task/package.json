@@ -1,0 +1,17 @@
+{
+  "name": "storefront-cart",
+  "version": "2.3.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --no-warnings scripts/check.mjs test",
+    "lint": "node --no-warnings scripts/check.mjs lint",
+    "typecheck": "node --no-warnings scripts/check.mjs typecheck"
+  },
+  "dependencies": {
+    "decimal-lite": "1.2.0"
+  },
+  "harness": {
+    "tracked": ["src/cart.ts", "tests/cart.test.ts", "CHANGELOG.md", "docs/API.md", "package.json", ".work/triage.md"]
+  }
+}

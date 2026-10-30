@@ -1,0 +1,80 @@
+schema_version: "2.1.0"
+name: ship-bugfix
+version: "0.1.0"
+description: >-
+  Ship a reported bug fix: triage, a failing regression test, the fix, and a
+  changelog entry, in that order. Guards check files and test results.
+initial_state: TRIAGE
+strict_execution: false
+states:
+  TRIAGE:
+    description: Investigate the report and write the triage note (triage-bug)
+    prompt_template: states/triage.md
+    transitions:
+      TRIAGE_DONE:
+        target: FIX
+        guardFunction: guards/triage-note.mjs
+      REPRO_FAILING:
+        target: TRIAGE
+        guardFunction: guards/wrong-step.mjs
+      FIX_VERIFIED:
+        target: TRIAGE
+        guardFunction: guards/wrong-step.mjs
+      NOTE_WRITTEN:
+        target: TRIAGE
+        guardFunction: guards/wrong-step.mjs
+  FIX:
+    description: Fix test-first (regression-fix)
+    initial_substate: REPRO
+    substates:
+      REPRO:
+        description: Add a regression test and see it fail
+        prompt_template: states/repro.md
+        transitions:
+          REPRO_FAILING:
+            target: FIX.PATCH
+            guardFunction: guards/repro-failing.mjs
+          TRIAGE_DONE:
+            target: FIX.REPRO
+            guardFunction: guards/wrong-step.mjs
+          FIX_VERIFIED:
+            target: FIX.REPRO
+            guardFunction: guards/wrong-step.mjs
+          NOTE_WRITTEN:
+            target: FIX.REPRO
+            guardFunction: guards/wrong-step.mjs
+      PATCH:
+        description: Make the smallest fix and turn the suite green
+        prompt_template: states/patch.md
+        transitions:
+          FIX_VERIFIED:
+            target: RELEASE_NOTE
+            guardFunction: guards/checks-green.mjs
+          TRIAGE_DONE:
+            target: FIX.PATCH
+            guardFunction: guards/wrong-step.mjs
+          REPRO_FAILING:
+            target: FIX.PATCH
+            guardFunction: guards/wrong-step.mjs
+          NOTE_WRITTEN:
+            target: FIX.PATCH
+            guardFunction: guards/wrong-step.mjs
+  RELEASE_NOTE:
+    description: Record the fix in the changelog (release-note)
+    prompt_template: states/release_note.md
+    transitions:
+      NOTE_WRITTEN:
+        target: DONE
+        guardFunction: guards/changelog-entry.mjs
+      TRIAGE_DONE:
+        target: RELEASE_NOTE
+        guardFunction: guards/wrong-step.mjs
+      REPRO_FAILING:
+        target: RELEASE_NOTE
+        guardFunction: guards/wrong-step.mjs
+      FIX_VERIFIED:
+        target: RELEASE_NOTE
+        guardFunction: guards/wrong-step.mjs
+  DONE:
+    description: Fix shipped
+    prompt_template: states/done.md

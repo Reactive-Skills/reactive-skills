@@ -212,6 +212,13 @@ The fixture retains per-run ledger/visit counts and every JSONL segment's size, 
 Snapshot restore and full replay must match live accepted context; any mismatch fails the fixture (see [Accepted context recovery](#accepted-context-recovery)).
 No public runtime capability is added by this developer-only operation.
 
+### Adherence research harness (P3)
+
+`research/adherence/` runs model-driven trials and is outside every runtime hot path; it adds no runtime capability or default.
+Workspace setup, trace derivation, scoring and report generation are offline P3 operations: setup under 2,000ms per run including `git init`, derivation under 3,000ms per run including the hidden acceptance tests, and scoring O(e) or O(e²) over a run's small event count.
+Trial wall-clock and spend are bounded by `max_wall_ms_per_run` and `max_budget_usd_per_run` in its config, not by a latency target.
+The inline budgets record CC estimates against the threshold of 20; branch coverage is not measured for this harness.
+
 ### 1. Workflow Execution and Context Accounting
 
 Reactive Skills executes declared workflows as state machines with guards and an event log.

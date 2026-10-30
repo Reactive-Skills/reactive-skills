@@ -1,0 +1,14 @@
+{
+  "name": "accounts-service",
+  "version": "1.4.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --no-warnings scripts/check.mjs test",
+    "lint": "node --no-warnings scripts/check.mjs lint",
+    "typecheck": "node --no-warnings scripts/check.mjs typecheck"
+  },
+  "harness": {
+    "tracked": ["src/auth.ts", "tests/auth.test.ts"]
+  }
+}
