@@ -14,6 +14,8 @@ const mockHandleSignal = vi.fn().mockResolvedValue({
 
 vi.mock('@reactive-skills/runtime', () => ({
   createSortableId: vi.fn(() => '01a06e96-test-sortable-id'),
+  // These fixtures declare no evidence fields, so no automatic reference applies.
+  inlineEvidenceBindings: vi.fn(() => undefined),
   FSMEngine: vi.fn().mockImplementation(() => ({
     handleSignal: mockHandleSignal,
     generatePromptSlice: vi.fn(() => ({

@@ -31,6 +31,7 @@ export interface EvidenceStore {
   readonly runId: string;
   importFile(relativePath: string, mediaType: EvidenceMediaType): EvidenceReceipt;
   registerJson(value: unknown): EvidenceReceipt;
+  registerText(text: string, mediaType: EvidenceMediaType): EvidenceReceipt;
   read(receipt: EvidenceReceipt): Buffer;
   exportBundle(referenced?: readonly EvidenceReceipt[]): EvidenceBundle;
   restoreBundle(bundle: EvidenceBundle): void;
@@ -241,6 +242,19 @@ export class LocalEvidenceStore implements EvidenceStore {
    */
   public registerJson(value: unknown): EvidenceReceipt {
     return this.registerBytes(Buffer.from(canonicalEvidenceJson(value), 'utf8'), 'application/json');
+  }
+
+  /**
+   * Register submitted text through the same content-addressed path as a file import.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target for <=1MiB)
+   * - Complexity: O(b)
+   * - Cyclomatic Complexity (CC): target <=1
+   * - Branch Coverage: target >=90%
+   * - CRAP Score: target <=10
+   */
+  public registerText(text: string, mediaType: EvidenceMediaType): EvidenceReceipt {
+    return this.registerBytes(Buffer.from(text, 'utf8'), mediaType);
   }
 
   /**

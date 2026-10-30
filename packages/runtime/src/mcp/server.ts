@@ -6,7 +6,7 @@ import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mc
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { EvidenceMediaTypeSchema, EvidenceReceiptSchema } from '../core/evidence-store.js';
-import { EvidenceBindingsSchema, importEvidence, readEvidence, submitEvidenceSignal } from '../core/evidence-submission.js';
+import { EvidenceBindingsSchema, importEvidence, inlineEvidenceBindings, readEvidence, submitEvidenceSignal } from '../core/evidence-submission.js';
 import { FSMEngine } from '../core/fsm-engine.js';
 import { EventStore } from '../core/event-store.js';
 import { JobManager } from '../core/job-manager.js';
@@ -542,12 +542,15 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
           const metadata = { idempotencyKey: idempotency_key, source: 'mcp' };
           const retry = retrySignalResponse(engine, idempotency_key, !!return_view);
           if (retry) return { content: [{ type: 'text', text: retry }] };
-          const submission = evidence === undefined ? undefined
+          const automatic = evidence === undefined ? inlineEvidenceBindings(engine, signal, payload, idempotency_key) : undefined;
+          const submission = automatic ? await submitEvidenceSignal(engine, signal, automatic.payload, automatic.bindings, metadata)
+            : evidence === undefined ? undefined
             : await submitEvidenceSignal(engine, signal, payload, evidence, metadata);
           const result = submission?.result ?? await engine.handleSignal(signal, payload, metadata);
           const receipt = {
             ...signalReceipt(engine, result),
-            ...(submission ? { event_id: result.event.id, evidence: submission.evidence } : {}),
+            // An automatic reference keeps the inline receipt; the recovery view carries its receipt.
+            ...(submission && !automatic ? { event_id: result.event.id, evidence: submission.evidence } : {}),
           };
           const original = result.replayed ? unavailableReceipt(result.event) : { ...receipt, event_id: result.event.id };
           const text = return_view
