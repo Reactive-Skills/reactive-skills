@@ -16,7 +16,7 @@ export type TraceEvent =
   | { t: number; kind: 'assistant_turn'; message_id: string; context_tokens: number; output_tokens: number }
   | { t: number; kind: 'tool'; tool: string; target?: string; command?: string; is_error: boolean; result_bytes: number; tool_use_id: string; test_summary?: { pass: number; fail: number }; writes?: string[] }
   | { t: number; kind: 'check'; check: string; exit_code: number; source: 'agent' | 'guard'; hashes: Record<string, string | null> }
-  | { t: number; kind: 'compact_boundary'; pre_tokens: number; post_tokens: number }
+  | { t: number; kind: 'compact_boundary'; pre_tokens: number; post_tokens: number; summary_bytes?: number; summary_names_phases?: boolean }
   | { t: number; kind: 'runtime'; type: 'transition' | 'refused' | 'unhandled'; signal: string; from: string; to?: string; reason?: string; payload_exit_code?: number };
 
 export interface RunUsage {

@@ -69,14 +69,14 @@ export function writeReport(config: PilotConfig, traces: RunTrace[], outRoot: st
     '',
     '## Question 1: tdd-refactor under context pressure',
     '',
-    '| Cell | Runs | Context at task (median tokens) | Correct end state | Runs with order violations | Skipped gates (total) | Missing outputs (total) | Skill re-reads (total, bytes) | Recovery | Self-report mismatches |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    '| Cell | Runs | Context at task (median tokens) | Correct end state | Runs with order violations | Skipped gates (total) | Missing outputs (total) | Skill re-reads (total, bytes) | Runs reading reactive skill source | Recovery | Self-report mismatches |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   ];
   for (const cell of config.cells.filter((c) => c.question === 1)) {
     const runs = valid(byCell(cell));
     if (byCell(cell).length === 0) continue;
     lines.push(
-      `| ${cell.id} | ${runs.length}/${byCell(cell).length} | ${fmt(median(runs.map((r) => r.context_tokens_at_task)))} | ${frac(runs, (r) => !!r.tdd?.correct)} | ${frac(runs, (r) => (r.tdd?.order_violations.length ?? 0) > 0)} | ${sumOf(runs, (r) => r.tdd!.skipped_gates.length)} | ${sumOf(runs, (r) => r.tdd!.missing_outputs.length)} | ${sumOf(runs, (r) => r.tdd!.skill_rereads)}, ${fmt(sumOf(runs, (r) => r.tdd!.skill_reread_bytes))} B | ${recoveryText(runs, 'tdd')} | ${cell.arm === 'reactive' ? sumOf(runs, (r) => r.tdd!.self_report_mismatches) : 'n/a'} |`
+      `| ${cell.id} | ${runs.length}/${byCell(cell).length} | ${fmt(median(runs.map((r) => r.context_tokens_at_task)))} | ${frac(runs, (r) => !!r.tdd?.correct)} | ${frac(runs, (r) => (r.tdd?.order_violations.length ?? 0) > 0)} | ${sumOf(runs, (r) => r.tdd!.skipped_gates.length)} | ${sumOf(runs, (r) => r.tdd!.missing_outputs.length)} | ${sumOf(runs, (r) => r.tdd!.skill_rereads)}, ${fmt(sumOf(runs, (r) => r.tdd!.skill_reread_bytes))} B | ${frac(runs, (r) => r.tdd!.skill_source_reads > 0)} | ${recoveryText(runs, 'tdd')} | ${cell.arm === 'reactive' ? sumOf(runs, (r) => r.tdd!.self_report_mismatches) : 'n/a'} |`
     );
   }
   lines.push('', '### Skipped gates and violations by run', '');
@@ -89,14 +89,14 @@ export function writeReport(config: PilotConfig, traces: RunTrace[], outRoot: st
     '',
     '## Question 2: three-skill workflow',
     '',
-    '| Cell | Runs | Correct end state | Wrong skill reads (runs) | Wrong skill choices (runs) | Sequence errors (total) | Skipped steps (total) | Skill bytes before first correct action (median) | Skill bytes read (median) | Recovery |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
+    '| Cell | Runs | Correct end state | Wrong skill reads (runs) | Wrong skill choices (runs) | Sequence errors (total) | Skipped steps (total) | Skill bytes before first correct action (median) | Skill bytes read (median) | Runs reading reactive skill source | Recovery |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
   );
   for (const cell of config.cells.filter((c) => c.question === 2)) {
     const runs = valid(byCell(cell));
     if (byCell(cell).length === 0) continue;
     lines.push(
-      `| ${cell.id} | ${runs.length}/${byCell(cell).length} | ${frac(runs, (r) => !!r.workflow?.correct)} | ${frac(runs, (r) => r.workflow!.wrong_skill_reads.length > 0)} | ${frac(runs, (r) => r.workflow!.wrong_skill_choices.length > 0)} | ${sumOf(runs, (r) => r.workflow!.sequence_errors.length)} | ${sumOf(runs, (r) => r.workflow!.skipped_steps.length)} | ${fmt(median(runs.map((r) => r.workflow!.bytes_before_first_correct_action ?? NaN).filter(Number.isFinite)))} B | ${fmt(median(runs.map((r) => r.workflow!.skill_bytes_total)))} B | ${recoveryText(runs, 'workflow')} |`
+      `| ${cell.id} | ${runs.length}/${byCell(cell).length} | ${frac(runs, (r) => !!r.workflow?.correct)} | ${frac(runs, (r) => r.workflow!.wrong_skill_reads.length > 0)} | ${frac(runs, (r) => r.workflow!.wrong_skill_choices.length > 0)} | ${sumOf(runs, (r) => r.workflow!.sequence_errors.length)} | ${sumOf(runs, (r) => r.workflow!.skipped_steps.length)} | ${fmt(median(runs.map((r) => r.workflow!.bytes_before_first_correct_action ?? NaN).filter(Number.isFinite)))} B | ${fmt(median(runs.map((r) => r.workflow!.skill_bytes_total)))} B | ${frac(runs, (r) => r.workflow!.skill_source_reads > 0)} | ${recoveryText(runs, 'workflow')} |`
     );
   }
   const newcomer = newcomerBytes();

@@ -93,7 +93,9 @@
    "t": 94258,
    "kind": "compact_boundary",
    "pre_tokens": 150681,
-   "post_tokens": 3219
+   "post_tokens": 3219,
+   "summary_bytes": 7527,
+   "summary_names_phases": true
   },
   {
    "t": 94261,

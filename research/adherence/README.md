@@ -1,7 +1,7 @@
 # Adherence harness (pilot)
 
 > **Disclosure level: public.** Everything here runs on public or synthetic fixtures.
-> **Status: pilot.** The results in [`results/pilot/`](results/pilot/) come from three repetitions per cell on one skill per question.
+> **Status: pilot.** The results in [`results/pilot/`](results/pilot/) come from three repetitions per cell on one skill per question; start with [FINDINGS.md](results/pilot/FINDINGS.md).
 > They describe those runs only and do not support general claims.
 
 The 0.20.0 transport measurement counted the bytes a reactive skill costs, assuming a flat `SKILL.md` is read once and remembered perfectly.
@@ -95,7 +95,7 @@ The runtime ledger is used only for reactive-arm extras: refusals, the final sta
 | Skipped gates | RED (failing run before the implementation), GREEN (passing run after it), CLEAN_CODE (a target change after the first green run), PERF_AUDIT (a passing run after the last refactor change), AUDIT_VERIFY (lint, typecheck and test pass after the last edit). |
 | Missing outputs | `.docs/tdd-refactor-summary.md` is absent. In the reactive arm, the run also counts as missing an output if the runtime did not reach `COMPLETED`. |
 | Correctness | Hidden acceptance tests pass, and so do test, lint and typecheck on the final workspace. Question 2 also needs a changelog entry for the issue. |
-| Re-reads | Flat: reads of `SKILL.md` after the first. Reactive: `state`, `inspect` and `events` calls after the first fetch. Bytes are tool-result bytes. `emit` responses deliver the next state and are not counted as re-reads. |
+| Re-reads | Flat: reads of `SKILL.md` after the first. Reactive: `state`, `inspect` and `events` calls after the first fetch, plus direct reads of the skill's manifest, prompts or guards. Bytes are the tool-result bytes of the reading command, so they include any other files that command printed. `emit` responses deliver the next state and are not counted as re-reads. |
 | Recovery | For each violation or runtime refusal: whether the agent later got back on the path, and how many model turns that took. |
 | Question 2 | Wrong skill reads (distractor `SKILL.md` read), wrong skill choices (a distractor's output produced), sequence errors (test or fix before triage, fix before a failing test, changelog before a green fix), skipped steps, and skill bytes read before the first correct action. |
 | Newcomer bytes | Static: the frontmatter of all six library skills, the three needed skills in full, and the router's entry prompt. |

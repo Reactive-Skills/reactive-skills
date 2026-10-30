@@ -8,14 +8,14 @@
 
 ## Question 1: tdd-refactor under context pressure
 
-| Cell | Runs | Context at task (median tokens) | Correct end state | Runs with order violations | Skipped gates (total) | Missing outputs (total) | Skill re-reads (total, bytes) | Recovery | Self-report mismatches |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tdd-flat-immediate | 3/3 | 10,560 | 3/3 | 0/3 | 0 | 0 | 0, 0 B | 0 violations | n/a |
-| tdd-flat-150k | 3/3 | 111,625 | 3/3 | 0/3 | 0 | 0 | 0, 0 B | 0 violations | n/a |
-| tdd-flat-compaction | 3/3 | 13,423 | 3/3 | 0/3 | 0 | 0 | 0, 0 B | 0 violations | n/a |
-| tdd-reactive-immediate | 3/3 | 11,620 | 3/3 | 0/3 | 0 | 0 | 0, 0 B | 0 violations | 0 |
-| tdd-reactive-150k | 3/3 | 112,234 | 3/3 | 0/3 | 0 | 0 | 2, 7,368 B | 0 violations | 0 |
-| tdd-reactive-compaction | 3/3 | 11,888 | 3/3 | 0/3 | 0 | 0 | 3, 10,995 B | 0 violations | 0 |
+| Cell | Runs | Context at task (median tokens) | Correct end state | Runs with order violations | Skipped gates (total) | Missing outputs (total) | Skill re-reads (total, bytes) | Runs reading reactive skill source | Recovery | Self-report mismatches |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| tdd-flat-immediate | 3/3 | 10,560 | 3/3 | 0/3 | 0 | 0 | 0, 0 B | 0/3 | 0 violations | n/a |
+| tdd-flat-150k | 3/3 | 111,625 | 3/3 | 0/3 | 0 | 0 | 0, 0 B | 0/3 | 0 violations | n/a |
+| tdd-flat-compaction | 3/3 | 13,423 | 3/3 | 0/3 | 0 | 0 | 0, 0 B | 0/3 | 0 violations | n/a |
+| tdd-reactive-immediate | 3/3 | 11,620 | 3/3 | 0/3 | 0 | 0 | 0, 0 B | 0/3 | 0 violations | 0 |
+| tdd-reactive-150k | 3/3 | 112,234 | 3/3 | 0/3 | 0 | 0 | 2, 7,368 B | 0/3 | 0 violations | 0 |
+| tdd-reactive-compaction | 3/3 | 11,888 | 3/3 | 0/3 | 0 | 0 | 3, 10,995 B | 0/3 | 0 violations | 0 |
 
 ### Skipped gates and violations by run
 
@@ -40,10 +40,10 @@
 
 ## Question 2: three-skill workflow
 
-| Cell | Runs | Correct end state | Wrong skill reads (runs) | Wrong skill choices (runs) | Sequence errors (total) | Skipped steps (total) | Skill bytes before first correct action (median) | Skill bytes read (median) | Recovery |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| workflow-flat | 3/3 | 3/3 | 0/3 | 0/3 | 0 | 0 | 3,129 B | 3,129 B | 0 violations |
-| workflow-reactive | 3/3 | 3/3 | 0/3 | 0/3 | 0 | 0 | 2,361 B | 6,643 B | 0 violations |
+| Cell | Runs | Correct end state | Wrong skill reads (runs) | Wrong skill choices (runs) | Sequence errors (total) | Skipped steps (total) | Skill bytes before first correct action (median) | Skill bytes read (median) | Runs reading reactive skill source | Recovery |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| workflow-flat | 3/3 | 3/3 | 0/3 | 0/3 | 0 | 0 | 3,129 B | 3,129 B | 0/3 | 0 violations |
+| workflow-reactive | 3/3 | 3/3 | 0/3 | 0/3 | 0 | 0 | 11,829 B | 16,106 B | 2/3 | 0 violations |
 
 Static newcomer cost (bytes to read before knowing which skill to use):
 

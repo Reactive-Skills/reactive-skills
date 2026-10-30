@@ -30,6 +30,7 @@ export interface TddScore {
   skill_rereads: number;
   skill_reread_bytes: number;
   skill_bytes_total: number;
+  skill_source_reads: number;
   recoveries: Recovery[];
   self_report_mismatches: number;
 }
@@ -101,6 +102,7 @@ export function scoreTdd(trace: RunTrace): TddScore {
     skill_rereads: again.count,
     skill_reread_bytes: again.bytes,
     skill_bytes_total: reads.reduce((sum, r) => sum + r.bytes, 0),
+    skill_source_reads: reads.filter((r) => r.kind === 'source_read').length,
     recoveries: [...recoveries, ...refusalRecoveries(trace)],
     self_report_mismatches: selfReportMismatches(trace),
   };

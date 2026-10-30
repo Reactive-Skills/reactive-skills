@@ -29,6 +29,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -63,6 +64,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -97,6 +99,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -131,6 +134,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -165,6 +169,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -199,6 +204,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -233,6 +239,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -267,6 +274,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -301,6 +309,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 2692,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -335,6 +344,7 @@
    "skill_rereads": 1,
    "skill_reread_bytes": 3689,
    "skill_bytes_total": 12512,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -369,6 +379,7 @@
    "skill_rereads": 1,
    "skill_reread_bytes": 3679,
    "skill_bytes_total": 12474,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -403,6 +414,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 9547,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -437,6 +449,7 @@
    "skill_rereads": 1,
    "skill_reread_bytes": 3637,
    "skill_bytes_total": 12381,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -471,6 +484,7 @@
    "skill_rereads": 1,
    "skill_reread_bytes": 3679,
    "skill_bytes_total": 12398,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -505,6 +519,7 @@
    "skill_rereads": 1,
    "skill_reread_bytes": 3679,
    "skill_bytes_total": 13360,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -539,6 +554,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 8770,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -573,6 +589,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 8754,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -607,6 +624,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 8744,
+   "skill_source_reads": 0,
    "recoveries": [],
    "self_report_mismatches": 0
   }
@@ -643,6 +661,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 3129,
+   "skill_source_reads": 0,
    "recoveries": []
   }
  },
@@ -678,6 +697,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 2665,
+   "skill_source_reads": 0,
    "recoveries": []
   }
  },
@@ -713,6 +733,7 @@
    "skill_rereads": 0,
    "skill_reread_bytes": 0,
    "skill_bytes_total": 7639,
+   "skill_source_reads": 0,
    "recoveries": []
   }
  },
@@ -744,10 +765,11 @@
     "passed": 2,
     "failed": 0
    },
-   "bytes_before_first_correct_action": 2366,
-   "skill_rereads": 0,
-   "skill_reread_bytes": 0,
-   "skill_bytes_total": 6643,
+   "bytes_before_first_correct_action": 11829,
+   "skill_rereads": 1,
+   "skill_reread_bytes": 9463,
+   "skill_bytes_total": 16106,
+   "skill_source_reads": 1,
    "recoveries": []
   }
  },
@@ -779,10 +801,11 @@
     "passed": 2,
     "failed": 0
    },
-   "bytes_before_first_correct_action": 2361,
-   "skill_rereads": 1,
-   "skill_reread_bytes": 219,
-   "skill_bytes_total": 5915,
+   "bytes_before_first_correct_action": 16684,
+   "skill_rereads": 2,
+   "skill_reread_bytes": 14542,
+   "skill_bytes_total": 20238,
+   "skill_source_reads": 1,
    "recoveries": []
   }
  },
@@ -818,6 +841,7 @@
    "skill_rereads": 1,
    "skill_reread_bytes": 219,
    "skill_bytes_total": 6858,
+   "skill_source_reads": 0,
    "recoveries": []
   }
  }

@@ -135,7 +135,9 @@
    "t": 158302,
    "kind": "compact_boundary",
    "pre_tokens": 150819,
-   "post_tokens": 2201
+   "post_tokens": 2201,
+   "summary_bytes": 6676,
+   "summary_names_phases": true
   },
   {
    "t": 158305,

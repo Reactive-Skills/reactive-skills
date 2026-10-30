@@ -62,13 +62,15 @@ export function streamEvents(raw: RawRun): { events: TraceEvent[]; results: any[
   const tools = new Map<string, Extract<TraceEvent, { kind: 'tool' }>>();
   const seenMessages = new Set<string>();
   let init: any = null;
+  let pendingCompact: Extract<TraceEvent, { kind: 'compact_boundary' }> | null = null;
   for (const sent of readJsonl(raw.sent)) events.push({ t: sent.t, kind: 'user_message', role: sent.role, bytes: sent.bytes });
   for (const { t, line } of readJsonl(raw.stream)) {
     const event = JSON.parse(line);
     if (event.type === 'system' && event.subtype === 'init') init = event;
     if (event.type === 'system' && event.subtype === 'compact_boundary') {
       const meta = event.compact_metadata ?? {};
-      events.push({ t, kind: 'compact_boundary', pre_tokens: meta.pre_tokens ?? 0, post_tokens: meta.post_tokens ?? 0 });
+      pendingCompact = { t, kind: 'compact_boundary', pre_tokens: meta.pre_tokens ?? 0, post_tokens: meta.post_tokens ?? 0 };
+      events.push(pendingCompact);
     }
     if (event.type === 'result') results.push(event);
     if (event.type === 'assistant') {
@@ -101,6 +103,13 @@ export function streamEvents(raw: RawRun): { events: TraceEvent[]; results: any[
         tools.set(block.id, tool);
         events.push(tool);
       }
+    }
+    // The first user message after a compaction boundary is the summary; record its size and whether it names the phases.
+    if (event.type === 'user' && pendingCompact) {
+      const summary = resultText(event.message?.content);
+      pendingCompact.summary_bytes = Buffer.byteLength(summary);
+      pendingCompact.summary_names_phases = /RED/.test(summary) && /GREEN/.test(summary) && /REFACTOR/i.test(summary);
+      pendingCompact = null;
     }
     if (event.type === 'user' && Array.isArray(event.message?.content)) {
       for (const block of event.message.content) {

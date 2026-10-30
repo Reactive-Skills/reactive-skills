@@ -86,7 +86,7 @@ export interface SkillRead {
   t: number;
   source: string;
   bytes: number;
-  kind: 'flat_read' | 'runtime_fetch' | 'runtime_emit';
+  kind: 'flat_read' | 'runtime_fetch' | 'runtime_emit' | 'source_read';
 }
 
 const AXI = /reactive-skills-axi\s+(invoke|state|inspect|emit|events)\b/;
@@ -102,12 +102,17 @@ export function skillReads(trace: RunTrace): SkillRead[] {
     const target = event.target ?? '';
     if (event.tool === 'Read' && /SKILL\.md$/.test(target)) {
       reads.push({ t: event.t, source: target, bytes: event.result_bytes, kind: 'flat_read' });
+    } else if (event.tool === 'Read' && /(^|\/)skills\//.test(target)) {
+      reads.push({ t: event.t, source: target, bytes: event.result_bytes, kind: 'source_read' });
     } else if (event.tool === 'Bash' && event.command) {
       const axi = event.command.match(AXI);
       if (axi) {
         reads.push({ t: event.t, source: `axi ${axi[1]}`, bytes: event.result_bytes, kind: axi[1] === 'emit' ? 'runtime_emit' : 'runtime_fetch' });
       } else if (/SKILL\.md/.test(event.command) && /\b(cat|head|tail|less|sed -n|awk|grep)\b/.test(event.command)) {
         reads.push({ t: event.t, source: event.command.match(/[\w./-]*SKILL\.md/)?.[0] ?? 'SKILL.md', bytes: event.result_bytes, kind: 'flat_read' });
+      } else if (/(^|[\s'"])skills\/[\w-]+\/(skill\.yaml|states|guards)/.test(event.command) && /\b(cat|head|tail|less|sed -n|awk)\b/.test(event.command)) {
+        // Reading a reactive skill's manifest, state prompts or guard code directly, outside the runtime.
+        reads.push({ t: event.t, source: 'reactive skill source', bytes: event.result_bytes, kind: 'source_read' });
       }
     }
   }
