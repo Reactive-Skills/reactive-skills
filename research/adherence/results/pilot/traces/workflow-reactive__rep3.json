@@ -1,0 +1,393 @@
+{
+ "prompt_version": "adherence-prompts/1",
+ "cell": {
+  "id": "workflow-reactive",
+  "question": 2,
+  "task": "workflow",
+  "arm": "reactive",
+  "pressure": "immediate"
+ },
+ "rep": 3,
+ "model": "claude-fable-5-1",
+ "claude_code_version": "2.1.314",
+ "filler_seed": 20261033,
+ "status": "completed",
+ "context_tokens_at_task": 9037,
+ "events": [
+  {
+   "t": 0,
+   "kind": "user_message",
+   "role": "task",
+   "bytes": 251
+  },
+  {
+   "t": 2846,
+   "kind": "assistant_turn",
+   "message_id": "1",
+   "context_tokens": 9037,
+   "output_tokens": 8
+  },
+  {
+   "t": 3170,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat ISSUE.md && echo ---- && ls -la && git status --short && git log --oneline | head -5 && echo ---- && reactive-skills-axi invoke ship-bugfix",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 2361,
+   "tool_use_id": "1"
+  },
+  {
+   "t": 6053,
+   "kind": "assistant_turn",
+   "message_id": "2",
+   "context_tokens": 10508,
+   "output_tokens": 16
+  },
+  {
+   "t": 6053,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "for f in src/* tests/* package.json CHANGELOG.md .gitignore scripts/* docs/*; do echo \"=== $f\"; cat \"$f\"; done; ls .harness skills skills/* bin",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 5917,
+   "tool_use_id": "2"
+  },
+  {
+   "t": 7286,
+   "kind": "assistant_turn",
+   "message_id": "3",
+   "context_tokens": 13373,
+   "output_tokens": 72
+  },
+  {
+   "t": 14238,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "mkdir -p .work && cat > .work/triage.md <<'EOF' [1227 bytes]\nEOF\nreactive-skills-axi emit ship-bugfix TRIAGE_DONE --job <uuid>",
+   "writes": [
+    ".work/triage.md"
+   ],
+   "is_error": false,
+   "result_bytes": 1101,
+   "tool_use_id": "3"
+  },
+  {
+   "t": 14650,
+   "kind": "runtime",
+   "type": "transition",
+   "signal": "TRIAGE_DONE",
+   "from": "TRIAGE",
+   "to": "FIX.REPRO"
+  },
+  {
+   "t": 17321,
+   "kind": "assistant_turn",
+   "message_id": "4",
+   "context_tokens": 14687,
+   "output_tokens": 16
+  },
+  {
+   "t": 17321,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat >> tests/cart.test.ts <<'EOF' [180 bytes]\nEOF\nnpm test 2>&1 | tail -25; echo \"exit=${PIPESTATUS[0]}\"",
+   "writes": [
+    "tests/cart.test.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 736,
+   "tool_use_id": "4",
+   "test_summary": {
+    "pass": 3,
+    "fail": 1
+   }
+  },
+  {
+   "t": 17817,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 1,
+   "source": "agent",
+   "hashes": {
+    "src/cart.ts": "318a1669d0ff6662",
+    "tests/cart.test.ts": "8f3f7806a0717413",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "1876f5811654d4c3"
+   }
+  },
+  {
+   "t": 18887,
+   "kind": "assistant_turn",
+   "message_id": "5",
+   "context_tokens": 15382,
+   "output_tokens": 50
+  },
+  {
+   "t": 20123,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "reactive-skills-axi emit ship-bugfix REPRO_FAILING --job <uuid>",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 1020,
+   "tool_use_id": "5"
+  },
+  {
+   "t": 20587,
+   "kind": "runtime",
+   "type": "transition",
+   "signal": "REPRO_FAILING",
+   "from": "FIX.REPRO",
+   "to": "FIX.PATCH"
+  },
+  {
+   "t": 20858,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 1,
+   "source": "guard",
+   "hashes": {
+    "src/cart.ts": "318a1669d0ff6662",
+    "tests/cart.test.ts": "8f3f7806a0717413",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "1876f5811654d4c3"
+   }
+  },
+  {
+   "t": 24014,
+   "kind": "assistant_turn",
+   "message_id": "6",
+   "context_tokens": 16116,
+   "output_tokens": 16
+  },
+  {
+   "t": 24014,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "sed -i 's|const saving = (line.unitPrice \\* discount.percent) / 100;|const saving = (lineTotal(line) * discount.percent) / 100;|' src/cart.ts && git diff src/cart.ts && npm test 2>&1 | grep -E '^# (pass|fail)'; echo \"test exit=${PIPESTATUS[0]}\"; npm run lint 2>&1 | tail -1; echo \"lint exit=${PIPESTATUS[0]}\"; npm run typecheck 2>&1 | tail -1",
+   "writes": [
+    "src/cart.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 494,
+   "tool_use_id": "6",
+   "test_summary": {
+    "pass": 4,
+    "fail": 0
+   }
+  },
+  {
+   "t": 24458,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/cart.ts": "ec604fa85026ff76",
+    "tests/cart.test.ts": "8f3f7806a0717413",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "1876f5811654d4c3"
+   }
+  },
+  {
+   "t": 24640,
+   "kind": "check",
+   "check": "lint",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/cart.ts": "ec604fa85026ff76",
+    "tests/cart.test.ts": "8f3f7806a0717413",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "1876f5811654d4c3"
+   }
+  },
+  {
+   "t": 25059,
+   "kind": "check",
+   "check": "typecheck",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/cart.ts": "ec604fa85026ff76",
+    "tests/cart.test.ts": "8f3f7806a0717413",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "1876f5811654d4c3"
+   }
+  },
+  {
+   "t": 27505,
+   "kind": "assistant_turn",
+   "message_id": "7",
+   "context_tokens": 16718,
+   "output_tokens": 17
+  },
+  {
+   "t": 27505,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "reactive-skills-axi emit ship-bugfix FIX_VERIFIED --job <uuid>",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 1167,
+   "tool_use_id": "7"
+  },
+  {
+   "t": 27894,
+   "kind": "runtime",
+   "type": "transition",
+   "signal": "FIX_VERIFIED",
+   "from": "FIX.PATCH",
+   "to": "RELEASE_NOTE"
+  },
+  {
+   "t": 28134,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "guard",
+   "hashes": {
+    "src/cart.ts": "ec604fa85026ff76",
+    "tests/cart.test.ts": "8f3f7806a0717413",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "1876f5811654d4c3"
+   }
+  },
+  {
+   "t": 28190,
+   "kind": "check",
+   "check": "lint",
+   "exit_code": 0,
+   "source": "guard",
+   "hashes": {
+    "src/cart.ts": "ec604fa85026ff76",
+    "tests/cart.test.ts": "8f3f7806a0717413",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "1876f5811654d4c3"
+   }
+  },
+  {
+   "t": 31159,
+   "kind": "assistant_turn",
+   "message_id": "8",
+   "context_tokens": 17488,
+   "output_tokens": 16
+  },
+  {
+   "t": 31159,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "sed -i 's|^## Unreleased$|## Unreleased\\n\\n### Fixed\\n\\n- Percentage discount codes now apply to every unit in a cart line, not just the first (#42).|' CHANGELOG.md && cat CHANGELOG.md && reactive-skills-axi emit ship-bugfix NOTE_WRITTEN --job <uuid>",
+   "writes": [
+    "CHANGELOG.md"
+   ],
+   "is_error": false,
+   "result_bytes": 990,
+   "tool_use_id": "8"
+  },
+  {
+   "t": 31523,
+   "kind": "runtime",
+   "type": "transition",
+   "signal": "NOTE_WRITTEN",
+   "from": "RELEASE_NOTE",
+   "to": "DONE"
+  },
+  {
+   "t": 34123,
+   "kind": "assistant_turn",
+   "message_id": "9",
+   "context_tokens": 18285,
+   "output_tokens": 6
+  },
+  {
+   "t": 35425,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "reactive-skills-axi state ship-bugfix --job <uuid> | head -6 && git status --short",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 219,
+   "tool_use_id": "9"
+  },
+  {
+   "t": 41424,
+   "kind": "assistant_turn",
+   "message_id": "10",
+   "context_tokens": 18771,
+   "output_tokens": 423
+  },
+  {
+   "t": 43201,
+   "kind": "user_message",
+   "role": "nudge",
+   "bytes": 80
+  },
+  {
+   "t": 44104,
+   "kind": "assistant_turn",
+   "message_id": "11",
+   "context_tokens": 19244,
+   "output_tokens": 5
+  }
+ ],
+ "usage": {
+  "model_usage_keys": [
+   "claude-fable-5-1"
+  ],
+  "cost_usd": 0.42979900000000004,
+  "input_tokens": 292,
+  "cache_read_tokens": 158356,
+  "cache_creation_tokens": 10961,
+  "output_tokens": 3082,
+  "model_turns": 11,
+  "wall_clock_ms": 44104
+ },
+ "baseline_hashes": {
+  "src/cart.ts": "318a1669d0ff6662",
+  "tests/cart.test.ts": "d977be2edd899bad",
+  "CHANGELOG.md": "d9f593f404545885",
+  "docs/API.md": "5f16aa0fbfd80cd8",
+  "package.json": "a3c3139ed81e2df6"
+ },
+ "final_files": {
+  "src/cart.ts": "ec604fa85026ff76",
+  "tests/cart.test.ts": "8f3f7806a0717413",
+  "CHANGELOG.md": "8f0cc7819456e09d",
+  "docs/API.md": "5f16aa0fbfd80cd8",
+  "package.json": "a3c3139ed81e2df6",
+  ".work/triage.md": "1876f5811654d4c3"
+ },
+ "final_checks": {
+  "triage_sections": 4,
+  "changelog_fixed_entry": true,
+  "distractor_artifacts": []
+ },
+ "acceptance": {
+  "passed": 2,
+  "failed": 0
+ },
+ "end_checks": {
+  "test": 0,
+  "lint": 0,
+  "typecheck": 0
+ },
+ "summary_present": false,
+ "runtime_final_state": "DONE"
+}

@@ -1,0 +1,247 @@
+{
+ "prompt_version": "adherence-prompts/1",
+ "cell": {
+  "id": "workflow-flat",
+  "question": 2,
+  "task": "workflow",
+  "arm": "flat",
+  "pressure": "immediate"
+ },
+ "rep": 3,
+ "model": "claude-fable-5-1",
+ "claude_code_version": "2.1.314",
+ "filler_seed": 20261033,
+ "status": "completed",
+ "context_tokens_at_task": 9001,
+ "events": [
+  {
+   "t": 0,
+   "kind": "user_message",
+   "role": "task",
+   "bytes": 174
+  },
+  {
+   "t": 5087,
+   "kind": "assistant_turn",
+   "message_id": "1",
+   "context_tokens": 9001,
+   "output_tokens": 3
+  },
+  {
+   "t": 6864,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat ISSUE.md && echo ---- && find .skills -type f | head -50 && echo ---- && git status && git log --oneline | head -5 && ls",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 581,
+   "tool_use_id": "1"
+  },
+  {
+   "t": 12343,
+   "kind": "assistant_turn",
+   "message_id": "2",
+   "context_tokens": 9549,
+   "output_tokens": 20
+  },
+  {
+   "t": 12343,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "for f in .skills/triage-bug/SKILL.md .skills/regression-fix/SKILL.md .skills/release-note/SKILL.md; do echo \"=== $f\"; cat $f; done; echo; echo \"=== package.json\"; cat package.json; echo \"=== CHANGELOG\"; cat CHANGELOG.md; find src tests scripts docs -type f; echo; for f in $(find src tests scripts -type f); do echo \"=== $f\"; cat $f; done",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 7639,
+   "tool_use_id": "2"
+  },
+  {
+   "t": 21744,
+   "kind": "assistant_turn",
+   "message_id": "3",
+   "context_tokens": 13098,
+   "output_tokens": 3
+  },
+  {
+   "t": 27527,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "mkdir -p .work && cat > .work/triage.md <<'EOF' [1099 bytes]\nEOF\ncat >> tests/cart.test.ts <<'EOF' [195 bytes]\nEOF\nnpm test 2>&1 | tail -30; echo \"exit=${PIPESTATUS[0]}\"",
+   "writes": [
+    ".work/triage.md",
+    "tests/cart.test.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 908,
+   "tool_use_id": "3",
+   "test_summary": {
+    "pass": 3,
+    "fail": 1
+   }
+  },
+  {
+   "t": 28041,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 1,
+   "source": "agent",
+   "hashes": {
+    "src/cart.ts": "318a1669d0ff6662",
+    "tests/cart.test.ts": "68afe9485c8f93f7",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "a540ceceab1e6393"
+   }
+  },
+  {
+   "t": 31397,
+   "kind": "assistant_turn",
+   "message_id": "4",
+   "context_tokens": 14650,
+   "output_tokens": 69
+  },
+  {
+   "t": 34730,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "sed -i 's|const saving = (line.unitPrice \\* discount.percent) / 100;|const saving = (lineTotal(line) * discount.percent) / 100;|' src/cart.ts && grep -n saving src/cart.ts && npm test 2>&1 | grep -E '^# (tests|pass|fail)'; echo \"test exit=${PIPESTATUS[0]}\"; npm run lint 2>&1 | tail -1; echo \"lint exit=${PIPESTATUS[0]}\"",
+   "writes": [
+    "src/cart.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 171,
+   "tool_use_id": "4",
+   "test_summary": {
+    "pass": 4,
+    "fail": 0
+   }
+  },
+  {
+   "t": 35175,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/cart.ts": "ec604fa85026ff76",
+    "tests/cart.test.ts": "68afe9485c8f93f7",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "a540ceceab1e6393"
+   }
+  },
+  {
+   "t": 35356,
+   "kind": "check",
+   "check": "lint",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/cart.ts": "ec604fa85026ff76",
+    "tests/cart.test.ts": "68afe9485c8f93f7",
+    "CHANGELOG.md": "d9f593f404545885",
+    "docs/API.md": "5f16aa0fbfd80cd8",
+    "package.json": "a3c3139ed81e2df6",
+    ".work/triage.md": "a540ceceab1e6393"
+   }
+  },
+  {
+   "t": 40691,
+   "kind": "assistant_turn",
+   "message_id": "5",
+   "context_tokens": 15119,
+   "output_tokens": 20
+  },
+  {
+   "t": 40691,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "python3 - <<'EOF' [212 bytes]\nEOF\ncat CHANGELOG.md; git status --short; git diff",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 1500,
+   "tool_use_id": "5"
+  },
+  {
+   "t": 47163,
+   "kind": "assistant_turn",
+   "message_id": "6",
+   "context_tokens": 16197,
+   "output_tokens": 2
+  },
+  {
+   "t": 51233,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "git checkout -q -b fix/issue-42-discount-all-units && git add src/cart.ts tests/cart.test.ts CHANGELOG.md .work/triage.md && git commit -q -F - <<'EOF' [452 bytes]\nEOF\ngit log --oneline -2 && git status --short && git remote -v",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 87,
+   "tool_use_id": "6"
+  },
+  {
+   "t": 59065,
+   "kind": "assistant_turn",
+   "message_id": "7",
+   "context_tokens": 16806,
+   "output_tokens": 434
+  },
+  {
+   "t": 72507,
+   "kind": "user_message",
+   "role": "nudge",
+   "bytes": 80
+  },
+  {
+   "t": 76076,
+   "kind": "assistant_turn",
+   "message_id": "8",
+   "context_tokens": 17293,
+   "output_tokens": 1
+  }
+ ],
+ "usage": {
+  "model_usage_keys": [
+   "claude-fable-5-1"
+  ],
+  "cost_usd": 0.37344800000000006,
+  "input_tokens": 196,
+  "cache_read_tokens": 102472,
+  "cache_creation_tokens": 9045,
+  "output_tokens": 3032,
+  "model_turns": 8,
+  "wall_clock_ms": 76076
+ },
+ "baseline_hashes": {
+  "src/cart.ts": "318a1669d0ff6662",
+  "tests/cart.test.ts": "d977be2edd899bad",
+  "CHANGELOG.md": "d9f593f404545885",
+  "docs/API.md": "5f16aa0fbfd80cd8",
+  "package.json": "a3c3139ed81e2df6"
+ },
+ "final_files": {
+  "src/cart.ts": "ec604fa85026ff76",
+  "tests/cart.test.ts": "68afe9485c8f93f7",
+  "CHANGELOG.md": "e21ffe74fbc4d1ba",
+  "docs/API.md": "5f16aa0fbfd80cd8",
+  "package.json": "a3c3139ed81e2df6",
+  ".work/triage.md": "a540ceceab1e6393"
+ },
+ "final_checks": {
+  "triage_sections": 4,
+  "changelog_fixed_entry": true,
+  "distractor_artifacts": []
+ },
+ "acceptance": {
+  "passed": 2,
+  "failed": 0
+ },
+ "end_checks": {
+  "test": 0,
+  "lint": 0,
+  "typecheck": 0
+ },
+ "summary_present": false,
+ "runtime_final_state": null
+}

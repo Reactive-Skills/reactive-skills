@@ -1,0 +1,497 @@
+{
+ "prompt_version": "adherence-prompts/1",
+ "cell": {
+  "id": "tdd-reactive-150k",
+  "question": 1,
+  "task": "tdd",
+  "arm": "reactive",
+  "pressure": "filler150k"
+ },
+ "rep": 2,
+ "model": "claude-fable-5-1",
+ "claude_code_version": "2.1.314",
+ "filler_seed": 20261032,
+ "status": "completed",
+ "context_tokens_at_task": 112234,
+ "events": [
+  {
+   "t": 0,
+   "kind": "user_message",
+   "role": "skill_load",
+   "bytes": 363
+  },
+  {
+   "t": 3271,
+   "kind": "assistant_turn",
+   "message_id": "1",
+   "context_tokens": 9072,
+   "output_tokens": 8
+  },
+  {
+   "t": 4581,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "reactive-skills-axi invoke tdd-refactor 2>&1",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 1385,
+   "tool_use_id": "1"
+  },
+  {
+   "t": 7543,
+   "kind": "assistant_turn",
+   "message_id": "2",
+   "context_tokens": 9945,
+   "output_tokens": 16
+  },
+  {
+   "t": 7543,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "reactive-skills-axi capabilities --json 2>&1",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 794,
+   "tool_use_id": "2"
+  },
+  {
+   "t": 11243,
+   "kind": "assistant_turn",
+   "message_id": "3",
+   "context_tokens": 10475,
+   "output_tokens": 16
+  },
+  {
+   "t": 11243,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "reactive-skills-axi emit tdd-refactor RUNTIME_READY --job <uuid> 2>&1",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 1517,
+   "tool_use_id": "3"
+  },
+  {
+   "t": 11564,
+   "kind": "runtime",
+   "type": "transition",
+   "signal": "RUNTIME_READY",
+   "from": "INIT",
+   "to": "RED_SPEC"
+  },
+  {
+   "t": 13652,
+   "kind": "assistant_turn",
+   "message_id": "4",
+   "context_tokens": 11411,
+   "output_tokens": 66
+  },
+  {
+   "t": 21787,
+   "kind": "user_message",
+   "role": "filler",
+   "bytes": 140335
+  },
+  {
+   "t": 56935,
+   "kind": "assistant_turn",
+   "message_id": "5",
+   "context_tokens": 88826,
+   "output_tokens": 2
+  },
+  {
+   "t": 62270,
+   "kind": "user_message",
+   "role": "filler",
+   "bytes": 39038
+  },
+  {
+   "t": 67834,
+   "kind": "assistant_turn",
+   "message_id": "6",
+   "context_tokens": 111808,
+   "output_tokens": 8
+  },
+  {
+   "t": 70352,
+   "kind": "user_message",
+   "role": "task",
+   "bytes": 298
+  },
+  {
+   "t": 73062,
+   "kind": "assistant_turn",
+   "message_id": "7",
+   "context_tokens": 112234,
+   "output_tokens": 8
+  },
+  {
+   "t": 74998,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "reactive-skills-axi state tdd-refactor --job <uuid> 2>&1 | head -20; echo ---; ls; cat package.json; echo ---; cat src/auth.ts; echo ---; cat tests/auth.test.ts",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 3679,
+   "tool_use_id": "4"
+  },
+  {
+   "t": 77962,
+   "kind": "assistant_turn",
+   "message_id": "8",
+   "context_tokens": 114234,
+   "output_tokens": 64
+  },
+  {
+   "t": 79799,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat >> tests/auth.test.ts <<'EOF' [156 bytes]\nEOF\nnpm test; echo \"EXIT=$?\"",
+   "writes": [
+    "tests/auth.test.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 1904,
+   "tool_use_id": "5",
+   "test_summary": {
+    "pass": 5,
+    "fail": 1
+   }
+  },
+  {
+   "t": 79800,
+   "kind": "user_message",
+   "role": "filler_during",
+   "bytes": 68261
+  },
+  {
+   "t": 80302,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 1,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "e65be01964fe58d5",
+    "tests/auth.test.ts": "5a442ceafbd04f19"
+   }
+  },
+  {
+   "t": 121265,
+   "kind": "assistant_turn",
+   "message_id": "9",
+   "context_tokens": 145180,
+   "output_tokens": 6
+  },
+  {
+   "t": 122522,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "reactive-skills-axi emit tdd-refactor TEST_RAN --job <uuid> --payload '{\"exit_code\": 1, \"requirement\": \"validatePassword rejects passwords shorter than 12 characters with reason too_short; length check runs after the empty check and before the other rules\"}' 2>&1 || reactive-skills-axi emit tdd-refactor --help 2>&1 | head -30",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 1354,
+   "tool_use_id": "6"
+  },
+  {
+   "t": 122894,
+   "kind": "runtime",
+   "type": "transition",
+   "signal": "TEST_RAN",
+   "from": "RED_SPEC",
+   "to": "GREEN_CODE",
+   "payload_exit_code": 1
+  },
+  {
+   "t": 125066,
+   "kind": "assistant_turn",
+   "message_id": "10",
+   "context_tokens": 150036,
+   "output_tokens": 60
+  },
+  {
+   "t": 128069,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "python3 - <<'EOF' [337 bytes]\nEOF\nnpm test 2>&1 | grep -E '^(ok|not ok|# (pass|fail))'; echo \"EXIT=${PIPESTATUS[0]}\"",
+   "writes": [
+    "src/auth.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 242,
+   "tool_use_id": "7",
+   "test_summary": {
+    "pass": 6,
+    "fail": 0
+   }
+  },
+  {
+   "t": 128547,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "eb544104ac62f4e4",
+    "tests/auth.test.ts": "5a442ceafbd04f19"
+   }
+  },
+  {
+   "t": 133710,
+   "kind": "assistant_turn",
+   "message_id": "11",
+   "context_tokens": 150586,
+   "output_tokens": 17
+  },
+  {
+   "t": 133710,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "reactive-skills-axi emit tdd-refactor TEST_RAN --job <uuid> --payload '{\"exit_code\": 0}' 2>&1",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 1164,
+   "tool_use_id": "8"
+  },
+  {
+   "t": 134020,
+   "kind": "runtime",
+   "type": "transition",
+   "signal": "TEST_RAN",
+   "from": "GREEN_CODE",
+   "to": "REFACTOR.CLEAN_CODE",
+   "payload_exit_code": 0
+  },
+  {
+   "t": 136402,
+   "kind": "assistant_turn",
+   "message_id": "12",
+   "context_tokens": 151395,
+   "output_tokens": 70
+  },
+  {
+   "t": 143060,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "cat > src/auth.ts <<'EOF' [1206 bytes]\nEOF\nnpm test 2>&1 | grep -E '^(not ok|# (pass|fail))'; echo \"EXIT=${PIPESTATUS[0]}\"; npm run -s lint; echo \"LINT=$?\"; npm run -s typecheck; echo \"TYPECHECK=$?\"",
+   "writes": [
+    "src/auth.ts"
+   ],
+   "is_error": false,
+   "result_bytes": 75,
+   "tool_use_id": "9",
+   "test_summary": {
+    "pass": 6,
+    "fail": 0
+   }
+  },
+  {
+   "t": 143495,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "6c55e8cfa004180b",
+    "tests/auth.test.ts": "5a442ceafbd04f19"
+   }
+  },
+  {
+   "t": 143692,
+   "kind": "check",
+   "check": "lint",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "6c55e8cfa004180b",
+    "tests/auth.test.ts": "5a442ceafbd04f19"
+   }
+  },
+  {
+   "t": 144039,
+   "kind": "check",
+   "check": "typecheck",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "6c55e8cfa004180b",
+    "tests/auth.test.ts": "5a442ceafbd04f19"
+   }
+  },
+  {
+   "t": 147676,
+   "kind": "assistant_turn",
+   "message_id": "13",
+   "context_tokens": 152323,
+   "output_tokens": 16
+  },
+  {
+   "t": 147676,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "reactive-skills-axi emit tdd-refactor CLEANING_DONE --job <uuid> 2>&1",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 1205,
+   "tool_use_id": "10"
+  },
+  {
+   "t": 148009,
+   "kind": "runtime",
+   "type": "transition",
+   "signal": "CLEANING_DONE",
+   "from": "REFACTOR.CLEAN_CODE",
+   "to": "REFACTOR.PERF_AUDIT"
+  },
+  {
+   "t": 153086,
+   "kind": "assistant_turn",
+   "message_id": "14",
+   "context_tokens": 153145,
+   "output_tokens": 127
+  },
+  {
+   "t": 153193,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "npm test 2>&1 | grep -E '^# (pass|fail)' && reactive-skills-axi emit tdd-refactor AUDIT_PASSED --job <uuid> 2>&1",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 1141,
+   "tool_use_id": "11",
+   "test_summary": {
+    "pass": 6,
+    "fail": 0
+   }
+  },
+  {
+   "t": 153625,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "6c55e8cfa004180b",
+    "tests/auth.test.ts": "5a442ceafbd04f19"
+   }
+  },
+  {
+   "t": 153957,
+   "kind": "runtime",
+   "type": "transition",
+   "signal": "AUDIT_PASSED",
+   "from": "REFACTOR.PERF_AUDIT",
+   "to": "AUDIT_VERIFY"
+  },
+  {
+   "t": 158601,
+   "kind": "assistant_turn",
+   "message_id": "15",
+   "context_tokens": 154084,
+   "output_tokens": 16
+  },
+  {
+   "t": 158601,
+   "kind": "tool",
+   "tool": "Bash",
+   "command": "npm run -s lint; L=$?; npm run -s typecheck; T=$?; npm test >/dev/null 2>&1; S=$?; echo \"lint=$L typecheck=$T test=$S\"; if [ $L -eq 0 ] && [ $T -eq 0 ] && [ $S -eq 0 ]; then reactive-skills-axi emit tdd-refactor ALL_CHECKS_PASSED --job <uuid> --payload '{\"exit_code\": 0}' 2>&1; fi",
+   "writes": [],
+   "is_error": false,
+   "result_bytes": 1029,
+   "tool_use_id": "12"
+  },
+  {
+   "t": 158829,
+   "kind": "check",
+   "check": "lint",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "6c55e8cfa004180b",
+    "tests/auth.test.ts": "5a442ceafbd04f19"
+   }
+  },
+  {
+   "t": 159172,
+   "kind": "check",
+   "check": "typecheck",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "6c55e8cfa004180b",
+    "tests/auth.test.ts": "5a442ceafbd04f19"
+   }
+  },
+  {
+   "t": 159626,
+   "kind": "check",
+   "check": "test",
+   "exit_code": 0,
+   "source": "agent",
+   "hashes": {
+    "src/auth.ts": "6c55e8cfa004180b",
+    "tests/auth.test.ts": "5a442ceafbd04f19"
+   }
+  },
+  {
+   "t": 160107,
+   "kind": "runtime",
+   "type": "transition",
+   "signal": "ALL_CHECKS_PASSED",
+   "from": "AUDIT_VERIFY",
+   "to": "COMPLETED",
+   "payload_exit_code": 0
+  },
+  {
+   "t": 166775,
+   "kind": "assistant_turn",
+   "message_id": "16",
+   "context_tokens": 154961,
+   "output_tokens": 404
+  },
+  {
+   "t": 169376,
+   "kind": "user_message",
+   "role": "nudge",
+   "bytes": 80
+  },
+  {
+   "t": 171631,
+   "kind": "assistant_turn",
+   "message_id": "17",
+   "context_tokens": 155417,
+   "output_tokens": 5
+  }
+ ],
+ "usage": {
+  "model_usage_keys": [
+   "claude-fable-5-1"
+  ],
+  "cost_usd": 3.9805962499999996,
+  "input_tokens": 364,
+  "cache_read_tokens": 1687665,
+  "cache_creation_tokens": 147103,
+  "output_tokens": 11974,
+  "model_turns": 17,
+  "wall_clock_ms": 171631
+ },
+ "baseline_hashes": {
+  "src/auth.ts": "e65be01964fe58d5",
+  "tests/auth.test.ts": "14b342d296c7cd0d"
+ },
+ "final_files": {
+  "src/auth.ts": "6c55e8cfa004180b",
+  "tests/auth.test.ts": "5a442ceafbd04f19",
+  ".work/triage.md": null
+ },
+ "acceptance": {
+  "passed": 4,
+  "failed": 0
+ },
+ "end_checks": {
+  "test": 0,
+  "lint": 0,
+  "typecheck": 0
+ },
+ "summary_present": true,
+ "runtime_final_state": "COMPLETED"
+}
