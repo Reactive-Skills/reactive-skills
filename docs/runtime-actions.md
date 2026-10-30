@@ -98,7 +98,7 @@ In strict mode a runtime state is never delivered, so it records no `AGENT_TURN_
 `FSMEngine.handleSignal` returns the first model-visible state as `newState`, with a `runtimeActions` summary of the states it ran.
 `FSMEngine.resumeRuntimeActions()` finishes pending work; it returns immediately when the active state is model-visible.
 Hosts can inject a `RuntimeActionExecutor` through `FSMEngineOptions.runtimeActionExecutor`; `LocalRuntimeActionExecutor` is the default.
-The MCP receipt shape is unchanged; the view shows the recorded result through `record_as`.
+The MCP receipt shape is unchanged by runtime actions (its `projectionsWritten` paths follow `receipt_paths`); the view shows the recorded result through `record_as`.
 AXI emit output shows the new state's prompt, not recorded context.
 
 ## Measured prototype
@@ -107,6 +107,8 @@ Two catalog skills (catalog commit `80d1c72`) were converted into test fixtures 
 The measurement used the harness and definitions of the 0.20.0 context measurement report on each skill's declared canonical path: delivered context is the declared common sources and references plus every tool argument and result, divided by the catalog skill's flat fixture.
 Receipt projection paths are workspace-relative on both runtimes, so workspace location does not affect the byte counts.
 Token counts are offline `o200k_base` estimates; they move by about ±0.05 between runs with no byte change.
+
+Both columns were measured after `main` adopted workspace-relative receipt paths (`receipt.relative_paths`) and the shorter bootloader.
 
 | Skill | Transport | Main runtime, catalog skill (bytes / tokens over flat) | This runtime, runtime-action variant | States delivered to the model: flat / main / variant |
 |---|---|---|---|---|
