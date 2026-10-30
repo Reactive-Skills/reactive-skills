@@ -55,8 +55,8 @@ export function createReactiveBootloader(skillName: string): string {
 > AXI remains the runtime interface. \`npx\` is only its zero-install launcher.
 > Do not repeat version or capability checks after INIT.
 > When capabilities include \`state.compact_v1\`, select MCP \`output: "compact-v1"\` or AXI \`--output compact-v1\` for complete state views.
-> When MCP capabilities include \`state.continuation_v1\`, select \`return_view: "compact-v1"\` on \`reactive_emit_signal\` and \`reactive_respond_human\`.
-> Consume the complete view returned by MCP continuation or AXI invoke/emit; fetch state again for resume, recovery, stale state, or a lost response.
+> When MCP capabilities include \`state.delta_v1\`, select \`return_view: "delta-v1"\` on \`reactive_emit_signal\` and \`reactive_respond_human\`; otherwise with \`state.continuation_v1\` select \`"compact-v1"\`.
+> A delta-v1 view repeats instructions and contracts but omits context unchanged since your last view. Consume the view returned by MCP continuation or AXI invoke/emit; fetch the complete state again for resume, recovery, stale state, or a lost response.
 > Do not follow a successful AXI invoke or emit with a redundant state command. Keep \`--output compact-v1\` on invoke, emit and recovery state commands when supported.
 > Compact output retains scoped context, exact transition contracts, active gates and refusal warnings. Use \`inspect <skill-path>\` for guard details or \`<command> --help\` for usage; \`--output legacy\` selects terminal output with suggestions.
 > AXI does not count state deliveries as strict turns; strict-mode status text does not provide MCP turn enforcement.

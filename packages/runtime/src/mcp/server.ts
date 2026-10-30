@@ -20,6 +20,7 @@ import {
 } from '../core/runtime-capabilities.js';
 import { getReactiveBootloader } from '../core/bootloader.js';
 import { createStateResponse, serializeStateResponse } from './state-response.js';
+import { createDeltaView } from '../core/state-view.js';
 import { submitHumanResponse } from './human-response.js';
 import { continuationResponse, retrySignalResponse, signalReceipt, unavailableReceipt, withMcpRun } from './continuation-response.js';
 
@@ -392,6 +393,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
       include_full_context: z.boolean().optional().describe('Return full recorded context (replaces scoped context in compact-v1)'),
       output: z.enum(['legacy', 'compact-v1']).optional().describe('Select compact-v1 after negotiating state.compact_v1; defaults to legacy'),
+      since_seq: z.number().int().nonnegative().optional().describe('Return delta-v1: context unchanged since this view seq is omitted; omit after resume or compaction for the complete view'),
     },
     /**
      * Fetch scoped state, including after a host transcript is compacted.
@@ -402,7 +404,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >= 80%
      * - CRAP Score: target <= 15.0
      */
-    async ({ skill, job_id, include_full_context, output }) => {
+    async ({ skill, job_id, include_full_context, output, since_seq }) => {
       try {
         const engine = getEngine(skill || defaultSkill, job_id, { autoRotateTerminal: true });
 
@@ -427,7 +429,9 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
 
         engine.recordStateDelivery();
         const slice = engine.generatePromptSlice();
-        const payload = createStateResponse(engine, slice, include_full_context, output);
+        const payload = since_seq === undefined || include_full_context
+          ? createStateResponse(engine, slice, include_full_context, output)
+          : createDeltaView(engine, since_seq, slice);
         return {
           content: [{ type: 'text', text: serializeStateResponse(payload, slice.metrics!) }],
         };
@@ -507,7 +511,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       skill: z.string().optional().describe('Target skill name'),
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
       idempotency_key: z.string().optional().describe('Optional key that makes duplicate signal submission a no-op'),
-      return_view: z.literal('compact-v1').optional().describe('Opt in after state.continuation_v1 negotiation: original receipt plus complete current view; omit for legacy receipt'),
+      return_view: z.enum(['compact-v1', 'delta-v1']).optional().describe('Opt in after state.continuation_v1 negotiation: original receipt plus current view; delta-v1 (state.delta_v1) omits context unchanged since the prior view; omit for legacy receipt'),
+      since_seq: z.number().int().nonnegative().optional().describe('delta-v1 anchor: last view seq the agent saw (defaults to the view before this signal)'),
     },
     /**
      * # Performance & Risk Budget
@@ -517,9 +522,10 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >=90%
      * - CRAP Score: target <=10
      */
-    async ({ signal, payload = {}, evidence, skill, job_id, idempotency_key, return_view }) => {
+    async ({ signal, payload = {}, evidence, skill, job_id, idempotency_key, return_view, since_seq }) => {
       try {
         return await onRun(skill || defaultSkill, job_id, async engine => {
+          const anchor = return_view === 'delta-v1' ? since_seq ?? engine.getStateViewSeq() : undefined;
           const metadata = { idempotencyKey: idempotency_key, source: 'mcp' };
           const retry = retrySignalResponse(engine, idempotency_key, !!return_view);
           if (retry) return { content: [{ type: 'text', text: retry }] };
@@ -532,7 +538,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
           };
           const original = result.replayed ? unavailableReceipt(result.event) : { ...receipt, event_id: result.event.id };
           const text = return_view
-            ? continuationResponse(engine, original, result.event)
+            ? continuationResponse(engine, original, result.event, anchor)
             : JSON.stringify(receipt, null, 2);
           return { content: [{ type: 'text', text }] };
         });
@@ -769,7 +775,8 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       skill: z.string().optional().describe('Target skill name'),
       job_id: z.string().optional().describe('Optional job/run ID (defaults to active job)'),
       idempotency_key: z.string().optional().describe('Optional response key for retry without repeating the human decision or signals'),
-      return_view: z.literal('compact-v1').optional().describe('Opt in to original receipt plus complete settled current view'),
+      return_view: z.enum(['compact-v1', 'delta-v1']).optional().describe('Opt in to original receipt plus settled current view; delta-v1 omits context unchanged since the prior view'),
+      since_seq: z.number().int().nonnegative().optional().describe('delta-v1 anchor: last view seq the agent saw (defaults to the view before this response)'),
     },
     /**
      * Submit a complete human response batch before optional current-view delivery.
@@ -780,12 +787,13 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
      * - Branch Coverage: target >=90%
      * - CRAP Score: target <=10
      */
-    async ({ choice, approved = true, feedback, skill, job_id, idempotency_key, return_view }) => {
+    async ({ choice, approved = true, feedback, skill, job_id, idempotency_key, return_view, since_seq }) => {
       try {
         return await onRun(skill || defaultSkill, job_id, async engine => {
+          const anchor = return_view === 'delta-v1' ? since_seq ?? engine.getStateViewSeq() : undefined;
           const response = await submitHumanResponse(engine, { choice, approved, feedback }, idempotency_key, !!return_view);
           const text = return_view
-            ? continuationResponse(engine, response.receipt, response.event)
+            ? continuationResponse(engine, response.receipt, response.event, anchor)
             : JSON.stringify(response.receipt, null, 2);
           return { content: [{ type: 'text', text }] };
         });

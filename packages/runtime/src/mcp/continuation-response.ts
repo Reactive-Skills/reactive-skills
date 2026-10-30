@@ -1,6 +1,6 @@
 import type { FSMEngine } from '../core/fsm-engine.js';
 import type { SignalEvent } from '../core/types.js';
-import { createStateView } from '../core/state-view.js';
+import { createDeltaView, createStateView } from '../core/state-view.js';
 import { serializeStateResponse } from './state-response.js';
 
 const operations = new Map<string, Promise<unknown>>();
@@ -71,6 +71,7 @@ export function submissionEvent(engine: FSMEngine, key: string | undefined, type
  * - CRAP Score: target <=10
  */
 export function retrySignalResponse(engine: FSMEngine, key: string | undefined, returnView: boolean): string | undefined {
+  // Retries answer a lost response, so they always carry the complete view.
   const existing = submissionEvent(engine, key, 'SIGNAL_EMITTED');
   if (!returnView || !existing) return undefined;
   const saved = continuationRecord(engine, existing);
@@ -154,18 +155,18 @@ function matchingOutcome(receipt: Receipt, anchor: ViewAnchor | null, currentSeq
 }
 
 /**
- * Deliver one complete current view after settled signal work. Durable receipt metadata
+ * Deliver the current view after settled signal work: complete, or ledger-anchored after `sinceSeq`. Durable receipt metadata
  * distinguishes an original result from a later view without storing prompts or context.
  * Replays and recovered submissions without a saved receipt serialize the current view but
  * record recovery delivery metadata outside the execution stream, so a duplicate cannot invalidate a still-pending original.
  * # Performance & Risk Budget
  * - Tier: P0 (<5ms bounded view; existing persistence/approval queries additional)
- * - Complexity: O(b + h² + a + w), view bytes, ancestry, approvals and bounded delivery window; P1 indexed recovery accounting additional
+ * - Complexity: O(b + h² + a + w + e), view bytes, ancestry, approvals, bounded delivery window and events after the anchor; P1 indexed recovery accounting additional
  * - Cyclomatic Complexity (CC): target <=8
  * - Branch Coverage: target >=90%
  * - CRAP Score: target <=10
  */
-export function continuationResponse(engine: FSMEngine, receipt: Receipt, event: SignalEvent): string {
+export function continuationResponse(engine: FSMEngine, receipt: Receipt, event: SignalEvent, sinceSeq?: number): string {
   if (engine.hasExternalChanges()) throw new Error('RUN_VERSION_CONFLICT: Reload the same run before requesting its current view.');
   const saved = continuationRecord(engine, event);
   const recovered = !saved && receipt.result_unavailable === true;
@@ -184,7 +185,8 @@ export function continuationResponse(engine: FSMEngine, receipt: Receipt, event:
     receipt: original,
     replayed: recovered || !!saved,
     result_view: resultView,
-    view: createStateView(engine, slice, outcome),
+    // A replayed or recovered submission is a resume: deliver the complete view.
+    view: sinceSeq === undefined || recovered || saved ? createStateView(engine, slice, outcome) : createDeltaView(engine, sinceSeq, slice, outcome),
   }, slice.metrics!);
 }
 

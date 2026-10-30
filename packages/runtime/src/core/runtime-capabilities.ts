@@ -22,6 +22,7 @@ export const STATIC_RUNTIME_CAPABILITIES = [
   'state.compact_v1',
   'state.payload_contracts',
   'state.continuation_v1',
+  'state.delta_v1',
   'runtime.preflight',
   'runtime.transport_handshake',
   'judgment',

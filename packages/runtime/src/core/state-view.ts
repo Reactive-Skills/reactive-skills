@@ -88,6 +88,35 @@ export function createStateView(engine: FSMEngine, slice = engine.generatePrompt
   };
 }
 
+/** Instructions plus only the context the ledger changed since the agent's last seen sequence. */
+export interface DeltaStateView extends Omit<StateView, 'format'> {
+  format: 'delta-v1';
+  since_seq: number;
+}
+
+/**
+ * Build a ledger-anchored view: complete instructions and contracts, but only the scoped context that
+ * changed after `sinceSeq` or that the anchored view's scope did not expose. Falls back to the
+ * complete view when the ledger window cannot be folded safely.
+ * # Performance & Risk Budget
+ * - Tier: P1 (< 25ms; complete view assembly plus indexed events after the anchor)
+ * - Complexity: O(h² + b + a + w + e), complete view plus events after the anchor
+ * - Cyclomatic Complexity (CC): target <= 8
+ * - Branch Coverage: target >= 90%
+ * - CRAP Score: target <= 10.0
+ */
+export function createDeltaView(engine: FSMEngine, sinceSeq: number, slice = engine.generatePromptSlice(), outcome: StateViewOutcome = {}): StateView | DeltaStateView {
+  const view = createStateView(engine, slice, outcome);
+  const changes = engine.contextChangesSince(sinceSeq);
+  if (!changes) return view;
+  const seen = engine.visibleContextKeys(changes.anchorPath ?? engine.getActiveStatePath());
+  const context: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(view.context)) {
+    if (changes.keys.has(key) || (seen !== null && !seen.has(key))) context[key] = value;
+  }
+  return { ...view, format: 'delta-v1', since_seq: sinceSeq, context };
+}
+
 /**
  * Include only active gate, strict and model metadata.
  * # Performance & Risk Budget
@@ -144,7 +173,7 @@ function outcomeMetadata(outcome: StateViewOutcome): Partial<StateView> {
  * - Branch Coverage: target >= 90%
  * - CRAP Score: target <= 10.0
  */
-export function renderStateView(view: StateView, output: StateViewOutput = 'compact-v1'): string {
+export function renderStateView(view: StateView | DeltaStateView, output: StateViewOutput = 'compact-v1'): string {
   if (output === 'compact-v1') return JSON.stringify(view);
   const fields = Object.entries(view).map(([key, value]) => {
     const text = typeof value === 'string' ? value : JSON.stringify(value);
