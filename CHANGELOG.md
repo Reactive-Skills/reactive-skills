@@ -1,5 +1,12 @@
-
 ## [Unreleased]
+
+### New features
+
+- **Runtime-executed states (experimental):** A manifest that requires the new `state.runtime_actions` capability can declare `runtime_action` on a leaf state: a command with literal arguments and a timeout, a workspace path check, a JSON Schema subset check of a recorded value, or a pure expression over context, with declared success and failure transitions. The runtime runs it without a model turn, records `RUNTIME_ACTION_STARTED` and `RUNTIME_ACTION_COMPLETED` evidence, and dispatches the outcome signal through ordinary signal handling. Pending actions resume from the ledger before a view is delivered; a recorded result is reused, and an action interrupted after it started runs again. `reactive-skills-axi vet` reports declared commands as `guard/runtime-command`. The shape may change; see [docs/runtime-actions.md](docs/runtime-actions.md) for the rules and the measured prototype.
+
+## [0.21.0] - 2026-10-30
+
+- This 0.x minor release includes breaking changes; see the [release notes and upgrade checklist](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.21.0.md).
 
 ### Breaking changes
 
@@ -19,7 +26,6 @@
 - **Complete views on resume:** `reactive_state` without `since_seq`, a retried or recovered submission, a new MCP session after a crash, and a job switch all receive the complete view rebuilt from the ledger. Omitted context can be fetched on request with `reactive_state` (`include_full_context: true`) or `reactive_query_events`.
 - **Automatic evidence references:** Inline string values at manifest-declared text evidence fields of at least 300 UTF-8 bytes are registered and submitted as evidence references by MCP and AXI emit, with the same committed payload as an explicit path binding. The default comes from a matched measurement; `REACTIVE_AUTO_EVIDENCE_MIN_BYTES` overrides it or turns it off with `off`.
 - **Shorter MCP tool descriptions:** `tools/list` descriptions are shorter; tool names and input schemas are unchanged.
-- **Runtime-executed states (experimental):** A manifest that requires the new `state.runtime_actions` capability can declare `runtime_action` on a leaf state: a command with literal arguments and a timeout, a workspace path check, a JSON Schema subset check of a recorded value, or a pure expression over context, with declared success and failure transitions. The runtime runs it without a model turn, records `RUNTIME_ACTION_STARTED` and `RUNTIME_ACTION_COMPLETED` evidence, and dispatches the outcome signal through ordinary signal handling. Pending actions resume from the ledger before a view is delivered; a recorded result is reused, and an action interrupted after it started runs again. `reactive-skills-axi vet` reports declared commands as `guard/runtime-command`. The shape may change; see [docs/runtime-actions.md](docs/runtime-actions.md) for the rules and the measured prototype.
 
 ## [0.20.0] - 2026-10-29
 

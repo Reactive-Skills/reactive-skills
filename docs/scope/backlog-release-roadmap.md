@@ -20,9 +20,13 @@ Baseline: v0.16.2 on npm, 15 open issues, 2 open PRs (both CI green, mergeable).
 
 ## Release trains
 
-The v0.20.0 candidate ships runtime overhead fixes, transport contracts, evidence and judgment controls with explicit breaking-change migrations.
+The v0.20.0 release shipped runtime overhead fixes, transport contracts, evidence and judgment controls with explicit breaking-change migrations.
 The workspace-binding work previously planned for that version remains queued in R4 with its release version unassigned.
-See [the candidate release notes](../releases/v0.20.0.md) for the shipped scope.
+See [the v0.20.0 release notes](../releases/v0.20.0.md) for that scope.
+
+The v0.21.0 candidate ships ledger-anchored delta views, lean MCP defaults and automatic evidence references, with the previous MCP outputs kept behind explicit options for one release.
+The guard-context work previously planned for that version remains queued in R5 with its release version unassigned.
+See [the candidate release notes](../releases/v0.21.0.md) for the shipped scope.
 
 | Train | Version | Theme | Issues / PRs | Size |
 | --- | --- | --- | --- | --- |
@@ -34,7 +38,7 @@ See [the candidate release notes](../releases/v0.20.0.md) for the shipped scope.
 | R3a | v0.18.0 | Human approval | #22 part 2 (human approval for gates no adapter can judge; self-report as an operator grant), #32 refusal reasons, #47 Jev authoring errors are not outages | M-L |
 | R3b | v0.19.0 | Authoring diagnostics | Shipped: #10 guard module-format preflight, #42 `--help` everywhere, #44 invoke and emit payload shape, #45 skill name and path resolve the same run, #24 Jev `context_paths`, #43 legacy store migration, `vet` (#33 part 1), #65 item 1. Open: #29 unknown-key lint, #39 categorical accept subset, #65 items 2 and 3 | M |
 | R4 | Unassigned | Workspace binding | #14 + #26 (same root cause: cwd-scoped store); #43 and #45 shipped in R3b | M-L |
-| R5 | v0.21.0 | Guard context | #31 run-history view for guards; #24 Jev context scoping shipped in R3b as `context_paths` | M |
+| R5 | Unassigned | Guard context | #31 run-history view for guards; #24 Jev context scoping shipped in R3b as `context_paths` | M |
 | R6 | v0.22.0 | Sandbox opt-in | #34 phase 1 (isolate behind `guard_execution`, default `trusted`), #33 trust record and hardened mode (`vet` shipped in R3b), #40 sync from a git ref with provenance and downgrade refusal | L |
 | R7 | v0.23.0 | Sandbox default | #34 phase 3 flip to `sandboxed`, #33 strict hash refusal | M |
 | Triage | n/a | Synthesis report scoping | #12: run bug-hunt-triage first; likely skill/template side, may transfer to a skills repo | ? |
