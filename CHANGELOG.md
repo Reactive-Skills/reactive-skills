@@ -1,4 +1,18 @@
 
+## [Unreleased]
+
+### Breaking changes
+
+- **Workspace-relative MCP receipt paths:** Receipt `projectionsWritten` entries from `reactive_emit_signal` and `reactive_respond_human` are now paths relative to the MCP server's workspace (the `workspace` that `reactive_capabilities` reports), for example `.docs/jobs/default/summary.md`, instead of absolute paths. Resolve them against that workspace, or pass `receipt_paths: "absolute"` to keep absolute paths; that option remains for one release. Saved receipts in the ledger keep absolute paths, so a keyed retry returns the form the retry requests. Capability: `receipt.relative_paths`. A path outside the workspace stays absolute.
+
+| Tool | Option | Default | Other values |
+|---|---|---|---|
+| `reactive_emit_signal`, `reactive_respond_human` | `receipt_paths` | `relative` | `absolute` (previous receipt paths, one release) |
+
+### Changes
+
+- **Shorter bootloader:** Two pairs of overlapping bootloader sentences are merged (the AXI `--output compact-v1` guidance, and the note that `npx` only launches AXI). No instruction was removed.
+
 ## [0.21.0] - 2026-10-30
 
 - This 0.x minor release includes breaking changes; see the [release notes and upgrade checklist](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.21.0.md).
@@ -15,19 +29,12 @@
 | `reactive_state` | `since_seq` | omitted: complete view | a view `seq`: `delta-v1` view |
 | `reactive_context_prepare` | `output` | `compact-v1` | `legacy` (one release) |
 
-- **Workspace-relative MCP receipt paths:** Receipt `projectionsWritten` entries from `reactive_emit_signal` and `reactive_respond_human` are now paths relative to the MCP server's workspace (the `workspace` that `reactive_capabilities` reports), for example `.docs/jobs/default/summary.md`, instead of absolute paths. Resolve them against that workspace, or pass `receipt_paths: "absolute"` to keep absolute paths; that option remains for one release. Saved receipts in the ledger keep absolute paths, so a keyed retry returns the form the retry requests. Capability: `receipt.relative_paths`. A path outside the workspace stays absolute.
-
-| Tool | Option | Default | Other values |
-|---|---|---|---|
-| `reactive_emit_signal`, `reactive_respond_human` | `receipt_paths` | `relative` | `absolute` (previous receipt paths, one release) |
-
 ### New features
 
 - **Ledger-anchored delta views:** A `delta-v1` view repeats the rendered instructions, tools and transition contracts, but sends only the scoped context the ledger committed after the anchored view sequence, or that the anchored view's scope did not expose. Values the triggering submission supplied are named in `context_accepted` instead of being echoed. The recovery policy is sent only in the complete view. Capability: `state.delta_v1`.
 - **Complete views on resume:** `reactive_state` without `since_seq`, a retried or recovered submission, a new MCP session after a crash, and a job switch all receive the complete view rebuilt from the ledger. Omitted context can be fetched on request with `reactive_state` (`include_full_context: true`) or `reactive_query_events`.
 - **Automatic evidence references:** Inline string values at manifest-declared text evidence fields of at least 300 UTF-8 bytes are registered and submitted as evidence references by MCP and AXI emit, with the same committed payload as an explicit path binding. The default comes from a matched measurement; `REACTIVE_AUTO_EVIDENCE_MIN_BYTES` overrides it or turns it off with `off`.
 - **Shorter MCP tool descriptions:** `tools/list` descriptions are shorter; tool names and input schemas are unchanged.
-- **Shorter bootloader:** Two pairs of overlapping bootloader sentences are merged (the AXI `--output compact-v1` guidance, and the note that `npx` only launches AXI). No instruction was removed.
 
 ## [0.20.0] - 2026-10-29
 
