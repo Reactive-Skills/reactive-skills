@@ -1,8 +1,8 @@
 # MCP continuation views
 
-Negotiate `state.continuation_v1` with `reactive_capabilities`, then pass `return_view: "compact-v1"` to `reactive_emit_signal` or `reactive_respond_human`.
-Omitting `return_view` keeps each tool's existing receipt shape.
-The option selects this envelope instead:
+`reactive_emit_signal` and `reactive_respond_human` return a continuation envelope by default.
+`return_view` selects its view: `delta-v1` (the default when `state.delta_v1` is advertised), `compact-v1` for the complete view, or `none` for the legacy bare receipt, which is kept for one release.
+With `compact-v1` the envelope looks like this:
 
 ```json
 {
@@ -20,6 +20,23 @@ It describes the state actually reached, including self-loops and terminal state
 Refused or unhandled inputs return the current view with refusal guidance.
 Human gate instructions still require stopping and waiting; this tool cannot approve a pending judgment gate.
 Self-report and human judgment warnings remain attached to their receipt and to the matching result view.
+
+## Delta views
+
+A `delta-v1` view keeps `seq`, `state`, the rendered `prompt`, `tools`, `contracts` and the active gate, strict, model and refusal metadata, and adds `since_seq`.
+Its `context` holds only the scoped keys the ledger committed after `since_seq`, plus keys the anchored view's scope did not expose.
+Changed keys whose committed value equals what the triggering submission supplied are listed in `context_accepted` instead of being echoed.
+The recovery `policy` is omitted; it is part of the complete view.
+
+The anchor is the `since_seq` argument when given.
+Otherwise it is the last view sequence this MCP session delivered for the run.
+A run the session has not delivered (a new session after a crash, or a job switch) receives the complete `compact-v1` view, and so does a retried or recovered submission.
+When the ledger window cannot be folded safely, for example after a reset, the complete view is returned.
+`reactive_state` without `since_seq` always returns the complete view rebuilt from the ledger; use it after host transcript compaction.
+`reactive_state` with `since_seq` returns a `delta-v1` view.
+Context a delta view omits can be fetched on request with `reactive_state` and `include_full_context: true`, or with `reactive_query_events` filtered by `type`, `sinceSeq` and `limit`.
+
+## Delivery
 
 Consume `view` directly after each completed state instead of issuing an additional `reactive_state` call.
 Fetch state for initial delivery, session resume, transcript compaction, stale state or recovery.
