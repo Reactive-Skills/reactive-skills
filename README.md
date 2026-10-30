@@ -84,6 +84,7 @@ The compact view is shared by AXI `invoke`, `state`, and `emit`, MCP `reactive_s
 It includes one unchanged rendered prompt, one current scoped context object, ordered leaf and ancestor contracts, tools, immutable run ID and sequence, and applicable gate, model, strict status, or signal refusal metadata.
 AXI compact `emit` returns its receipt and a complete `view`, including when a signal is refused.
 MCP `reactive_emit_signal` and `reactive_respond_human` return the original receipt, its view anchor and the current `view`; by default that view is `delta-v1`, which omits context unchanged since the last delivered view, and `return_view: "compact-v1"` selects the complete view.
+Receipt `projectionsWritten` paths are relative to the workspace that `reactive_capabilities` reports; `receipt_paths: "absolute"` keeps absolute paths for one release.
 Consume that view directly; keyed retries with a saved receipt retain it without counting another delivery.
 Recovery without a saved receipt counts an undelivered current view once per run and view sequence, without changing the run version.
 See [MCP continuation views](docs/mcp-continuation.md) for replay and recovery semantics.

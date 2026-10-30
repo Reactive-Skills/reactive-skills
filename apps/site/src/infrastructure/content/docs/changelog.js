@@ -8,6 +8,19 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "vUnreleased",
+    "heading": "vUnreleased",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "**Workspace-relative MCP receipt paths:** Receipt `projectionsWritten` entries from `reactive_emit_signal` and `reactive_respond_human` are now paths relative to the MCP server's workspace (the `workspace` that `reactive_capabilities` reports), for example `.docs/jobs/default/summary.md`, instead of absolute paths. Resolve them against that workspace, or pass `receipt_paths: \"absolute\"` to keep absolute paths; that option remains for one release. Saved receipts in the ledger keep absolute paths, so a keyed retry returns the form the retry requests. Capability: `receipt.relative_paths`. A path outside the workspace stays absolute.",
+          "**Shorter bootloader:** Two pairs of overlapping bootloader sentences are merged (the AXI `--output compact-v1` guidance, and the note that `npx` only launches AXI). No instruction was removed."
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-21-0",
     "heading": "v0.21.0 (2026-10-30)",
     "blocks": [

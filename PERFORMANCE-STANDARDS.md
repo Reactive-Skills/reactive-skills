@@ -304,6 +304,7 @@ The additive run/type/sequence index costs O(N log N) on its first installation 
 Local delivery metadata is omitted from event exports and cleared by an explicit SQLite rebuild or run deletion.
 `mcp/human-response.ts` dispatches at most two existing human signals before one view delivery, retaining their current precedence and CLI-only judgment approval boundary.
 Queue/receipt/render helpers target CC <= 8, branch coverage >= 90%, CRAP <= 10; human orchestration targets CC <= 12, branch coverage >= 80%, CRAP <= 15.
+`formatReceiptPaths()` rewrites only the returned receipt's `projectionsWritten` to workspace-relative paths: P0 (<5ms target), O(p · l) for p returned paths of length l, with no I/O and no change to saved receipts.
 Cold replay and existing guard, evidence, child, projection and approval costs remain additional.
 Tests verify event/turn counts and the pinned public TDD continuation path; this change makes no end-to-end latency or model-token savings claim.
 

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { FSMEngine } from '../core/fsm-engine.js';
 import type { SignalEvent } from '../core/types.js';
 import { createDeltaView, createStateView } from '../core/state-view.js';
@@ -7,6 +8,42 @@ const operations = new Map<string, Promise<unknown>>();
 export const CONTINUATION_EVENT = 'MCP_CONTINUATION_RECORDED';
 export type Receipt = Record<string, unknown>;
 export type SignalHandlingResult = Awaited<ReturnType<FSMEngine['handleSignal']>>;
+export type ReceiptPaths = 'relative' | 'absolute';
+export type ReceiptFormatter = (receipt: Receipt) => Receipt;
+const unformatted: ReceiptFormatter = receipt => receipt;
+
+/**
+ * Report receipt projection paths relative to the workspace, or absolute when requested.
+ * Only the response changes: saved receipts keep absolute paths, so a retry or an old run formats the same way.
+ * A path outside the workspace stays absolute.
+ * # Performance & Risk Budget
+ * - Tier: P0 (<5ms)
+ * - Complexity: O(p), returned projection paths
+ * - Cyclomatic Complexity (CC): target <=4
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+export function formatReceiptPaths(receipt: Receipt, workspaceDir: string, mode: ReceiptPaths = 'relative'): Receipt {
+  const written = receipt.projectionsWritten;
+  if (mode === 'absolute' || !Array.isArray(written)) return receipt;
+  const root = path.resolve(workspaceDir);
+  return { ...receipt, projectionsWritten: written.map(file => workspacePath(root, String(file))) };
+}
+
+/**
+ * One workspace-relative POSIX path, or the original path when it is not inside the workspace.
+ * # Performance & Risk Budget
+ * - Tier: P0 (<5ms)
+ * - Complexity: O(l), path length
+ * - Cyclomatic Complexity (CC): target <=4
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+function workspacePath(root: string, file: string): string {
+  const relative = path.relative(root, path.resolve(root, file));
+  const outside = !relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative);
+  return outside ? file : relative.split(path.sep).join('/');
+}
 
 /**
  * Serialize MCP mutation/delivery work per immutable run, across server instances.
@@ -70,12 +107,12 @@ export function submissionEvent(engine: FSMEngine, key: string | undefined, type
  * - Branch Coverage: target >=90%
  * - CRAP Score: target <=10
  */
-export function retrySignalResponse(engine: FSMEngine, key: string | undefined, returnView: boolean): string | undefined {
+export function retrySignalResponse(engine: FSMEngine, key: string | undefined, returnView: boolean, formatReceipt = unformatted): string | undefined {
   // Retries answer a lost response, so they always carry the complete view.
   const existing = submissionEvent(engine, key, 'SIGNAL_EMITTED');
   if (!returnView || !existing) return undefined;
   const saved = continuationRecord(engine, existing);
-  return continuationResponse(engine, saved?.payload.receipt ?? unavailableReceipt(existing), existing);
+  return continuationResponse(engine, saved?.payload.receipt ?? unavailableReceipt(existing), existing, undefined, formatReceipt);
 }
 
 /**
@@ -159,6 +196,7 @@ function matchingOutcome(receipt: Receipt, anchor: ViewAnchor | null, currentSeq
  * distinguishes an original result from a later view without storing prompts or context.
  * Replays and recovered submissions without a saved receipt serialize the current view but
  * record recovery delivery metadata outside the execution stream, so a duplicate cannot invalidate a still-pending original.
+ * `formatReceipt` shapes only the returned receipt; the saved receipt is unchanged.
  * # Performance & Risk Budget
  * - Tier: P0 (<5ms bounded view; existing persistence/approval queries additional)
  * - Complexity: O(b + h² + a + w + e), view bytes, ancestry, approvals, bounded delivery window and events after the anchor; P1 indexed recovery accounting additional
@@ -166,7 +204,7 @@ function matchingOutcome(receipt: Receipt, anchor: ViewAnchor | null, currentSeq
  * - Branch Coverage: target >=90%
  * - CRAP Score: target <=10
  */
-export function continuationResponse(engine: FSMEngine, receipt: Receipt, event: SignalEvent, sinceSeq?: number): string {
+export function continuationResponse(engine: FSMEngine, receipt: Receipt, event: SignalEvent, sinceSeq?: number, formatReceipt = unformatted): string {
   if (engine.hasExternalChanges()) throw new Error('RUN_VERSION_CONFLICT: Reload the same run before requesting its current view.');
   const saved = continuationRecord(engine, event);
   const recovered = !saved && receipt.result_unavailable === true;
@@ -182,7 +220,7 @@ export function continuationResponse(engine: FSMEngine, receipt: Receipt, event:
   const original = saved?.payload.receipt ?? enriched;
   const outcome = matchingOutcome(original, resultView, currentSeq);
   return serializeStateResponse({
-    receipt: original,
+    receipt: formatReceipt(original),
     replayed: recovered || !!saved,
     result_view: resultView,
     // A replayed or recovered submission is a resume: deliver the complete view.
