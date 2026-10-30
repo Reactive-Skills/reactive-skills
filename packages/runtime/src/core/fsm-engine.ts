@@ -28,6 +28,17 @@ import { ProjectionEngine } from './projection-engine.js';
 import { JobManager, isJobTerminal } from './job-manager.js';
 import { EvidenceResolver } from './evidence-resolver.js';
 import { contextChangesSince, type LedgerContextChanges } from './context-ledger.js';
+import {
+  decideRuntimeOutcome,
+  foldRuntimeActionWindow,
+  runtimeActionRecord,
+  RUNTIME_ACTION_COMPLETED,
+  RUNTIME_ACTION_SOURCE,
+  RUNTIME_ACTION_STARTED,
+  type RuntimeActionObservation,
+  type RuntimeActionSummary,
+} from './runtime-actions.js';
+import { LocalRuntimeActionExecutor, type RuntimeActionExecutor } from './runtime-action-executor.js';
 
 export interface FSMEngineOptions {
   skillDir: string;
@@ -46,6 +57,8 @@ export interface FSMEngineOptions {
     maxSliceDurationMs?: number;
     maxTransitionDurationMs?: number;
   };
+  /** Port that runs `runtime_action` states; defaults to the local, shell-free adapter. */
+  runtimeActionExecutor?: RuntimeActionExecutor;
 }
 
 /** Maximum lifecycle-signal drain steps per top-level handleSignal call.
@@ -70,6 +83,8 @@ type SignalHandlingResult = {
   warning?: string;
   /** Set when an existing keyed submission answered this call instead of a new evaluation. */
   replayed?: true;
+  /** Runtime-executed states this call ran (experimental); newState is the first model-visible state after them. */
+  runtimeActions?: RuntimeActionSummary[];
 };
 
 /** A gate no adapter could judge, waiting for a person to decide it (ADR 0012). */
@@ -136,6 +151,9 @@ export class FSMEngine {
   private maxSliceDurationMs = 10;
   private maxTransitionDurationMs = 25;
   private stateVisits: Map<string, StateVisitRecord> = new Map();
+  private readonly runtimeActionExecutor: RuntimeActionExecutor;
+  /** True only while the engine dispatches a runtime action's outcome signal. */
+  private dispatchingRuntimeOutcome = false;
 
   /**
    * # Performance & Risk Budget
@@ -148,7 +166,8 @@ export class FSMEngine {
   constructor(options: FSMEngineOptions) {
     this.skillDir = path.resolve(options.skillDir);
     this.workspaceDir = options.workspaceDir || process.cwd();
-    this.reopenOptions = { skillDir: this.skillDir, workspaceDir: this.workspaceDir, eventContext: options.eventContext, perfThresholds: options.perfThresholds };
+    this.reopenOptions = { skillDir: this.skillDir, workspaceDir: this.workspaceDir, eventContext: options.eventContext, perfThresholds: options.perfThresholds, runtimeActionExecutor: options.runtimeActionExecutor };
+    this.runtimeActionExecutor = options.runtimeActionExecutor ?? new LocalRuntimeActionExecutor();
     this.usesInjectedStore = Boolean(options.eventStore);
     this.manifest = this.loadManifest();
     this.strictExecution = this.manifest.strict_execution === true;
@@ -1062,7 +1081,97 @@ export class FSMEngine {
     metadata: { source?: string; causationId?: string; requestId?: string; idempotencyKey?: string } = {}
   ): Promise<SignalHandlingResult> {
     // Checked once on entry; lifecycle signals drained inside this call belong to the same change.
-    return this.serialized(() => this.processSignal(signalName, payload, metadata, true));
+    return this.serialized(async () => {
+      const resumed = await this.drainRuntimeActions(true);
+      const result = await this.processSignal(signalName, payload, metadata, true);
+      const ran = result.transitioned ? await this.drainRuntimeActions(false) : [];
+      const runtimeActions = [...resumed, ...ran];
+      return runtimeActions.length === 0 ? result : { ...result, newState: this.getCurrentState(), runtimeActions };
+    });
+  }
+
+  /**
+   * Finish a runtime-executed state left pending by an interrupted process, before a view is delivered.
+   * Returns at once, without serializing, when the active state is model-visible.
+   * # Performance & Risk Budget
+   * - Tier: P0 when nothing is pending (< 5ms); otherwise the pending action's own budget
+   * - Complexity: O(d) definition lookup; O(w + action) when pending
+   * - Cyclomatic Complexity (CC): 2
+   * - Branch Coverage: target 100% (runtime-actions recovery tests)
+   * - CRAP Score: target <= 2.0
+   */
+  public resumeRuntimeActions(): Promise<RuntimeActionSummary[]> {
+    if (!this.getStateDefinition(this.activeStatePath)?.runtime_action) return Promise.resolve([]);
+    return this.serialized(() => this.drainRuntimeActions(true));
+  }
+
+  /**
+   * Run consecutive runtime-executed states until a model-visible state is active. Each visit records
+   * RUNTIME_ACTION_STARTED before execution and RUNTIME_ACTION_COMPLETED with the observation, then
+   * dispatches the declared outcome signal through ordinary signal handling, so guards, transitions,
+   * snapshots and projections are unchanged. A completed result from an interrupted process is reused,
+   * never re-run; an action interrupted after it started is run again (at-least-once).
+   * Validation forbids cycles of runtime states, so the loop ends within the number of runtime states.
+   * # Performance & Risk Budget
+   * - Tier: P3 orchestration (bounded by declared timeouts); bookkeeping P1 (< 25ms per state, storage included)
+   * - Complexity: O(r * (w + action)), runtime states in the chain, events since each entering snapshot
+   * - Cyclomatic Complexity (CC): 7
+   * - Branch Coverage: target >= 90% (runtime-actions engine and recovery tests)
+   * - CRAP Score: target <= 9.0
+   */
+  private async drainRuntimeActions(resuming: boolean): Promise<RuntimeActionSummary[]> {
+    const summaries: RuntimeActionSummary[] = [];
+    for (let action = this.getStateDefinition(this.activeStatePath)?.runtime_action; action && !this.inBypassState; action = this.getStateDefinition(this.activeStatePath)?.runtime_action) {
+      if (resuming && summaries.length === 0) this.assertCurrent();
+      const state = this.getCurrentState();
+      const window = foldRuntimeActionWindow(this.eventStore.getSince(this.eventStore.getLatestSnapshot()?.seq ?? 0), state);
+      const reused = window.completed !== undefined;
+      const completed = window.completed ?? await this.executeRuntimeAction(state, action, window.attempts + 1);
+      const record = runtimeActionRecord(completed);
+      const signal = record.outcome === 'success' ? action.on_success : action.on_failure;
+      this.dispatchingRuntimeOutcome = true;
+      let result: SignalHandlingResult;
+      try {
+        result = await this.processSignal(signal, {
+          runtime_result: record,
+          ...(action.record_as ? { contextUpdates: { [action.record_as]: record } } : {}),
+        }, { source: RUNTIME_ACTION_SOURCE, causationId: completed.id });
+      } finally {
+        this.dispatchingRuntimeOutcome = false;
+      }
+      summaries.push({
+        state, kind: action.kind, outcome: record.outcome, signal, attempt: record.attempt,
+        duration_ms: completed.payload.observation.duration_ms, transitioned: result.transitioned, newState: result.newState,
+        ...(reused ? { reused_result: true as const } : {}),
+      });
+      if (!result.transitioned) break;
+    }
+    return summaries;
+  }
+
+  /**
+   * Record intent, run the declared action through the executor port, and record the observation and outcome.
+   * An executor fault is recorded as a failed observation, so it routes to the declared failure state.
+   * # Performance & Risk Budget
+   * - Tier: P3 (bounded by the declared timeout); bookkeeping P1 (< 25ms, two appends)
+   * - Complexity: O(c + o), context copy for pure kinds and retained output tail bytes
+   * - Cyclomatic Complexity (CC): 2
+   * - Branch Coverage: target 100%
+   * - CRAP Score: target <= 2.0
+   */
+  private async executeRuntimeAction(state: string, action: NonNullable<StateDefinition['runtime_action']>, attempt: number): Promise<SignalEvent> {
+    const started = this.eventStore.append(RUNTIME_ACTION_STARTED, { state, kind: action.kind, attempt }, { state, source: RUNTIME_ACTION_SOURCE });
+    let observation: RuntimeActionObservation;
+    try {
+      observation = await this.runtimeActionExecutor.execute(action, {
+        workspaceDir: this.workspaceDir,
+        context: this.evidenceResolver.resolveContext(this.context),
+      });
+    } catch (error) {
+      observation = { duration_ms: 0, error: `Runtime action executor failed: ${(error as Error).message}` };
+    }
+    const outcome = decideRuntimeOutcome(action, observation);
+    return this.eventStore.append(RUNTIME_ACTION_COMPLETED, { state, kind: action.kind, attempt, outcome, observation }, { state, source: RUNTIME_ACTION_SOURCE, causationId: started.id });
   }
 
   /** Runs signal work for this run one at a time within the process. */
@@ -1202,6 +1311,15 @@ export class FSMEngine {
       this.eventStore.append('SIGNAL_REFUSED', { signal: signalName, reason: refusalReason }, { state: previousState, causationId: event.id });
       this.lastRefusalReason = refusalReason;
       return { transitioned: false, previousState, newState: previousState, event, deliverablesWritten: [], refusalReason };
+    }
+
+    const runtimeAction = this.getStateDefinition(this.activeStatePath)?.runtime_action;
+    if (runtimeAction && !this.dispatchingRuntimeOutcome && (signalName === runtimeAction.on_success || signalName === runtimeAction.on_failure)) {
+      this.context = contextBeforeSignal;
+      const reason = `Signal '${signalName}' is decided by the runtime action of ${previousState} and cannot be submitted.`;
+      this.eventStore.append('SIGNAL_REFUSED', { signal: signalName, reason }, { state: previousState, causationId: event.id });
+      this.lastRefusalReason = reason;
+      return { transitioned: false, previousState, newState: previousState, event, deliverablesWritten: [], refusalReason: reason };
     }
 
     let refusalReason: string | undefined;
