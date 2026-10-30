@@ -5,17 +5,17 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.20.0)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.21.0)
 
 ---
 
-> 🚀 **What's New in v0.20.0:**
-> - Breaking 0.x minor release: default MCP state responses deliver one prompt in `formattedXml`, scoped context, and opt-in full recorded context.
-> - Negotiate compact state views and complete MCP continuation responses; local evidence references, judgment deadlines and input selection are optional.
-> - Payload contracts provide typed submission guidance and targeted guard inspection; guards remain authoritative.
-> - Ledger appends mirror new events, and opens verify checkpoints; legacy snapshotless ledgers cannot rebuild unrecorded hook context.
+> 🚀 **What's New in v0.21.0:**
+> - Breaking 0.x minor release: MCP emit and human response return a continuation envelope with a `delta-v1` view by default, and `reactive_state` returns the complete `compact-v1` view.
+> - Delta views send the instructions plus only the context the ledger committed since the last delivered view; the complete recovery view is sent on resume.
+> - Large declared text evidence passes by evidence reference automatically, and MCP tool descriptions are shorter.
+> - `return_view: "none"` and `output: "legacy"` keep the previous outputs for one release.
 >
-> [Breaking Changes and Migration Notes →](docs/releases/v0.20.0.md) · [View Changelog](CHANGELOG.md)
+> [Breaking Changes and Migration Notes →](docs/releases/v0.21.0.md) · [View Changelog](CHANGELOG.md)
 
 ---
 
