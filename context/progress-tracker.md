@@ -225,6 +225,14 @@ The wording distinguishes unvisited source instructions from delivered context, 
 Performance budgets, including P0 <5 ms, remain explicitly labeled engineering targets.
 Local validation passed both package builds, the full runtime and AXI suites, site tests, documentation invariants, the public prose gate and a targeted scan for the removed percentage claims.
 
+## Workspace-relative receipt paths and a shorter bootloader
+
+- MCP emit and human-response receipts now report `projectionsWritten` relative to the server workspace (`formatReceiptPaths()` in `mcp/continuation-response.ts`); `receipt_paths: "absolute"` keeps absolute paths for one release, and capability `receipt.relative_paths` advertises the change.
+- Formatting happens only at the response boundary, so saved receipts in the ledger keep absolute paths and keyed retries return the requested form.
+- Merged two pairs of overlapping bootloader sentences without removing an instruction.
+- Measured with the 0.20.0 report's harness on the 21 pinned catalog skills; results are in the pull request.
+- Added `tests/mcp-receipt-paths.test.ts` for the relative default, the absolute opt-in, human responses, retries and paths outside the workspace.
+
 ## Ledger-anchored delivery and lean MCP defaults
 
 - Added `delta-v1` state views: instructions and contracts plus only the scoped context the ledger committed after the anchored view sequence (`core/context-ledger.ts`, `core/state-view.ts`); values the submission supplied are named in `context_accepted`.
