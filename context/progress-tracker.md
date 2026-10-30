@@ -7,7 +7,8 @@
 | `@reactive-skills/runtime` | v0.17.2 | ✅ Published |
 | `@reactive-skills/axi` | v0.17.2 | ✅ Published |
 | `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.18.0 | ✅ Published (`docs/specs/0020-v0.18.0-release-preparation.md`) |
-| `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.20.0 | 🧪 Breaking 0.x minor release candidate; breaking changes and migration checklist in `docs/releases/v0.20.0.md` |
+| `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.21.0 | 🧪 Breaking 0.x minor release candidate; MCP default migration notes and measured results in `docs/releases/v0.21.0.md` |
+| `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.20.0 | ✅ Tagged `v0.20.0`; breaking changes and migration checklist in `docs/releases/v0.20.0.md` |
 | `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.19.0 | 🧪 Candidate prepared (`docs/specs/0022-v0.19.0-release-preparation.md`) |
 | `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.17.3 | ✅ Published (`docs/specs/0018-v0.17.3-release-preparation.md`) |
 
@@ -134,7 +135,7 @@ The capture now draws seam-free duration rectangles and arranges the live-map st
 | R3a | v0.18.0 | #22 part 2 human approval and self-report grant (ADR 0012, `docs/specs/0019-human-approval.md`), #47, #32 | ✅ Published |
 | R3b | v0.19.0 | #10, #42, #44, #45, #24, #43, `vet` (#33 part), site fixes; #29, #39, #65 items 2-3 still open | 🧪 Candidate prepared (`docs/specs/0022-v0.19.0-release-preparation.md`) |
 | R4 | Unassigned | #14, #26 | ⏳ Queued; v0.20.0 instead carries the runtime/transport candidate |
-| R5 | v0.21.0 | #31 | ⏳ Queued |
+| R5 | Unassigned | #31 | ⏳ Queued; v0.21.0 instead carries the delivered-context candidate |
 | R6 | v0.22.0 | #34 phase 1, #33 trust record, #40 | ⏳ Queued |
 | R7 | v0.23.0 | #34 sandbox default, #33 strict mode | ⏳ Queued |
 | Triage | n/a | #12 Synthesis report scoping (likely skill or template side) | ⏳ Needs triage |
@@ -234,3 +235,15 @@ Local validation passed both package builds, the full runtime and AXI suites, si
 - Shortened MCP tool and parameter descriptions.
 - An experiment that replaced large changed context values with on-demand references produced no references on the measured fixtures and was dropped.
 - Added tests for delta folding, scope widening, resume after a crash, host compaction and a job switch, and automatic evidence references; the runtime and AXI suites, documentation invariants and prose gate pass.
+
+## v0.21.0 release preparation
+
+The root, runtime, AXI and site package manifests advance to `0.21.0`; individual skill versions remain unchanged.
+The Unreleased entry from the delivered-context work moves into a `0.21.0` section of the runtime and AXI changelogs; `scripts/sync-changelog.js` synchronizes the root changelog and the generated site release history.
+`docs/releases/v0.21.0.md` records the changed MCP defaults, the option matrix that keeps the previous outputs for one release, the strict-mode accounting change, and the measured results reported by #118 on the declared canonical fixtures.
+The root, AXI and runtime README release banners describe the 0.21.0 candidate and link its migration notes.
+The R5 guard-context train is unassigned, because v0.21.0 carries the delivered-context work instead.
+
+Candidate verification on Node 22.22.0: `pnpm nx run-many -t build test lint` passes every target except `site:lint`, whose 17 errors are identical before and after this change in untouched site files; CI does not run lint.
+Both package builds, 1,033 runtime tests, 389 AXI tests (one existing skip), 64 site tests, documentation/prose gates and the production site build pass.
+`RELEASE_TAG=v0.21.0 node scripts/verify-release-tag.js` passes; no release tag was created or pushed during preparation.

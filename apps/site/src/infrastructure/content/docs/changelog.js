@@ -8,6 +8,23 @@ export const changelog = {
   href: '/docs/changelog',
   sections: [
   {
+    "id": "v0-21-0",
+    "heading": "v0.21.0 (2026-10-30)",
+    "blocks": [
+      {
+        "type": "list",
+        "items": [
+          "This 0.x minor release includes breaking changes; see the [release notes and upgrade checklist](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.21.0.md).",
+          "**Lean MCP defaults:** `reactive_emit_signal` and `reactive_respond_human` now return the continuation envelope `{receipt, replayed, result_view, view}` with a `delta-v1` view when `return_view` is omitted, and `reactive_state` and active-state `reactive_context_prepare` return the complete `compact-v1` view when `output` is omitted. Read receipt fields under `receipt`, or pass `return_view: \"none\"` and `output: \"legacy\"` to keep the previous shapes; both legacy options remain for one release. In strict mode the default emit and human response now count their returned view as the state delivery, as opted-in continuation already did; pass `return_view: \"none\"` to keep the previous accounting.",
+          "**Ledger-anchored delta views:** A `delta-v1` view repeats the rendered instructions, tools and transition contracts, but sends only the scoped context the ledger committed after the anchored view sequence, or that the anchored view's scope did not expose. Values the triggering submission supplied are named in `context_accepted` instead of being echoed. The recovery policy is sent only in the complete view. Capability: `state.delta_v1`.",
+          "**Complete views on resume:** `reactive_state` without `since_seq`, a retried or recovered submission, a new MCP session after a crash, and a job switch all receive the complete view rebuilt from the ledger. Omitted context can be fetched on request with `reactive_state` (`include_full_context: true`) or `reactive_query_events`.",
+          "**Automatic evidence references:** Inline string values at manifest-declared text evidence fields of at least 300 UTF-8 bytes are registered and submitted as evidence references by MCP and AXI emit, with the same committed payload as an explicit path binding. The default comes from a matched measurement; `REACTIVE_AUTO_EVIDENCE_MIN_BYTES` overrides it or turns it off with `off`.",
+          "**Shorter MCP tool descriptions:** `tools/list` descriptions are shorter; tool names and input schemas are unchanged."
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-20-0",
     "heading": "v0.20.0 (2026-10-29)",
     "blocks": [

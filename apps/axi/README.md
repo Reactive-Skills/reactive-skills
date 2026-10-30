@@ -4,12 +4,12 @@ AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TO
 
 This is a CLI-only package with the `reactive-skills-axi` and `axi` commands; use `@reactive-skills/runtime` for the programmatic SDK.
 
-> 🚀 **What's New in v0.20.0:**
-> - Breaking 0.x minor release: select `--output compact-v1` for complete state views, import/read local evidence, and inspect an owning guard with `--state` and `--signal`.
-> - Invoke, state and emit use bounded causation lookups; setup pins MCP entries to the installed scoped AXI version.
-> - Review the MCP response and legacy ledger recovery migrations before upgrading existing integrations.
+> 🚀 **What's New in v0.21.0:**
+> - `emit` passes large inline text at declared evidence fields by evidence reference automatically; set `REACTIVE_AUTO_EVIDENCE_MIN_BYTES` to change the threshold or `off` to disable it.
+> - The MCP server started by `reactive-skills-axi mcp` now defaults to lean continuation and compact state views; legacy outputs stay behind explicit options for one release.
+> - Review the MCP migration notes before upgrading existing integrations.
 >
-> [Breaking Changes and Migration Notes](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.20.0.md) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Breaking Changes and Migration Notes](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.21.0.md) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 

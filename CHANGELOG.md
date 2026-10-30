@@ -1,5 +1,7 @@
 
-## [Unreleased]
+## [0.21.0] - 2026-10-30
+
+- This 0.x minor release includes breaking changes; see the [release notes and upgrade checklist](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.21.0.md).
 
 ### Breaking changes
 
