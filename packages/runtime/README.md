@@ -2,12 +2,12 @@
 
 Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
-> 🚀 **What's New in v0.20.0:**
-> - Breaking 0.x minor release: default MCP state delivery removes `promptSlice` and makes full recorded context opt-in; negotiated compact views and continuation envelopes add complete current-state delivery.
-> - Optional local evidence, judgment deadlines, payload selection and payload contracts retain existing guards and approval requirements.
-> - New ledgers persist accepted context patches for replay; older ledgers need valid snapshots to recover unrecorded hook assignments.
+> 🚀 **What's New in v0.21.0:**
+> - Breaking 0.x minor release: MCP emit and human response default to a `delta-v1` continuation view, and state reads default to the complete `compact-v1` view.
+> - Delta views are folded from committed ledger patches; resumes, retries and job switches receive the complete view rebuilt from the ledger.
+> - Automatic evidence references reuse the explicit binding path, so guards, judgments and projections see the same content.
 >
-> [Breaking Changes and Migration Notes](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.20.0.md) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Breaking Changes and Migration Notes](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.21.0.md) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
