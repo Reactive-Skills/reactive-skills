@@ -302,6 +302,15 @@ const net = require('node:net');
       expect(find(vet().findings, 'guard/sandbox-escape')).toBeUndefined();
     });
 
+    it('reports each command a runtime_action state declares', () => {
+      write('skill.yaml', [
+        'schema_version: "2.1.0"', 'name: demo', 'description: demo', 'initial_state: WORK', 'states:', '  WORK: {}', '  CHECK:',
+        '    runtime_action:', '      kind: command', '      command: node', '      args: [tests/run.mjs]', '      timeout_ms: 1000',
+        '      on_success: OK', '      on_failure: BAD', '',
+      ].join('\n'));
+      expect(find(vet().findings, 'guard/runtime-command')).toMatchObject({ severity: 'medium', file: 'skill.yaml', line: 10 });
+    });
+
     it('flags a guardFunction path that leaves the skill', () => {
       write('skill.yaml', manifestWithGuard({ guardFunction: '../outside.cjs' }));
       expect(find(vet().findings, 'guard/path-escape')).toMatchObject({ severity: 'high', file: 'skill.yaml' });

@@ -1,0 +1,26 @@
+# ⚡ Reactive TDD Refactoring Summary
+
+- **Skill**: `{{skillName}}`
+- **Target File**: `{{context.target_file}}`
+- **Test File**: `{{context.test_file}}`
+- **Current State**: `{{currentState}}`
+- **Last Synchronized**: `{{lastUpdated}}`
+
+---
+
+## 🔄 State Transition Ledger
+
+| Timestamp | Transition | Trigger Signal |
+| :--- | :--- | :--- |
+{{#each transitions}}
+| `{{timestamp}}` | **{{from}}** &rarr; **{{to}}** | `{{signal}}` |
+{{/each}}
+
+---
+
+## 📜 Complete Event Stream Audit Trail
+Total Events Recorded: **{{events.length}}**
+
+```json
+{{{json events}}}
+```

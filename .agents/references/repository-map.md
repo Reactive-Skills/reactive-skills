@@ -10,6 +10,8 @@
 - `packages/runtime/src/core/guard-evaluator.ts`: Sandbox evaluator for transition conditions.
 - `packages/runtime/src/core/payload-contract.ts`: Authored payload schemas, bounded declaration consistency checks, shared requirements rendering and contained guard-source inspection.
 - `packages/runtime/src/core/payload-guard.ts`: Structural payload refusal before the unchanged guard evaluator.
+- `packages/runtime/src/core/runtime-actions.ts`: Experimental `runtime_action` schema and manifest validation, pure outcome decider, JSON Schema subset, and the ledger fold used to resume a pending runtime-executed state (`docs/runtime-actions.md`).
+- `packages/runtime/src/core/runtime-action-executor.ts`: `RuntimeActionExecutor` port and the local shell-free adapter (literal argv, timeout, contained paths, bounded output tails).
 - `packages/runtime/src/vet/`: Static vetting rule set for third-party skills (`engine.ts`, `rules.ts`, `code-rules.ts`, `text-rules.ts`, `supply-rules.ts`, `manifest.ts`, `allowlist.ts`, `source.ts`, `types.ts`); reads skill files and never runs them. Exported from `@reactive-skills/runtime/vet`; the AXI `vet` command and the catalog CI share it (`docs/vetting.md`).
 - `packages/runtime/src/core/guard-module-format.ts`: Static check that a guardFunction file's syntax matches the module format Node loads it as; never executes the guard.
 - `packages/runtime/src/core/judgment-engine.ts`: Decoupled Ports-and-Adapters judgment engine with snap-on adapters and circuit breaking.

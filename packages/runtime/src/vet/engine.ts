@@ -385,6 +385,7 @@ export function vetSkill(skillDir: string, options: VetOptions = {}): VetSkillRe
       const escape = findSandboxEscape(expression);
       if (escape) findings.add('guard/sandbox-escape', manifest.file ?? 'skill.yaml', guard.line, false, escape.detail);
     }
+    for (const command of manifest.runtimeCommands ?? []) findings.add('guard/runtime-command', manifest.file ?? 'skill.yaml', command.line, false, command.argv);
     const guardFiles = collectGuardFiles(realRoot, realRoot, manifest.guards, manifest.file, findings);
 
     const { files } = walk(realRoot, findings);

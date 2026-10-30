@@ -143,6 +143,7 @@ export async function invokeCommand(args: string[]): Promise<string> {
     });
 
     try {
+      await engine.resumeRuntimeActions();
       const currentState = engine.getCurrentState();
       const promptSlice = engine.generatePromptSlice();
       if (selected.output === 'compact-v1') return renderCompleteState(engine, promptSlice);

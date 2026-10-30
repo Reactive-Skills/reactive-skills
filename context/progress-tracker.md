@@ -44,6 +44,12 @@
 
 ## ⚙️ Milestone: v0.6.x — Performance & Documentation Polish (Active)
 
+Experimental runtime-executed states are implemented in `packages/runtime/src/core/runtime-actions.ts` (schema, validation, pure decider, ledger fold) and `runtime-action-executor.ts` (executor port and shell-free local adapter), wired through `types.ts`, `fsm-engine.ts`, `runtime-capabilities.ts` (`state.runtime_actions`), `index.ts`, MCP `server.ts` and AXI `commands/state.ts` / `invoke.ts`.
+`runtime-actions.test.ts` covers the decider, validation, the four interruption points plus a killed process, strict MCP delivery accounting, shell-free argv and path containment; `skill-vet.test.ts` covers the new `guard/runtime-command` vet rule.
+Prototype fixtures for tdd-refactor and test-coverage-gate live in `packages/runtime/tests/fixtures/runtime-actions/` with provenance; `docs/runtime-actions.md` holds the contract and the measured table, and `PERFORMANCE-STANDARDS.md` the budgets.
+The table was re-measured after `main` adopted workspace-relative receipt paths and the shorter bootloader.
+The variants deliver less than the main runtime on both skills but more than flat on both; no other saving is claimed.
+
 Explicit shallow non-empty judgment preconditions are implemented in `packages/runtime/src/core/judgment-input.ts` as `precondition.non_empty.context_paths` / `payload_paths`, retaining existing presence/type checks and the bounded judgment cascade.
 `judgment-nonempty-preconditions.test.ts` covers missing/blank/empty values, non-empty values, zero/false, manifest-seeded null/[] defaults, refusal replay/snapshots, idempotent replay and subsequent evidence updates; existing guarantee tests remain unchanged.
 AXI `inspect-judgment-input.test.ts` covers read-only, content-free inspection through the shared runtime API, with the inspection complexity annotation updated in `judgment-input-inspection.ts`.

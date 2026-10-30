@@ -1,0 +1,23 @@
+# Test Coverage Report
+
+**Target:** `{{target_dir}}`  
+**Generated:** {{timestamp}}
+
+## Thresholds
+
+| Metric | Actual | Required | Result |
+|---|---:|---:|---|
+| Lines | {{coverage_metrics.lines.percent}}% | {{thresholds.lines}}% | {{coverage_metrics.lines.pass}} |
+| Statements | {{coverage_metrics.statements.percent}}% | {{thresholds.statements}}% | {{coverage_metrics.statements.pass}} |
+| Branches | {{coverage_metrics.branches.percent}}% | {{thresholds.branches}}% | {{coverage_metrics.branches.pass}} |
+| Functions | {{coverage_metrics.functions.percent}}% | {{thresholds.functions}}% | {{coverage_metrics.functions.pass}} |
+
+## Coverage Gaps
+
+{{#each coverage_gaps}}
+- `{{location}}`: {{reason}}
+{{/each}}
+
+## Decision
+
+Gate decision: `{{gate_decision}}`

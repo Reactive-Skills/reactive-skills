@@ -21,6 +21,7 @@ export const VET_RULES: readonly VetRule[] = [
   // Inline guard expressions and guardFunction paths.
   { id: 'guard/sandbox-escape', severity: 'high', category: 'guard', summary: 'An inline guard or judgment expression reaches for constructors, prototypes, globals or modules that can break out of the vm sandbox' },
   { id: 'guard/path-escape', severity: 'high', category: 'guard', summary: 'guardFunction path points outside the skill directory' },
+  { id: 'guard/runtime-command', severity: 'medium', category: 'guard', summary: 'A runtime_action state declares a command the runtime runs itself, without a model turn' },
 
   // Prompt injection in prose.
   { id: 'prompt/instruction-override', severity: 'high', category: 'prompt', summary: 'Tells the agent to ignore its instructions, or carries chat-template control tokens' },
