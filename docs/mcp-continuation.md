@@ -28,7 +28,7 @@ Its `context` holds only the scoped keys the ledger committed after `since_seq`,
 Changed keys whose committed value equals what the triggering submission supplied are listed in `context_accepted` instead of being echoed.
 The recovery `policy` is omitted; it is part of the complete view.
 
-The anchor is the `since_seq` argument when given.
+The anchor is the `since_seq` argument when given; pass the `seq` of a view from the same run.
 Otherwise it is the last view sequence this MCP session delivered for the run.
 A run the session has not delivered (a new session after a crash, or a job switch) receives the complete `compact-v1` view, and so does a retried or recovered submission.
 When the ledger window cannot be folded safely, for example after a reset, the complete view is returned.

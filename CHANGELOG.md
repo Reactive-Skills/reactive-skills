@@ -3,7 +3,7 @@
 
 ### Breaking changes
 
-- **Lean MCP defaults:** `reactive_emit_signal` and `reactive_respond_human` now return the continuation envelope `{receipt, replayed, result_view, view}` with a `delta-v1` view when `return_view` is omitted, and `reactive_state` and active-state `reactive_context_prepare` return the complete `compact-v1` view when `output` is omitted. Read receipt fields under `receipt`, or pass `return_view: "none"` and `output: "legacy"` to keep the previous shapes; both legacy options remain for one release.
+- **Lean MCP defaults:** `reactive_emit_signal` and `reactive_respond_human` now return the continuation envelope `{receipt, replayed, result_view, view}` with a `delta-v1` view when `return_view` is omitted, and `reactive_state` and active-state `reactive_context_prepare` return the complete `compact-v1` view when `output` is omitted. Read receipt fields under `receipt`, or pass `return_view: "none"` and `output: "legacy"` to keep the previous shapes; both legacy options remain for one release. In strict mode the default emit and human response now count their returned view as the state delivery, as opted-in continuation already did; pass `return_view: "none"` to keep the previous accounting.
 
 | Tool | Option | Default | Other values |
 |---|---|---|---|
