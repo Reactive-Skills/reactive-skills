@@ -59,9 +59,9 @@ Any other keyword fails validation, so no declared rule is silently ignored.
 ## Safety rules
 
 - **No interpolation.** `command`, `args`, `cwd` and `path` are literal manifest strings. Values containing `{{` are rejected, and nothing from context or a signal payload reaches a command.
-- **No shell.** Commands start with `shell: false`; `command` must be an executable name looked up on `PATH`, or a workspace-relative path. `node` runs the runtime's own Node executable.
+- **No shell.** Commands start with `shell: false`; `command` must be an executable name looked up on `PATH`, or a workspace-relative path. `node` runs the runtime's own Node executable. This prevents interpolation, not authorship: a manifest can still declare a shell or interpreter as its command, which is why vetting reports every declared command.
 - **Contained paths.** `cwd`, `path` and relative executables must stay inside the workspace, including through symbolic links; absolute paths and `..` segments are rejected.
-- **Bounded execution.** A command is killed at `timeout_ms`. Only the last 2,048 bytes of stdout and of stderr are kept.
+- **Bounded execution.** A command is killed at `timeout_ms`, together with its process group on Linux and macOS (on Windows only the direct process). Only the last 2,048 bytes of stdout and of stderr are kept.
 - **Pure expressions.** `expression` and `json_schema` read a copy of recorded context in the same `node:vm` sandbox shape as inline guards, without code generation and with a 100 ms limit.
 - **Declared routing.** `on_success` and `on_failure` must be transitions declared on the state itself, with a declared target and without a guard, judgment, payload contract or child invocation: the action decides them. A timeout, a command that cannot start, a contained-path violation or an executor fault is a failure and follows `on_failure`.
 - **Shape rules.** A runtime state is a leaf, has no `human_gate` or `prompt_template`, cannot be the initial state, and runtime states cannot form a cycle without a model-visible state. `record_as` must be one of `context_keys`.
@@ -110,12 +110,12 @@ Token counts are offline `o200k_base` estimates; they move by about ±0.05 betwe
 
 | Skill | Transport | Main runtime, catalog skill (bytes / tokens over flat) | This runtime, runtime-action variant | States delivered to the model: flat / main / variant |
 |---|---|---|---|---|
-| tdd-refactor | MCP default | 3.252 / 3.711 | 2.969 / 3.317 | 7 / 7 / 6 |
-| tdd-refactor | MCP continuation | 3.286 / 3.766 | 2.998 / 3.374 | 7 / 7 / 6 |
-| tdd-refactor | AXI default | 2.903 / 3.528 | 2.635 / 3.107 | 7 / 7 / 6 |
-| test-coverage-gate | MCP default | 2.231 / 2.609 | 1.670 / 1.880 | 7 / 7 / 4 |
-| test-coverage-gate | MCP continuation | 2.249 / 2.621 | 1.680 / 1.901 | 7 / 7 / 4 |
-| test-coverage-gate | AXI default | 2.021 / 2.438 | 1.527 / 1.750 | 7 / 7 / 4 |
+| tdd-refactor | MCP default | 3.252 / 3.758 | 2.969 / 3.370 | 7 / 7 / 6 |
+| tdd-refactor | MCP continuation | 3.286 / 3.769 | 2.998 / 3.386 | 7 / 7 / 6 |
+| tdd-refactor | AXI default | 2.903 / 3.424 | 2.635 / 3.054 | 7 / 7 / 6 |
+| test-coverage-gate | MCP default | 2.231 / 2.601 | 1.670 / 1.883 | 7 / 7 / 4 |
+| test-coverage-gate | MCP continuation | 2.249 / 2.615 | 1.680 / 1.888 | 7 / 7 / 4 |
+| test-coverage-gate | AXI default | 2.021 / 2.446 | 1.527 / 1.793 | 7 / 7 / 4 |
 
 Neither variant delivers less than flat on either skill.
 The variants deliver less than the main runtime running the catalog skill on every transport.
@@ -126,12 +126,12 @@ Runtime-executed portion, 20 repetitions over MCP default, p50 / nearest-rank p9
 
 | Skill | State | Action | Runtime portion |
 |---|---|---|---|
-| tdd-refactor | RED_RUN | 51.3 / 62.0 | 76 / 92 |
-| tdd-refactor | GREEN_RUN | 46.9 / 56.5 | 78 / 94 |
-| tdd-refactor | AUDIT_VERIFY | 43.4 / 61.5 | 72 / 95 |
-| test-coverage-gate | CONFIGURE | 0.07 / 0.17 | 20 / 31 |
-| test-coverage-gate | BASELINE | 131.4 / 152.9 | 157 / 180 |
-| test-coverage-gate | MEASURE | 160.1 / 192.6 | 188 / 218 |
-| test-coverage-gate | MEASURE_REPORT | 0.12 / 0.16 | 22 / 27 |
+| tdd-refactor | RED_RUN | 50.1 / 61.8 | 84 / 94 |
+| tdd-refactor | GREEN_RUN | 56.6 / 64.2 | 90 / 109 |
+| tdd-refactor | AUDIT_VERIFY | 52.0 / 64.4 | 85 / 100 |
+| test-coverage-gate | CONFIGURE | 0.10 / 0.22 | 21 / 27 |
+| test-coverage-gate | BASELINE | 134.2 / 151.7 | 156 / 175 |
+| test-coverage-gate | MEASURE | 175.6 / 203.9 | 200 / 227 |
+| test-coverage-gate | MEASURE_REPORT | 0.13 / 0.42 | 24 / 31 |
 
 Model generation time for the turns that were removed was not measured.

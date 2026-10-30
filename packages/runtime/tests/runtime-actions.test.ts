@@ -307,6 +307,16 @@ describe('runtime-executed states in the engine', () => {
     const slow = await local.execute(action('node', ['-e', 'setTimeout(() => {}, 10000)'], 100), { workspaceDir: ws.workspaceDir, context: {} });
     expect(slow).toMatchObject({ timed_out: true, exit_code: null, signal: 'SIGKILL' });
     expect(decideRuntimeOutcome(action('node', []), slow)).toBe('failure');
+    // A wrapper's own child is stopped with it.
+    const pidFile = path.join(ws.workspaceDir, 'grandchild.pid');
+    const wrapper = `const c = require('node:child_process').spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' }); require('node:fs').writeFileSync(${JSON.stringify(pidFile)}, String(c.pid)); setInterval(() => {}, 1000);`;
+    expect(await local.execute(action('node', ['-e', wrapper], 500), { workspaceDir: ws.workspaceDir, context: {} })).toMatchObject({ timed_out: true });
+    const grandchild = Number(fs.readFileSync(pidFile, 'utf8'));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    // Killed means gone, or a zombie awaiting a reaper that a container's init may never run.
+    const stat = `/proc/${grandchild}/stat`;
+    const alive = fs.existsSync(stat) ? !/^\d+ \(.*\) Z/.test(fs.readFileSync(stat, 'utf8')) : (() => { try { process.kill(grandchild, 0); return true; } catch { return false; } })();
+    expect(alive).toBe(false);
     const missing = await local.execute(action('rsa-no-such-command', []), { workspaceDir: ws.workspaceDir, context: {} });
     expect(missing.error).toMatch(/ENOENT/);
     const chatty = await local.execute(action('node', ['-e', "process.stdout.write('x'.repeat(10000) + 'END')"]), { workspaceDir: ws.workspaceDir, context: {} });

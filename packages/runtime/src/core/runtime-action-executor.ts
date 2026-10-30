@@ -47,8 +47,8 @@ class OutputTail {
 }
 
 /**
- * Run a declared argv without a shell, killing it at the declared timeout. Arguments are the
- * manifest's literal strings; nothing from context or a signal payload reaches the process.
+ * Run a declared argv without a shell, killing it and its process group at the declared timeout.
+ * Arguments are the manifest's literal strings; nothing from context or a signal payload reaches the process.
  * # Performance & Risk Budget
  * - Tier: P3 (bounded by the declared timeout_ms); Complexity: O(o), output bytes, with O(1) retained tail
  * - Cyclomatic Complexity (CC): 6
@@ -70,8 +70,13 @@ function runCommand(action: Extract<RuntimeAction, { kind: 'command' }>, workspa
     const stdout = new OutputTail();
     const stderr = new OutputTail();
     let timedOut = false;
-    const child = spawn(executable, action.args ?? [], { cwd, shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-    const timer = setTimeout(() => { timedOut = true; child.kill('SIGKILL'); }, action.timeout_ms);
+    // Its own process group on POSIX, so a timeout also stops processes the command started.
+    const group = process.platform !== 'win32';
+    const child = spawn(executable, action.args ?? [], { cwd, shell: false, windowsHide: true, detached: group, stdio: ['ignore', 'pipe', 'pipe'] });
+    const kill = () => {
+      try { if (group && child.pid) process.kill(-child.pid, 'SIGKILL'); else child.kill('SIGKILL'); } catch { child.kill('SIGKILL'); }
+    };
+    const timer = setTimeout(() => { timedOut = true; kill(); }, action.timeout_ms);
     child.stdout.on('data', (chunk: Buffer) => stdout.push(chunk));
     child.stderr.on('data', (chunk: Buffer) => stderr.push(chunk));
     child.once('error', (error) => {
