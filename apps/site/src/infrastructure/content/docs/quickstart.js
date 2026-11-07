@@ -72,7 +72,7 @@ export const quickstart = {
       heading: 'Optional: watch runs from inside Claude Code',
       blocks: [
         { type: 'text', text: 'The bq-vitals mod shows the active skill and state in the Claude Code status line, draws a live map of the state machine with /flow, and prints the path a finished run took with /flow-plan. It only reads the event ledger and the skill statechart.' },
-        { type: 'code', example: { language: 'bash', command: '/plugin install bq-vitals --marketplace Reactive-Skills/reactive-skills', explanation: 'Type this at the Claude Code prompt, not in a shell. Answer y to add the marketplace, then pick a scope. See the [Mods page](/mods) for details.' } },
+        { type: 'code', example: { language: 'text', command: '/plugin install bq-vitals --marketplace Reactive-Skills/reactive-skills', explanation: 'Type this at the Claude Code prompt, not in a shell. Answer y to add the marketplace, then pick a scope. See the [Mods page](/mods) for details.' } },
       ],
     },
     {

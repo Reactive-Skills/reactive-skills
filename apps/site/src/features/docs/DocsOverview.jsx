@@ -1,17 +1,27 @@
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
-import { DocsBreadcrumb } from './DocsBreadcrumb';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import { DocSections } from './DocPageView';
 
 const MODEL = ['skill', 'state', 'signal', 'guard', 'event', 'deliverable'];
 
+/**
+ * Docs index: eyebrow, title, the mental model, a numbered list of every docs page, then the overview sections.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static render)
+ * - Complexity: O(n) in the n docs pages
+ * - Cyclomatic Complexity (CC): target <=3
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=6
+ */
 export function DocsOverview({ page, pages }) {
   return (
     <div>
-      <DocsBreadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Docs' }]} />
-
-      <h1 className="font-display text-3xl font-semibold tracking-tight text-phino-text sm:text-4xl">{page.title}</h1>
-      <p className="mt-3 max-w-2xl text-lg leading-relaxed text-phino-text-muted">{page.summary}</p>
+      {page.category ? (
+        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-phino-signal-text">{page.category}</p>
+      ) : null}
+      <h1 className="mt-4 font-display text-4xl font-medium tracking-tight text-phino-text sm:text-5xl">{page.title}</h1>
+      <p className="mt-5 max-w-2xl text-lg leading-relaxed text-phino-text-muted">{page.summary}</p>
 
       <div className="mt-6 flex flex-wrap items-center gap-1.5" aria-label="Mental model">
         {MODEL.map((word, i) => (
@@ -22,22 +32,23 @@ export function DocsOverview({ page, pages }) {
         ))}
       </div>
 
-      <div className="mt-10 grid gap-3 sm:grid-cols-2">
-        {pages.map((p) => (
-          <Link
-            key={p.href}
-            href={p.href}
-            className="group rounded-xl border border-phino-border bg-phino-surface p-5 transition-colors hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-phino-text-subtle">{p.category}</span>
-              <ArrowRight className="h-4 w-4 text-phino-text-subtle transition-transform group-hover:translate-x-0.5 group-hover:text-phino-signal-text" aria-hidden="true" />
-            </div>
-            <h2 className="mt-3 font-display text-lg font-semibold text-phino-text">{p.title}</h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-phino-text-muted">{p.summary}</p>
-          </Link>
+      <ol className="mt-12 max-w-3xl border-t border-phino-border">
+        {pages.map((p, i) => (
+          <li key={p.href}>
+            <Link
+              href={p.href}
+              className="group flex items-start gap-5 border-b border-phino-border py-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
+            >
+              <span className="pt-1.5 font-mono text-xs text-phino-text-subtle">{String(i + 1).padStart(2, '0')}</span>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-display text-xl text-phino-text transition-colors group-hover:text-phino-signal-text sm:text-2xl">{p.title}</h2>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-phino-text-muted">{p.summary}</p>
+              </div>
+              <ArrowUpRight className="mt-1 h-5 w-5 shrink-0 text-phino-signal-text" aria-hidden="true" />
+            </Link>
+          </li>
         ))}
-      </div>
+      </ol>
 
       <div className="mt-14 max-w-2xl">
         <DocSections sections={page.sections} />

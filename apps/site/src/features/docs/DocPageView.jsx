@@ -1,6 +1,5 @@
 import { CodeBlock } from '@/components/common/CodeBlock';
 import { Callout } from '@/components/common/Callout';
-import { TableOfContents } from './TableOfContents';
 import { getProseVariant } from '@/lib/docs/proseVariants';
 
 function renderDocText(text) {
@@ -95,29 +94,41 @@ function StepsBlock({ steps, prose }) {
   );
 }
 
+/**
+ * Docs table: mono key column, wrapping prose cells, and a sideways scroll on narrow screens.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static render)
+ * - Complexity: O(r * c) in table rows and columns
+ * - Cyclomatic Complexity (CC): target <=3
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=6
+ */
 function TableBlock({ columns, rows, caption }) {
   return (
-    <div className="my-5 overflow-x-auto rounded-lg border border-phino-border">
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr>
-            {columns.map((c) => (
-              <th key={c} className="whitespace-nowrap bg-phino-surface-raised px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider text-phino-text-subtle">{c}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, ri) => (
-            <tr key={ri} className="border-t border-phino-border">
-              {row.map((cell, ci) => (
-                <td key={ci} className="whitespace-nowrap px-3 py-2.5 font-mono text-xs text-phino-text-muted">{cell}</td>
+    <figure className="my-6">
+      <div className="-mx-6 overflow-x-auto px-6 sm:mx-0 sm:px-0">
+        <table className="w-full min-w-[520px] border-collapse text-left text-[13.5px]">
+          <thead>
+            <tr>
+              {columns.map((c) => (
+                <th key={c} scope="col" className="border-b border-phino-border-strong pb-2 pr-4 font-mono text-[11px] font-normal uppercase tracking-[0.14em] text-phino-text-subtle">{c}</th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {caption ? <p className="border-t border-phino-border bg-phino-surface px-3 py-2 text-xs text-phino-text-subtle">{caption}</p> : null}
-    </div>
+          </thead>
+          <tbody>
+            {rows.map((row, ri) => (
+              <tr key={ri} className="align-top">
+                {row.map((cell, ci) => (
+                  <td key={ci} className={ci === 0 ? 'border-b border-phino-border py-2.5 pr-4 font-mono text-[12.5px] text-phino-signal-text' : 'border-b border-phino-border py-2.5 pr-4 leading-relaxed text-phino-text-muted'}>{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {caption ? <figcaption className="mt-2.5 text-[13px] text-phino-text-subtle">{caption}</figcaption> : null}
+    </figure>
   );
 }
 
@@ -165,22 +176,56 @@ export function DocSections({ sections, variant }) {
   );
 }
 
-export function DocPageView({ page }) {
+/**
+ * "On this page" box: plain in-page anchors, rendered on the server so it works without JavaScript.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static render)
+ * - Complexity: O(n) in the n page sections
+ * - Cyclomatic Complexity (CC): target <=1
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=2
+ */
+function OnThisPage({ sections }) {
   return (
-    <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_220px] xl:gap-12">
-      <article className="min-w-0 max-w-2xl">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-phino-text sm:text-4xl">{page.title}</h1>
-        <p className="mt-3 text-lg leading-relaxed text-phino-text-muted">{renderDocText(page.summary)}</p>
-        <hr className="my-8 border-phino-border" />
-        <DocSections sections={page.sections} />
-      </article>
-      {page.sections && page.sections.length > 1 && (
-        <aside className="hidden xl:block">
-          <div className="sticky top-24 pt-2">
-            <TableOfContents sections={page.sections} />
-          </div>
-        </aside>
-      )}
-    </div>
+    <nav aria-label="On this page" className="mb-10 rounded-lg border border-phino-border bg-phino-surface p-4">
+      <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-phino-text-subtle">On this page</p>
+      <ul className="mt-2.5 grid gap-1.5 sm:grid-cols-2">
+        {sections.map((section) => (
+          <li key={section.id}>
+            <a href={`#${section.id}`} className="text-sm text-phino-text-muted transition-colors hover:text-phino-signal-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus">
+              {section.heading}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/**
+ * A docs page: category eyebrow, title, summary, "On this page" and the sections, all in the static HTML.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static render; the only client work is the copy buttons in code blocks)
+ * - Complexity: O(n) in the n sections and their blocks
+ * - Cyclomatic Complexity (CC): target <=3
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=6
+ */
+export function DocPageView({ page }) {
+  const sections = page.sections || [];
+  return (
+    <article className="min-w-0 max-w-2xl">
+      <header className="pb-8">
+        {page.category ? (
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-phino-signal-text">{page.category}</p>
+        ) : null}
+        <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight text-phino-text sm:text-[40px] sm:leading-[1.05]">{page.title}</h1>
+        <p className="mt-4 text-base leading-relaxed text-phino-text-muted sm:text-[17px]">{renderDocText(page.summary)}</p>
+      </header>
+      {sections.length > 1 ? <OnThisPage sections={sections} /> : null}
+      <DocSections sections={sections} />
+    </article>
   );
 }

@@ -1,6 +1,5 @@
 import { getDocsContentSource } from '@/infrastructure/container';
 import { notFound } from 'next/navigation';
-import { DocsBreadcrumb } from '@/features/docs/DocsBreadcrumb';
 import { DocPageView } from '@/features/docs/DocPageView';
 import { RelatedPages } from '@/features/docs/RelatedPages';
 import { StateMachine } from '@/features/landing/StateMachine';
@@ -19,7 +18,6 @@ export default function ConceptsPage() {
 
   return (
     <div className="space-y-12">
-      <DocsBreadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Docs', href: '/docs' }, { label: doc.title }]} />
       <DocPageView page={doc} />
 
       {/* Interactive State Machine Laboratory Section */}
