@@ -1,11 +1,20 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, X, Sparkles, SlidersHorizontal, Terminal } from 'lucide-react';
+import { Search, X, SlidersHorizontal, Terminal } from 'lucide-react';
 import { CopyButton } from '@/components/common/CopyButton';
 import { SkillCard } from './SkillCard';
-import { cn } from '@/lib/utils';
 
+/**
+ * Registry catalog: search, category filter and a ruled grid of skill cards.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P2 (client interaction; one filter pass per keystroke)
+ * - Complexity: O(n) in the n published skills
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=16
+ */
 export function SkillCatalog({ initialSkills, categories }) {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -38,12 +47,13 @@ export function SkillCatalog({ initialSkills, categories }) {
     setSelectedCategory('All');
   };
 
+  const chip =
+    'rounded-full border border-phino-border px-4 py-1.5 font-mono text-[11px] uppercase text-phino-text-muted transition-colors hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus aria-pressed:border-phino-signal aria-pressed:bg-phino-signal aria-pressed:text-phino-signal-on';
+
   return (
-    <div className="space-y-8">
-      {/* Controls Bar: Search & Category Filter */}
+    <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Search input */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative max-w-md flex-1">
           <Search
             className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-phino-text-muted"
             aria-hidden="true"
@@ -53,13 +63,14 @@ export function SkillCatalog({ initialSkills, categories }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search skills by name, tag, or description..."
-            className="w-full rounded-lg border border-phino-border bg-phino-surface py-2 pl-10 pr-9 text-sm text-phino-text placeholder:text-phino-text-muted focus:border-phino-signal focus:outline-none focus:ring-2 focus:ring-phino-focus/25"
+            aria-label="Search skills"
+            className="w-full rounded-md border border-phino-border bg-phino-surface py-2.5 pl-10 pr-9 text-sm text-phino-text placeholder:text-phino-text-subtle focus:border-phino-signal focus:outline-none focus:ring-2 focus:ring-phino-focus/25"
           />
           {search && (
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-phino-text-muted hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus rounded"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded text-phino-text-muted hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
               aria-label="Clear search"
             >
               <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -67,59 +78,41 @@ export function SkillCatalog({ initialSkills, categories }) {
           )}
         </div>
 
-        {/* Results Counter */}
-        <div className="text-xs text-phino-text-muted flex items-center gap-1.5 self-start sm:self-auto">
-          <Sparkles className="h-3.5 w-3.5 text-phino-signal" aria-hidden="true" />
-          <span>
-            Showing <strong className="font-mono tabular-nums font-semibold text-phino-text">{filteredSkills.length}</strong> of{' '}
-            <strong className="font-mono tabular-nums font-semibold text-phino-text">{initialSkills.length}</strong> skills
-          </span>
-        </div>
+        <p className="self-start font-mono text-xs text-phino-text-muted sm:self-auto" aria-live="polite">
+          Showing <strong className="font-semibold tabular-nums text-phino-text">{filteredSkills.length}</strong> of{' '}
+          <strong className="font-semibold tabular-nums text-phino-text">{initialSkills.length}</strong> skills
+        </p>
       </div>
 
-      {/* Category Pills */}
-      <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Filter by category">
-        <button
-          type="button"
-          onClick={() => setSelectedCategory('All')}
-          className={cn(
-            'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus',
-            selectedCategory === 'All'
-              ? 'bg-phino-text text-phino-canvas font-semibold'
-              : 'border border-phino-border bg-phino-surface text-phino-text-muted hover:border-phino-border-strong hover:text-phino-text',
-          )}
-        >
-          All (<span className="font-mono tabular-nums">{initialSkills.length}</span>)
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by category">
+        <button type="button" aria-pressed={selectedCategory === 'All'} onClick={() => setSelectedCategory('All')} className={chip}>
+          All (<span className="tabular-nums">{initialSkills.length}</span>)
         </button>
         {categories.map((cat) => (
           <button
             key={cat.name}
             type="button"
+            aria-pressed={selectedCategory.toLowerCase() === cat.name.toLowerCase()}
             onClick={() => setSelectedCategory(cat.name)}
-            className={cn(
-              'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus',
-              selectedCategory.toLowerCase() === cat.name.toLowerCase()
-                ? 'bg-phino-text text-phino-canvas font-semibold'
-                : 'border border-phino-border bg-phino-surface text-phino-text-muted hover:border-phino-border-strong hover:text-phino-text',
-            )}
+            className={chip}
           >
-            {cat.name} (<span className="font-mono tabular-nums">{cat.count}</span>)
+            {cat.name} (<span className="tabular-nums">{cat.count}</span>)
           </button>
         ))}
       </div>
 
-      {/* Grid of Skill Cards */}
       {filteredSkills.length > 0 ? (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 border-l border-t border-phino-border md:grid-cols-2 xl:grid-cols-3">
           {filteredSkills.map((skill) => (
-            <SkillCard key={skill.slug} skill={skill} />
+            <li key={skill.slug} className="border-b border-r border-phino-border">
+              <SkillCard skill={skill} />
+            </li>
           ))}
-        </div>
+        </ul>
       ) : (
-        /* Empty State */
-        <div className="rounded-xl border border-dashed border-phino-border bg-phino-surface/50 p-10 sm:p-12 text-center max-w-lg mx-auto">
-          <SlidersHorizontal className="mx-auto h-8 w-8 text-phino-text-muted" aria-hidden="true" />
-          <h3 className="mt-4 font-display text-base font-semibold text-phino-text">
+        <div className="mx-auto max-w-lg rounded-lg border border-dashed border-phino-border-strong bg-phino-surface p-10 text-center sm:p-12">
+          <SlidersHorizontal className="mx-auto h-7 w-7 text-phino-text-subtle" aria-hidden="true" />
+          <h3 className="mt-4 font-display text-lg font-medium text-phino-text">
             No reactive skills matched your filter
           </h3>
           <p className="mt-1.5 text-sm text-phino-text-muted">
@@ -133,10 +126,10 @@ export function SkillCatalog({ initialSkills, categories }) {
           </p>
 
           {search.trim() && (
-            <div className="mt-5 rounded-lg border border-phino-border bg-phino-code-bg p-3 text-left">
-              <div className="mb-2 flex items-center justify-between text-xs text-phino-text-muted">
-                <span className="font-medium flex items-center gap-1.5">
-                  <Terminal className="h-3.5 w-3.5 text-phino-signal" aria-hidden="true" />
+            <div className="mt-5 rounded-md border border-phino-border-strong bg-phino-code-bg p-3 text-left">
+              <div className="mb-2 flex items-center justify-between font-mono text-[11px] uppercase text-phino-code-text/70">
+                <span className="flex items-center gap-1.5">
+                  <Terminal className="h-3.5 w-3.5" aria-hidden="true" />
                   Scaffold with axi:
                 </span>
                 <CopyButton
@@ -144,7 +137,7 @@ export function SkillCatalog({ initialSkills, categories }) {
                   size="sm"
                 />
               </div>
-              <code className="font-mono text-xs text-phino-code-text block overflow-x-auto">
+              <code className="block overflow-x-auto font-mono text-xs text-phino-code-text">
                 npx -y @reactive-skills/axi init {search.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-')}
               </code>
             </div>
@@ -154,7 +147,7 @@ export function SkillCatalog({ initialSkills, categories }) {
             <button
               type="button"
               onClick={resetFilters}
-              className="inline-flex items-center gap-1.5 rounded-md border border-phino-border-strong bg-phino-surface-raised px-4 py-2 text-xs font-semibold text-phino-text hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
+              className="inline-flex items-center gap-1.5 rounded-md border border-phino-border-strong px-4 py-2 text-xs font-medium text-phino-text hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
             >
               Reset all filters
             </button>

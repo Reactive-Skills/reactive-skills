@@ -6,6 +6,55 @@ import { Eye, Code2, AlertCircle, ZoomIn, ZoomOut, RotateCcw } from 'lucide-reac
 import { CopyButton } from './CopyButton';
 import { cn } from '@/lib/utils';
 
+const DARK_BASE = {
+  darkMode: true,
+  background: '#0a0a0a',
+  primaryColor: '#121212',
+  primaryTextColor: '#ebeff2',
+  primaryBorderColor: '#4d4d4d',
+  lineColor: '#c1f354',
+  secondaryColor: '#1d1d1d',
+  tertiaryColor: '#0a0a0a',
+};
+
+const LIGHT_BASE = {
+  darkMode: false,
+  background: '#f8fafd',
+  primaryColor: '#ffffff',
+  primaryTextColor: '#151b24',
+  primaryBorderColor: '#c2c8cf',
+  lineColor: '#455c01',
+  secondaryColor: '#f3f6f9',
+  tertiaryColor: '#f8fafd',
+};
+
+const THEME_CSS = `
+  .node rect, .node polygon, .statediagram-state rect, .basic.label-container { fill: var(--phino-surface) !important; stroke: var(--phino-border-strong) !important; }
+  .statediagram-cluster rect, .cluster rect { fill: var(--phino-canvas) !important; stroke: var(--phino-border) !important; }
+  .statediagram-cluster rect.inner, .composit { fill: var(--phino-surface-sunken) !important; }
+  text, .nodeLabel, .label, .stateLabel text, .cluster-label text, .state-title { fill: var(--phino-text) !important; color: var(--phino-text) !important; }
+  .transition, path.relation, .flowchart-link { stroke: var(--phino-signal) !important; }
+  marker path, marker circle, [id$="barbEnd"] path { fill: var(--phino-signal) !important; stroke: var(--phino-signal) !important; }
+  .edgeLabel, .edgeLabel p, .edgeLabel span, .labelBkg { background-color: var(--phino-canvas) !important; color: var(--phino-text-muted) !important; }
+  .edgeLabel rect { fill: var(--phino-canvas) !important; }
+  .state-start, circle.state-start { fill: var(--phino-text) !important; stroke: var(--phino-text) !important; }
+  .state-end { fill: var(--phino-text) !important; stroke: var(--phino-canvas) !important; }
+  .node circle.state-end + circle, .end-state-inner { fill: var(--phino-canvas) !important; }
+  .note rect, .statediagram-note rect, .state-note { fill: var(--phino-guard-soft) !important; stroke: var(--phino-guard) !important; }
+  .note text, .statediagram-note text { fill: var(--phino-text) !important; }
+`;
+
+/**
+ * Mermaid statechart with diagram and source views, zoom, copy, and an optional highlighted state.
+ * The diagram is themed from the site tokens and re-renders when the theme changes.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P2 (client render; Mermaid loads on demand)
+ * - Complexity: O(n) in the n diagram nodes, per render
+ * - Cyclomatic Complexity (CC): target <=12
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=24
+ */
 export function MermaidViewer({ chart, title = 'Statechart Topology', className, activeState }) {
   const [view, setView] = useState('diagram'); // 'diagram' | 'code'
   const [svg, setSvg] = useState('');
@@ -27,39 +76,14 @@ export function MermaidViewer({ chart, title = 'Statechart Topology', className,
 
         const isDark = resolvedTheme === 'dark';
 
+        // khroma only parses hex, rgb and hsl, so the base palette is the tokens' sRGB values and
+        // THEME_CSS repaints the rendered SVG from the live --phino-* custom properties.
         mermaid.initialize({
           startOnLoad: false,
           securityLevel: 'loose',
-          theme: isDark ? 'dark' : 'neutral',
-          themeVariables: isDark
-            ? {
-                darkMode: true,
-                background: '#0c0e13',
-                primaryColor: '#13161c',
-                primaryTextColor: '#e9edf3',
-                primaryBorderColor: '#333a47',
-                lineColor: '#2dd4bf',
-                secondaryColor: '#06070a',
-                tertiaryColor: '#212530',
-                noteBkgColor: '#13161c',
-                noteTextColor: '#e9edf3',
-                fontSize: '13px',
-                fontFamily: 'ui-monospace, monospace',
-              }
-            : {
-                darkMode: false,
-                background: '#ffffff',
-                primaryColor: '#f4f5f7',
-                primaryTextColor: '#0d1117',
-                primaryBorderColor: '#cfd4dc',
-                lineColor: '#0d9488',
-                secondaryColor: '#ffffff',
-                tertiaryColor: '#e4e7ec',
-                noteBkgColor: '#f4f5f7',
-                noteTextColor: '#0d1117',
-                fontSize: '13px',
-                fontFamily: 'ui-monospace, monospace',
-              },
+          theme: 'base',
+          themeVariables: { ...(isDark ? DARK_BASE : LIGHT_BASE), fontSize: '13px', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' },
+          themeCSS: THEME_CSS,
         });
 
         const id = `mermaid_${uniqueId}_${Date.now()}`;
@@ -101,9 +125,9 @@ export function MermaidViewer({ chart, title = 'Statechart Topology', className,
         if (isMatch) {
           el.classList.add('active-hsm-state');
           rects.forEach((r) => {
-            r.style.stroke = '#2dd4bf';
+            r.style.stroke = 'var(--phino-signal)';
             r.style.strokeWidth = '3px';
-            r.style.filter = 'drop-shadow(0 0 10px rgba(45, 212, 191, 0.8))';
+            r.style.filter = 'drop-shadow(0 0 8px color-mix(in srgb, var(--phino-signal) 70%, transparent))';
           });
         } else {
           el.classList.remove('active-hsm-state');
@@ -120,21 +144,21 @@ export function MermaidViewer({ chart, title = 'Statechart Topology', className,
   }, [svg, activeState]);
 
   return (
-    <div className={cn('overflow-hidden rounded-xl border border-phino-border bg-phino-surface', className)}>
+    <div className={cn('overflow-hidden rounded-lg border border-phino-border bg-phino-surface', className)}>
       {/* Header bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-phino-border px-4 py-3 bg-phino-surface-raised/50">
         <div className="flex items-center gap-2">
-          <span className="font-display text-sm font-semibold text-phino-text">{title}</span>
+          <span className="font-mono text-xs text-phino-text-muted [overflow-wrap:anywhere]">{title}</span>
         </div>
 
         <div className="flex items-center gap-2">
           {/* View toggle (Diagram vs Code) */}
-          <div className="flex items-center rounded-lg border border-phino-border bg-phino-canvas p-0.5">
+          <div className="flex items-center rounded-md border border-phino-border bg-phino-canvas p-0.5">
             <button
               type="button"
               onClick={() => setView('diagram')}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus',
+                'inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus',
                 view === 'diagram'
                   ? 'bg-phino-surface-raised text-phino-text shadow-sm'
                   : 'text-phino-text-muted hover:text-phino-text',
@@ -147,7 +171,7 @@ export function MermaidViewer({ chart, title = 'Statechart Topology', className,
               type="button"
               onClick={() => setView('code')}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus',
+                'inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus',
                 view === 'code'
                   ? 'bg-phino-surface-raised text-phino-text shadow-sm'
                   : 'text-phino-text-muted hover:text-phino-text',

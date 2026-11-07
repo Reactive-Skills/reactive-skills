@@ -9,10 +9,20 @@ export const metadata = {
   },
 };
 
+/**
+ * Telemetry page shell around the client-side multi-job dashboard.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static render)
+ * - Complexity: O(1)
+ * - Cyclomatic Complexity (CC): target <=1
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=2
+ */
 export default function TelemetryPage() {
   return (
-    <main className="container py-10 lg:py-14">
+    <div className="container py-12 lg:py-20">
       <MultiJobTelemetryDashboard />
-    </main>
+    </div>
   );
 }

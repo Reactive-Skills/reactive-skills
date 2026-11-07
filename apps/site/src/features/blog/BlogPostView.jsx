@@ -1,65 +1,69 @@
 import Link from 'next/link';
-import { Calendar, Clock, ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { DocSections } from '@/features/docs/DocPageView';
 import { TableOfContents } from '@/features/docs/TableOfContents';
 import { SeriesBanner } from './SeriesBanner';
 
+/**
+ * Blog post: back link, title block, series navigation, summary lead, body sections, topics,
+ * previous and next posts, and a contents rail on wide screens.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static render)
+ * - Complexity: O(s) in the s body sections
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=16
+ */
 export function BlogPostView({ post, nextPost, prevPost }) {
   return (
-    <div className="container py-10 sm:py-14">
+    <div className="container py-12 lg:py-20">
       <div className="xl:grid xl:grid-cols-[minmax(0,48rem)_240px] xl:justify-center xl:gap-16">
         <article className="mx-auto min-w-0 max-w-3xl xl:mx-0">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-phino-text-muted transition-colors hover:text-phino-text"
+            className="inline-flex items-center gap-1.5 font-mono text-xs text-phino-text-muted transition-colors hover:text-phino-text"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
             <span>Back to Blog</span>
           </Link>
 
-          <h1 className="mt-6 font-display text-3xl font-semibold leading-tight tracking-tight text-phino-text sm:text-4xl lg:text-5xl">
+          <p className="mt-10 font-mono text-[11px] uppercase tracking-[0.2em] text-phino-signal-text">{post.category}</p>
+          <h1 className="mt-4 font-display text-4xl font-medium leading-[1.1] tracking-tight text-phino-text [text-wrap:balance] sm:text-5xl">
             {post.title}
           </h1>
 
           {post.subtitle && (
-            <p className="mt-3 text-lg font-medium text-phino-text-muted sm:text-xl">{post.subtitle}</p>
+            <p className="mt-4 text-lg text-phino-text-muted sm:text-xl">{post.subtitle}</p>
           )}
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-phino-text-subtle">
-            <span className="font-medium text-phino-text">{post.author.name}</span>
-            <span aria-hidden="true">·</span>
-            <span className="inline-flex items-center gap-1 font-mono">
-              <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-              {post.publishedAt}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span className="inline-flex items-center gap-1 font-mono">
-              <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-              {post.readTime}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span>{post.category}</span>
+          <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-phino-border pt-4 font-mono text-xs text-phino-text-subtle">
+            <span className="font-sans text-sm text-phino-text">{post.author.name}</span>
+            <span aria-hidden="true">/</span>
+            <time dateTime={post.publishedAt}>{post.publishedAt}</time>
+            <span aria-hidden="true">/</span>
+            <span>{post.readTime}</span>
           </div>
 
           {/* Series Banner if present */}
           {post.series && <SeriesBanner series={post.series} />}
 
           {/* Article Summary Lead */}
-          <div className="my-8 rounded-lg border-l-4 border-phino-signal bg-phino-surface-raised p-4">
-            <p className="text-base leading-relaxed text-phino-text font-medium">
+          <div className="my-10 border-l-2 border-phino-signal pl-5">
+            <p className="text-lg leading-relaxed text-phino-text">
               {post.summary}
             </p>
           </div>
 
           {/* Main Body Sections */}
-          <div className="prose prose-invert max-w-none">
+          <div>
             <DocSections sections={post.sections} variant="blog" />
           </div>
 
           {post.tags.length > 0 && (
             <ul className="mt-12 flex flex-wrap gap-2" aria-label="Topics">
               {post.tags.map((tag) => (
-                <li key={tag} className="rounded border border-phino-border/60 bg-phino-surface-raised px-2 py-0.5 font-mono text-[11px] text-phino-text-subtle">
+                <li key={tag} className="rounded border border-phino-border px-2 py-0.5 font-mono text-[11px] text-phino-text-subtle">
                   #{tag}
                 </li>
               ))}
@@ -69,36 +73,36 @@ export function BlogPostView({ post, nextPost, prevPost }) {
           {/* Post Footer Navigation */}
           <hr className="my-12 border-phino-border" />
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             {prevPost ? (
               <Link
                 href={`/blog/${prevPost.slug}`}
-                className="group flex flex-col items-start gap-1 rounded-lg border border-phino-border bg-phino-surface p-4 hover:border-phino-border-strong hover:bg-phino-surface-raised transition-colors max-w-sm"
+                className="group flex min-w-0 flex-col items-start gap-1.5 rounded-lg border border-phino-border p-5 transition-colors hover:border-phino-signal hover:bg-phino-surface"
               >
-                <span className="inline-flex items-center gap-1 text-xs font-mono uppercase text-phino-text-subtle">
-                  <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
+                <span className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.14em] text-phino-text-subtle">
+                  <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
                   Previous Article
                 </span>
-                <span className="text-sm font-semibold text-phino-text group-hover:text-phino-signal-text transition-colors line-clamp-1">
+                <span className="font-display text-base text-phino-text transition-colors group-hover:text-phino-signal-text">
                   {prevPost.title}
                 </span>
               </Link>
-            ) : <div />}
+            ) : null}
 
             {nextPost ? (
               <Link
                 href={`/blog/${nextPost.slug}`}
-                className="group flex flex-col items-end gap-1 rounded-lg border border-phino-border bg-phino-surface p-4 hover:border-phino-border-strong hover:bg-phino-surface-raised transition-colors max-w-sm text-right"
+                className="group flex min-w-0 flex-col items-end gap-1.5 rounded-lg border border-phino-border p-5 text-right transition-colors hover:border-phino-signal hover:bg-phino-surface sm:col-start-2"
               >
-                <span className="inline-flex items-center gap-1 text-xs font-mono uppercase text-phino-text-subtle">
+                <span className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.14em] text-phino-text-subtle">
                   Next Article
-                  <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                 </span>
-                <span className="text-sm font-semibold text-phino-text group-hover:text-phino-signal-text transition-colors line-clamp-1">
+                <span className="font-display text-base text-phino-text transition-colors group-hover:text-phino-signal-text">
                   {nextPost.title}
                 </span>
               </Link>
-            ) : <div />}
+            ) : null}
           </div>
         </article>
 

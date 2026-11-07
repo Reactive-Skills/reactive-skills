@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { ExternalLink } from 'lucide-react';
 import { getModsContentSource } from '@/infrastructure/container';
 import { CommandBlock } from '@/components/common/CommandBlock';
+import { PageHeader } from '@/components/common/PageHeader';
 import flowPlanImage from '@/features/mods/images/flow-plan.png';
 import statusLineImage from '@/features/mods/images/status-line.png';
 import flowImage from '@/features/mods/images/flow.png';
@@ -44,35 +45,34 @@ export default function ModsPage() {
   const mods = getModsContentSource().listMods();
 
   return (
-    <div className="container py-10 sm:py-12">
-      <div className="max-w-2xl">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-phino-text sm:text-4xl">Mods</h1>
-        <p className="mt-3 text-base leading-relaxed text-phino-text-muted">
+    <div className="container py-12 lg:py-20">
+      <PageHeader eyebrow="Claude Code plugins" title="Mods">
+        <p>
           A mod is a small plugin that adds a status line, a pane or a command inside Claude Code. Skills run a
           workflow; mods change what you can see and do while the workflow runs. They are installed from a plugin
           marketplace, not with skills.sh, and they only act in the session where they are installed.
         </p>
-      </div>
+      </PageHeader>
 
-      <div className="mt-10 space-y-14">
+      <div className="mt-16 space-y-20">
         {mods.map((mod) => (
-          <section key={mod.slug} id={mod.slug} aria-labelledby={`${mod.slug}-title`}>
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,32rem)] lg:items-end lg:gap-10">
+          <section key={mod.slug} id={mod.slug} aria-labelledby={`${mod.slug}-title`} className="border-t border-phino-border pt-10">
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:items-end lg:gap-16">
               <div className="max-w-2xl">
-                <h2 id={`${mod.slug}-title`} className="font-mono text-2xl font-semibold text-phino-text">
+                <h2 id={`${mod.slug}-title`} className="font-mono text-3xl font-medium tracking-tight text-phino-text">
                   {mod.name}
                 </h2>
-                <p className="mt-3 text-base leading-relaxed text-phino-text-muted">{mod.summary}</p>
+                <p className="mt-4 text-base leading-relaxed text-phino-text-muted">{mod.summary}</p>
               </div>
               <div className="min-w-0">
-                <CommandBlock command={mod.installCmd} caption="install" />
-                <p className="mt-3 text-sm text-phino-text-muted">
+                <CommandBlock command={mod.installCmd} caption="install" wrap />
+                <p className="mt-4 text-sm text-phino-text-muted">
                   Answer <code className="font-mono">y</code> to add the marketplace, then pick a scope.{' '}
                   <a
                     href={mod.sourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-medium text-phino-signal-text hover:text-phino-text"
+                    className="inline-flex items-center gap-1 text-phino-signal-text hover:text-phino-text"
                   >
                     Source <ExternalLink className="h-3 w-3" aria-hidden="true" />
                   </a>
@@ -80,37 +80,37 @@ export default function ModsPage() {
               </div>
             </div>
 
-            <dl className="mt-8 grid gap-4 sm:grid-cols-3">
+            <dl className="mt-10 grid gap-px border-y border-phino-border bg-phino-border sm:grid-cols-3">
               {mod.features.map((feature) => (
-                <div key={feature.name} className="rounded-xl border border-phino-border bg-phino-surface-raised p-4">
+                <div key={feature.name} className="bg-phino-canvas py-5 sm:px-5 sm:first:pl-0">
                   <dt className="font-mono text-sm font-semibold text-phino-text">{feature.name}</dt>
                   <dd className="mt-1.5 text-sm leading-relaxed text-phino-text-muted">{feature.description}</dd>
                 </div>
               ))}
             </dl>
 
-            <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <div className="mt-10 grid gap-8 lg:grid-cols-2">
               {(SCREENSHOTS[mod.slug] ?? []).map((shot) => (
                 <figure key={shot.caption} className={`min-w-0 ${shot.wide ? 'lg:col-span-2' : ''}`}>
-                  <a href={shot.src.src} target="_blank" rel="noopener noreferrer" className="block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-phino-focus">
+                  <a href={shot.src.src} target="_blank" rel="noopener noreferrer" className="block rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-phino-focus">
                     <Image
                       src={shot.src}
                       alt={shot.alt}
                       width={shot.src.width}
                       height={shot.src.height}
-                      className="h-auto w-full rounded-xl border border-phino-border-strong"
+                      className="h-auto w-full rounded-lg border border-phino-border-strong"
                       sizes={shot.wide ? '100vw' : '(min-width: 1024px) 50vw, 100vw'}
                     />
                   </a>
-                  <figcaption className="mt-2 text-xs leading-relaxed text-phino-text-muted">
+                  <figcaption className="mt-3 font-mono text-[11px] leading-relaxed text-phino-text-muted">
                     {shot.caption}
                   </figcaption>
                 </figure>
               ))}
             </div>
 
-            <h3 className="mt-8 text-sm font-semibold text-phino-text">What it reads</h3>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-phino-text-muted">
+            <h3 className="mt-10 font-mono text-[11px] uppercase tracking-[0.14em] text-phino-text-subtle">What it reads</h3>
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-phino-text-muted marker:text-phino-signal">
               {mod.reads.map((item) => (
                 <li key={item}>{item}</li>
               ))}
