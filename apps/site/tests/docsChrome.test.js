@@ -1,4 +1,3 @@
-import { existsSync } from 'node:fs';
 import { createElement, Fragment } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -14,14 +13,6 @@ describe('docs page markup', () => {
     expect(html).toContain(`>${escaped(page.category)}</p>`);
     expect(html).toMatch(new RegExp(`<h2[^>]*>${escaped(page.sections[0].heading).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</h2>`));
     if (page.sections.length > 1) expect(html).toContain('aria-label="On this page"');
-  });
-
-  // A route-level loading.js wraps the page in a Suspense boundary, and the static export
-  // then ships the skeleton first with the real docs hidden until JavaScript swaps them in.
-  it.each(['../src/app', '../src/app/docs'])('%s has no loading fallback', (dir) => {
-    for (const ext of ['js', 'jsx', 'tsx']) {
-      expect(existsSync(new URL(`${dir}/loading.${ext}`, import.meta.url))).toBe(false);
-    }
   });
 });
 

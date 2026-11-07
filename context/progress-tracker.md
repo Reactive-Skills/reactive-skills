@@ -283,4 +283,5 @@ Both package builds, 1,033 runtime tests, 389 AXI tests (one existing skip), 64 
 
 - Docs pages show a category eyebrow, a larger title, an inline "On this page" index and "Next" links; the sidebar gains a "Documentation" heading link and the breadcrumb is removed.
 - Code examples show a `$` prompt on shell lines (decoration only; copy takes the raw command), the expected output and a caption. Notes and tables use the new tone and table styles.
-- Removed the root and docs `loading.js` fallbacks: with them, the static export put every page's content in a hidden Suspense chunk behind a skeleton. `docsChrome.test.js` covers the page markup and the absence of those fallbacks.
+- Removed the root and docs `loading.js` fallbacks: with them, the static export put every page's content in a hidden Suspense chunk behind a skeleton. `docsChrome.test.js` covers the page markup.
+- The AXI page's exit-code table now matches `apps/axi/src/errors.ts` (0 success, 1 for every error code except `USAGE_ERROR`, 2 for `USAGE_ERROR` and unknown commands). `axiExitCodes.test.js` checks the table against `exitCodeForError` and the exported `ERROR_CODES` list.

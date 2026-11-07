@@ -70,12 +70,10 @@ export const axi = {
       heading: 'Deterministic exit codes',
       blocks: [
         { type: 'text', text: 'Exit codes are strictly defined so host scripts and agent harnesses can branch reliably without fragile regex matching on stderr.' },
-        { type: 'table', caption: 'AXI Exit Code Contract', columns: ['Code', 'Meaning', 'Recovery Action'], rows: [
-          ['0', 'Success / Transition Accepted', 'Proceed to next turn or command.'],
-          ['1', 'Usage / Option Error', 'Check CLI syntax via --help and re-run.'],
-          ['2', 'Guard Invariant Rejection', 'Inspect GUARD_FAILED event payload, resolve context facts, and re-emit.'],
-          ['3', 'Skill Manifest Missing', 'Check skill directory path or run init to scaffold.'],
-          ['4', 'Event Store Lock / SQLite Busy', 'Check orphan processes or run migrate --replay.'],
+        { type: 'table', caption: 'AXI Exit Code Contract', columns: ['Code', 'Error codes', 'Recovery Action'], rows: [
+          ['0', 'None (success)', 'Proceed to the next command.'],
+          ['1', 'NOT_FOUND, ALREADY_EXISTS, INVALID_SKILL, VALIDATION_ERROR, NO_EVENT_STORE, RUNTIME_ERROR, UNKNOWN', 'Read the error message and suggestions on stderr, fix the cause, and re-run.'],
+          ['2', 'USAGE_ERROR, or an unknown command', 'Run the command with --help, correct the arguments, and re-run.'],
         ] },
       ],
     },

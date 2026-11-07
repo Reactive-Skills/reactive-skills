@@ -1,12 +1,15 @@
-﻿export type ErrorCode =
-  | 'NOT_FOUND'
-  | 'ALREADY_EXISTS'
-  | 'INVALID_SKILL'
-  | 'VALIDATION_ERROR'
-  | 'NO_EVENT_STORE'
-  | 'RUNTIME_ERROR'
-  | 'USAGE_ERROR'
-  | 'UNKNOWN';
+﻿export const ERROR_CODES = [
+  'NOT_FOUND',
+  'ALREADY_EXISTS',
+  'INVALID_SKILL',
+  'VALIDATION_ERROR',
+  'NO_EVENT_STORE',
+  'RUNTIME_ERROR',
+  'USAGE_ERROR',
+  'UNKNOWN',
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
 
 export class AxiError extends Error {
   constructor(
