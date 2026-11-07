@@ -1,13 +1,25 @@
 'use client';
 
+import { Fragment } from 'react';
 import { cn } from '@/lib/utils';
 import { CopyButton } from './CopyButton';
 
-export function CommandBlock({ command, caption = 'zero-install', className }) {
+/**
+ * A shell command with its copy button. `wrap` breaks long commands between arguments instead of
+ * scrolling them, for narrow columns; the copy button always copies the full command.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static render; the only client work is the copy button)
+ * - Complexity: O(n) in the n characters of the command
+ * - Cyclomatic Complexity (CC): target <=3
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=6
+ */
+export function CommandBlock({ command, caption = 'zero-install', wrap = false, className }) {
   return (
     <div
       className={cn(
-        'group overflow-hidden rounded-xl border border-phino-border-strong bg-phino-code-bg text-phino-code-text',
+        'group flex flex-col overflow-hidden rounded-xl border border-phino-border-strong bg-phino-code-bg text-phino-code-text',
         className,
       )}
     >
@@ -19,10 +31,23 @@ export function CommandBlock({ command, caption = 'zero-install', className }) {
         </div>
         <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/40">{caption}</span>
       </div>
-      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between min-w-0">
-        <code className="min-w-0 font-mono text-sm text-phino-code-text [overflow-wrap:anywhere] sm:overflow-x-auto sm:whitespace-nowrap sm:text-base sm:[overflow-wrap:normal]">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <code
+          className={cn(
+            'min-w-0 font-mono text-sm text-phino-code-text [overflow-wrap:anywhere]',
+            wrap ? 'leading-6' : 'sm:overflow-x-auto sm:whitespace-nowrap sm:text-base sm:[overflow-wrap:normal]',
+          )}
+        >
           <span className="mr-2 select-none text-phino-signal" aria-hidden="true">$</span>
-          {command}
+          {wrap
+            ? // Break between arguments first; split one only when it alone is wider than the column.
+              command.split(' ').map((part, index) => (
+                <Fragment key={index}>
+                  {index > 0 && ' '}
+                  <span className="inline-block max-w-full [overflow-wrap:anywhere]">{part}</span>
+                </Fragment>
+              ))
+            : command}
         </code>
         <CopyButton
           value={command}

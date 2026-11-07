@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { Fragment, useRef } from 'react';
 import { Check } from 'lucide-react';
 import { useScrollProgress } from '@/lib/motion/useScrollProgress';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,16 @@ function eventsInto(steps, active) {
   ];
 }
 
+/**
+ * Scroll-driven tape of a registry skill's states with a playhead and the events of the active step.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P2 (re-renders on scroll progress)
+ * - Complexity: O(n) in the n states
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=12
+ */
 export function RunTape({ steps, skillName }) {
   const ref = useRef(null);
   const progress = useScrollProgress(ref, TAPE_SCROLL);
@@ -94,14 +104,17 @@ export function RunTape({ steps, skillName }) {
           style={{ left: `${playhead * 100}%`, transitionDuration: 'var(--phino-duration-deliberate)', transitionTimingFunction: 'var(--phino-ease-move)' }}
           aria-hidden="true"
         >
-          <span className="absolute -top-0.5 left-2 whitespace-nowrap font-mono text-xs text-phino-guard-text">playhead</span>
+          <span className="absolute -top-1 left-1.5 whitespace-nowrap bg-phino-canvas px-1 font-mono text-[11px] leading-4 text-phino-guard-text">playhead</span>
         </div>
       </div>
-      <figcaption className="mt-4 flex flex-col gap-1 font-mono text-xs leading-relaxed text-phino-text-muted sm:flex-row sm:flex-wrap sm:gap-x-5">
+      {/* One row per event, in time / type / detail columns, so entries read as a log. */}
+      <figcaption className="mt-4 grid grid-cols-[auto_auto_minmax(0,1fr)] gap-x-4 gap-y-1 font-mono text-xs leading-relaxed text-phino-text-muted">
         {events.map((event) => (
-          <span key={event.type} className="[overflow-wrap:anywhere]">
-            <span className="text-phino-signal-text">{event.at}</span> {event.type} {event.detail}
-          </span>
+          <Fragment key={event.type}>
+            <span className="text-phino-signal-text">{event.at}</span>
+            <span>{event.type}</span>
+            <span className="[overflow-wrap:anywhere]">{event.detail}</span>
+          </Fragment>
         ))}
       </figcaption>
     </figure>

@@ -46,7 +46,7 @@ export function Hero() {
         <h1 id="hero-heading" className="hero-title mt-8 font-display">
           Reactive Skills<span className="text-phino-lime">.</span>
         </h1>
-        <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-end sm:gap-10">
           <p className="max-w-md text-lg leading-relaxed text-phino-hero-muted">
             Your agent has skills.
             <br />

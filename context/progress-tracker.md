@@ -285,3 +285,10 @@ Both package builds, 1,033 runtime tests, 389 AXI tests (one existing skip), 64 
 - Code examples show a `$` prompt on shell lines (decoration only; copy takes the raw command), the expected output and a caption. Notes and tables use the new tone and table styles.
 - Removed the root and docs `loading.js` fallbacks: with them, the static export put every page's content in a hidden Suspense chunk behind a skeleton. `docsChrome.test.js` covers the page markup.
 - The AXI page's exit-code table now matches `apps/axi/src/errors.ts` (0 success, 1 for every error code except `USAGE_ERROR`, 2 for `USAGE_ERROR` and unknown commands). `axiExitCodes.test.js` checks the table against `exitCodeForError` and the exported `ERROR_CODES` list.
+
+## Landing page layout polish
+
+- The hero stage grows with viewport width (`max(770px, 560px + 18vw)`), so the render's modules stay below the headline, tagline and actions on wide and ultra-wide screens; the actions now sit beside the tagline instead of at the far edge.
+- The three start paths use a CSS subgrid at `lg`, so the shell boxes, the terminal alternative and the links line up across columns. `CommandBlock` gains a `wrap` option that breaks long commands between arguments instead of clipping them, and splits an argument only when it alone is wider than the column (`commandBlockWrap.test.js`).
+- Principle cards use tighter, even spacing with their labels pinned to one baseline.
+- The run tape's playhead label masks the ruler behind it, and the event log is a time / type / detail grid with one row per event.
