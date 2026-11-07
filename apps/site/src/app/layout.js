@@ -6,9 +6,9 @@ import { SiteFooter } from '@/components/site/SiteFooter';
 import { Analytics } from '@/components/site/Analytics';
 import { absoluteUrl, siteBaseUrl } from '@/infrastructure/siteMetadata';
 
-const siteTitle = 'Reactive Skills | Resumable Workflows for Coding Agents';
+const siteTitle = 'Reactive Skills | The event-driven agent runtime';
 const siteDescription =
-  'Reactive Skills turns passive agent instructions into workflows coding agents can follow, verify, and resume.';
+  'Turn passive agent skills into reactive state machines with focused prompts, typed signals, deterministic guards, and immutable events.';
 const siteStructuredData = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -60,12 +60,6 @@ const baseMetadata = {
     index: true,
     follow: true,
   },
-  title: {
-    default: 'Reactive Skills — an event-driven agent runtime',
-    template: '%s · Reactive Skills',
-  },
-  description:
-    'Reactive Skills turns passive agent skills into reactive Hierarchical State Machines — focused prompt slices, typed signals, deterministic guards, immutable event sourcing, MCP integration, and an AXI-oriented CLI.',
 };
 
 export const metadata = {

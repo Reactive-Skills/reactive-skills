@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { Check } from 'lucide-react';
 import { useScrollProgress } from '@/lib/motion/useScrollProgress';
 import { cn } from '@/lib/utils';
@@ -8,9 +9,8 @@ import { cn } from '@/lib/utils';
 const REST_AT = 0.3;
 const END_AT = 0.94;
 
-// The page itself, so progress is 0 at the top and 1 after 0.55 viewport heights of scroll.
-const PAGE = { get current() { return document.documentElement; } };
-const PAGE_SCROLL = { start: 0, distance: 0.55 };
+// Progress runs from the tape entering the lower viewport to 0.6 viewport heights later.
+const TAPE_SCROLL = { start: 0.9, distance: 0.6 };
 
 function clock(seconds) {
   return `14:02:${String(seconds).padStart(2, '0')}`;
@@ -28,14 +28,15 @@ function eventsInto(steps, active) {
 }
 
 export function RunTape({ steps, skillName }) {
-  const progress = useScrollProgress(PAGE, PAGE_SCROLL);
+  const ref = useRef(null);
+  const progress = useScrollProgress(ref, TAPE_SCROLL);
   const playhead = REST_AT + (progress ?? 0) * (END_AT - REST_AT);
   const share = 1 / steps.length;
   const active = Math.min(steps.length - 1, Math.floor(playhead / share));
   const events = eventsInto(steps, active);
 
   return (
-    <figure className="mt-12 [font-variant-ligatures:none] sm:mt-14">
+    <figure ref={ref} className="[font-variant-ligatures:none]">
       <div className="relative border-y border-phino-border py-5 sm:pb-12 sm:pt-8">
         <div
           className="pointer-events-none absolute inset-x-0 top-0 hidden h-3 opacity-70 sm:block"

@@ -594,11 +594,12 @@ They are targets checked when a change touches the shell, tokens, fonts or a lan
 | Cumulative Layout Shift | <= 0.05 on home and docs pages, both themes, 390 and 1440 px wide | 0.000 |
 | Lighthouse Accessibility | >= 96 on home and one docs page, both themes | 96 (remaining failures are pre-existing 11 px code-block labels) |
 | Lighthouse SEO | 100 on the same pages | 100 |
-| LCP image | <= 120 kB with explicit width and height; static export has no image optimizer | no LCP image yet (LCP is text) |
+| LCP image | <= 120 kB with explicit width and height; static export has no image optimizer | hero render: 20.1 kB AVIF and 29.9 kB WebP at 1536 px (768 px variants 6.4 and 9.4 kB), `width`/`height` 1536x1024; home JavaScript 216 kB in 13 chunks; CLS 0.000 |
 | Web fonts | Self-hosted through `next/font`; no third-party font request; preloaded files <= 120 kB total | 3 preloaded latin variable files, 99.8 kB |
 
 Theme tokens live in `src/app/globals.css` as `--phino-*` custom properties for light and dark; body, muted and subtle text tones keep at least 4.5:1 against the canvas and surface tokens of their theme.
 Shell components (`src/components/site/*`) render O(n) in their fixed link lists and carry the inline annotation below.
+Landing sections (`src/features/landing/*`) are P3 static renders with client islands for the copy buttons, the run tape, the two run examples and the registry filter; the registry list and filter are O(n) in published workflows.
 
 ### Offline mods image capture
 
