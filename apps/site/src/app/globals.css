@@ -181,7 +181,8 @@
 }
 
 /* Landing page: hero stage and editorial section titles. */
-.hero-stage { min-height: 770px; }
+/* The render scales with viewport width, so the stage grows with it to keep the modules below the copy on wide screens. */
+.hero-stage { min-height: max(770px, calc(560px + 18vw)); }
 .hero-object { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 60%; }
 .hero-copy { position: relative; z-index: 1; }
 /* Fluid between tablet and desktop so the wordmark stays on one line above the render. */

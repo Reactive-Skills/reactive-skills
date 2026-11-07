@@ -41,22 +41,25 @@ const PATHS = [
  * - CRAP Score: target <=4
  */
 export function StartPaths() {
+  // Subgrid rows line up the shell boxes, alternatives and links across the three columns.
   return (
-    <div className="mt-14 grid gap-10 lg:grid-cols-3">
+    <div className="mt-14 grid gap-10 lg:grid-cols-3 lg:grid-rows-[repeat(6,auto)]">
       {PATHS.map((path) => (
-        <div key={path.n} className="flex min-w-0 flex-col border-t border-phino-border-strong pt-6">
+        <div key={path.n} className="flex min-w-0 flex-col border-t border-phino-border-strong pt-6 lg:row-span-6 lg:grid lg:grid-rows-subgrid lg:gap-y-0">
           <span className="font-mono text-xs text-phino-text-subtle">{path.n}</span>
           <h3 className="mt-6 font-display text-3xl text-phino-text">{path.title}</h3>
-          <p className="mt-4 flex-1 text-sm leading-7 text-phino-text-muted">{path.body}</p>
-          <CommandBlock className="mt-6" command={path.command} caption="shell" />
-          {path.alternative && (
-            <p className="mt-2 text-xs text-phino-text-muted">
-              Terminal alternative: <code className="font-mono text-phino-text [overflow-wrap:anywhere]">{path.alternative}</code>
+          <p className="mt-4 text-sm leading-7 text-phino-text-muted">{path.body}</p>
+          <CommandBlock className="mt-6" command={path.command} caption="shell" wrap />
+          {path.alternative ? (
+            <p className="mt-3 text-xs leading-5 text-phino-text-muted">
+              Terminal alternative: <code className="mt-1 block font-mono text-phino-text [overflow-wrap:anywhere]">{path.alternative}</code>
             </p>
+          ) : (
+            <span className="hidden lg:block" aria-hidden="true" />
           )}
           <Link
             href={path.href}
-            className="mt-5 inline-flex items-center gap-1.5 text-sm text-phino-signal-text underline decoration-phino-signal/40 hover:decoration-phino-signal"
+            className="mt-5 inline-flex items-center gap-1.5 self-start lg:justify-self-start text-sm text-phino-signal-text underline decoration-phino-signal/40 hover:decoration-phino-signal"
           >
             {path.linkLabel} <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
           </Link>

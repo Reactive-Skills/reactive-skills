@@ -180,14 +180,15 @@ export function LandingPage({ stats, tape, tapeSkillName, registryRows }) {
         </div>
         <div className="mt-16 grid gap-10 md:grid-cols-3 md:gap-12">
           {PRINCIPLES.map((principle, index) => (
-            <div key={principle.title} className="border-t border-phino-paper-line pt-6">
-              <div className="mb-12 flex justify-between">
+            <div key={principle.title} className="flex flex-col border-t border-phino-paper-line pt-6">
+              <div className="mb-8 flex justify-between">
                 <principle.icon className="h-7 w-7 stroke-1" aria-hidden="true" />
                 <span className="font-mono text-xs text-phino-paper-muted">0{index + 1}</span>
               </div>
               <h3 className="font-display text-2xl">{principle.title}</h3>
               <p className="mt-4 max-w-sm text-sm leading-7 text-phino-paper-muted">{principle.description}</p>
-              <p className="mt-8 font-mono text-[10px] text-phino-paper-muted">{principle.label}</p>
+              {/* mt-auto pins the labels to one baseline across the row. */}
+              <p className="mt-auto pt-5 font-mono text-[10px] text-phino-paper-muted">{principle.label}</p>
             </div>
           ))}
         </div>
