@@ -72,7 +72,7 @@ export const axi = {
         { type: 'text', text: 'Exit codes are strictly defined so host scripts and agent harnesses can branch reliably without fragile regex matching on stderr.' },
         { type: 'table', caption: 'AXI Exit Code Contract', columns: ['Code', 'Error codes', 'Recovery Action'], rows: [
           ['0', 'None (success)', 'Proceed to the next command.'],
-          ['1', 'NOT_FOUND, ALREADY_EXISTS, INVALID_SKILL, VALIDATION_ERROR, NO_EVENT_STORE, RUNTIME_ERROR, UNKNOWN', 'Read the error message and suggestions on stderr, fix the cause, and re-run.'],
+          ['1', 'NOT_FOUND, ALREADY_EXISTS, INVALID_SKILL, VALIDATION_ERROR, NO_EVENT_STORE, RUNTIME_ERROR, UNKNOWN; or a failed validate, vet (at or above --fail-on), preflight or sync check, which reports on stdout with no error code on stderr', 'For an error code, read the message and suggestions on stderr; for a failed check, read its report on stdout. Fix the cause and re-run.'],
           ['2', 'USAGE_ERROR, or an unknown command', 'Run the command with --help, correct the arguments, and re-run.'],
         ] },
       ],
