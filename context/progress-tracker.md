@@ -124,6 +124,7 @@ The capture now draws seam-free duration rectangles and arranges the live-map st
 | Umami page-view analytics (tracker only, no recorder, Do Not Track honored) with a `/privacy` disclosure and footer link (`docs/analytics.md`) | Site | ✅ Done |
 | Site leads skill creation with the `skill-manager` agent prompt (landing "Create a skill" row and `/docs/authoring`), with `axi init` as the terminal alternative | Site | ✅ Done |
 | Run-history redesign: dark and light Flight Recorder palettes, mono display face, full-width hero with a scroll-driven run tape of real `tdd-refactor` states, sortable registry log replacing card rows, splitting SKILL.md tape; card rows, eyebrows and section numbers removed; tokens keep `--phino-*` names (`lib/landing/flightRecorder.js`) | Site | ✅ Done |
+| Visual refresh, foundation: new light and dark token values under the same `--phino-*` names (plus surface-sunken, signal-on, grid, hero, paper and lime), self-hosted Space Grotesk, DM Sans and JetBrains Mono via `next/font`, restyled header, footer, logo mark and theme switch with every link kept, global focus outline, skip link; `tests/tokenContrast.test.js` holds text tokens at 4.5:1; site budgets in `PERFORMANCE-STANDARDS.md` | Site | ✅ Done |
 
 ---
 

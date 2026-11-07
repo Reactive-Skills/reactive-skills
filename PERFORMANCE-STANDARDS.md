@@ -583,6 +583,23 @@ Documentation
 
 ## Performance Annotations
 
+### Site (`apps/site`)
+
+The site is a static export, so every page is P3 build-time rendering; the budgets below govern what a visitor downloads and sees.
+They are targets checked when a change touches the shell, tokens, fonts or a landing section, not runtime guarantees.
+
+| Budget | Target | Measured when set (local static build, desktop) |
+|---|---|---|
+| Home page JavaScript | <= 230 kB gzip across the chunks `out/index.html` references | 220.9 kB in 13 chunks |
+| Cumulative Layout Shift | <= 0.05 on home and docs pages, both themes, 390 and 1440 px wide | 0.000 |
+| Lighthouse Accessibility | >= 96 on home and one docs page, both themes | 96 (remaining failures are pre-existing 11 px code-block labels) |
+| Lighthouse SEO | 100 on the same pages | 100 |
+| LCP image | <= 120 kB with explicit width and height; static export has no image optimizer | no LCP image yet (LCP is text) |
+| Web fonts | Self-hosted through `next/font`; no third-party font request; preloaded files <= 120 kB total | 3 preloaded latin variable files, 99.8 kB |
+
+Theme tokens live in `src/app/globals.css` as `--phino-*` custom properties for light and dark; body, muted and subtle text tones keep at least 4.5:1 against the canvas and surface tokens of their theme.
+Shell components (`src/components/site/*`) render O(n) in their fixed link lists and carry the inline annotation below.
+
 ### Offline mods image capture
 
 `apps/site/src/features/mods/images/capture.mjs` is a P3 authoring operation, outside the site request path.

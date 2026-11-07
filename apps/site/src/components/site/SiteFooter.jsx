@@ -9,37 +9,53 @@ function GithubIcon({ className, ...props }) {
   );
 }
 
+const FOOTER_LINKS = [
+  { title: 'Blog', href: '/blog' },
+  { title: 'Skill Registry', href: '/registry' },
+  { title: 'Mods', href: '/mods' },
+  { title: 'Quickstart', href: '/docs/quickstart' },
+  { title: 'Concepts', href: '/docs/concepts' },
+  { title: 'AXI', href: '/docs/axi' },
+  { title: 'MCP', href: '/docs/mcp' },
+  { title: 'Troubleshooting', href: '/docs/troubleshooting' },
+  { title: 'Changelog', href: '/docs/changelog' },
+  { title: 'Telemetry', href: '/telemetry' },
+  { title: 'Privacy', href: '/privacy' },
+];
+
+/**
+ * Site footer: wordmark, tagline, repository link and every secondary destination.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static markup rendered at build time)
+ * - Complexity: O(n) in the n = 11 footer links
+ * - Cyclomatic Complexity (CC): target <=2
+ * - Branch Coverage: target >=50%
+ * - CRAP Score: target <=6
+ */
 export function SiteFooter() {
   return (
-    <footer className="border-t border-phino-border bg-phino-canvas">
-      <div className="container flex flex-col gap-6 py-10 sm:flex-row sm:items-center sm:justify-between">
+    <footer className="border-t border-phino-border">
+      <div className="container flex flex-col gap-8 py-10 sm:flex-row sm:items-start sm:justify-between">
         <div className="max-w-sm">
           <Logo />
-          <p className="mt-3 text-sm leading-relaxed text-phino-text-muted">
-            An event-driven runtime that turns passive agent skills into reactive, observable state machines.
-          </p>
+          <p className="mt-3 font-mono text-xs text-phino-text-subtle">reactive-skills · event-driven runtime for agent skills</p>
           <a
             href="https://github.com/Reactive-Skills/reactive-skills"
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-phino-border-strong bg-phino-surface-raised px-3 py-1.5 text-sm font-medium text-phino-text transition-colors hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-phino-border bg-phino-surface-raised px-3 py-1.5 text-sm text-phino-text-muted transition-colors hover:border-phino-signal hover:text-phino-signal-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
           >
             <GithubIcon className="h-3.5 w-3.5" aria-hidden="true" />
             GitHub repository
           </a>
         </div>
-        <nav aria-label="Footer" className="grid grid-cols-2 gap-x-10 gap-y-2 text-sm">
-          <Link href="/blog" className="text-phino-text-muted transition-colors hover:text-phino-text">Blog</Link>
-          <Link href="/registry" className="text-phino-text-muted transition-colors hover:text-phino-text">Skill Registry</Link>
-          <Link href="/mods" className="text-phino-text-muted transition-colors hover:text-phino-text">Mods</Link>
-          <Link href="/docs/quickstart" className="text-phino-text-muted transition-colors hover:text-phino-text">Quickstart</Link>
-          <Link href="/docs/concepts" className="text-phino-text-muted transition-colors hover:text-phino-text">Concepts</Link>
-          <Link href="/docs/axi" className="text-phino-text-muted transition-colors hover:text-phino-text">AXI</Link>
-          <Link href="/docs/mcp" className="text-phino-text-muted transition-colors hover:text-phino-text">MCP</Link>
-          <Link href="/docs/troubleshooting" className="text-phino-text-muted transition-colors hover:text-phino-text">Troubleshooting</Link>
-          <Link href="/docs/changelog" className="text-phino-text-muted transition-colors hover:text-phino-text">Changelog</Link>
-          <Link href="/telemetry" className="text-phino-text-muted transition-colors hover:text-phino-text">Telemetry</Link>
-          <Link href="/privacy" className="text-phino-text-muted transition-colors hover:text-phino-text">Privacy</Link>
+        <nav aria-label="Footer" className="grid grid-cols-2 gap-x-10 gap-y-2 text-sm sm:grid-cols-3">
+          {FOOTER_LINKS.map((item) => (
+            <Link key={item.href} href={item.href} className="text-phino-text-subtle transition-colors hover:text-phino-signal-text">
+              {item.title}
+            </Link>
+          ))}
         </nav>
       </div>
       <div className="border-t border-phino-border">

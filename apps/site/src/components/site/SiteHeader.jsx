@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Menu, ArrowRight } from 'lucide-react';
+import { Menu, ArrowUpRight } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { Logo } from './Logo';
@@ -17,6 +17,16 @@ const NAV = [
   { title: 'Telemetry', href: '/telemetry' },
 ];
 
+/**
+ * Sticky site header: logo, primary navigation, theme switch, "Get started" and the mobile sheet.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static render; client work is the active-link check and the sheet toggle)
+ * - Complexity: O(n) in the n = 5 navigation items
+ * - Cyclomatic Complexity (CC): target <=6
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=12
+ */
 export function SiteHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -24,9 +34,9 @@ export function SiteHeader() {
   const isActive = (href) => pathname === href || pathname.startsWith(href + '/');
 
   return (
-    <header className="sticky top-0 z-40 border-b border-phino-border bg-phino-canvas backdrop-blur-md">
-      <div className="container flex h-16 items-center justify-between gap-4">
-        <Link href="/" className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus" aria-label="Reactive Skills home">
+    <header className="sticky top-0 z-40 border-b border-phino-border bg-phino-canvas/85 backdrop-blur">
+      <div className="container flex h-20 items-center justify-between gap-4">
+        <Link href="/" className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus">
           <Logo />
         </Link>
 
@@ -36,8 +46,8 @@ export function SiteHeader() {
               key={item.href}
               href={item.href}
               className={cn(
-                'rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus',
-                isActive(item.href) ? 'text-phino-text' : 'text-phino-text-muted hover:text-phino-text',
+                'rounded-md px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus',
+                isActive(item.href) ? 'text-phino-signal-text' : 'text-phino-text-muted hover:text-phino-text',
               )}
               aria-current={isActive(item.href) ? 'page' : undefined}
             >
@@ -46,23 +56,23 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <ThemeToggle />
           <Link
             href="/docs/quickstart"
-            className="hidden items-center gap-1.5 rounded-md bg-phino-text px-3.5 py-2 text-sm font-semibold text-phino-canvas transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus focus-visible:ring-offset-2 focus-visible:ring-offset-phino-canvas sm:inline-flex"
+            className="hidden h-9 items-center gap-2 rounded-md bg-phino-signal px-4 text-sm font-medium text-phino-signal-on shadow transition-colors hover:bg-phino-signal/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus focus-visible:ring-offset-2 focus-visible:ring-offset-phino-canvas sm:inline-flex"
           >
-            Get started <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            Get started <ArrowUpRight className="size-4" aria-hidden="true" />
           </Link>
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-phino-border bg-phino-surface-raised text-phino-text-muted transition-colors hover:text-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus md:hidden"
+                className="inline-flex size-9 items-center justify-center rounded-md border border-phino-border bg-phino-surface-raised text-phino-text-muted transition-colors hover:border-phino-signal hover:text-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus md:hidden"
                 aria-label="Open menu"
               >
-                <Menu className="h-4.5 w-4.5" style={{ height: '1.1rem', width: '1.1rem' }} aria-hidden="true" />
+                <Menu className="size-4" aria-hidden="true" />
               </button>
             </SheetTrigger>
             <SheetContent side="right" className="w-72 border-phino-border bg-phino-canvas">
@@ -75,7 +85,7 @@ export function SiteHeader() {
                       href={item.href}
                       className={cn(
                         'rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
-                        isActive(item.href) ? 'bg-phino-surface-raised text-phino-text' : 'text-phino-text-muted hover:bg-phino-surface-raised hover:text-phino-text',
+                        isActive(item.href) ? 'bg-phino-surface-raised text-phino-signal-text' : 'text-phino-text-muted hover:bg-phino-surface-raised hover:text-phino-text',
                       )}
                     >
                       {item.title}
@@ -83,8 +93,8 @@ export function SiteHeader() {
                   </SheetClose>
                 ))}
                 <SheetClose asChild>
-                  <Link href="/docs/quickstart" className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-md bg-phino-text px-3.5 py-2.5 text-sm font-semibold text-phino-canvas">
-                    Get started <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  <Link href="/docs/quickstart" className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-phino-signal px-4 text-sm font-medium text-phino-signal-on hover:bg-phino-signal/90">
+                    Get started <ArrowUpRight className="size-4" aria-hidden="true" />
                   </Link>
                 </SheetClose>
               </nav>
