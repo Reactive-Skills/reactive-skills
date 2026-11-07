@@ -40,11 +40,11 @@ export function CommandBlock({ command, caption = 'zero-install', wrap = false, 
         >
           <span className="mr-2 select-none text-phino-signal" aria-hidden="true">$</span>
           {wrap
-            ? // Break only between arguments, never at the hyphens inside one.
+            ? // Break between arguments first; split one only when it alone is wider than the column.
               command.split(' ').map((part, index) => (
                 <Fragment key={index}>
                   {index > 0 && ' '}
-                  <span className="whitespace-nowrap">{part}</span>
+                  <span className="inline-block max-w-full [overflow-wrap:anywhere]">{part}</span>
                 </Fragment>
               ))
             : command}

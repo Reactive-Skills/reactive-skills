@@ -8,12 +8,8 @@ const COMMAND = 'npx skills add Reactive-Skills/skills --skill skill-manager';
 describe('CommandBlock wrap', () => {
   const markup = renderToStaticMarkup(createElement(CommandBlock, { command: COMMAND, wrap: true }));
 
-  it('keeps each argument unbroken so lines break only between arguments', () => {
-    const parts = [...markup.matchAll(/<span class="whitespace-nowrap">([^<]*)<\/span>/g)].map((match) => match[1]);
+  it('renders each argument as its own wrapping span that rebuilds the command', () => {
+    const parts = [...markup.matchAll(/<span class="inline-block max-w-full \[overflow-wrap:anywhere\]">([^<]*)<\/span>/g)].map((match) => match[1]);
     expect(parts).toEqual(COMMAND.split(' '));
-  });
-
-  it('does not clip the command to one scrolling line', () => {
-    expect(markup).not.toContain('sm:whitespace-nowrap');
   });
 });

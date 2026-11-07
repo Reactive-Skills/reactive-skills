@@ -289,6 +289,6 @@ Both package builds, 1,033 runtime tests, 389 AXI tests (one existing skip), 64 
 ## Landing page layout polish
 
 - The hero stage grows with viewport width (`max(770px, 560px + 18vw)`), so the render's modules stay below the headline, tagline and actions on wide and ultra-wide screens; the actions now sit beside the tagline instead of at the far edge.
-- The three start paths use a CSS subgrid at `lg`, so the shell boxes, the terminal alternative and the links line up across columns. `CommandBlock` gains a `wrap` option that breaks long commands between arguments instead of clipping them; the copy button still copies the full command (`commandBlockWrap.test.js`).
+- The three start paths use a CSS subgrid at `lg`, so the shell boxes, the terminal alternative and the links line up across columns. `CommandBlock` gains a `wrap` option that breaks long commands between arguments instead of clipping them, and splits an argument only when it alone is wider than the column (`commandBlockWrap.test.js`).
 - Principle cards use tighter, even spacing with their labels pinned to one baseline.
 - The run tape's playhead label masks the ruler behind it, and the event log is a time / type / detail grid with one row per event.
