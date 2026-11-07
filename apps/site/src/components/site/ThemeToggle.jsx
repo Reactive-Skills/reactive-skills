@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
 import { Moon, Sun } from 'lucide-react';
+
+const subscribe = () => () => {};
 
 /**
  * Light/dark switch backed by next-themes (no flash: the theme class is set before paint).
@@ -16,8 +18,8 @@ import { Moon, Sun } from 'lucide-react';
  */
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // true on the client, false during SSR and hydration, so both renders match.
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
 
   const isDark = resolvedTheme === 'dark';
 
