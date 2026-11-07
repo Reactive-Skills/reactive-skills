@@ -7,6 +7,16 @@ export const metadata = {
   alternates: { canonical: absoluteUrl('/privacy') },
 };
 
+/**
+ * Privacy page: what the site measures and stores in the browser.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static render)
+ * - Complexity: O(1)
+ * - Cyclomatic Complexity (CC): target <=1
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=2
+ */
 export default function PrivacyPage() {
   return (
     <div className="container max-w-3xl py-12 lg:py-20">

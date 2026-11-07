@@ -303,7 +303,7 @@ export function LiveTelemetryDeck({ skill }) {
       {/* Statechart with Live Dynamic Highlighting */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-phino-text-muted px-1">
-          <span>Active state node pulses with teal border in real-time</span>
+          <span>Active state node is highlighted in real time</span>
           <span className="font-mono text-[11px]">State: {currentDisplayedState}</span>
         </div>
         <MermaidViewer

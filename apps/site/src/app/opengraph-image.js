@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { siteBaseUrl } from '@/infrastructure/siteMetadata';
+import { OG_PALETTE } from '@/lib/og/palette';
 
 export const dynamic = 'force-static';
 export const alt = 'Reactive Skills: the event-driven agent runtime';
@@ -10,11 +11,7 @@ export const size = {
 export const contentType = 'image/png';
 const siteLabel = siteBaseUrl.toString().replace(/^https?:\/\//, '').replace(/\/$/, '');
 
-// sRGB values of the hero band tokens in globals.css (--phino-hero, -hero-ink, -hero-muted, -lime); the image renderer has no oklch().
-const HERO = '#090909';
-const INK = '#f5f5f5';
-const MUTED = '#a8a8a8';
-const LIME = '#c1f354';
+const { hero: HERO, ink: INK, muted: MUTED, lime: LIME } = OG_PALETTE;
 
 /**
  * 1200x630 share image in the hero band palette: site mark, wordmark, hero line and site host.

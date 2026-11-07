@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { OG_PALETTE } from '@/lib/og/palette';
 
 const CSS = readFileSync(new URL('../src/app/globals.css', import.meta.url), 'utf8');
-const OG = readFileSync(new URL('../src/app/opengraph-image.js', import.meta.url), 'utf8');
 
 // OKLCH -> sRGB hex (Ottosson), the same conversion a browser applies to the token.
 const toHex = ([L, C, H]) => {
@@ -29,11 +29,11 @@ const token = (name) => {
 
 describe('share image', () => {
   it.each([
-    ['HERO', 'hero'],
-    ['INK', 'hero-ink'],
-    ['MUTED', 'hero-muted'],
-    ['LIME', 'lime'],
-  ])('paints %s with the --phino-%s token', (constant, name) => {
-    expect(OG).toContain(`const ${constant} = '${token(name)}';`);
+    ['hero', 'hero'],
+    ['ink', 'hero-ink'],
+    ['muted', 'hero-muted'],
+    ['lime', 'lime'],
+  ])('paints %s with the --phino-%s token', (key, name) => {
+    expect(OG_PALETTE[key]).toBe(token(name));
   });
 });

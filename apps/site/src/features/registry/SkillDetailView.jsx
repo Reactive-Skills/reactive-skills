@@ -50,6 +50,16 @@ const AXI_COMMANDS = [
   ['Tail events:', 'events'],
 ];
 
+/**
+ * Sidebar block: mono label, optional description and content.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static render)
+ * - Complexity: O(1)
+ * - Cyclomatic Complexity (CC): target <=2
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=3
+ */
 function SideBlock({ title, description, children }) {
   return (
     <div className="border-t border-phino-border pt-5">
