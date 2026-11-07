@@ -13,9 +13,9 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ['"Inter Tight"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['"Martian Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
-        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+        sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
         /* shadcn library tokens */
@@ -37,6 +37,7 @@ module.exports = {
           canvas: 'color-mix(in srgb, var(--phino-canvas) calc(<alpha-value> * 100%), transparent)',
           surface: 'color-mix(in srgb, var(--phino-surface) calc(<alpha-value> * 100%), transparent)',
           'surface-raised': 'color-mix(in srgb, var(--phino-surface-raised) calc(<alpha-value> * 100%), transparent)',
+          'surface-sunken': 'color-mix(in srgb, var(--phino-surface-sunken) calc(<alpha-value> * 100%), transparent)',
           overlay: 'color-mix(in srgb, var(--phino-overlay) calc(<alpha-value> * 100%), transparent)',
           border: 'color-mix(in srgb, var(--phino-border) calc(<alpha-value> * 100%), transparent)',
           'border-strong': 'color-mix(in srgb, var(--phino-border-strong) calc(<alpha-value> * 100%), transparent)',
@@ -46,6 +47,7 @@ module.exports = {
           signal: 'color-mix(in srgb, var(--phino-signal) calc(<alpha-value> * 100%), transparent)',
           'signal-text': 'color-mix(in srgb, var(--phino-signal-text) calc(<alpha-value> * 100%), transparent)',
           'signal-soft': 'color-mix(in srgb, var(--phino-signal-soft) calc(<alpha-value> * 100%), transparent)',
+          'signal-on': 'color-mix(in srgb, var(--phino-signal-on) calc(<alpha-value> * 100%), transparent)',
           guard: 'color-mix(in srgb, var(--phino-guard) calc(<alpha-value> * 100%), transparent)',
           'guard-text': 'color-mix(in srgb, var(--phino-guard-text) calc(<alpha-value> * 100%), transparent)',
           'guard-soft': 'color-mix(in srgb, var(--phino-guard-soft) calc(<alpha-value> * 100%), transparent)',
@@ -62,6 +64,15 @@ module.exports = {
           focus: 'color-mix(in srgb, var(--phino-focus) calc(<alpha-value> * 100%), transparent)',
           'code-bg': 'color-mix(in srgb, var(--phino-code-bg) calc(<alpha-value> * 100%), transparent)',
           'code-text': 'color-mix(in srgb, var(--phino-code-text) calc(<alpha-value> * 100%), transparent)',
+          grid: 'color-mix(in srgb, var(--phino-grid) calc(<alpha-value> * 100%), transparent)',
+          hero: 'color-mix(in srgb, var(--phino-hero) calc(<alpha-value> * 100%), transparent)',
+          'hero-ink': 'color-mix(in srgb, var(--phino-hero-ink) calc(<alpha-value> * 100%), transparent)',
+          'hero-muted': 'color-mix(in srgb, var(--phino-hero-muted) calc(<alpha-value> * 100%), transparent)',
+          lime: 'color-mix(in srgb, var(--phino-lime) calc(<alpha-value> * 100%), transparent)',
+          paper: 'color-mix(in srgb, var(--phino-paper) calc(<alpha-value> * 100%), transparent)',
+          'paper-ink': 'color-mix(in srgb, var(--phino-paper-ink) calc(<alpha-value> * 100%), transparent)',
+          'paper-muted': 'color-mix(in srgb, var(--phino-paper-muted) calc(<alpha-value> * 100%), transparent)',
+          'paper-line': 'color-mix(in srgb, var(--phino-paper-line) calc(<alpha-value> * 100%), transparent)',
         },
       },
       borderRadius: {

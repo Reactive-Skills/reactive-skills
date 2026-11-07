@@ -43,7 +43,7 @@ export function StartPaths() {
           <div className="self-start">
             {path.install && (
               <p className="mb-2 text-xs text-phino-text-muted">
-                Install first: <code className="font-mono text-phino-code-text">{path.install}</code>
+                Install first: <code className="font-mono text-phino-text">{path.install}</code>
               </p>
             )}
             <code className="block overflow-x-auto border border-phino-border bg-phino-code-bg px-3 py-2.5 font-mono text-xs leading-relaxed text-phino-code-text">
@@ -53,7 +53,7 @@ export function StartPaths() {
             {path.prompt && <p className="mt-1.5 text-xs text-phino-text-muted">Ask your agent. Recommended.</p>}
             {path.alternative && (
               <p className="mt-2 text-xs text-phino-text-muted">
-                Terminal alternative: <code className="font-mono text-phino-code-text">{path.alternative}</code>
+                Terminal alternative: <code className="font-mono text-phino-text">{path.alternative}</code>
               </p>
             )}
           </div>

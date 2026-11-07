@@ -1,5 +1,6 @@
 import './globals.css';
 import { Providers } from './providers';
+import { fontVariables } from './fonts';
 import { SiteHeader } from '@/components/site/SiteHeader';
 import { SiteFooter } from '@/components/site/SiteFooter';
 import { Analytics } from '@/components/site/Analytics';
@@ -78,7 +79,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={fontVariables} suppressHydrationWarning>
       <head>
         <Analytics />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteStructuredData) }} />
@@ -86,7 +87,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className="font-sans">
         <Providers>
-          <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-phino-text focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-phino-canvas">
+          <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:border focus:border-phino-signal focus:bg-phino-surface focus:px-3 focus:py-2 focus:text-sm focus:text-phino-text">
             Skip to content
           </a>
           <div className="relative flex min-h-screen flex-col">
