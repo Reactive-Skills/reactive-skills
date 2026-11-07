@@ -292,3 +292,11 @@ Both package builds, 1,033 runtime tests, 389 AXI tests (one existing skip), 64 
 - The three start paths use a CSS subgrid at `lg`, so the shell boxes, the terminal alternative and the links line up across columns. `CommandBlock` gains a `wrap` option that breaks long commands between arguments instead of clipping them, and splits an argument only when it alone is wider than the column (`commandBlockWrap.test.js`).
 - Principle cards use tighter, even spacing with their labels pinned to one baseline.
 - The run tape's playhead label masks the ruler behind it, and the event log is a time / type / detail grid with one row per event.
+
+## Secondary pages restyle
+
+- Registry, skill pages, blog index and posts, mods, privacy, telemetry and the 404 page open with the docs-style header (mono eyebrow, display title, lead) through the shared `PageHeader`. The registry is a ruled grid of skill cells; the blog index is a ruled list of posts; skill pages use a ruled numbers strip, a ruled state list and a sticky sidebar.
+- Filter chips on the registry and blog use the homepage's `aria-pressed` chip style (role `group`, replacing a `tablist` without tabs).
+- Mermaid statecharts render with the `base` theme plus `themeCSS` that reads the `--phino-*` tokens, so diagrams follow the palette and theme; the active-state highlight uses the signal token.
+- The telemetry dashboard used undefined `phino-warning` and `text-2xs` classes, so its warnings rendered unstyled; they now use the guard tokens and `text-[11px]`. Signal buttons use `text-phino-signal-on`. The telemetry route no longer nests a second `<main>`.
+- The share image uses the hero band palette and the homepage's existing wording; `ogPalette.test.js` checks its colors against the tokens. The favicon (`app/icon.svg`, `public/favicon.ico`) is the site mark.

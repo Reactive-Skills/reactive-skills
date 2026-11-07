@@ -7,10 +7,8 @@ import {
   Send,
   Sliders,
   RotateCcw,
-  CheckCircle2,
   AlertTriangle,
   Play,
-  Pause,
   ChevronDown,
   ChevronRight,
   Terminal,
@@ -29,6 +27,16 @@ const getBridgeErrorMessage = (error) => {
   return message;
 };
 
+/**
+ * Per-skill live deck: connects to the local bridge, highlights the active state and sends signals.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P2 (client; one SSE connection)
+ * - Complexity: O(e) in the e visible events
+ * - Cyclomatic Complexity (CC): target <=25
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=40
+ */
 export function LiveTelemetryDeck({ skill }) {
   const [bridgeUrl, setBridgeUrl] = useState('http://127.0.0.1:4242');
   const [status, setStatus] = useState('disconnected'); // 'disconnected' | 'connecting' | 'connected' | 'error'
@@ -192,7 +200,7 @@ export function LiveTelemetryDeck({ skill }) {
   return (
     <div className="space-y-6">
       {/* Top Connection Bar */}
-      <div className="rounded-xl border border-phino-border bg-phino-surface p-4 flex flex-wrap items-center justify-between gap-4">
+      <div className="rounded-lg border border-phino-border bg-phino-surface p-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <span
@@ -243,7 +251,7 @@ export function LiveTelemetryDeck({ skill }) {
               type="button"
               onClick={connectBridge}
               disabled={status === 'connecting'}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-phino-signal px-3 py-1.5 text-xs font-semibold text-phino-canvas hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-phino-signal px-3 py-1.5 text-xs font-semibold text-phino-signal-on hover:opacity-90 transition-opacity"
             >
               <Play className="h-3.5 w-3.5" />
               Connect to Local Agent
@@ -262,7 +270,7 @@ export function LiveTelemetryDeck({ skill }) {
 
       {/* Metrics & Active State Card */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-phino-border bg-phino-surface p-4">
+        <div className="rounded-lg border border-phino-border bg-phino-surface p-4">
           <div className="text-xs font-medium text-phino-text-muted">Active HSM State</div>
           <div className="mt-1.5 flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-md border border-phino-signal/40 bg-phino-signal-soft px-2.5 py-1 font-mono text-sm font-bold text-phino-signal-text">
@@ -270,21 +278,21 @@ export function LiveTelemetryDeck({ skill }) {
               {currentDisplayedState || 'NONE'}
             </span>
             {scrubIndex !== null && (
-              <span className="text-2xs font-mono text-amber-400 border border-amber-400/30 bg-amber-950/20 px-1.5 py-0.5 rounded">
+              <span className="text-[11px] font-mono text-amber-400 border border-amber-400/30 bg-amber-950/20 px-1.5 py-0.5 rounded">
                 PAUSED AT SEQ {displayedEvents[displayedEvents.length - 1]?.seq || 0}
               </span>
             )}
           </div>
         </div>
 
-        <div className="rounded-xl border border-phino-border bg-phino-surface p-4">
+        <div className="rounded-lg border border-phino-border bg-phino-surface p-4">
           <div className="text-xs font-medium text-phino-text-muted">Recorded Events</div>
           <div className="mt-1.5 font-mono text-2xl font-bold text-phino-text">
             {events.length}
           </div>
         </div>
 
-        <div className="rounded-xl border border-phino-border bg-phino-surface p-4">
+        <div className="rounded-lg border border-phino-border bg-phino-surface p-4">
           <div className="text-xs font-medium text-phino-text-muted">Latest Signal</div>
           <div className="mt-1.5 font-mono text-sm text-phino-text truncate">
             {events.length > 0 ? events[events.length - 1].type : 'None'}
@@ -296,7 +304,7 @@ export function LiveTelemetryDeck({ skill }) {
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-phino-text-muted px-1">
           <span>Active state node pulses with teal border in real-time</span>
-          <span className="font-mono text-2xs">State: {currentDisplayedState}</span>
+          <span className="font-mono text-[11px]">State: {currentDisplayedState}</span>
         </div>
         <MermaidViewer
           chart={skill.mermaidChart}
@@ -307,7 +315,7 @@ export function LiveTelemetryDeck({ skill }) {
 
       {/* Time-Travel Scrubber */}
       {events.length > 1 && (
-        <div className="rounded-xl border border-phino-border bg-phino-surface p-4 space-y-3">
+        <div className="rounded-lg border border-phino-border bg-phino-surface p-4 space-y-3">
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5 font-semibold text-phino-text">
               <Sliders className="h-3.5 w-3.5 text-phino-signal" />
@@ -317,13 +325,13 @@ export function LiveTelemetryDeck({ skill }) {
               <button
                 type="button"
                 onClick={() => setScrubIndex(null)}
-                className="inline-flex items-center gap-1 text-2xs text-phino-signal hover:underline"
+                className="inline-flex items-center gap-1 text-[11px] text-phino-signal hover:underline"
               >
                 <RotateCcw className="h-3 w-3" />
                 Resume Live Stream
               </button>
             ) : (
-              <span className="text-2xs text-phino-text-muted">Live Tracking</span>
+              <span className="text-[11px] text-phino-text-muted">Live Tracking</span>
             )}
           </div>
 
@@ -346,13 +354,13 @@ export function LiveTelemetryDeck({ skill }) {
       {/* Two Column Section: Live Event Stream Feed & HITL Signal Dispatcher */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Live Event Stream Feed */}
-        <div className="lg:col-span-2 rounded-xl border border-phino-border bg-phino-surface p-4 space-y-3">
+        <div className="lg:col-span-2 rounded-lg border border-phino-border bg-phino-surface p-4 space-y-3">
           <div className="flex items-center justify-between border-b border-phino-border pb-2.5">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-phino-text">
               <Activity className="h-3.5 w-3.5 text-phino-signal" />
               <span>Streaming Event Ledger</span>
             </div>
-            <span className="font-mono text-2xs text-phino-text-muted">{displayedEvents.length} events</span>
+            <span className="font-mono text-[11px] text-phino-text-muted">{displayedEvents.length} events</span>
           </div>
 
           <div className="divide-y divide-phino-border/40 max-h-80 overflow-y-auto font-mono text-xs">
@@ -375,21 +383,21 @@ export function LiveTelemetryDeck({ skill }) {
                         ) : (
                           <ChevronRight className="h-3 w-3 text-phino-text-muted" />
                         )}
-                        <span className="text-phino-text-subtle text-2xs">#{ev.seq}</span>
+                        <span className="text-phino-text-subtle text-[11px]">#{ev.seq}</span>
                         <span className="font-semibold text-phino-signal-text">{ev.type}</span>
                         {ev.state && (
-                          <span className="text-2xs rounded bg-phino-canvas px-1.5 py-0.5 text-phino-text-muted">
+                          <span className="text-[11px] rounded bg-phino-canvas px-1.5 py-0.5 text-phino-text-muted">
                             [{ev.state}]
                           </span>
                         )}
                       </div>
-                      <span className="text-2xs text-phino-text-subtle">
+                      <span className="text-[11px] text-phino-text-subtle">
                         {ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString() : ''}
                       </span>
                     </div>
 
                     {isExpanded && (
-                      <pre className="mt-2 p-2 bg-phino-canvas rounded text-2xs overflow-x-auto text-phino-text-muted">
+                      <pre className="mt-2 p-2 bg-phino-canvas rounded text-[11px] overflow-x-auto text-phino-text-muted">
                         {JSON.stringify(ev, null, 2)}
                       </pre>
                     )}
@@ -401,20 +409,20 @@ export function LiveTelemetryDeck({ skill }) {
         </div>
 
         {/* Right Col: HITL Signal Dispatcher */}
-        <div className="rounded-xl border border-phino-border bg-phino-surface p-4 space-y-4">
+        <div className="rounded-lg border border-phino-border bg-phino-surface p-4 space-y-4">
           <div className="border-b border-phino-border pb-2.5">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-phino-text">
               <Terminal className="h-3.5 w-3.5 text-phino-signal" />
               <span>Human-in-the-Loop Signal Dispatch</span>
             </div>
-            <p className="text-2xs text-phino-text-muted mt-1">
+            <p className="text-[11px] text-phino-text-muted mt-1">
               Manually trigger state transitions or approve gates.
             </p>
           </div>
 
           <form onSubmit={handleEmitSignal} className="space-y-3">
             <div>
-              <label className="text-2xs font-medium text-phino-text-muted block mb-1">Signal Name</label>
+              <label className="text-[11px] font-medium text-phino-text-muted block mb-1">Signal Name</label>
               <input
                 type="text"
                 value={signalInput}
@@ -428,7 +436,7 @@ export function LiveTelemetryDeck({ skill }) {
             <button
               type="submit"
               disabled={status !== 'connected' || signalSending || !signalInput.trim()}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-phino-signal px-3 py-2 text-xs font-semibold text-phino-canvas hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-phino-signal px-3 py-2 text-xs font-semibold text-phino-signal-on hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
               <Send className="h-3.5 w-3.5" />
               {signalSending ? 'Emitting...' : 'Emit Signal to Agent'}
@@ -437,8 +445,8 @@ export function LiveTelemetryDeck({ skill }) {
 
           {/* Context Keys Preview */}
           <div className="pt-2 border-t border-phino-border">
-            <div className="text-2xs font-semibold text-phino-text-muted uppercase mb-1.5">Context Snapshot</div>
-            <pre className="p-2 bg-phino-canvas rounded text-2xs overflow-x-auto text-phino-text-muted max-h-36">
+            <div className="text-[11px] font-semibold text-phino-text-muted uppercase mb-1.5">Context Snapshot</div>
+            <pre className="p-2 bg-phino-canvas rounded text-[11px] overflow-x-auto text-phino-text-muted max-h-36">
               {Object.keys(context).length > 0 ? JSON.stringify(context, null, 2) : '// No context keys set'}
             </pre>
           </div>

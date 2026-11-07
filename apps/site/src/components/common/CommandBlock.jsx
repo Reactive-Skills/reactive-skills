@@ -29,7 +29,7 @@ export function CommandBlock({ command, caption = 'zero-install', wrap = false, 
           <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
           <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
         </div>
-        <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/40">{caption}</span>
+        <span className="min-w-0 text-right font-mono text-[11px] uppercase tracking-[0.1em] text-white/40 sm:tracking-[0.2em]">{caption}</span>
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <code

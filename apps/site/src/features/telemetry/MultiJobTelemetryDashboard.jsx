@@ -47,6 +47,16 @@ function findCatalogTarget(catalog, target) {
   return skill?.jobs?.find((entry) => entry.jobId === target.jobId) || null;
 }
 
+/**
+ * Local multi-job dashboard: connect to a broker, pick jobs from its catalog and follow each event stream.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P2 (client; one multiplexed SSE connection, bounded event list per job)
+ * - Complexity: O(j * e) in the j tracked jobs and e visible events per job
+ * - Cyclomatic Complexity (CC): target <=25
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=40
+ */
 export function MultiJobTelemetryDashboard() {
   const [brokerUrlInput, setBrokerUrlInput] = useState(DEFAULT_BROKER_URL);
   const [brokerUrl, setBrokerUrl] = useState('');
@@ -302,29 +312,29 @@ export function MultiJobTelemetryDashboard() {
 
   return (
     <section className="space-y-6" aria-labelledby="telemetry-dashboard-title">
-      <div className="rounded-2xl border border-phino-border bg-phino-surface p-5 shadow-sm">
+      <div className="border-b border-phino-border pb-10">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-phino-signal-text">
-              <Activity className="h-4 w-4" aria-hidden="true" />
+            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-phino-signal-text">
+              <Activity className="h-3.5 w-3.5" aria-hidden="true" />
               Live telemetry
             </div>
-            <h1 id="telemetry-dashboard-title" className="mt-2 text-2xl font-semibold text-phino-text">
+            <h1 id="telemetry-dashboard-title" className="mt-4 font-display text-4xl font-medium tracking-tight text-phino-text sm:text-5xl">
               Multi-job telemetry dashboard
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-phino-text-muted">
+            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-phino-text-muted">
               Connect to one local broker, select jobs from its catalog, and monitor isolated event streams through one browser connection.
             </p>
           </div>
           <div className="flex items-center gap-2 text-xs text-phino-text-muted" role="status" aria-live="polite">
             {catalogStatus === 'ready'
               ? <CheckCircle2 className="h-4 w-4 text-phino-success" aria-hidden="true" />
-              : <WifiOff className={cn('h-4 w-4', catalogStatus === 'idle' ? 'text-phino-text-subtle' : 'text-phino-warning')} aria-hidden="true" />}
+              : <WifiOff className={cn('h-4 w-4', catalogStatus === 'idle' ? 'text-phino-text-subtle' : 'text-phino-guard-text')} aria-hidden="true" />}
             {statusLabel}
           </div>
         </div>
 
-        <form onSubmit={connectBroker} className="mt-5 flex flex-col gap-2 sm:flex-row">
+        <form onSubmit={connectBroker} className="mt-8 flex flex-col gap-2 sm:flex-row">
           <label htmlFor="broker-url" className="sr-only">Broker URL</label>
           <div className="relative flex-1">
             <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-phino-text-muted" aria-hidden="true" />
@@ -346,14 +356,14 @@ export function MultiJobTelemetryDashboard() {
         </form>
 
         {catalogError && (
-          <div className="mt-4 flex items-start gap-2 rounded-lg border border-phino-warning/40 bg-phino-warning/10 p-3 text-sm text-phino-text" role="alert">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-phino-warning" aria-hidden="true" />
+          <div className="mt-4 flex items-start gap-2 rounded-lg border border-phino-guard/40 bg-phino-guard-soft p-3 text-sm text-phino-text" role="alert">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-phino-guard-text" aria-hidden="true" />
             <span>{catalogError}</span>
           </div>
         )}
       </div>
 
-      <div className="rounded-2xl border border-phino-border bg-phino-surface p-5">
+      <div className="rounded-lg border border-phino-border bg-phino-surface p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="flex-1">
             <label htmlFor="telemetry-skill" className="mb-1.5 block text-xs font-semibold text-phino-text-muted">Skill</label>
@@ -369,7 +379,7 @@ export function MultiJobTelemetryDashboard() {
               {(selectedSkill?.jobs || []).map((job) => <option key={job.jobId} value={job.jobId}>{job.jobId} · {job.currentState}</option>)}
             </select>
           </div>
-          <button type="button" onClick={addSelectedTarget} disabled={!selectedSkillId || !selectedJobId} className="inline-flex items-center justify-center gap-2 rounded-lg bg-phino-signal px-4 py-2.5 text-sm font-semibold text-phino-canvas transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
+          <button type="button" onClick={addSelectedTarget} disabled={!selectedSkillId || !selectedJobId} className="inline-flex items-center justify-center gap-2 rounded-lg bg-phino-signal px-4 py-2.5 text-sm font-semibold text-phino-signal-on transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
             <Plus className="h-4 w-4" aria-hidden="true" />
             Track job
           </button>
@@ -378,7 +388,7 @@ export function MultiJobTelemetryDashboard() {
       </div>
 
       {catalogStatus === 'idle' && (
-        <div className="rounded-2xl border border-dashed border-phino-border bg-phino-surface p-8 sm:p-10" role="status">
+        <div className="rounded-lg border border-dashed border-phino-border bg-phino-surface p-8 sm:p-10" role="status">
           <p className="text-sm font-semibold text-phino-text">Start a local broker to see live runs</p>
           <ol className="mt-3 space-y-2 text-sm leading-relaxed text-phino-text-muted">
             <li>1. In your workspace, run <code className="rounded bg-phino-code-bg px-1.5 py-0.5 font-mono text-xs text-phino-code-text">npx -y @reactive-skills/axi dashboard</code>.</li>
@@ -390,18 +400,18 @@ export function MultiJobTelemetryDashboard() {
       )}
 
       {catalogStatus === 'loading' && !catalog && (
-        <div className="rounded-2xl border border-phino-border bg-phino-surface p-10 text-center text-sm text-phino-text-muted" role="status">Loading broker catalog...</div>
+        <div className="rounded-lg border border-phino-border bg-phino-surface p-10 text-center text-sm text-phino-text-muted" role="status">Loading broker catalog...</div>
       )}
 
       {catalogStatus === 'ready' && !hasJobs && (
-        <div className="rounded-2xl border border-dashed border-phino-border bg-phino-surface p-10 text-center" role="status">
+        <div className="rounded-lg border border-dashed border-phino-border bg-phino-surface p-10 text-center" role="status">
           <p className="text-sm font-semibold text-phino-text">No jobs discovered</p>
           <p className="mt-1 text-sm text-phino-text-muted">Start a skill job, then refresh the broker catalog.</p>
         </div>
       )}
 
       {catalogStatus === 'ready' && hasJobs && trackedTargets.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-phino-border bg-phino-surface p-10 text-center" role="status">
+        <div className="rounded-lg border border-dashed border-phino-border bg-phino-surface p-10 text-center" role="status">
           <p className="text-sm font-semibold text-phino-text">No tracked jobs</p>
           <p className="mt-1 text-sm text-phino-text-muted">Select a skill and job above to add the first live card.</p>
         </div>
@@ -414,7 +424,7 @@ export function MultiJobTelemetryDashboard() {
             const card = cards[key] || emptyCard(target);
             const catalogTarget = findCatalogTarget(catalog, target);
             return (
-              <article key={key} className="overflow-hidden rounded-2xl border border-phino-border bg-phino-surface shadow-sm">
+              <article key={key} className="overflow-hidden rounded-lg border border-phino-border bg-phino-surface">
                 <header className="flex items-start justify-between gap-3 border-b border-phino-border p-4">
                   <div className="min-w-0">
                     <div className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-phino-signal-text">{target.skillId}</div>
@@ -427,15 +437,15 @@ export function MultiJobTelemetryDashboard() {
                 </header>
 
                 {card.stateErrorType === 'invalid-target' && (
-                  <div className="flex items-start gap-2 border-b border-phino-warning/30 bg-phino-warning/10 p-4 text-sm text-phino-text" role="alert">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-phino-warning" aria-hidden="true" />
+                  <div className="flex items-start gap-2 border-b border-phino-guard/40 bg-phino-guard-soft p-4 text-sm text-phino-text" role="alert">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-phino-guard-text" aria-hidden="true" />
                     <span>Invalid target. Refresh the catalog and select this job again.</span>
                   </div>
                 )}
 
                 {(card.stateErrorType === 'error' || card.status === 'error') && (
-                  <div className="flex items-start gap-2 border-b border-phino-warning/30 bg-phino-warning/10 p-4 text-sm text-phino-text" role="alert">
-                    <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-phino-warning" aria-hidden="true" />
+                  <div className="flex items-start gap-2 border-b border-phino-guard/40 bg-phino-guard-soft p-4 text-sm text-phino-text" role="alert">
+                    <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-phino-guard-text" aria-hidden="true" />
                     <span>Connection error. {card.stateError || card.error || 'The broker could not provide this job state.'}</span>
                   </div>
                 )}
@@ -450,7 +460,7 @@ export function MultiJobTelemetryDashboard() {
                 <div className="border-t border-phino-border p-4">
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs font-semibold text-phino-text"><Activity className="h-3.5 w-3.5 text-phino-signal" aria-hidden="true" />Event ledger</div>
-                    <span className="font-mono text-2xs text-phino-text-muted">{card.events.length} visible</span>
+                    <span className="font-mono text-[11px] text-phino-text-muted">{card.events.length} visible</span>
                   </div>
                   <div className="max-h-56 divide-y divide-phino-border/50 overflow-y-auto rounded-lg border border-phino-border bg-phino-canvas font-mono text-xs">
                     {card.events.length === 0 ? (
@@ -462,13 +472,13 @@ export function MultiJobTelemetryDashboard() {
                             <span className="text-phino-text-muted">#{event.seq}</span>
                             <span className="truncate font-semibold text-phino-signal-text">{event.type}</span>
                           </div>
-                          <div className="mt-1 truncate text-2xs text-phino-text-muted">{event.skillId} / {event.jobId}</div>
+                          <div className="mt-1 truncate text-[11px] text-phino-text-muted">{event.skillId} / {event.jobId}</div>
                         </div>
-                        <time className="shrink-0 text-2xs text-phino-text-subtle" dateTime={event.timestamp}>{new Date(event.timestamp).toLocaleTimeString()}</time>
+                        <time className="shrink-0 text-[11px] text-phino-text-subtle" dateTime={event.timestamp}>{new Date(event.timestamp).toLocaleTimeString()}</time>
                       </div>
                     ))}
                   </div>
-                  {card.error && card.status === 'error' && <p className="mt-3 text-xs text-phino-warning">{card.error}</p>}
+                  {card.error && card.status === 'error' && <p className="mt-3 text-xs text-phino-guard-text">{card.error}</p>}
                 </div>
               </article>
             );
@@ -482,7 +492,7 @@ export function MultiJobTelemetryDashboard() {
 function Metric({ label, value, icon: Icon }) {
   return (
     <div className="min-w-0 rounded-lg border border-phino-border bg-phino-canvas p-3">
-      <div className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-phino-text-muted">{Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}{label}</div>
+      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-phino-text-muted">{Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}{label}</div>
       <div className="mt-1 truncate text-sm font-semibold text-phino-text" title={value}>{value}</div>
     </div>
   );

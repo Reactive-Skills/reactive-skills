@@ -11,8 +11,8 @@ export const metadata = {
 
 export default function TelemetryPage() {
   return (
-    <main className="container py-10 lg:py-14">
+    <div className="container py-12 lg:py-20">
       <MultiJobTelemetryDashboard />
-    </main>
+    </div>
   );
 }

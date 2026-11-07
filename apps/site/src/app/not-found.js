@@ -1,74 +1,74 @@
 import Link from 'next/link';
-import { Compass, ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
 
+const POPULAR_SKILLS = [
+  { slug: 'jsm-workflow', name: 'JSM Workflow', badge: 'Flagship / SDLC' },
+  { slug: 'skill-manager', name: 'Skill Manager', badge: 'Essential / Authoring' },
+  { slug: 'tdd-refactor', name: 'TDD Refactor', badge: 'Testing & Quality' },
+];
+
+const secondary =
+  'inline-flex h-11 items-center rounded-sm border border-phino-border-strong px-5 text-sm text-phino-text transition-colors hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus';
+
+/**
+ * Site 404: the unmapped-state message, links home, to the registry and docs, and three suggested skills.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static render)
+ * - Complexity: O(1) (three suggested skills)
+ * - Cyclomatic Complexity (CC): target <=1
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=2
+ */
 export default function NotFound() {
-  const popularSkills = [
-    { slug: 'jsm-workflow', name: 'JSM Workflow', badge: 'Flagship / SDLC' },
-    { slug: 'skill-manager', name: 'Skill Manager', badge: 'Essential / Authoring' },
-    { slug: 'tdd-refactor', name: 'TDD Refactor', badge: 'Testing & Quality' },
-  ];
-
   return (
-    <div className="container flex min-h-[70vh] flex-col items-center justify-center py-20 text-center">
-      <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-phino-border bg-phino-surface text-phino-signal-text shadow-sm">
-        <Compass className="h-7 w-7 text-phino-signal" aria-hidden="true" />
-      </span>
-      <p className="mt-6 font-mono text-xs font-semibold uppercase tracking-widest text-phino-signal-text">
-        404 &bull; Unmapped State
-      </p>
-      <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-phino-text sm:text-4xl">
-        This route has no state
-      </h1>
-      <p className="mt-3 max-w-md text-sm leading-relaxed text-phino-text-muted sm:text-base">
-        The requested path does not exist in the statechart. Route to an active state, explore documentation, or jump directly into a verified skill.
-      </p>
+    <div className="container py-16 lg:py-28">
+      <div className="grid gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:items-end lg:gap-16">
+        <div>
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-phino-signal-text">404 &bull; Unmapped State</p>
+          <p className="mt-6 font-display text-[clamp(88px,16vw,180px)] font-medium leading-none tracking-[-0.04em] text-phino-text" aria-hidden="true">
+            404<span className="text-phino-signal">.</span>
+          </p>
+          <h1 className="mt-6 font-display text-3xl font-medium tracking-tight text-phino-text sm:text-4xl">This route has no state</h1>
+          <p className="mt-4 max-w-md text-base leading-relaxed text-phino-text-muted">
+            The requested path does not exist in the statechart. Route to an active state, explore documentation, or jump directly into a verified skill.
+          </p>
 
-      {/* Suggested Flagship Skills */}
-      <div className="mt-8 w-full max-w-md rounded-xl border border-phino-border bg-phino-surface p-4 text-left">
-        <div className="mb-3 flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-phino-text-muted">
-          <Sparkles className="h-3.5 w-3.5 text-phino-signal" aria-hidden="true" />
-          <span>Recommended Transitions</span>
-        </div>
-        <div className="space-y-2">
-          {popularSkills.map((s) => (
+          <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
-              key={s.slug}
-              href={`/registry/${s.slug}`}
-              className="group flex items-center justify-between rounded-lg border border-phino-border/70 bg-phino-canvas/50 px-3 py-2 text-sm transition-colors hover:border-phino-signal hover:bg-phino-surface-raised"
+              href="/docs"
+              className="inline-flex h-11 items-center gap-2 rounded-sm bg-phino-signal px-5 text-sm font-medium text-phino-signal-on transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
             >
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-phino-text group-hover:text-phino-signal-text transition-colors">
-                  {s.name}
-                </span>
-                <span className="rounded bg-phino-signal-soft px-1.5 py-0.5 font-mono text-[10px] font-medium text-phino-signal-text border border-phino-signal/30">
-                  {s.badge}
-                </span>
-              </div>
-              <ArrowRight className="h-3.5 w-3.5 text-phino-text-muted group-hover:text-phino-signal transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              Documentation <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
             </Link>
-          ))}
+            <Link href="/registry" className={secondary}>
+              Skill Registry
+            </Link>
+            <Link href="/" className={secondary}>
+              Home
+            </Link>
+          </div>
         </div>
-      </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-        <Link
-          href="/"
-          className="rounded-lg border border-phino-border-strong bg-phino-surface-raised px-4 py-2 text-sm font-medium text-phino-text transition-colors hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
-        >
-          Home
-        </Link>
-        <Link
-          href="/registry"
-          className="rounded-lg border border-phino-border-strong bg-phino-surface-raised px-4 py-2 text-sm font-medium text-phino-text transition-colors hover:border-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
-        >
-          Skill Registry
-        </Link>
-        <Link
-          href="/docs"
-          className="rounded-lg bg-phino-text px-4 py-2 text-sm font-semibold text-phino-canvas transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
-        >
-          Documentation
-        </Link>
+        <div>
+          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-phino-text-subtle">Recommended Transitions</p>
+          <ul className="mt-4 border-t border-phino-border">
+            {POPULAR_SKILLS.map((s) => (
+              <li key={s.slug}>
+                <Link
+                  href={`/registry/${s.slug}`}
+                  className="group flex items-center justify-between gap-4 border-b border-phino-border py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
+                >
+                  <span className="min-w-0">
+                    <span className="block font-display text-lg text-phino-text transition-colors group-hover:text-phino-signal-text">{s.name}</span>
+                    <span className="mt-0.5 block font-mono text-[11px] text-phino-text-subtle">{s.badge}</span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-phino-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-phino-signal-text" aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   );
