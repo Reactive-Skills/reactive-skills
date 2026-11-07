@@ -43,9 +43,12 @@ jobs:
       - name: Test AXI CLI
         run: pnpm test:axi
 
+      - name: Test documentation site
+        if: matrix.node-version == '22.x'
+        run: pnpm test:site
+
       - name: Build documentation site
         if: matrix.node-version == '22.x'
         env:
           NEXT_PUBLIC_SITE_URL: https://reactive-skills.com
-          GITHUB_PAGES: "true"
         run: pnpm --filter @reactive-skills/site build

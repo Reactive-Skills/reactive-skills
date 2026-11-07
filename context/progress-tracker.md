@@ -270,3 +270,9 @@ Both package builds, 1,033 runtime tests, 389 AXI tests (one existing skip), 64 
 - The pilot covers tdd-refactor at immediate, ~150k and post-compaction, plus the three-skill workflow, three repetitions per cell, with a cost projection for the full grid in `research/adherence/results/pilot/`.
 - Pilot outcome (24 runs, `claude-fable-5-1`, $53.76 measured): both arms adhered fully at every pressure level and in the workflow, and no guard refused a signal, so the pilot does not separate the arms on adherence. Reactive runs used more tokens and turns. The full grid is projected at about $1,037 and awaits the owner's decision (`research/adherence/results/pilot/FINDINGS.md`).
 - `research/adherence` `npm test` covers scorer cases, generated-skill freshness, pinned-file hashes, guard refusals and a privacy scan of committed files. Its P3 budget is in `PERFORMANCE-STANDARDS.md`.
+
+## Single site deployment and site tests in CI
+
+- Removed the project-page GitHub Pages workflow; the root Pages repository's workflow is now the only site deployment.
+- The site builds for the domain root unless `NEXT_PUBLIC_BASE_PATH` is set; CI and `GITHUB_PAGES` no longer imply a `/reactive-skills` base path. `siteMetadata.test.js` covers local, CI and Pages builds.
+- `ci.yml` runs `pnpm test:site` on the Node 22 job.

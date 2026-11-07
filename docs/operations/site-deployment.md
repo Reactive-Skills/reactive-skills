@@ -53,7 +53,7 @@ Open the [root Pages workflow](https://github.com/Reactive-Skills/Reactive-Skill
 
 Use `main` as `source_ref` unless a specific source commit or branch needs to be deployed.
 
-The source repository still contains the legacy [project Pages workflow](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/deploy-pages.yml) as a compatibility and rollback path.
+The source repository does not deploy GitHub Pages itself; the root Pages workflow is the only deployment.
 
 ## CMS maintenance
 
@@ -69,21 +69,15 @@ For local authoring, run `pnpm dev:cms` from the repository root.
 
 The local CMS backend is enabled by `apps/site/public/admin/config.yml`.
 
-## Compatibility and rollback
+## Site URL and base path
 
-The site supports both root-site mode and the legacy project base path.
+The production URL is [`https://reactive-skills.com/`](https://reactive-skills.com/), and the site builds for the domain root by default.
 
-The current production URL is [`https://reactive-skills.com/`](https://reactive-skills.com/).
+The old `https://reactive-skills.github.io/` URL redirects to it.
 
-The legacy project URL remains available at [`https://reactive-skills.com/reactive-skills/`](https://reactive-skills.com/reactive-skills/).
-
-The old `https://reactive-skills.github.io/` and `https://reactive-skills.github.io/reactive-skills/` URLs redirect to these addresses.
-
-Keep the legacy workflow and base-path fallback until the root deployment has completed an intentional deprecation period.
+A build serves from a subpath only when `NEXT_PUBLIC_BASE_PATH` is set explicitly.
 
 When investigating a root deployment failure, first run the root Pages workflow manually from the source commit that should be published.
-
-Use the legacy project URL as a comparison point while diagnosing path, asset, or metadata differences.
 
 ## Post-deployment smoke checks
 
@@ -96,7 +90,6 @@ Confirm that the CMS still targets `Reactive-Skills/reactive-skills`.
 ## Related source files
 
 - [Root Pages notifier](../../.github/workflows/notify-pages.yml)
-- [Legacy project Pages workflow](../../.github/workflows/deploy-pages.yml)
 - [CMS configuration](../../apps/site/public/admin/config.yml)
 - [Site base-path configuration](../../apps/site/next.config.mjs)
 - [Site metadata configuration](../../apps/site/src/infrastructure/siteMetadata.js)
