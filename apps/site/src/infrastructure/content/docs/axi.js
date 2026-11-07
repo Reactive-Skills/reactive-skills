@@ -69,9 +69,9 @@ export const axi = {
       id: 'exit-codes',
       heading: 'Deterministic exit codes',
       blocks: [
-        { type: 'text', text: 'Exit codes are strictly defined so host scripts and agent harnesses can branch reliably without fragile regex matching on stderr.' },
+        { type: 'text', text: 'Exit codes tell host scripts and agent harnesses whether a command threw, but not every failure is non-zero. Many commands, including init, state, emit, inspect and events, report a failure such as NOT_FOUND or ALREADY_EXISTS as an `error:` / `code:` block on stdout and still exit 0. Check stdout for an `error:` line as well as the exit code.' },
         { type: 'table', caption: 'AXI Exit Code Contract', columns: ['Code', 'Error codes', 'Recovery Action'], rows: [
-          ['0', 'None (success)', 'Proceed to the next command.'],
+          ['0', 'None (success), or an error reported on stdout', 'If stdout contains an `error:` line, read its `code:` and `help` lines, fix the cause and re-run; otherwise proceed to the next command.'],
           ['1', 'NOT_FOUND, ALREADY_EXISTS, INVALID_SKILL, VALIDATION_ERROR, NO_EVENT_STORE, RUNTIME_ERROR, UNKNOWN; or a failed validate, vet (at or above --fail-on), preflight or sync check, which reports on stdout with no error code on stderr', 'For an error code, read the message and suggestions on stderr; for a failed check, read its report on stdout. Fix the cause and re-run.'],
           ['2', 'USAGE_ERROR, or an unknown command', 'Run the command with --help, correct the arguments, and re-run.'],
         ] },
