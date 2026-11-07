@@ -33,7 +33,7 @@ const REACTIVE = [
 
 const PRINCIPLES = [
   { icon: Layers, title: 'Context, on purpose.', description: 'Focused prompt slices replace the wall of instructions. Each state gives the agent only the instructions that step needs.', label: 'FOCUSED PROMPT SLICES' },
-  { icon: ShieldCheck, title: 'Progress, not guesswork.', description: "Typed signals meet deterministic guards. The runtime commits the transition, not the model's best guess.", label: 'SIGNALS + GUARDS' },
+  { icon: ShieldCheck, title: 'Progress, not guesswork.', description: "Each move needs a typed signal; guards can demand evidence. The runtime commits the transition, not the model's best guess.", label: 'SIGNALS + GUARDS' },
   { icon: Radio, title: 'A history that holds.', description: 'Immutable events capture what happened. Live deliverables turn a running process into inspectable work.', label: 'EVENTS + DELIVERABLES' },
 ];
 
@@ -87,7 +87,7 @@ export function LandingPage({ stats, tape, tapeSkillName, registryRows }) {
             More control.
           </h2>
           <p className="max-w-sm text-base leading-relaxed text-phino-text-muted">
-            Each state hands the agent only its own instructions. Every next step is explicit, guarded, and recorded.
+            Each state hands the agent only its own instructions. Every next step is explicit and recorded; guards can demand evidence.
           </p>
         </div>
         <RuntimeDemo />

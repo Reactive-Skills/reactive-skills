@@ -23,7 +23,7 @@ export function RegistrySection({ rows }) {
   const [filter, setFilter] = useState('all');
   const [activeSlug, setActiveSlug] = useState(rows[0]?.slug);
   const visible = filter === 'all' ? rows : rows.filter((row) => row.kind === filter);
-  const current = rows.find((row) => row.slug === activeSlug) ?? rows[0];
+  const current = visible.find((row) => row.slug === activeSlug) ?? visible[0];
 
   return (
     <>

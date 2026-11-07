@@ -24,7 +24,7 @@ const PATHS = [
     n: '03',
     title: 'Connect a host',
     body: 'AXI uses shell commands; MCP connects host tool panels. The runtime picks a compatible transport when a run starts.',
-    command: 'npx -y @reactive-skills/axi mcp',
+    command: 'npx -y @reactive-skills/axi setup',
     href: '/docs/axi',
     linkLabel: 'Compare AXI and MCP',
   },
