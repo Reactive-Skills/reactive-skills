@@ -1,49 +1,85 @@
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowDown, ArrowUpRight } from 'lucide-react';
 import { CopyButton } from '@/components/common/CopyButton';
-import { RunTape } from './RunTape';
+import avif768 from './images/runtime-object-768.avif';
+import avif1536 from './images/runtime-object-1536.avif';
+import webp768 from './images/runtime-object-768.webp';
+import webp1536 from './images/runtime-object-1536.webp';
 
-const INSTALL_COMMAND = 'npx skills add Reactive-Skills/skills --skill tdd-refactor';
+const CONNECT_COMMAND = 'npx -y @reactive-skills/axi setup';
 
-export function Hero({ tape, skillName }) {
+/**
+ * Landing hero: wordmark, tagline, primary actions and the one-command connect bar over the render.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static render; the only client work is the copy button)
+ * - Complexity: O(1)
+ * - Cyclomatic Complexity (CC): target <=2
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=4
+ */
+export function Hero() {
   return (
-    <section className="border-b border-phino-border bg-phino-canvas" aria-labelledby="hero-heading">
-      <div className="container py-14 sm:py-20 lg:py-24">
-        <h1
-          id="hero-heading"
-          className="max-w-5xl font-display text-[2rem] font-extrabold leading-[1.04] tracking-[-0.04em] text-phino-text [text-wrap:balance] sm:text-5xl lg:text-[4rem]"
-        >
-          Your agent runs the workflow one checked step at a time.
+    <section className="hero-stage relative isolate overflow-hidden bg-phino-hero text-phino-hero-ink" aria-labelledby="hero-heading">
+      <picture>
+        <source type="image/avif" srcSet={`${avif768.src} 768w, ${avif1536.src} 1536w`} sizes="100vw" />
+        {/* Static export has no image optimizer, so the picture element serves the pre-encoded AVIF and WebP files. */}
+        <img
+          src={webp1536.src}
+          srcSet={`${webp768.src} 768w, ${webp1536.src} 1536w`}
+          sizes="100vw"
+          width={1536}
+          height={1024}
+          alt="Five glass and aluminum modules connected in sequence, a sculptural picture of the runtime"
+          fetchPriority="high"
+          className="hero-object"
+        />
+      </picture>
+
+      <div className="hero-copy mx-auto max-w-[1400px] px-5 pt-12 sm:px-10 sm:pt-16">
+        <div className="flex items-center justify-between font-mono text-[11px] text-phino-hero-muted">
+          <p className="flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-phino-lime" aria-hidden="true" /> EVENT-DRIVEN AGENT RUNTIME
+          </p>
+          <span className="hidden sm:block">STRUCTURE IS THE DIFFERENCE.</span>
+        </div>
+        <h1 id="hero-heading" className="hero-title mt-8 font-display">
+          Reactive Skills<span className="text-phino-lime">.</span>
         </h1>
-
-        <p className="mt-6 max-w-[62ch] text-base leading-relaxed text-phino-text-muted sm:text-lg">
-          Reactive Skills turns a long instruction file into a workflow your agent runs one step at a time. It sees only the current step, moves forward when a check passes, and leaves a run history you can inspect and resume.
-        </p>
-
-        <RunTape steps={tape} skillName={skillName} />
-
-        <div className="mt-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm font-semibold" aria-label="Start here">
-            <Link
-              href="/registry"
-              className="inline-flex items-center gap-1.5 text-phino-signal-text underline decoration-phino-signal/40 hover:decoration-phino-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
-            >
-              Browse workflows <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
+        <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <p className="max-w-md text-lg leading-relaxed text-phino-hero-muted">
+            Your agent has skills.
+            <br />
+            <span className="text-phino-hero-ink">Give them a nervous system.</span>
+          </p>
+          <div className="flex flex-wrap gap-3">
             <Link
               href="/docs/quickstart"
-              className="text-phino-text underline decoration-phino-border-strong hover:decoration-phino-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
+              className="inline-flex h-12 items-center gap-2 rounded-sm bg-phino-lime px-6 text-sm font-medium text-phino-hero transition-opacity hover:opacity-90"
             >
-              Read the quickstart
+              Start building <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
             </Link>
-          </nav>
+            <a
+              href="#runtime"
+              className="inline-flex h-12 items-center gap-2 rounded-sm border border-phino-hero-muted/40 bg-phino-hero/60 px-5 text-sm font-medium text-phino-hero-ink transition-colors hover:bg-phino-hero"
+            >
+              See it react <ArrowDown className="h-4 w-4" aria-hidden="true" />
+            </a>
+          </div>
+        </div>
+      </div>
 
-          <div className="flex min-w-0 items-center gap-2 lg:max-w-[60%] lg:justify-end lg:text-right">
-            <code className="min-w-0 font-mono text-xs text-phino-text [overflow-wrap:anywhere] sm:text-sm">
-              <span className="mr-2 select-none text-phino-signal-text" aria-hidden="true">$</span>
-              {INSTALL_COMMAND}
-            </code>
-            <CopyButton value={INSTALL_COMMAND} size="sm" ariaLabel="Copy install command" className="shrink-0" />
+      <div className="absolute inset-x-0 bottom-0 z-10 border-t border-phino-hero-muted/25 bg-phino-hero/80 px-5 py-5 backdrop-blur sm:px-10">
+        <div className="mx-auto flex max-w-[1320px] flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <p className="font-mono text-[11px] text-phino-hero-muted">ONE COMMAND. CONNECT YOUR AGENT.</p>
+          <div className="flex min-w-0 items-center justify-between gap-4">
+            <code className="min-w-0 font-mono text-sm text-phino-lime [overflow-wrap:anywhere] sm:text-base">{CONNECT_COMMAND}</code>
+            <CopyButton
+              value={CONNECT_COMMAND}
+              size="sm"
+              ariaLabel="Copy the connect command"
+              className="shrink-0 border-white/15 bg-white/5 text-white/80 hover:border-white/30 hover:text-white focus-visible:ring-offset-phino-hero"
+            />
           </div>
         </div>
       </div>
