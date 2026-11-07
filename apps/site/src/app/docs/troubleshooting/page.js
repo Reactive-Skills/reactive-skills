@@ -1,6 +1,5 @@
 import { getDocsContentSource } from '@/infrastructure/container';
 import { notFound } from 'next/navigation';
-import { DocsBreadcrumb } from '@/features/docs/DocsBreadcrumb';
 import { DocPageView } from '@/features/docs/DocPageView';
 import { RelatedPages } from '@/features/docs/RelatedPages';
 
@@ -14,7 +13,6 @@ export default function TroubleshootingPage() {
   if (!doc) notFound();
   return (
     <div>
-      <DocsBreadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Docs', href: '/docs' }, { label: doc.title }]} />
       <DocPageView page={doc} />
       <RelatedPages pages={doc.relatedPages} />
     </div>

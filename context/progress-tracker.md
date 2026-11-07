@@ -278,3 +278,9 @@ Both package builds, 1,033 runtime tests, 389 AXI tests (one existing skip), 64 
 - Removed the project-page GitHub Pages workflow; the root Pages repository's workflow is now the only site deployment.
 - The site builds for the domain root unless `NEXT_PUBLIC_BASE_PATH` is set; CI and `GITHUB_PAGES` no longer imply a `/reactive-skills` base path. `siteMetadata.test.js` covers local, CI and Pages builds.
 - `ci.yml` runs `pnpm test:site` on the Node 22 job.
+
+## Docs page layout refresh
+
+- Docs pages show a category eyebrow, a larger title, an inline "On this page" index and "Next" links; the sidebar gains a "Documentation" heading link and the breadcrumb is removed.
+- Code examples show a `$` prompt on shell lines (decoration only; copy takes the raw command), the expected output and a caption. Notes and tables use the new tone and table styles.
+- Removed the root and docs `loading.js` fallbacks: with them, the static export put every page's content in a hidden Suspense chunk behind a skeleton. `docsChrome.test.js` covers the page markup and the absence of those fallbacks.
