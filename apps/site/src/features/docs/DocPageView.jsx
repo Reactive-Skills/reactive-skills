@@ -2,25 +2,35 @@ import { CodeBlock } from '@/components/common/CodeBlock';
 import { Callout } from '@/components/common/Callout';
 import { getProseVariant } from '@/lib/docs/proseVariants';
 
+/**
+ * Renders inline code and HTTP or root-relative links, including emphasized links.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P3 (static render)
+ * - Complexity: O(n²) worst case in malformed text bytes; bounded authored content
+ * - Cyclomatic Complexity (CC): target <=20
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=30
+ */
 function renderDocText(text) {
   if (typeof text !== 'string') return text;
-  const tokenRegex = /(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s]+|`[^`]+`)/g;
+  const tokenRegex = /(\*\*\[[^\]]+\]\((?:https?:\/\/[^\s)]+|\/(?!\/)[^\s)]*)\)\*\*|\[[^\]]+\]\((?:https?:\/\/[^\s)]+|\/(?!\/)[^\s)]*)\)|https?:\/\/[^\s]+|`[^`]+`)/g;
   const parts = text.split(tokenRegex);
 
   return parts.map((part, i) => {
     if (!part) return null;
 
-    const mdMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+    const emphasized = part.startsWith('**') && part.endsWith('**');
+    const mdMatch = (emphasized ? part.slice(2, -2) : part).match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/(?!\/)[^\s)]*)\)$/);
     if (mdMatch) {
       return (
         <a
           key={i}
           href={mdMatch[2]}
-          target="_blank"
-          rel="noopener noreferrer"
+          {...(mdMatch[2].startsWith('/') ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
           className="font-medium text-phino-signal underline decoration-phino-signal/40 underline-offset-2 hover:decoration-phino-signal"
         >
-          {mdMatch[1]}
+          {emphasized ? <strong>{mdMatch[1]}</strong> : mdMatch[1]}
         </a>
       );
     }

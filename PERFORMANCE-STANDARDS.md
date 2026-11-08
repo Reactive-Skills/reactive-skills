@@ -601,6 +601,9 @@ Theme tokens live in `src/app/globals.css` as `--phino-*` custom properties for 
 Shell components (`src/components/site/*`) render O(n) in their fixed link lists and carry the inline annotation below.
 Landing sections (`src/features/landing/*`) are P3 static renders with client islands for the copy buttons, the run tape, the two run examples and the registry filter; the registry list and filter are O(n) in published workflows.
 Docs chrome (`src/features/docs/*`, `src/components/common/CodeBlock.jsx`, `Callout.jsx`) is a P3 static render, O(n) in sections, blocks and navigation links; the copy buttons and the sidebar's current-page highlight are the only client work. No route has a `loading.js` fallback, so each page's content is in its static HTML rather than behind a Suspense skeleton.
+Inline docs text tokenization recognizes code, HTTP links and root-relative links, including emphasized links, at build time with no added client dependency.
+Its regular-expression scan is O(n²) in the worst case for malformed authored text; inputs are bounded static content blocks, not visitor input.
+The parser targets CC <=20, branch coverage >=60% and CRAP <=30; the new reference route uses the existing P3 docs rendering and shared page-view tracker.
 
 ### Offline mods image capture
 

@@ -27,6 +27,7 @@ export const navigation = {
     {
       title: 'Reference',
       links: [
+        { title: 'Guards, judgments and deliverables', href: '/docs/reference/guards-and-deliverables' },
         { title: 'Troubleshooting', href: '/docs/troubleshooting' },
         { title: 'Changelog', href: '/docs/changelog' },
       ],
