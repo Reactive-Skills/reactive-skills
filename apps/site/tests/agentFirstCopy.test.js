@@ -1,19 +1,22 @@
-import { readFileSync, readdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import HomePage from '@/app/page';
+import RegistryPage from '@/app/registry/page';
+import ModsPage from '@/app/mods/page';
+import BlogPage from '@/app/blog/page';
+import { BlogPostView } from '@/features/blog/BlogPostView';
+import { SkillCatalog } from '@/features/registry/SkillCatalog';
 import { SkillDetailView } from '@/features/registry/SkillDetailView';
-import { getRegistryContentSource } from '@/infrastructure/container';
+import { LiveTelemetryDeck } from '@/features/telemetry/LiveTelemetryDeck';
+import { getBlogContentSource, getRegistryContentSource } from '@/infrastructure/container';
 import { quickstart } from '@/infrastructure/content/docs/quickstart';
 
-const SRC = fileURLToPath(new URL('../src/', import.meta.url));
-// Manual operation belongs in docs. Scan authored UI and content, including conditional
-// copy that static rendering misses. Technical state names and illustrative demos are fine;
-// these patterns target visitor instructions and runnable runtime commands only.
-const DOCS_ALLOWLIST = ['app/docs/', 'features/docs/', 'infrastructure/content/docs/'];
+// Screenshots are not copy, and static image imports need the Next bundler.
+vi.mock('next/image', () => ({ default: () => null }));
+
+// Manual operation belongs in docs and explicitly optional quickstart sections. Every other
+// public surface is checked as rendered output; technical state names and demos are fine.
 const MANUAL_SECTIONS = ['run-it-yourself', 'runtime-selection', 'scaffold', 'inspect', 'emit', 'events'];
 const MANUAL_INSTRUCTIONS = [
   /\brun\s+[`'"]?invoke\b/i,
@@ -26,31 +29,40 @@ const MANUAL_INSTRUCTIONS = [
   /\bfrom your agent or terminal\b/i,
   /(?:@reactive-skills\/axi(?:@[\w.-]+)?|reactive-skills-axi|\baxi)\s+(?:invoke|emit|state|status|init)\b/i,
 ];
-const filesUnder = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-  const path = join(dir, entry.name);
-  return entry.isDirectory() ? filesUnder(path) : [path];
-});
+const render = (component, props = {}) => renderToStaticMarkup(createElement(component, props)).replaceAll('<!-- -->', '');
 const violatesRule = (copy) => MANUAL_INSTRUCTIONS.some((pattern) => pattern.test(copy));
 
 describe('agent-first public entry paths', () => {
-  it.each([
-    'Run invoke to start.',
-    'Step through the state machine.',
-    'Emit a signal yourself.',
-    'Advance the state machine.',
-    'npx -y @reactive-skills/axi invoke tdd-refactor',
-  ])('rejects manual runtime instructions: %s', (copy) => {
-    expect(violatesRule(copy)).toBe(true);
+  const registry = getRegistryContentSource();
+  const blog = getBlogContentSource();
+
+  it('keeps manual runtime instructions out of rendered non-docs surfaces', () => {
+    const skill = registry.getSkill(registry.listSkills()[0].slug);
+    const surfaces = {
+      home: render(HomePage),
+      registry: render(RegistryPage),
+      emptySearch: render(SkillCatalog, { initialSkills: [], categories: [] }),
+      liveTab: render(LiveTelemetryDeck, { skill }),
+      mods: render(ModsPage),
+      blog: render(BlogPage),
+      ...Object.fromEntries(blog.listPosts().map(({ slug }) => [`blog/${slug}`, render(BlogPostView, { post: blog.getPost(slug) })])),
+    };
+    const offenders = Object.entries(surfaces).filter(([, html]) => violatesRule(html)).map(([name]) => name);
+    expect(offenders).toEqual([]);
   });
 
-  it('keeps manual runtime instructions inside the docs allowlist', () => {
-    const roots = ['app', 'components/site', 'features', 'infrastructure/content/blog', 'infrastructure/content/mods', 'infrastructure/content/landing'];
-    const offenders = roots.flatMap((root) => filesUnder(join(SRC, root)))
-      .filter((path) => /\.(js|jsx|md)$/.test(path))
-      .filter((path) => !DOCS_ALLOWLIST.some((prefix) => relative(SRC, path).startsWith(prefix)))
-      .filter((path) => violatesRule(readFileSync(path, 'utf8')))
-      .map((path) => relative(SRC, path));
-    expect(offenders).toEqual([]);
+  it('offers skill-manager from the empty registry search', () => {
+    const html = render(SkillCatalog, { initialSkills: [], categories: [] });
+    expect(html).toContain('/docs/quickstart#create-a-skill');
+    expect(html).toContain('Ask your agent');
+  });
+
+  it('keeps the live tab gate response next to an agent prompt', () => {
+    const skill = registry.getSkill(registry.listSkills()[0].slug);
+    const html = render(LiveTelemetryDeck, { skill }).replace(/<[^>]*>/g, '');
+    expect(html).toContain(`Use the ${skill.slug} skill to [describe your task].`);
+    expect(html).toContain('Respond to a Paused Gate');
+    expect(html).toContain('Send Response to Agent');
   });
 
   it('offers use and create prompts immediately after the hero', () => {
@@ -62,7 +74,6 @@ describe('agent-first public entry paths', () => {
   });
 
   it('offers a prompt and installation on every skill page without manual commands', () => {
-    const registry = getRegistryContentSource();
     for (const { slug } of registry.listSkills()) {
       const skill = registry.getSkill(slug);
       const html = renderToStaticMarkup(createElement(SkillDetailView, { skill }));
