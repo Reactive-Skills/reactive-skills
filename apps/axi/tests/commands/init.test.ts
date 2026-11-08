@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import yaml from 'js-yaml';
 
 describe('initCommand', () => {
   let originalCwd: string;
@@ -47,6 +48,10 @@ describe('initCommand', () => {
     expect(fs.existsSync(path.join(skillDir, 'states', 'done.md'))).toBe(true);
 
     const skillMdContent = fs.readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8');
+    const frontmatter = yaml.load(skillMdContent.split('---')[1]) as { name: string; description: string };
+    expect(frontmatter.name).toBe('test-skill');
+    expect(frontmatter.description).toMatch(/read all bootloader retrieval options/i);
+    expect(frontmatter.description).toContain('one state at a time');
     expect(skillMdContent).toContain('REACTIVE BOOTLOADER');
     expect(skillMdContent).toContain('reactive_bootloader');
     expect(skillMdContent).toContain('reactive-skills-axi bootloader test-skill --json');
