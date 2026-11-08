@@ -300,3 +300,11 @@ Both package builds, 1,033 runtime tests, 389 AXI tests (one existing skip), 64 
 - Mermaid statecharts render with the `base` theme plus `themeCSS` that reads the `--phino-*` tokens, so diagrams follow the palette and theme; the active-state highlight uses the signal token.
 - The telemetry dashboard used undefined `phino-warning` and `text-2xs` classes, so its warnings rendered unstyled; they now use the guard tokens and `text-[11px]`. Signal buttons use `text-phino-signal-on`. The telemetry route no longer nests a second `<main>`.
 - The share image uses the hero band palette and the homepage's existing wording; `ogPalette.test.js` checks its colors against the tokens. The favicon (`app/icon.svg`, `public/favicon.ico`) is the site mark.
+
+## Guards and deliverables reference extraction
+
+- Added `apps/site/src/infrastructure/content/docs/guardsAndDeliverables.js` and `apps/site/src/app/docs/reference/guards-and-deliverables/page.js`, registered through the docs index and Reference navigation group; sitemap generation consumes that navigation.
+- Replaced authoring section 4 with a short check example and reference link, keeping every authoring section ID; section 5 links to the moved threshold example and conversion table, preserved verbatim.
+- The reference preserves the 13 original topics with named destinations and examples, corrects approval retry limits and model routing hints, and qualifies legacy context and fallback behavior against current runtime and AXI source.
+- `DocPageView.jsx` now renders internal Markdown links and emphasized link titles; `guardsReference.test.js` covers registration, sitemap, compatibility anchors and link rendering, while existing heading and chrome tests enumerate the additional page automatically.
+- Updated `PERFORMANCE-STANDARDS.md` for inline parsing; the new route inherits the existing shared analytics tracker.

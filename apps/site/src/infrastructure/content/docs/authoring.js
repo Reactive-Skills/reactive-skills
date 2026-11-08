@@ -185,61 +185,24 @@ Do NOT attempt to write application logic or make the test pass in this state.`,
     },
     {
       id: 'guards-and-deliverables',
-      heading: '4. Deterministic guards, semantic judgments & deliverables',
+      heading: '4. Checks and generated deliverables',
       blocks: [
-        { type: 'text', text: 'Guards prevent subjective completion claims. Transitions require verified facts, code assertions, or semantic verification:' },
-        { type: 'list', items: [
-          'Inline expressions: Written in standard JavaScript (e.g. payload.exit_code == 0 && payload.coverage >= 80).',
-          'Semantic judgments: Declared via judgment: { type, criterion, min_probability, escalate, fallback_target }. Evaluated via the decoupled Judgment Engine (built-in sandbox or optional @typesafe-ai/sdk-backed Jev System One decisions).',
-          'Adapter selection: adapter_hint picks the primary adapter. Without it, Jev is primary whenever it is available. Write exact checks as JavaScript expressions with adapter_hint: script, so the script adapter evaluates them and model probability never decides them. fallback_adapter runs only when the primary adapter fails or its circuit is open; it does not run when the primary returns a low-probability answer. reactive-skills-axi validate warns on an executable predicate without adapter_hint: script.',
-          'Scoped judgment context: By default the Jev adapter sends the whole run context and the event payload with every judgment. Set context_paths: [write_side.deciders, read_projections] to send only those paths (relative to the run context, a number indexes an array) plus the payload, and include_payload: false to leave the payload out. A path with no value is not sent and does not fail the judgment. GUARD_EVALUATED records judgment.contextSent with the paths sent, the missing paths, includePayload, and inputTokens when the model reports it. The script adapter ignores both fields. Runtimes without the judgment.context_paths capability drop both fields and send everything, so require judgment.context_paths in runtime_requirements.required_capabilities; reactive-skills-axi validate rejects invalid paths and warns when the capability is not required.',
-          'Fallback routing: When a judgment rejects a result, the FSM transitions to its declared fallback_target state and logs GUARD_FALLBACK_TRIGGERED.',
-          'Model outages: When the selected model adapter (Jev or another registered model) is configured but fails, times out, or has an open circuit breaker, a criterion written as a JavaScript expression is still evaluated by the built-in script adapter. A natural-language criterion cannot be judged that way, so the signal is refused, the run stays in its current state without a fallback transition, and the emit result returns refusal_reason. Retry the signal once the model is reachable, with a new idempotency key if you set one; a rejected key is the exception, because retrying cannot fix it. Jev counts as configured whenever TYPESAFE_API_KEY is set, so a missing or broken SDK refuses the same way. When Jev rejects the key (HTTP 401 or 403), the refusal tells the agent to stop and ask the user to fix or replace TYPESAFE_API_KEY, and not to unset it to get past the gate. A refused natural-language gate also waits for a person, as described next.',
-          'Approval for gates no model can judge: When no model is configured, during a model outage, or when Jev rejects its key, a natural-language criterion refuses the signal and the runtime records APPROVAL_REQUESTED. The refusal tells the agent to stop and ask the user to run reactive-skills-axi approve <skill> --job <id> in their own terminal, from the named workspace folder. approve runs only in an interactive terminal: it shows each waiting gate with the agent\'s payload and asks the user to type back a one-time code. The code approves the gate, typing reject rejects it, and any other answer asks again. An approval re-sends the original signal and the transition reports judgment_basis: human; a rejection routes to fallback_target or refuses. MCP has no tool that approves a gate.',
-          'Self-reported decisions: The agent\'s own payload (exit_code or success for predicates, choice for categorical judgments, score for evaluations) decides a natural-language criterion only when no model is configured and the user has enabled self-reported decisions with reactive-skills-axi approve <skill> --allow-self-reported, which also asks for a code and stores the grant in the user\'s home folder, keyed by the workspace path, so nothing copied, committed, or restored into the workspace counts and a revoke stays revoked. The grant covers the workspace until reactive-skills-axi approve <skill> --revoke-self-reported removes it, and it never applies during an outage of a configured model. These transitions report judgment_basis: self_reported with a warning, and every GUARD_EVALUATED records decidedBy as model, expression, human, or self_reported. A criterion written as a JavaScript expression is always evaluated, and if it throws, for example because a payload field is missing, the judgment rejects instead of reading the payload.',
-          'Model capability tiers: Declared via model: { tier: fast | balanced | reasoning | decision } to guide multi-model routing across states.',
-          'Custom guard scripts: Placed in guards/<guard_name>.js for complex validation like AST checks or git status verifications. A guard file must be .js, .mjs or .cjs, and its syntax must match its module format: .mjs is always ES module, .cjs is always CommonJS, and .js follows the nearest package.json (or Node syntax detection when it sets no type). reactive-skills-axi validate fails a guard file with the wrong format, a missing file, or an unsupported extension.',
-          'Guard refusal reasons: A refused guard tells the agent why. A guard script may return { passed, reason } instead of a boolean, and a falsy passed refuses with reason. An inline guard may declare guard_message, returned when it refuses. Without a message, the refusal names the guard expression or script path.',
-          'Guard contracts: guards/*.yaml judgment contracts are design documents. The runtime enforces only the skill.yaml judgment, and reactive-skills-axi validate reports drift between the two.',
-          'Deliverable projections: Configured via deliverable_projections in skill.yaml. Handlebars templates (templates/*.hbs) automatically fold the event log into deliverables (.docs/*.md) without requiring manual agent summarization.',
-        ] },
+        { type: 'text', text: 'A transition can check facts before the workflow advances. Use a JavaScript guard for an exact condition, such as a passing test exit code. Use a semantic judgment when the condition needs interpretation.' },
+        { type: 'code', example: {
+          language: 'yaml',
+          command: `TEST_RAN:
+  target: COMPLETE
+  guard: "payload.exit_code == 0"`,
+        } },
+        { type: 'text', text: 'The guard blocks this transition when the reported exit code is nonzero. A skill can also declare deliverable projections: templates that turn recorded run data into files such as reports.' },
+        { type: 'text', text: 'For adapter selection, probability thresholds, context sharing, model failures, human approval, custom guard files and projection configuration, see the **[Guards, judgments and deliverables reference](/docs/reference/guards-and-deliverables)**.' },
       ],
     },
     {
       id: 'judgment-thresholds',
       heading: '5. Judgment probability thresholds',
       blocks: [
-        { type: 'text', text: 'Write the probability you mean with min_probability. For a predicate it is compared directly with P(yes). For a categorical judgment it is compared with the probability of the picked label, which must also be one of the options. min_probability is not available on evaluation judgments, and a predicate min_probability must be at least 0.5.' },
-        { type: 'text', text: 'An optional escalate band routes grey-zone results to a review state instead of the fallback. A result at or above escalate.min_probability and below min_probability moves to escalate.target. Anything lower moves to fallback_target, or refuses the transition when no fallback_target is declared.' },
-        { type: 'code', example: {
-          language: 'yaml',
-          command: `runtime_requirements:
-  required_capabilities: ["judgment.probability_thresholds"]
-
-states:
-  REVIEW:
-    transitions:
-      REVIEW_SUBMITTED:
-        target: "MERGE"
-        judgment:
-          type: "predicate"
-          criterion: "Does the diff satisfy every approved acceptance criterion?"
-          min_probability: 0.85
-          escalate:
-            min_probability: 0.3
-            target: "HUMAN_REVIEW"
-          fallback_target: "REVISE"`,
-          explanation: 'P(yes) of 0.85 or more merges, 0.3 up to 0.85 asks a human, and below 0.3 returns to REVISE.',
-        } },
-        { type: 'text', text: 'The older min_confidence field keeps its meaning. For predicates the runtime reports confidence as |P(yes) - 0.5| * 2, so min_confidence: m requires P(yes) >= 0.5 + m / 2. For categorical judgments min_confidence is compared with the adapter\'s own confidence score, not with the picked label\'s probability. A judgment may set min_probability or min_confidence, not both, and a judgment with neither uses min_confidence 0.75.' },
-        { type: 'table', caption: 'Migrating predicate min_confidence to min_probability', columns: ['min_confidence', 'Required P(yes)', 'Equivalent min_probability'], rows: [
-          ['0.6', '0.80', '0.8'],
-          ['0.7', '0.85', '0.85'],
-          ['0.75 (default)', '0.875', '0.875'],
-          ['0.85', '0.925', '0.925'],
-          ['0.9', '0.95', '0.95'],
-        ] },
-        { type: 'callout', variant: 'warn', title: 'Require the capability before migrating', text: 'Runtimes before judgment.probability_thresholds drop min_probability and escalate and apply min_confidence 0.75 instead. List judgment.probability_thresholds in runtime_requirements.required_capabilities so an older runtime refuses the skill rather than silently changing its gates. reactive-skills-axi validate warns when the requirement is missing.' },
+        { type: 'text', text: 'For probability bands, the complete YAML example and the confidence conversion table, see [Thresholds and migration](/docs/reference/guards-and-deliverables#judgment-thresholds).' },
       ],
     },
     {
