@@ -85,6 +85,19 @@ export function createReactiveBootloader(skillName: string): string {
 }
 
 /**
+ * Render the host-visible SKILL.md description with the bootloader discovery hint.
+ * # Performance & Risk Budget
+ * - Tier: P0 (< 5ms)
+ * - Complexity: O(b), generated description bytes
+ * - Cyclomatic Complexity (CC): 1
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+export function createReactiveSkillDescription(skillName: string): string {
+  return `Reactive workflow for ${normalizeSkillName(skillName)}. Read all bootloader retrieval options; the runtime serves one state at a time.`;
+}
+
+/**
  * Render the retrieval alternatives and required failure diagnosis.
  * # Performance & Risk Budget
  * - Tier: P0 (< 5ms)

@@ -8,6 +8,7 @@ import {
   createAxiFirstBypassState,
   createAxiFirstInitState,
   createReactiveBootloaderReference,
+  createReactiveSkillDescription,
 } from '../bootloader.js';
 
 const SKILLS_DIR = path.resolve(process.cwd(), 'skills');
@@ -71,7 +72,7 @@ function createSkillManifest(name: string) {
 function createSkillMarkdown(name: string): string {
   return `---
 name: ${name}
-description: Reactive workflow for ${name}. Read all bootloader retrieval options; the runtime serves one state at a time.
+description: ${createReactiveSkillDescription(name)}
 type: reactive
 ---
 

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import yaml from 'js-yaml';
 import { ProjectMigrator } from '../src/core/migration.js';
 
 describe('ProjectMigrator (Retroactive Project Upgrader)', () => {
@@ -97,5 +98,22 @@ describe('ProjectMigrator (Retroactive Project Upgrader)', () => {
     // Idempotency: second run does not duplicate
     const secondResult = ProjectMigrator.migrateSkill(skillDir);
     expect(secondResult.migrated).toBe(false);
+  });
+
+  it('should scaffold a missing SKILL.md with the bootloader discovery hint in valid frontmatter', () => {
+    const skillDir = path.join(tempDir, 'bare-skill');
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(path.join(skillDir, 'skill.yaml'), `name: "bare-skill"\ninitial_state: "PROCESS"\nstates:\n  PROCESS:\n    description: "Doing work"\n`, 'utf8');
+
+    const result = ProjectMigrator.migrateSkill(skillDir);
+
+    expect(result.migrated).toBe(true);
+    const skillMd = fs.readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8');
+    const frontmatter = yaml.load(skillMd.split('---')[1]) as { name: string; description: string; type: string };
+    expect(frontmatter.name).toBe('bare-skill');
+    expect(frontmatter.type).toBe('reactive');
+    expect(frontmatter.description).toMatch(/read all bootloader retrieval options/i);
+    expect(frontmatter.description).toContain('one state at a time');
+    expect(skillMd).toContain('reactive-skills-axi bootloader bare-skill --json');
   });
 });

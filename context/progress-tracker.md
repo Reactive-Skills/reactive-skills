@@ -4,7 +4,7 @@
 
 `packages/runtime/src/core/bootloader.ts` now requires a working retrieval alternative or a precise prerequisite/failure report, introduces progressive disclosure before policy, and keeps context-routing fallback inside requested skill execution.
 Bootloader guidance version 1.0.1 is returned through MCP/AXI; existing migration regenerates references, sync mirrors source bytes, and AXI validation diagnoses stale copies rather than rewriting them.
-`apps/axi/src/commands/init.ts` adds the discovery hint to the existing description field; runtime `bootloader.test.ts` covers direct, inserted and replaced references, with MCP/AXI bootloader version checks and AXI init frontmatter parsing in their existing suites.
+`createReactiveSkillDescription` supplies the discovery hint for the description field of both AXI init and the migration scaffold for a missing SKILL.md (authored descriptions are preserved); runtime `bootloader.test.ts` covers direct, inserted and replaced references, with MCP/AXI bootloader version checks, plus AXI init and missing-SKILL.md migration frontmatter parsing.
 `PERFORMANCE-STANDARDS.md` records local generation budgets; no runtime transition, transport or output-default behavior changes.
 Local verification passed both package builds, 1,093 runtime tests, 389 AXI tests (one existing skip), documentation/prose gates and the unchanged offline transport byte baseline.
 
