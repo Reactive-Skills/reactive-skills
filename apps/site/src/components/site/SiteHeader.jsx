@@ -59,7 +59,7 @@ export function SiteHeader() {
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <Link
-            href="/docs/quickstart"
+            href="/#start"
             className="hidden h-9 items-center gap-2 rounded-md bg-phino-signal px-4 text-sm font-medium text-phino-signal-on shadow transition-colors hover:bg-phino-signal/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus focus-visible:ring-offset-2 focus-visible:ring-offset-phino-canvas sm:inline-flex"
           >
             Get started <ArrowUpRight className="size-4" aria-hidden="true" />
@@ -93,7 +93,7 @@ export function SiteHeader() {
                   </SheetClose>
                 ))}
                 <SheetClose asChild>
-                  <Link href="/docs/quickstart" className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-phino-signal px-4 text-sm font-medium text-phino-signal-on hover:bg-phino-signal/90">
+                  <Link href="/#start" className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-phino-signal px-4 text-sm font-medium text-phino-signal-on hover:bg-phino-signal/90">
                     Get started <ArrowUpRight className="size-4" aria-hidden="true" />
                   </Link>
                 </SheetClose>

@@ -12,16 +12,25 @@ function event(id, type, detail) {
   return { id, type, detail };
 }
 
+/**
+ * Illustrates a rejected check and recovery using local example state.
+ * # Performance & Risk Budget
+ * - Tier: P2 (client interaction)
+ * - Complexity: O(e) in displayed example events
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=16
+ */
 export function RunDemo() {
   const [state, setState] = useState('VERIFY');
   const [guard, setGuard] = useState('READY');
   const [events, setEvents] = useState(INITIAL_EVENTS);
-  const [message, setMessage] = useState('Run the check. The guard decides whether the workflow advances.');
+  const [message, setMessage] = useState('In this example, the agent reports a check result and the guard decides whether the workflow advances.');
 
   const runFailingCheck = () => {
     setState('VERIFY');
     setGuard('BLOCKED');
-    setMessage('State preserved. Fix the failing check, then emit the signal again.');
+    setMessage('State preserved. The agent fixes the failing check and submits a new result.');
     setEvents((current) => [
       event(`EVT_${String(current.length + 1).padStart(3, '0')}`, 'GUARD_REJECTED', 'exit_code == 0, received 1'),
       ...current,
@@ -41,7 +50,7 @@ export function RunDemo() {
   const reset = () => {
     setState('VERIFY');
     setGuard('READY');
-    setMessage('Run the check. The guard decides whether the workflow advances.');
+    setMessage('In this example, the agent reports a check result and the guard decides whether the workflow advances.');
     setEvents(INITIAL_EVENTS);
   };
 
@@ -49,7 +58,7 @@ export function RunDemo() {
     <div className="dark overflow-hidden border border-phino-border-strong bg-phino-code-bg text-phino-code-text">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-white/60">Live run</p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-white/60">Interactive example</p>
           <p className="mt-1 font-display text-sm font-semibold text-white">Refactor workflow</p>
         </div>
         <button
@@ -103,7 +112,7 @@ export function RunDemo() {
               onClick={runPassingCheck}
               className="rounded-lg bg-phino-signal px-3 py-2.5 text-xs font-semibold text-phino-canvas transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
             >
-              Emit passing result
+              Simulate passing result
             </button>
           </div>
         </div>

@@ -4,17 +4,16 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Activity,
   Radio,
-  Send,
   Sliders,
   RotateCcw,
   AlertTriangle,
   Play,
   ChevronDown,
   ChevronRight,
-  Terminal,
 } from 'lucide-react';
 import { MermaidViewer } from '@/components/common/MermaidViewer';
 import { cn } from '@/lib/utils';
+import { CommandBlock } from '@/components/common/CommandBlock';
 
 const getBridgeJobId = (payload) =>
   payload?.jobId || payload?.job_id || payload?.runId || payload?.run_id || '';
@@ -28,14 +27,14 @@ const getBridgeErrorMessage = (error) => {
 };
 
 /**
- * Per-skill live deck: connects to the local bridge, highlights the active state and sends signals.
+ * Per-skill live deck: connects to the local bridge and displays the active state and events.
  *
  * # Performance & Risk Budget
  * - Tier: P2 (client; one SSE connection)
  * - Complexity: O(e) in the e visible events
- * - Cyclomatic Complexity (CC): target <=25
+ * - Cyclomatic Complexity (CC): target <=20
  * - Branch Coverage: target >=60%
- * - CRAP Score: target <=40
+ * - CRAP Score: target <=30
  */
 export function LiveTelemetryDeck({ skill }) {
   const [bridgeUrl, setBridgeUrl] = useState('http://127.0.0.1:4242');
@@ -46,8 +45,6 @@ export function LiveTelemetryDeck({ skill }) {
   const [context, setContext] = useState({});
   const [events, setEvents] = useState([]);
   const [scrubIndex, setScrubIndex] = useState(null);
-  const [signalInput, setSignalInput] = useState('');
-  const [signalSending, setSignalSending] = useState(false);
   const [expandedEvents, setExpandedEvents] = useState({});
 
   const eventSourceRef = useRef(null);
@@ -158,31 +155,6 @@ export function LiveTelemetryDeck({ skill }) {
     };
   }, []);
 
-  const handleEmitSignal = async (e) => {
-    e?.preventDefault();
-    if (!signalInput.trim()) return;
-
-    setSignalSending(true);
-    try {
-      const res = await fetch(`${bridgeUrl}/signal`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ signal: signalInput.trim() }),
-        targetAddressSpace: 'loopback',
-      });
-      if (res.ok) {
-        setSignalInput('');
-      } else {
-        const json = await res.json();
-        alert(`Signal failed: ${json.error || 'Unknown error'}`);
-      }
-    } catch (err) {
-      alert(`Signal dispatch error: ${getBridgeErrorMessage(err)}`);
-    } finally {
-      setSignalSending(false);
-    }
-  };
-
   // Determine current display state considering time-travel scrubber
   const displayedEvents = scrubIndex !== null ? events.slice(0, scrubIndex + 1) : events;
   const currentDisplayedState = (() => {
@@ -264,7 +236,7 @@ export function LiveTelemetryDeck({ skill }) {
         <div className="rounded-lg border border-rose-500/30 bg-rose-950/20 p-3 text-xs text-rose-300 flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
           <span>{errorMessage}</span>
-          <span className="text-phino-text-muted ml-auto">If needed, run `reactive-skills-axi view {skill.slug}` locally.</span>
+          <span className="text-phino-text-muted ml-auto">Ask your agent to open the local viewer for {skill.slug}.</span>
         </div>
       )}
 
@@ -351,7 +323,7 @@ export function LiveTelemetryDeck({ skill }) {
         </div>
       )}
 
-      {/* Two Column Section: Live Event Stream Feed & HITL Signal Dispatcher */}
+      {/* Two Column Section: Live Event Stream Feed & Agent Prompt */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Live Event Stream Feed */}
         <div className="lg:col-span-2 rounded-lg border border-phino-border bg-phino-surface p-4 space-y-3">
@@ -366,7 +338,7 @@ export function LiveTelemetryDeck({ skill }) {
           <div className="divide-y divide-phino-border/40 max-h-80 overflow-y-auto font-mono text-xs">
             {displayedEvents.length === 0 ? (
               <div className="py-8 text-center text-phino-text-muted text-xs">
-                No events received yet. Start an agent run with `reactive-skills-axi invoke {skill.slug}` to stream events.
+                No events received yet. Ask your agent to use the {skill.slug} skill.
               </div>
             ) : (
               [...displayedEvents].reverse().map((ev, idx) => {
@@ -408,40 +380,14 @@ export function LiveTelemetryDeck({ skill }) {
           </div>
         </div>
 
-        {/* Right Col: HITL Signal Dispatcher */}
+        {/* Right Col: Agent Prompt */}
         <div className="rounded-lg border border-phino-border bg-phino-surface p-4 space-y-4">
-          <div className="border-b border-phino-border pb-2.5">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-phino-text">
-              <Terminal className="h-3.5 w-3.5 text-phino-signal" />
-              <span>Human-in-the-Loop Signal Dispatch</span>
-            </div>
-            <p className="text-[11px] text-phino-text-muted mt-1">
-              Manually trigger state transitions or approve gates.
-            </p>
-          </div>
-
-          <form onSubmit={handleEmitSignal} className="space-y-3">
-            <div>
-              <label className="text-[11px] font-medium text-phino-text-muted block mb-1">Signal Name</label>
-              <input
-                type="text"
-                value={signalInput}
-                onChange={(e) => setSignalInput(e.target.value)}
-                placeholder="e.g. APPROVED, RETRY, ABORT"
-                className="w-full rounded-lg border border-phino-border bg-phino-canvas px-3 py-1.5 font-mono text-xs text-phino-text focus:outline-none focus:ring-1 focus:ring-phino-signal"
-                disabled={status !== 'connected' || signalSending}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={status !== 'connected' || signalSending || !signalInput.trim()}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-phino-signal px-3 py-2 text-xs font-semibold text-phino-signal-on hover:opacity-90 disabled:opacity-50 transition-opacity"
-            >
-              <Send className="h-3.5 w-3.5" />
-              {signalSending ? 'Emitting...' : 'Emit Signal to Agent'}
-            </button>
-          </form>
+          <CommandBlock
+            command={`Use the ${skill.slug} skill to [describe your task].`}
+            caption="Ask your agent"
+            prompt
+            wrap
+          />
 
           {/* Context Keys Preview */}
           <div className="pt-2 border-t border-phino-border">

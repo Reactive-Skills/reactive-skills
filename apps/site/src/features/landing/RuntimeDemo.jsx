@@ -72,7 +72,7 @@ export function RuntimeDemo() {
                 </>
               ) : (
                 <>
-                  emit {state.signal} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  Next example step <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </>
               )}
             </button>

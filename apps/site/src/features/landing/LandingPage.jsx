@@ -50,7 +50,7 @@ function Section({ id, label, labelClassName = 'text-phino-signal-text', classNa
 
 /**
  * Landing page: hero, run tape, the two run examples, registry, before and after, principles,
- * start paths, boundaries and the closing call to action. Registry numbers come from the build.
+ * entry paths, boundaries and the closing call to action. Registry numbers come from the build.
  *
  * # Performance & Risk Budget
  * - Tier: P3 (static render; interactive parts are client islands)
@@ -63,6 +63,14 @@ export function LandingPage({ stats, tape, tapeSkillName, registryRows }) {
   return (
     <div>
       <Hero />
+
+      <Section id="start" label="GET STARTED" aria-labelledby="paths-heading">
+        <h2 id="paths-heading" className="section-title mt-5 font-display text-phino-text">Use a skill. Or create one.</h2>
+        <StartPaths />
+        <p className="mt-8 text-sm text-phino-text-muted">
+          Optional: <Link href="/docs/mcp" className="underline underline-offset-4">connect your host with MCP</Link>.
+        </p>
+      </Section>
 
       <div className="border-b border-phino-border px-5 py-10 sm:px-10">
         <div className="mx-auto max-w-[1320px]">
@@ -194,12 +202,7 @@ export function LandingPage({ stats, tape, tapeSkillName, registryRows }) {
         </div>
       </Section>
 
-      <Section label="06 / THREE WAYS TO START" aria-labelledby="paths-heading">
-        <h2 id="paths-heading" className="section-title mt-5 font-display text-phino-text">Pick your entry state.</h2>
-        <StartPaths />
-      </Section>
-
-      <Section label="07 / BOUNDARIES" aria-labelledby="boundaries-heading">
+      <Section label="06 / BOUNDARIES" aria-labelledby="boundaries-heading">
         <div className="mb-12 mt-5 flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <h2 id="boundaries-heading" className="section-title max-w-3xl font-display text-phino-text">
             Use it where state and evidence matter.
@@ -211,7 +214,7 @@ export function LandingPage({ stats, tape, tapeSkillName, registryRows }) {
         <Boundaries />
       </Section>
 
-      <Section label="08 / YOUR NEXT STATE" className="border-b-0" aria-labelledby="cta-heading">
+      <Section label="07 / GET STARTED" className="border-b-0" aria-labelledby="cta-heading">
         <QuickstartCta />
       </Section>
     </div>

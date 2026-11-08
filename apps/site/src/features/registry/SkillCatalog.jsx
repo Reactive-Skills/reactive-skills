@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, X, SlidersHorizontal, Terminal } from 'lucide-react';
-import { CopyButton } from '@/components/common/CopyButton';
+import { Search, X, SlidersHorizontal } from 'lucide-react';
+import Link from 'next/link';
+import { CommandBlock } from '@/components/common/CommandBlock';
+import { CREATE_SKILL_PROMPT } from '@/lib/skillPrompts';
 import { SkillCard } from './SkillCard';
 
 /**
@@ -125,23 +127,10 @@ export function SkillCatalog({ initialSkills, categories }) {
             )}
           </p>
 
-          {search.trim() && (
-            <div className="mt-5 rounded-md border border-phino-border-strong bg-phino-code-bg p-3 text-left">
-              <div className="mb-2 flex items-center justify-between font-mono text-[11px] uppercase text-phino-code-text/70">
-                <span className="flex items-center gap-1.5">
-                  <Terminal className="h-3.5 w-3.5" aria-hidden="true" />
-                  Scaffold with axi:
-                </span>
-                <CopyButton
-                  value={`npx -y @reactive-skills/axi init ${search.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`}
-                  size="sm"
-                />
-              </div>
-              <code className="block overflow-x-auto font-mono text-xs text-phino-code-text">
-                npx -y @reactive-skills/axi init {search.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-')}
-              </code>
-            </div>
-          )}
+          <p className="mt-4 text-sm text-phino-text-muted">
+            Ask your agent to create it with <Link href="/docs/quickstart#create-a-skill" className="text-phino-signal-text underline">skill-manager</Link>.
+          </p>
+          <CommandBlock className="mt-5 text-left" command={CREATE_SKILL_PROMPT} caption="Ask your agent" prompt wrap />
 
           <div className="mt-5 flex items-center justify-center gap-3">
             <button
