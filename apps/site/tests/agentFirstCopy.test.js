@@ -57,12 +57,15 @@ describe('agent-first public entry paths', () => {
     expect(html).toContain('Ask your agent');
   });
 
-  it('keeps the live tab gate response next to an agent prompt', () => {
-    const skill = registry.getSkill(registry.listSkills()[0].slug);
-    const html = render(LiveTelemetryDeck, { skill }).replace(/<[^>]*>/g, '');
-    expect(html).toContain(`Use the ${skill.slug} skill to [describe your task].`);
-    expect(html).toContain('Respond to a Paused Gate');
-    expect(html).toContain('Send Response to Agent');
+  it.each(['tdd-refactor', 'skill-manager'])('offers the same %s prompt in the header and live tab, beside the gate response', (slug) => {
+    const skill = registry.getSkill(slug);
+    const text = (component) => render(component, { skill }).replace(/<[^>]*>/g, '').replaceAll('&#x27;', "'");
+    const expected = slug === 'skill-manager' ? 'Ask about missing requirements, show me the plan' : `Use the ${slug} skill to [describe your task].`;
+    const live = text(LiveTelemetryDeck);
+    expect(text(SkillDetailView)).toContain(expected);
+    expect(live).toContain(expected);
+    expect(live).toContain('Respond to a Paused Gate');
+    expect(live).toContain('Send Response to Agent');
   });
 
   it('offers use and create prompts immediately after the hero', () => {

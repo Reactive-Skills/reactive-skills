@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, ShieldCheck, ArrowRight, Code2, ExternalLink, Star, Activity } from 'lucide-react';
 import { CommandBlock } from '@/components/common/CommandBlock';
-import { CREATE_SKILL_PROMPT } from '@/lib/skillPrompts';
+import { agentPromptFor } from '@/lib/skillPrompts';
 import { MermaidViewer } from '@/components/common/MermaidViewer';
 import { LiveTelemetryDeck } from '@/features/telemetry/LiveTelemetryDeck';
 import { cn } from '@/lib/utils';
@@ -79,9 +79,7 @@ export function SkillDetailView({ skill }) {
   const [statechartMode, setStatechartMode] = useState('diagram'); // 'diagram' | 'live'
   const githubSkillUrl = `https://github.com/Reactive-Skills/skills/tree/main/${skill.slug}`;
   const skillsShCmd = skill.skillsShInstallCmd || `npx skills add Reactive-Skills/skills --skill ${skill.slug}`;
-  const agentPrompt = skill.slug === 'skill-manager'
-    ? CREATE_SKILL_PROMPT
-    : `Use the ${skill.slug} skill to [describe your task].`;
+  const agentPrompt = agentPromptFor(skill.slug);
 
   const numbers = [
     ['States', skill.stateCount, 'Hierarchical nodes'],

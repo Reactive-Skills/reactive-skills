@@ -16,6 +16,7 @@ import {
 import { MermaidViewer } from '@/components/common/MermaidViewer';
 import { cn } from '@/lib/utils';
 import { CommandBlock } from '@/components/common/CommandBlock';
+import { agentPromptFor } from '@/lib/skillPrompts';
 
 const getBridgeJobId = (payload) =>
   payload?.jobId || payload?.job_id || payload?.runId || payload?.run_id || '';
@@ -34,9 +35,9 @@ const getBridgeErrorMessage = (error) => {
  * # Performance & Risk Budget
  * - Tier: P2 (client; one SSE connection)
  * - Complexity: O(e) in the e visible events
- * - Cyclomatic Complexity (CC): target <=25
+ * - Cyclomatic Complexity (CC): target <=20
  * - Branch Coverage: target >=60%
- * - CRAP Score: target <=40
+ * - CRAP Score: target <=30
  */
 export function LiveTelemetryDeck({ skill }) {
   const [bridgeUrl, setBridgeUrl] = useState('http://127.0.0.1:4242');
@@ -412,7 +413,7 @@ export function LiveTelemetryDeck({ skill }) {
         {/* Right Col: Agent Prompt & Gate Response */}
         <div className="rounded-lg border border-phino-border bg-phino-surface p-4 space-y-4">
           <CommandBlock
-            command={`Use the ${skill.slug} skill to [describe your task].`}
+            command={agentPromptFor(skill.slug)}
             caption="Ask your agent"
             prompt
             wrap
