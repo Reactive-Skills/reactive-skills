@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { JobManager } from '@reactive-skills/runtime';
-import { extractJobFlag, resolveSkillId, resolveSkillPath, resolveWorkspaceDir } from './args.js';
+import { extractJobFlag, findSkillByManifestName, resolveSkillId, resolveSkillPath, resolveWorkspaceDir } from './args.js';
 import { AxiError } from './errors.js';
 import { workspaceContext, WORKSPACE_COMMANDS } from './workspace-context.js';
 
@@ -150,9 +150,10 @@ function commandTarget(command: string, args: string[]): { skill?: string; job?:
  * - Branch Coverage: target >=80%
  * - CRAP Score: target <=15
  */
-function targetSkillPath(skill: string | undefined, root: string | undefined): string | null {
+function targetSkillPath(command: string, skill: string | undefined, root: string | undefined): string | null {
   if (!skill) return null;
-  return root ? workspaceContext.run({ root }, () => resolveSkillPath(skill)) : resolveSkillPath(skill);
+  const resolved = root ? workspaceContext.run({ root }, () => resolveSkillPath(skill)) : resolveSkillPath(skill);
+  return resolved ?? (['jobs', 'reset'].includes(command) ? findSkillByManifestName(skill) : null);
 }
 
 /**
@@ -244,7 +245,7 @@ export async function withWorkspaceBinding(command: string, args: string[], run:
   const selected = extractWorkspace(args);
   const target = commandTarget(command, selected.args);
   const explicitRoot = selected.explicit ? canonicalRoot(selected.explicit) : undefined;
-  const skillPath = targetSkillPath(target.skill, explicitRoot);
+  const skillPath = targetSkillPath(command, target.skill, explicitRoot);
   if (!skillPath) {
     if (explicitRoot) return executeBound({ root: explicitRoot, source: selected.source }, selected.args, run);
     if (!target.skill && command !== 'dashboard') return executeBound(defaultBinding(), selected.args, run);

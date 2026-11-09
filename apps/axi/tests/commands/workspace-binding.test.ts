@@ -172,6 +172,20 @@ describe('explicit workspace binding through the installed CLI', () => {
     expect(fs.existsSync(path.join(other, '.reactive'))).toBe(false);
   });
 
+  it('binds jobs and reset when a local skill is named by its manifest name', () => {
+    const local = path.join(project, 'skills', 'renamed-dir');
+    fs.cpSync(path.join(home, '.agents', 'skills', skill), local, { recursive: true });
+    fs.rmSync(path.join(home, '.agents', 'skills', skill), { recursive: true, force: true });
+    run(project, ['invoke', 'renamed-dir', '--job', 'shared']);
+    const root = `workspace_root: ${JSON.stringify(fs.realpathSync(project))}`;
+    const listed = run(project, ['jobs', skill]);
+    expect(listed.text).toContain(root);
+    expect(listed.text).toContain(jobs()[0].id);
+    const reset = run(project, ['reset', skill, '--job', 'shared']);
+    expect(reset.text).toContain(root);
+    expect(reset.text).toContain('archived_and_replaced');
+  });
+
   it('rejects an unknown global job on emit without bootstrapping a store (issue 26)', () => {
     expect(run(project, ['emit', skill, 'ADVANCE', '--job', 'missing']).text).toContain('invoke');
     expect(fs.existsSync(path.join(project, '.reactive'))).toBe(false);

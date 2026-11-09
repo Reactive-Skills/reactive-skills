@@ -10,7 +10,7 @@ Legacy text and compact JSON include workspace diagnostics, and job rows include
 The subdirectory emit regression from issue 26 is covered alongside all six issue 14 acceptance criteria.
 
 Changed files: `apps/axi/src/workspace-binding.ts`, `workspace-context.ts`, `args.ts`, `cli/index.ts`, `commands/jobs.ts`, `events.ts`, `reset.ts`, `view.ts`, `dashboard.ts`, `rebuild-sqlite.ts`; `packages/runtime/src/core/types.ts`, `job-manager.ts`; `apps/axi/tests/commands/workspace-binding.test.ts`; `packages/runtime/tests/workspace-metadata.test.ts`; `packages/runtime/scripts/transport-benchmark/fixtures/expected-bytes.json`; `docs/workspace-binding.md`, `apps/axi/README.md`, `PERFORMANCE-STANDARDS.md` and this tracker.
-Validation: 18 installed-CLI workspace regressions (review rounds add caller-store preference, new-run placement and reset refusal outside the caller store) and the full AXI suite pass (404 passed, one existing skip); four runtime metadata tests also passed.
+Validation: 19 installed-CLI workspace regressions (review rounds add caller-store preference, new-run placement, reset refusal outside the caller store and manifest-name binding for jobs and reset) and the full AXI suite pass (404 passed, one existing skip); four runtime metadata tests also passed.
 The normalized AXI trace adds 119 diagnostic bytes per operation; MCP/SDK expectations and the historical baseline remain unchanged.
 Small argument-parser extractions reduce touched job/telemetry orchestration below the CC 30 ceiling; new workspace orchestration measures CC 15.
 The full runtime run passes 1,097 tests and fails only the existing host-local timing assertion in `perf-budget.test.ts:169`; its test and thresholds remain unchanged, with CI designated the final check.
