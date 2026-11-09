@@ -4,13 +4,13 @@
 
 AXI selects one canonical workspace at the CLI boundary before opening a runtime store.
 `--workspace` takes precedence over `WORKSPACE_DIR`; subsequent commands discover recorded roots through a per-user root catalog and legacy ancestor stores.
-A store containing the caller's directory wins over other cataloged stores (reported as `other_workspace_stores`); new runs never start in another project's store, and only competing matches outside the caller's stores require an explicit root. Named `state` and `emit` calls cannot bootstrap unknown jobs, and `context.workspace_root` remains descriptive.
+A store containing the caller's directory wins over other cataloged stores (reported as `other_workspace_stores`); `reset` refuses stores outside the caller's directory without an explicit root; new runs never start in another project's store, and only competing matches outside the caller's stores require an explicit root. Named `state` and `emit` calls cannot bootstrap unknown jobs, and `context.workspace_root` remains descriptive.
 Job metadata now records optional `workspaceRoot`, preserving existing jobs without the field.
 Legacy text and compact JSON include workspace diagnostics, and job rows include each recorded root.
 The subdirectory emit regression from issue 26 is covered alongside all six issue 14 acceptance criteria.
 
 Changed files: `apps/axi/src/workspace-binding.ts`, `workspace-context.ts`, `args.ts`, `cli/index.ts`, `commands/jobs.ts`, `events.ts`, `reset.ts`, `view.ts`, `dashboard.ts`, `rebuild-sqlite.ts`; `packages/runtime/src/core/types.ts`, `job-manager.ts`; `apps/axi/tests/commands/workspace-binding.test.ts`; `packages/runtime/tests/workspace-metadata.test.ts`; `packages/runtime/scripts/transport-benchmark/fixtures/expected-bytes.json`; `docs/workspace-binding.md`, `apps/axi/README.md`, `PERFORMANCE-STANDARDS.md` and this tracker.
-Validation: 17 installed-CLI workspace regressions (review round adds caller-store preference and new-run placement) and the full AXI suite pass (404 passed, one existing skip); four runtime metadata tests also passed.
+Validation: 18 installed-CLI workspace regressions (review rounds add caller-store preference, new-run placement and reset refusal outside the caller store) and the full AXI suite pass (404 passed, one existing skip); four runtime metadata tests also passed.
 The normalized AXI trace adds 119 diagnostic bytes per operation; MCP/SDK expectations and the historical baseline remain unchanged.
 Small argument-parser extractions reduce touched job/telemetry orchestration below the CC 30 ceiling; new workspace orchestration measures CC 15.
 The full runtime run passes 1,097 tests and fails only the existing host-local timing assertion in `perf-budget.test.ts:169`; its test and thresholds remain unchanged, with CI designated the final check.

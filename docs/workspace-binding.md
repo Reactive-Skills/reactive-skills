@@ -40,6 +40,7 @@ Copied or moved stores whose recorded root differs from their location are refus
 Jobs created before workspace binding remain usable without `workspaceRoot`.
 An ancestor store or explicit workspace selects their existing location, and subsequent reads and updates preserve their metadata and history.
 If a legacy store is outside the caller's ancestors and has never been registered, select it once with `--workspace`.
+Resetting a legacy or registered store outside the caller's directory also requires `--workspace`.
 The historical skill-parent store location is also considered for compatibility.
 
 Named `state` and ordinary `emit` calls refuse unknown jobs rather than creating a fresh run at the initial state.
@@ -48,6 +49,8 @@ Explicit evidence import, including folded import-and-emit, retains its existing
 Competing stores still require a workspace choice for evidence operations.
 This fixes the subdirectory resume behavior reported in issue 26 for known jobs and prevents ordinary named emits from silently bootstrapping unknown runs.
 
+`reset` and `reset --purge` act only on a store that contains the caller's directory or on an explicit `--workspace` or `WORKSPACE_DIR` root.
+When the only candidate is another known store, they fail and name that store with the `--workspace` flag to pass; `state`, `events`, `jobs`, `view` and `emit` can still select it with the `caller_directory_differs` warning.
 `reset --purge` deletes only the selected workspace's skill store.
 It does not remove another store beside the installed skill.
 

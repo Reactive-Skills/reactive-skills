@@ -251,9 +251,13 @@ export async function withWorkspaceBinding(command: string, args: string[], run:
     return run(selected.args);
   }
   const skill = resolveSkillId(skillPath);
+  const fallback = resolveWorkspaceDir(skillPath);
   const binding = explicitRoot
     ? { root: explicitRoot, source: selected.source }
-    : selectRoot(command, skill, target.job, resolveWorkspaceDir(skillPath), path.dirname(skillPath));
+    : selectRoot(command, skill, target.job, fallback, path.dirname(skillPath));
+  if (!explicitRoot && command === 'reset' && !isCallerRoot(binding.root, fallback)) {
+    throw new AxiError(`Refusing to reset '${skill}' in ${binding.root}, which does not contain the caller's directory`, 'VALIDATION_ERROR', [`Pass --workspace ${JSON.stringify(binding.root)}`]);
+  }
   const found = checkRecordedRoot(binding.root, skill, target.job);
   const explicitEvidenceImport = command === 'emit' && selected.args.some(arg => arg === '--evidence' || arg.startsWith('--evidence='));
   if (target.job && !found && ['state', 'emit'].includes(command) && !explicitEvidenceImport) {

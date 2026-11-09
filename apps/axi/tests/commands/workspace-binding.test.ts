@@ -79,7 +79,8 @@ describe('explicit workspace binding through the installed CLI', () => {
     expect(fs.existsSync(path.join(project, 'src', '.reactive'))).toBe(false);
     expect(run(parent, ['jobs', skill]).text).toContain(project);
     expect(run(parent, ['events', '100', skill, '--job', 'shared']).text).toContain('STATE_TRANSITION');
-    expect(run(parent, ['reset', skill, '--job', 'shared']).text).toContain('archived_and_replaced');
+    expect(run(parent, ['reset', skill, '--job', 'shared']).text).toContain('Refusing to reset');
+    expect(run(parent, ['reset', skill, '--job', 'shared', '--workspace', project]).text).toContain('archived_and_replaced');
     expect(jobs().find(job => job.id === metadata.id)?.status).toBe('archived');
   });
 
@@ -148,6 +149,27 @@ describe('explicit workspace binding through the installed CLI', () => {
     fs.mkdirSync(elsewhere);
     expect(run(elsewhere, ['state', skill, '--job', 'shared']).text).toContain('Ambiguous workspace');
     expect(fs.existsSync(path.join(elsewhere, '.reactive'))).toBe(false);
+  });
+
+  it('emits to a lone cataloged store from outside it but refuses reset without --workspace', () => {
+    const other = path.join(sandbox, 'other');
+    fs.mkdirSync(other);
+    run(project, ['invoke', skill]);
+    const emitted = run(other, ['emit', skill, 'ADVANCE']);
+    expect(emitted.text).toContain('DRAFTING');
+    expect(emitted.text).toContain('caller_directory_differs');
+    for (const args of [['reset', skill], ['reset', skill, '--purge']]) {
+      const refused = run(other, args);
+      expect(refused.text).toContain('Refusing to reset');
+      expect(refused.text).toContain('--workspace');
+      expect(refused.text).toContain(fs.realpathSync(project));
+    }
+    expect(fs.existsSync(path.join(project, '.reactive', 'skills', skill))).toBe(true);
+    expect(jobs().every(job => job.status !== 'archived')).toBe(true);
+    expect(run(other, ['reset', skill, '--workspace', project]).text).toContain('archived_and_rotated');
+    expect(run(other, ['reset', skill, '--purge', '--workspace', project]).text).toContain('purged');
+    expect(fs.existsSync(path.join(project, '.reactive', 'skills', skill))).toBe(false);
+    expect(fs.existsSync(path.join(other, '.reactive'))).toBe(false);
   });
 
   it('rejects an unknown global job on emit without bootstrapping a store (issue 26)', () => {
