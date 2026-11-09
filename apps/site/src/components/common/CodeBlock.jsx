@@ -2,15 +2,15 @@ import { cn } from '@/lib/utils';
 import { CopyButton } from './CopyButton';
 
 /**
- * Docs code example: language bar with copy, a `$` prompt on shell lines, optional expected output and caption.
+ * Docs code example: copy, shell prompts, wrapping text prompts, optional output and caption.
  * The prompt is decoration only; the copy button always copies the raw command.
  *
  * # Performance & Risk Budget
  * - Tier: P3 (static render; the copy button is the only client island)
  * - Complexity: O(l) in the l command lines
- * - Cyclomatic Complexity (CC): target <=4
+ * - Cyclomatic Complexity (CC): target <=5
  * - Branch Coverage: target >=60%
- * - CRAP Score: target <=8
+ * - CRAP Score: target <=10
  */
 export function CodeBlock({ example, className }) {
   const { language = 'bash', command = '', explanation, expectedOutput } = example || {};
@@ -22,7 +22,7 @@ export function CodeBlock({ example, className }) {
         <CopyButton value={command} size="sm" ariaLabel={`Copy ${language} example`} />
       </div>
       <pre className="overflow-x-auto px-4 py-3.5">
-        <code className="whitespace-pre font-mono text-[13px] leading-relaxed text-phino-text">
+        <code className={cn('font-mono text-[13px] leading-relaxed text-phino-text', language === 'text' ? 'whitespace-pre-wrap [overflow-wrap:anywhere]' : 'whitespace-pre')}>
           {prompted
             ? command.split('\n').map((line, i) => (
                 <span key={i} className="block">

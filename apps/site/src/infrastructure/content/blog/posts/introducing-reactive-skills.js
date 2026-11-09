@@ -75,10 +75,9 @@ export const postIntroducingReactiveSkills = {
         {
           type: 'code',
           example: {
-            language: 'bash',
-            command: 'npx -y @reactive-skills/axi state refactor-workflow',
-            explanation: 'The AXI CLI inspects the active state slice, injecting only what is relevant right now.',
-            expectedOutput: `state:
+            language: 'text',
+            explanation: 'Example of an active state view returned to the agent. See /docs/axi for the command reference.',
+            command: `state:
   skill_id: refactor-workflow
   current_state: PLAN
 prompt:

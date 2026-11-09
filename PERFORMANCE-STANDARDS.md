@@ -607,6 +607,9 @@ They are targets checked when a change touches the shell, tokens, fonts or a lan
 Theme tokens live in `src/app/globals.css` as `--phino-*` custom properties for light and dark; body, muted and subtle text tones keep at least 4.5:1 against the canvas and surface tokens of their theme.
 Shell components (`src/components/site/*`) render O(n) in their fixed link lists and carry the inline annotation below.
 Landing sections (`src/features/landing/*`) are P3 static renders with client islands for the copy buttons, the run tape, the two run examples and the registry filter; the registry list and filter are O(n) in published workflows.
+The two use/create entry paths share static prompt strings; copying a prompt adds no runtime request.
+Registry details retain their P3 O(s + t) render and optional statechart; the live deck reads bridge state/events, offers the page header's agent prompt (shared `agentPromptFor`), and keeps its optional form for answering a gate the agent paused on (one POST per response).
+Command and prompt blocks render O(b) in bounded text bytes, with optional word wrapping and shell decoration only for commands; targets are CC <=5, branch coverage >=60% and CRAP <=10.
 Docs chrome (`src/features/docs/*`, `src/components/common/CodeBlock.jsx`, `Callout.jsx`) is a P3 static render, O(n) in sections, blocks and navigation links; the copy buttons and the sidebar's current-page highlight are the only client work. No route has a `loading.js` fallback, so each page's content is in its static HTML rather than behind a Suspense skeleton.
 Inline docs text tokenization recognizes code, HTTP links and root-relative links, including emphasized links, at build time with no added client dependency.
 Its regular-expression scan is O(n²) in the worst case for malformed authored text; inputs are bounded static content blocks, not visitor input.

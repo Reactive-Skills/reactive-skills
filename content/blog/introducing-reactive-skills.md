@@ -42,11 +42,7 @@ Reactive Skills Architecture (RSA) structures workflows as formal Hierarchical S
 
 The agent occupies one state at a time. Entering `PLAN` loads only the prompt slice for planning, restricting the active tool whitelist to read-only discovery tools. Instructions for `EXECUTE` and `VERIFY` remain out of context until the machine advances.
 
-```bash
-npx -y @reactive-skills/axi state refactor-workflow
-```
-
-This inspection command returns the active state, its bound context variables, and permitted signals:
+Example of an active state view returned to the agent, with its bound context variables and permitted signals. See /docs/axi for the command reference.
 
 ```yaml
 state:

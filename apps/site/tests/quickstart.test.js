@@ -10,10 +10,14 @@ const numberedSections = quickstart.sections.filter((section) => /^\d+\.\s/.test
 const blocksOf = (section) => section.blocks || [];
 
 describe('quickstart', () => {
-  it('opens with installing and running a published skill', () => {
+  it('opens with installation and an agent prompt, keeping invocation in optional reference', () => {
     const commands = blocksOf(numberedSections[0]).filter((block) => block.type === 'code').map((block) => block.example.command);
     expect(commands.some((command) => /^npx skills add Reactive-Skills\/skills --skill \S+ -g$/.test(command))).toBe(true);
-    expect(commands.some((command) => /@reactive-skills\/axi invoke \S+/.test(command))).toBe(true);
+    expect(commands.some((command) => /Use the tdd-refactor skill/.test(command))).toBe(true);
+    expect(commands.some((command) => /@reactive-skills\/axi invoke \S+/.test(command))).toBe(false);
+    const manual = quickstart.sections.find((section) => section.id === 'run-it-yourself');
+    expect(manual.heading).toMatch(/optional/i);
+    expect(blocksOf(manual).some((block) => /@reactive-skills\/axi invoke \S+/.test(block.example?.command || ''))).toBe(true);
   });
 
   it('warns about trusting skill guard code before the install command', () => {

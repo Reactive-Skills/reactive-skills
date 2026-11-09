@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, ShieldCheck, ArrowRight, Code2, ExternalLink, Star, Activity } from 'lucide-react';
 import { CommandBlock } from '@/components/common/CommandBlock';
-import { CopyButton } from '@/components/common/CopyButton';
+import { agentPromptFor } from '@/lib/skillPrompts';
 import { MermaidViewer } from '@/components/common/MermaidViewer';
 import { LiveTelemetryDeck } from '@/features/telemetry/LiveTelemetryDeck';
 import { cn } from '@/lib/utils';
@@ -44,12 +44,6 @@ function renderTextWithLinks(text) {
   });
 }
 
-const AXI_COMMANDS = [
-  ['Check state:', 'state'],
-  ['Inspect hierarchy:', 'inspect'],
-  ['Tail events:', 'events'],
-];
-
 /**
  * Sidebar block: mono label, optional description and content.
  *
@@ -71,8 +65,8 @@ function SideBlock({ title, description, children }) {
 }
 
 /**
- * Generated skill page: header with install commands, key numbers, statechart, states with their
- * transitions, and a sidebar with AXI commands, context keys, deliverables and MCP setup.
+ * Generated skill page: agent prompt, installation, optional statechart and state reference,
+ * plus a sidebar with context keys, deliverables and documentation links.
  *
  * # Performance & Risk Budget
  * - Tier: P3 (static render; the statechart and live deck are client islands)
@@ -85,20 +79,7 @@ export function SkillDetailView({ skill }) {
   const [statechartMode, setStatechartMode] = useState('diagram'); // 'diagram' | 'live'
   const githubSkillUrl = `https://github.com/Reactive-Skills/skills/tree/main/${skill.slug}`;
   const skillsShCmd = skill.skillsShInstallCmd || `npx skills add Reactive-Skills/skills --skill ${skill.slug}`;
-  const axiRunCmd = skill.installCmd || `npx -y @reactive-skills/axi invoke ${skill.slug}`;
-
-  const mcpConfigSnippet = JSON.stringify(
-    {
-      mcpServers: {
-        'reactive-skills': {
-          command: 'npx',
-          args: ['-y', '@reactive-skills/axi', 'mcp'],
-        },
-      },
-    },
-    null,
-    2,
-  );
+  const agentPrompt = agentPromptFor(skill.slug);
 
   const numbers = [
     ['States', skill.stateCount, 'Hierarchical nodes'],
@@ -191,8 +172,13 @@ export function SkillDetailView({ skill }) {
         </div>
 
         <div className="min-w-0 space-y-3">
-          <CommandBlock command={skillsShCmd} caption="1. install to agent (skills.sh)" wrap />
-          <CommandBlock command={axiRunCmd} caption="2. zero-install run (axi cli)" wrap />
+          <CommandBlock command={agentPrompt} caption="Ask your agent" prompt wrap />
+          <p className="text-xs leading-5 text-phino-text-muted">
+            Install: <code className="mt-1 block font-mono text-phino-text [overflow-wrap:anywhere]">{skillsShCmd}</code>
+          </p>
+          {skill.slug === 'skill-manager' && (
+            <p className="text-sm text-phino-text-muted">Asks about missing requirements and gets your approval before building.</p>
+          )}
         </div>
       </div>
 
@@ -214,7 +200,7 @@ export function SkillDetailView({ skill }) {
             <section className="space-y-4" aria-labelledby="statechart-heading">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <h2 id="statechart-heading" className="font-display text-2xl font-medium text-phino-text">
-                  {statechartMode === 'live' ? 'Live Telemetry Deck' : 'Statechart Topology'}
+                  {statechartMode === 'live' ? 'Live Telemetry Deck (optional)' : 'Statechart (optional)'}
                 </h2>
 
                 <div className="flex items-center rounded-md border border-phino-border bg-phino-canvas p-0.5 text-xs">
@@ -335,25 +321,9 @@ export function SkillDetailView({ skill }) {
           </section>
         </div>
 
-        <aside className="space-y-8 lg:sticky lg:top-28 lg:self-start" aria-label="Run this skill">
-          <SideBlock title="AXI CLI Commands" description="Inspect or drive this state machine directly via the AXI CLI:">
-            <div className="space-y-3">
-              {AXI_COMMANDS.map(([label, cmd]) => (
-                <div key={cmd}>
-                  <p className="mb-1 text-xs text-phino-text-muted">{label}</p>
-                  <div className="flex items-center justify-between gap-2 rounded-md border border-phino-border bg-phino-surface px-3 py-1.5 font-mono text-xs text-phino-text">
-                    <span className="truncate">axi {cmd} {skill.slug}</span>
-                    <CopyButton
-                      value={`npx -y @reactive-skills/axi ${cmd} ${skill.slug}`}
-                      label=""
-                      ariaLabel={`Copy axi ${cmd} command`}
-                      size="sm"
-                      className="h-5 border-none bg-transparent px-1.5 hover:bg-phino-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-phino-focus"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+        <aside className="space-y-8 lg:sticky lg:top-28 lg:self-start" aria-label="Skill reference">
+          <SideBlock title="Documentation">
+            <Link href="/docs/quickstart" className="text-sm text-phino-signal-text underline underline-offset-4">Use or create a skill</Link>
           </SideBlock>
 
           {skill.contextKeys && skill.contextKeys.length > 0 && (
@@ -381,10 +351,8 @@ export function SkillDetailView({ skill }) {
             </SideBlock>
           )}
 
-          <SideBlock title="MCP Server Configuration" description="Add to your Claude Desktop, Cursor, or VS Code settings:">
-            <div className="overflow-x-auto rounded-md border border-phino-border-strong bg-phino-code-bg p-3 font-mono text-xs text-phino-code-text">
-              <pre className="whitespace-pre">{mcpConfigSnippet}</pre>
-            </div>
+          <SideBlock title="Optional host integration">
+            <Link href="/docs/mcp" className="text-sm text-phino-signal-text underline underline-offset-4">MCP setup guide</Link>
           </SideBlock>
         </aside>
       </div>

@@ -48,7 +48,7 @@ export default function RegistryPage() {
             >
               Reactive-Skills/skills
             </a>
-            . Install one with skills.sh, then invoke it from your agent.
+            . Install a skill, then ask your agent to use it.
           </p>
           <ul className="mt-8 flex flex-wrap gap-x-10 gap-y-4 border-t border-phino-border pt-5 text-sm text-phino-text-muted">
             <li><strong className="block font-display text-3xl font-medium tabular-nums text-phino-text">{stats.skillCount}</strong> skills</li>

@@ -1,5 +1,21 @@
 # Progress Tracker: Reactive Skills Architecture (RSA)
 
+## Agent-first site entry paths
+
+- Homepage hero, header, early start paths and closing CTA now lead to using a skill or creating one with an agent; use/create paths and registry details offer copyable prompts.
+- Registry details retain installation and optional statecharts, replace manual AXI commands and duplicate MCP configuration with docs links, and offer skill-manager from the no-results state.
+- Quickstart opens with the use/create choice, missing-requirement discovery and plan approval; existing runtime commands remain in explicitly optional sections.
+- Runtime examples identify their simulated interaction; the live telemetry deck adds an agent prompt and keeps event viewing and its form for answering a gate the agent paused on. A blog next-step sentence also directs readers to their agent.
+- Updated `CommandBlock.jsx`, `CodeBlock.jsx`, shared `lib/skillPrompts.js` and performance budgets for copyable text prompts; `agentFirstCopy.test.js` checks rendered homepage, registry, empty-search, live-tab, mods and blog output for manual runtime instructions, allowing docs and optional manual sections.
+- The quickstart installation test now requires an agent prompt in the first path and preserves invocation coverage in the optional manual section; the trust and Node-floor guarantees remain intact.
+
+Changed files: `apps/site/src/features/landing/Hero.jsx`, `LandingPage.jsx`, `StartPaths.jsx`, `QuickstartCta.jsx`, `RuntimeDemo.jsx`, `RunDemo.jsx`; `apps/site/src/features/registry/SkillDetailView.jsx`, `SkillCatalog.jsx`; `apps/site/src/features/telemetry/LiveTelemetryDeck.jsx`; `apps/site/src/components/common/CommandBlock.jsx`, `CodeBlock.jsx`; `apps/site/src/components/site/SiteHeader.jsx`; `apps/site/src/app/registry/page.js`; `apps/site/src/lib/skillPrompts.js`; `apps/site/src/infrastructure/content/docs/quickstart.js`; the two blog post sources and `content/blog/introducing-reactive-skills.md`, which the site renders; `apps/site/tests/agentFirstCopy.test.js`, `commandBlockWrap.test.js`, `quickstart.test.js`; this tracker and `PERFORMANCE-STANDARDS.md`.
+
+Validation: 122 site tests, the production site build, runtime build, docs/prose checks and changed-file lint pass.
+Playwright checked 12 route/theme/width cases, exact copied prompts, no-results creation and the optional manual reference; screenshots cover 390 and 1440 px in light and dark.
+Full-site lint findings are confined to unchanged files.
+Local runtime runs showed intermittent performance-budget assertions and one discovery timeout; focused performance tests also passed here and on a pristine main checkout.
+Runtime tests remain unchanged; CI validation is pending.
 ## Bootloader retrieval guidance
 
 `packages/runtime/src/core/bootloader.ts` now requires a working retrieval alternative or a precise prerequisite/failure report, introduces progressive disclosure before policy, and keeps context-routing fallback inside requested skill execution.

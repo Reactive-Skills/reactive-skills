@@ -195,7 +195,7 @@ transitions:
           type: 'callout',
           variant: 'signal',
           title: 'Try It Today',
-          text: 'Explore the documentation at /docs/concepts or test the runtime in your terminal with `npx -y @reactive-skills/axi state <skill>`.',
+          text: 'Explore the documentation at /docs/concepts, or choose a skill from /registry and ask your agent to use it.',
         },
       ],
     },

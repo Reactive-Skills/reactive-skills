@@ -1,18 +1,15 @@
 import Link from 'next/link';
 import { ArrowDown, ArrowUpRight } from 'lucide-react';
-import { CopyButton } from '@/components/common/CopyButton';
 import avif768 from './images/runtime-object-768.avif';
 import avif1536 from './images/runtime-object-1536.avif';
 import webp768 from './images/runtime-object-768.webp';
 import webp1536 from './images/runtime-object-1536.webp';
 
-const CONNECT_COMMAND = 'npx -y @reactive-skills/axi setup';
-
 /**
- * Landing hero: wordmark, tagline, primary actions and the one-command connect bar over the render.
+ * Landing hero: wordmark, tagline and actions leading to the use/create paths.
  *
  * # Performance & Risk Budget
- * - Tier: P3 (static render; the only client work is the copy button)
+ * - Tier: P3 (static render)
  * - Complexity: O(1)
  * - Cyclomatic Complexity (CC): target <=2
  * - Branch Coverage: target >=60%
@@ -54,10 +51,10 @@ export function Hero() {
           </p>
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/docs/quickstart"
+              href="#start"
               className="inline-flex h-12 items-center gap-2 rounded-sm bg-phino-lime px-6 text-sm font-medium text-phino-hero transition-opacity hover:opacity-90"
             >
-              Start building <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+              Get started <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <a
               href="#runtime"
@@ -71,15 +68,10 @@ export function Hero() {
 
       <div className="absolute inset-x-0 bottom-0 z-10 border-t border-phino-hero-muted/25 bg-phino-hero/80 px-5 py-5 backdrop-blur sm:px-10">
         <div className="mx-auto flex max-w-[1320px] flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <p className="font-mono text-[11px] text-phino-hero-muted">ONE COMMAND. CONNECT YOUR AGENT.</p>
-          <div className="flex min-w-0 items-center justify-between gap-4">
-            <code className="min-w-0 font-mono text-sm text-phino-lime [overflow-wrap:anywhere] sm:text-base">{CONNECT_COMMAND}</code>
-            <CopyButton
-              value={CONNECT_COMMAND}
-              size="sm"
-              ariaLabel="Copy the connect command"
-              className="shrink-0 border-white/15 bg-white/5 text-white/80 hover:border-white/30 hover:text-white focus-visible:ring-offset-phino-hero"
-            />
+          <p className="font-mono text-[11px] text-phino-hero-muted">START WITH A TASK.</p>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-phino-lime">
+            <Link href="/registry" className="underline underline-offset-4">Use a skill</Link>
+            <Link href="/docs/quickstart#create-a-skill" className="underline underline-offset-4">Create a skill with your agent</Link>
           </div>
         </div>
       </div>

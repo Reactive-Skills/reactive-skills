@@ -5,17 +5,17 @@ import { cn } from '@/lib/utils';
 import { CopyButton } from './CopyButton';
 
 /**
- * A shell command with its copy button. `wrap` breaks long commands between arguments instead of
+ * A shell command or agent prompt with its copy button. `wrap` breaks long text between words instead of
  * scrolling them, for narrow columns; the copy button always copies the full command.
  *
  * # Performance & Risk Budget
  * - Tier: P3 (static render; the only client work is the copy button)
  * - Complexity: O(n) in the n characters of the command
- * - Cyclomatic Complexity (CC): target <=3
+ * - Cyclomatic Complexity (CC): target <=4
  * - Branch Coverage: target >=60%
- * - CRAP Score: target <=6
+ * - CRAP Score: target <=8
  */
-export function CommandBlock({ command, caption = 'zero-install', wrap = false, className }) {
+export function CommandBlock({ command, caption = 'zero-install', prompt = false, wrap = false, className }) {
   return (
     <div
       className={cn(
@@ -38,7 +38,7 @@ export function CommandBlock({ command, caption = 'zero-install', wrap = false, 
             wrap ? 'leading-6' : 'sm:overflow-x-auto sm:whitespace-nowrap sm:text-base sm:[overflow-wrap:normal]',
           )}
         >
-          <span className="mr-2 select-none text-phino-signal" aria-hidden="true">$</span>
+          {!prompt && <span className="mr-2 select-none text-phino-signal" aria-hidden="true">$</span>}
           {wrap
             ? // Break between arguments first; split one only when it alone is wider than the column.
               command.split(' ').map((part, index) => (
