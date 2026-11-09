@@ -8,6 +8,7 @@ import {
   createAxiFirstBypassState,
   createAxiFirstInitState,
   createReactiveBootloaderReference,
+  createReactiveSkillDescription,
 } from '../bootloader.js';
 
 const SKILLS_DIR = path.resolve(process.cwd(), 'skills');
@@ -59,10 +60,19 @@ function createSkillManifest(name: string) {
   };
 }
 
+/**
+ * Scaffold host-visible discovery metadata and the runtime reference.
+ * # Performance & Risk Budget
+ * - Tier: P3 (< 2000ms)
+ * - Complexity: O(b), generated document bytes
+ * - Cyclomatic Complexity (CC): 1
+ * - Branch Coverage: target >=60%
+ * - CRAP Score: target <=30
+ */
 function createSkillMarkdown(name: string): string {
   return `---
 name: ${name}
-description: Skill: ${name}
+description: ${createReactiveSkillDescription(name)}
 type: reactive
 ---
 

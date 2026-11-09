@@ -6,7 +6,7 @@ describe('bootloader command', () => {
     const result = JSON.parse(await bootloaderCommand(['example-skill', '--json']));
 
     expect(result.skill).toBe('example-skill');
-    expect(result.bootloader_version).toBe('1.0.0');
+    expect(result.bootloader_version).toBe('1.0.1');
     expect(result.instructions).toContain('reactive_context_prepare');
   });
 

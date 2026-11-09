@@ -1,6 +1,6 @@
 import { RUNTIME_VERSION } from './runtime-capabilities.js';
 
-export const REACTIVE_BOOTLOADER_VERSION = '1.0.0';
+export const REACTIVE_BOOTLOADER_VERSION = '1.0.1';
 
 export interface ReactiveBootloaderPayload {
   runtime_version: string;
@@ -25,12 +25,16 @@ function normalizeSkillName(skillName: string): string {
  * - Cyclomatic Complexity (CC): 1 (measured ESLint)
  * - Branch Coverage: 100% (measured V8; target >=90%)
  * - CRAP Score: 1.0 (measured; threshold <=10)
- * - Latency: p50 0.000244ms, p95 0.000361ms; 100 warm calls
+ * - Latency: p50 0.000424ms, p95 0.002318ms; 100 warm calls (served payload)
  */
 export function createReactiveBootloader(skillName: string): string {
   const name = normalizeSkillName(skillName);
 
   return `<!-- REACTIVE BOOTLOADER -->
+> **Start here:** This is reference material; you do not need to read it all up front.
+> The runtime serves one state at a time; follow the instructions for the current state.
+> Later policy sections apply only when their situation arises.
+>
 > **REACTIVE SKILL: STRICT RUNTIME EXECUTION**
 > This skill is an event-driven state machine. Manual execution is forbidden.
 >
@@ -69,7 +73,7 @@ export function createReactiveBootloader(skillName: string): string {
 > The CLI discovers local skill metadata when \`--candidates\` is omitted.
 > To restrict the choices, pass \`--candidates <JSON|@file>\` with an array of skill metadata records shaped like \`[{"id":"...","skill":"...","summary":"..."}]\`.
 > Load only the selected skill and honor \`context_mode\` and \`context_budget_tokens\`.
-> If the route is \`none\`, Jev is unavailable, or the wrapper fails, continue the directly requested runtime path without preloading unrelated skills.
+> If the route is \`none\`, Jev is unavailable, or the wrapper fails, invoke or resume this skill through the selected runtime without preloading unrelated skills. Routing failure does not waive this skill's execution; if no runtime works, stop and report the exact missing prerequisite or failure to the user.
 >
 > **TERMINAL STATE RECOVERY**
 > If the current job is terminal, run selected runtime \`reset ${name}\` or \`invoke ${name}\`.
@@ -80,17 +84,39 @@ export function createReactiveBootloader(skillName: string): string {
 <!-- END REACTIVE BOOTLOADER -->`;
 }
 
+/**
+ * Render the host-visible SKILL.md description with the bootloader discovery hint.
+ * # Performance & Risk Budget
+ * - Tier: P0 (< 5ms)
+ * - Complexity: O(b), generated description bytes
+ * - Cyclomatic Complexity (CC): 1
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+export function createReactiveSkillDescription(skillName: string): string {
+  return `Reactive workflow for ${normalizeSkillName(skillName)}. Read all bootloader retrieval options; the runtime serves one state at a time.`;
+}
+
+/**
+ * Render the retrieval alternatives and required failure diagnosis.
+ * # Performance & Risk Budget
+ * - Tier: P0 (< 5ms)
+ * - Complexity: O(b), generated reference bytes
+ * - Cyclomatic Complexity (CC): 1
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
 export function createReactiveBootloaderReference(skillName: string): string {
   const name = normalizeSkillName(skillName);
 
   return `<!-- REACTIVE BOOTLOADER -->
-> The authoritative bootloader is served by the Reactive Skills runtime.
-> Retrieve it before loading full skill context:
+> Use this skill; you must not skip it as too heavy or not installed.
+> Read all retrieval alternatives below before judging availability; use the first that works:
 > - MCP: call \`reactive_bootloader\` with \`skill_name: "${name}"\`.
 > - AXI: run \`reactive-skills-axi bootloader ${name} --json\`.
-> - Zero-install AXI: run \`npx -y @reactive-skills/axi bootloader ${name} --json\`.
+> - Zero-install AXI: run \`npx -y @reactive-skills/axi bootloader ${name} --json\`; no installation, only Node.js >=22.13.0 with npm/npx and registry access.
 > Follow the returned \`instructions\`, then call \`reactive_context_prepare\` before assembling prompt context when MCP is available.
-> If bootloader retrieval is unavailable, continue with the directly requested runtime path and do not preload unrelated skill context.
+> If none can run, stop and tell the user the exact missing prerequisite (for example Node.js >=22.13.0) or retrieval failure; do not proceed without this skill.
 <!-- END REACTIVE BOOTLOADER -->`;
 }
 

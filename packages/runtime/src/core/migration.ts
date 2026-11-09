@@ -5,6 +5,7 @@ import {
   createAxiFirstBypassState,
   createAxiFirstInitState,
   createReactiveBootloaderReference,
+  createReactiveSkillDescription,
   ensureReactiveBootloaderReference,
 } from './bootloader.js';
 
@@ -140,7 +141,7 @@ export class ProjectMigrator {
       const bootloaderBlock = createReactiveBootloaderReference(skillName) + '\n\n';
       const initialMd = `---
 name: ${skillName}
-description: Skill: ${skillName}
+description: ${createReactiveSkillDescription(skillName)}
 type: reactive
 ---
 
