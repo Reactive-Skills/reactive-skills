@@ -7,7 +7,16 @@ import { renderError, renderHelp, renderList, renderDetail, renderOutput } from 
 import { resolveWorkspaceDir, resolveSkillPath, resolveSkillId, findSkillByManifestName } from '../args.js';
 
 
-export async function jobsCommand(args: string[]): Promise<string> {
+/**
+ * Parse both supported job-command argument orderings.
+ * # Performance & Risk Budget
+ * - Tier: P0 (<5ms target)
+ * - Complexity: O(a), argument count
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+function parseJobsArgs(args: string[]): { subCommand: string; skillName: string; targetJobId?: string } {
   const KNOWN_SUBCOMMANDS = ['list', 'switch', 'archive'];
   let subCommand = 'list';
   let skillName = '';
@@ -26,6 +35,21 @@ export async function jobsCommand(args: string[]): Promise<string> {
     skillName = args[0] || '';
     targetJobId = args[1];
   }
+
+  return { subCommand, skillName, targetJobId };
+}
+
+/**
+ * List or manage runs in the CLI-selected workspace, including each job's recorded root.
+ * # Performance & Risk Budget
+ * - Tier: P2 (<100ms target excluding filesystem mirror copies)
+ * - Complexity: O(j² + f), existing metadata alias lookups and mirrored files
+ * - Cyclomatic Complexity (CC): target <=30 (existing command orchestration)
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=30
+ */
+export async function jobsCommand(args: string[]): Promise<string> {
+  const { subCommand, skillName, targetJobId } = parseJobsArgs(args);
 
   if (!skillName) {
     const error = new AxiError(
@@ -197,6 +221,7 @@ export async function jobsCommand(args: string[]): Promise<string> {
         current_state: j.currentState,
         is_active: j.id === activeJobId,
         created_at: j.createdAt,
+        workspace_root: j.workspaceRoot || workspaceDir,
       }));
 
       const lines: string[] = [];
@@ -207,6 +232,7 @@ export async function jobsCommand(args: string[]): Promise<string> {
         { type: 'field', key: 'current_state' },
         { type: 'boolYesNo', key: 'is_active' },
         { type: 'relativeTime', key: 'created_at' },
+        { type: 'field', key: 'workspace_root' },
       ]));
 
       lines.push(renderHelp([

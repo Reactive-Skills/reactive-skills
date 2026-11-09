@@ -590,6 +590,20 @@ Documentation
 
 ## Performance Annotations
 
+### AXI workspace binding
+
+Workspace selection runs once at the executable boundary before an engine opens.
+It is a P2 cold-command operation with a <100ms local-filesystem target, excluding command execution, process startup and network-mounted filesystem latency.
+Discovery costs O(w * j + d) for w catalog/ancestor roots, existing alias lookup over j job metadata records per root, and caller path depth d.
+It scans no descendant directories and reads no event history.
+Default-skill discovery costs O(w + d); legacy job-list alias resolution retains its existing O(j²) cost.
+The per-user catalog stores one hash-named path entry per canonical workspace, with an atomic P1 (<25ms target) write costing O(p) in path bytes.
+Job creation adds one P1 canonical-path lookup, O(d), before persisting metadata.
+CLI argument extraction is P0 (<5ms target), O(a) in arguments; diagnostic serialization adds O(b) in output bytes.
+New discovery/orchestration helpers target CC <=15, branch coverage >=70% and CRAP <=25; path/catalog helpers target CC <=8, branch coverage >=80% and CRAP <=15.
+These are budgets, not end-to-end latency claims.
+The offline AXI byte fixture includes the additive diagnostics; MCP and SDK byte contracts are unchanged.
+
 ### Site (`apps/site`)
 
 The site is a static export, so every page is P3 build-time rendering; the budgets below govern what a visitor downloads and sees.

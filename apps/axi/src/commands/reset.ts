@@ -43,6 +43,15 @@ function deleteRecursive(dirPath: string): { deleted: string[]; errors: string[]
   return { deleted, errors };
 }
 
+/**
+ * Archive or purge runs exclusively within the selected workspace.
+ * # Performance & Risk Budget
+ * - Tier: P2 (<100ms target excluding recursive purge)
+ * - Complexity: O(j + f), existing alias lookup and purged files
+ * - Cyclomatic Complexity (CC): target <=30 (existing command orchestration)
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=30
+ */
 export async function resetCommand(args: string[]): Promise<string> {
   const isPurge = args.includes('--purge') || args.includes('-p');
   const cleanArgs = args.filter(a => a !== '--purge' && a !== '-p');
@@ -78,14 +87,13 @@ export async function resetCommand(args: string[]): Promise<string> {
   const skillId = resolveSkillId(skillPath);
   const jobManager = new JobManager(workspaceDir);
   const reactiveDir = jobManager.getSkillDir(skillId);
-  const skillParentReactiveDir = path.join(path.dirname(skillPath), '.reactive', 'skills', skillId);
   const unknownJob = () => new AxiError(
     `No run '${jobId}' of ${skillId} to reset in ${reactiveDir}`,
     'NOT_FOUND',
     [`Run \`reactive-skills-axi jobs ${skillName}\` to list runs`]
   );
 
-  if (!fs.existsSync(reactiveDir) && !fs.existsSync(skillParentReactiveDir)) {
+  if (!fs.existsSync(reactiveDir)) {
     if (jobId) throw unknownJob();
     const suggestions = getSuggestions({ domain: 'reset', action: 'call', skillName: skillRef });
     return renderOutput([
@@ -108,11 +116,6 @@ export async function resetCommand(args: string[]): Promise<string> {
 
   if (isPurge) {
     const { deleted, errors } = deleteRecursive(reactiveDir);
-    if (skillParentReactiveDir !== reactiveDir && fs.existsSync(skillParentReactiveDir)) {
-      const { deleted: oDel, errors: oErr } = deleteRecursive(skillParentReactiveDir);
-      deleted.push(...oDel);
-      errors.push(...oErr);
-    }
     const lines: string[] = [];
     lines.push(renderDetail('reset', {
       skill_id: skillName,

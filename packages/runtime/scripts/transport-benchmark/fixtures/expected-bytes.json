@@ -150,31 +150,31 @@
   },
   "axi": {
     "initial": {
-      "stdout_bytes": 1386
+      "stdout_bytes": 1505
     },
     "initial_state": {
-      "stdout_bytes": 1240
+      "stdout_bytes": 1359
     },
     "ready": {
-      "stdout_bytes": 1518
+      "stdout_bytes": 1637
     },
     "guard_refusal": {
-      "stdout_bytes": 689
+      "stdout_bytes": 808
     },
     "red": {
-      "stdout_bytes": 1355
+      "stdout_bytes": 1474
     },
     "green": {
-      "stdout_bytes": 1165
+      "stdout_bytes": 1284
     },
     "clean": {
-      "stdout_bytes": 1016
+      "stdout_bytes": 1135
     },
     "resume_empty_transcript": {
-      "stdout_bytes": 1016
+      "stdout_bytes": 1135
     },
     "failure": {
-      "stdout_bytes": 164
+      "stdout_bytes": 283
     }
   }
 }

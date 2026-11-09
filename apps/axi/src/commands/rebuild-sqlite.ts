@@ -1,28 +1,21 @@
 import path from 'node:path';
-import os from 'node:os';
 import fs from 'node:fs';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
 import { EventStore } from '@reactive-skills/runtime';
+import { resolveSkillPath, resolveWorkspaceDir } from '../args.js';
+import { workspaceContext } from '../workspace-context.js';
 
-const HOME_DIR = os.homedir();
-
-function resolveSkillPath(skillName: string): string | null {
-  const candidates = [
-    path.resolve(process.cwd(), 'skills', skillName),
-    path.resolve(HOME_DIR, '.agents', 'skills', skillName),
-    path.resolve(HOME_DIR, '.gemini', 'config', 'skills', skillName),
-  ];
-  for (const candidate of candidates) {
-    const yamlPath = path.join(candidate, 'skill.yaml');
-    if (fs.existsSync(yamlPath)) {
-      return candidate;
-    }
-  }
-  return null;
-}
-
+/**
+ * Reconcile the selected workspace ledger, retaining the legacy unbound helper path.
+ * # Performance & Risk Budget
+ * - Tier: P3 (batch reconciliation, excluding process startup)
+ * - Complexity: O(n), imported ledger events
+ * - Cyclomatic Complexity (CC): target <=12
+ * - Branch Coverage: target >=70%
+ * - CRAP Score: target <=25
+ */
 export async function rebuildSqliteCommand(args: string[]): Promise<string> {
   const skillName = args[0];
 
@@ -49,7 +42,9 @@ export async function rebuildSqliteCommand(args: string[]): Promise<string> {
     ]);
   }
 
-  const workspaceDir = path.dirname(skillPath);
+  // Preserve the historical unbound helper path; the CLI always supplies its selected root.
+  const workspaceDir = workspaceContext.getStore() || process.env.WORKSPACE_DIR
+    ? resolveWorkspaceDir(skillPath) : path.dirname(skillPath);
   const reactiveDir = path.join(workspaceDir, '.reactive', 'skills', skillName);
 
   if (!fs.existsSync(reactiveDir)) {

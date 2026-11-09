@@ -1,7 +1,17 @@
 import { TelemetryBroker } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
+import { resolveWorkspaceDir } from '../args.js';
 import { renderDetail, renderError, renderHelp, renderOutput } from '../toon.js';
 
+/**
+ * Open the read-only telemetry broker in the selected workspace.
+ * # Performance & Risk Budget
+ * - Tier: P2 (<100ms target excluding listener startup and command lifetime)
+ * - Complexity: O(a + c), arguments and existing catalog construction
+ * - Cyclomatic Complexity (CC): target <=12
+ * - Branch Coverage: target >=70%
+ * - CRAP Score: target <=25
+ */
 export async function dashboardCommand(args: string[]): Promise<string> {
   let port: number | undefined;
   let host = '127.0.0.1';
@@ -22,7 +32,7 @@ export async function dashboardCommand(args: string[]): Promise<string> {
   }
 
   const broker = new TelemetryBroker({
-    workspaceDir: process.cwd(),
+    workspaceDir: resolveWorkspaceDir(),
     port,
     host,
   });

@@ -42,6 +42,7 @@ import os from 'node:os';
 import fs from 'node:fs';
 import yaml from 'js-yaml';
 import { AxiError } from './errors.js';
+import { workspaceContext } from './workspace-context.js';
 
 const HOME_DIR = os.homedir();
 
@@ -64,6 +65,12 @@ export function resolveSkillId(skillPath: string): string {
 
 /**
  * Resolves a skill directory path from workspace or global agent registries.
+ * # Performance & Risk Budget
+ * - Tier: P1 (<25ms target on local filesystem)
+ * - Complexity: O(d), caller path depth and a fixed registry list
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=80%
+ * - CRAP Score: target <=15
  */
 export function resolveSkillPath(skillName: string): string | null {
   const candidates = [
@@ -75,6 +82,13 @@ export function resolveSkillPath(skillName: string): string | null {
     path.resolve(HOME_DIR, '.kilocode', 'skills', skillName),
     path.resolve(HOME_DIR, '.claude', 'skills', skillName),
   ];
+  const bound = workspaceContext.getStore();
+  if (bound) candidates.unshift(path.resolve(bound.root, 'skills', skillName));
+  let ancestor = path.dirname(process.cwd());
+  while (ancestor !== path.dirname(ancestor)) {
+    candidates.push(path.resolve(ancestor, 'skills', skillName));
+    ancestor = path.dirname(ancestor);
+  }
   for (const candidate of candidates) {
     const yamlPath = path.join(candidate, 'skill.yaml');
     if (fs.existsSync(yamlPath)) {
@@ -109,13 +123,21 @@ export function findSkillByManifestName(skillName: string): string | null {
 }
 
 /**
- * Resolves project workspace root given a skill directory path.
+ * Resolves the CLI-bound root first, retaining the legacy SDK/helper fallback.
  * 1. If WORKSPACE_DIR environment variable is set, uses that.
  * 2. If skill is inside the current working directory, returns the workspace root containing the skill.
  * 3. If skill is outside cwd (e.g. global registry ~/.agents/skills or ~/.gemini/config/skills),
  *    returns process.cwd() as the execution workspace where deliverables and .reactive state belong.
+ * # Performance & Risk Budget
+ * - Tier: P0 (<5ms target)
+ * - Complexity: O(p), path bytes
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
  */
 export function resolveWorkspaceDir(skillPath?: string): string {
+  const bound = workspaceContext.getStore();
+  if (bound) return bound.root;
   if (process.env.WORKSPACE_DIR) {
     return path.resolve(process.env.WORKSPACE_DIR);
   }
