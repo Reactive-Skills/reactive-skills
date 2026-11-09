@@ -43,8 +43,17 @@ function parseEventsArgs(args: string[]): { limit: number; skillName?: string; j
   return { limit: 20, skillName: filtered[0], jobId };
 }
 
+/**
+ * Discover a default skill within the selected root.
+ * # Performance & Risk Budget
+ * - Tier: P1 (<25ms target on local filesystem)
+ * - Complexity: O(s), skill directories in one workspace
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=80%
+ * - CRAP Score: target <=15
+ */
 function findDefaultSkillFromWorkspace(): string | undefined {
-  const reactiveSkillsDir = path.resolve(process.cwd(), '.reactive', 'skills');
+  const reactiveSkillsDir = path.resolve(resolveWorkspaceDir(), '.reactive', 'skills');
   if (!fs.existsSync(reactiveSkillsDir)) return undefined;
 
   const dirs = fs.readdirSync(reactiveSkillsDir, { withFileTypes: true });

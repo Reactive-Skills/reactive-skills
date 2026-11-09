@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { AxiError, mapRuntimeError, exitCodeForError } from '../errors.js';
 import { renderError } from '../toon.js';
 import { COMMANDS, wantsHelp } from './commands.js';
+import { WORKSPACE_COMMANDS, WORKSPACE_HELP } from '../workspace-context.js';
 
 const require = createRequire(import.meta.url);
 const packageMetadata = require('../../package.json') as { version?: string };
@@ -44,6 +45,15 @@ examples:
   reactive-skills-axi mcp
 `;
 
+/**
+ * Dispatch a CLI command after help handling and workspace selection.
+ * # Performance & Risk Budget
+ * - Tier: P2 (<100ms target excluding command execution and process startup)
+ * - Complexity: O(a + w * j + d), arguments, catalog roots, metadata lookup and path depth
+ * - Cyclomatic Complexity (CC): target <=15
+ * - Branch Coverage: target >=70%
+ * - CRAP Score: target <=25
+ */
 export async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
@@ -69,12 +79,13 @@ export async function main() {
 
   const commandArgs = args.slice(1);
   if (spec.usage && wantsHelp(commandArgs)) {
-    process.stdout.write(spec.usage + '\n');
+    process.stdout.write(spec.usage + (WORKSPACE_COMMANDS.has(command) ? WORKSPACE_HELP : '') + '\n');
     return;
   }
 
   try {
-    const output = await spec.run(commandArgs);
+    const { withWorkspaceBinding } = await import('../workspace-binding.js');
+    const output = await withWorkspaceBinding(command, commandArgs, (boundArgs) => spec.run(boundArgs));
     if (typeof output === 'string') process.stdout.write(output + '\n');
   } catch (err) {
     const axiErr = err instanceof AxiError ? err : mapRuntimeError(err);

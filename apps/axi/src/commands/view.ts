@@ -1,35 +1,21 @@
 import path from 'node:path';
-import os from 'node:os';
 import fs from 'node:fs';
 import { EventStore, FSMEngine, JobManager, TelemetryServer } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { renderError, renderHelp, renderOutput, renderDetail } from '../toon.js';
 import { getSuggestions } from '../suggestions.js';
-import { extractJobFlag, resolveWorkspaceDir } from '../args.js';
+import { extractJobFlag, resolveWorkspaceDir, resolveSkillPath } from '../args.js';
 
-const HOME_DIR = os.homedir();
-
-function resolveSkillPath(skillName: string): string | null {
-  const directPath = path.resolve(process.cwd(), skillName);
-  if (fs.existsSync(path.join(directPath, 'skill.yaml'))) {
-    return directPath;
-  }
-
-  const candidates = [
-    path.resolve(process.cwd(), 'skills', skillName),
-    path.resolve(HOME_DIR, '.agents', 'skills', skillName),
-    path.resolve(HOME_DIR, '.gemini', 'config', 'skills', skillName),
-  ];
-  for (const candidate of candidates) {
-    const yamlPath = path.join(candidate, 'skill.yaml');
-    if (fs.existsSync(yamlPath)) {
-      return candidate;
-    }
-  }
-  return null;
-}
-
-export async function viewCommand(args: string[]): Promise<string> {
+/**
+ * Extract telemetry selection and listener arguments before workspace discovery.
+ * # Performance & Risk Budget
+ * - Tier: P1 (<25ms target)
+ * - Complexity: O(a), argument count
+ * - Cyclomatic Complexity (CC): target <=15
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=20
+ */
+function parseViewArgs(args: string[]) {
   const { jobId, filteredArgs } = extractJobFlag(args);
   let skillName: string | undefined;
   let port: number | undefined;
@@ -57,6 +43,23 @@ export async function viewCommand(args: string[]): Promise<string> {
     }
   }
 
+  return { jobId, skillName, port, preferredPort, host, once };
+}
+
+/**
+ * Open telemetry for the selected workspace and run.
+ * # Performance & Risk Budget
+ * - Tier: P2 (<100ms target excluding listener startup and command lifetime)
+ * - Complexity: O(s + n), workspace skill discovery and cold ledger replay
+ * - Cyclomatic Complexity (CC): target <=30 (existing command orchestration)
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=30
+ */
+export async function viewCommand(args: string[]): Promise<string> {
+  const parsed = parseViewArgs(args);
+  let { skillName } = parsed;
+  const { jobId, port, preferredPort, host, once } = parsed;
+
   // Fallback 1: check current directory
   if (!skillName && fs.existsSync(path.join(process.cwd(), 'skill.yaml'))) {
     skillName = path.basename(process.cwd());
@@ -64,7 +67,7 @@ export async function viewCommand(args: string[]): Promise<string> {
 
   // Fallback 2: check .reactive/skills
   if (!skillName) {
-    const reactiveSkillsDir = path.resolve(process.cwd(), '.reactive', 'skills');
+    const reactiveSkillsDir = path.resolve(resolveWorkspaceDir(), '.reactive', 'skills');
     if (fs.existsSync(reactiveSkillsDir)) {
       const dirs = fs.readdirSync(reactiveSkillsDir, { withFileTypes: true });
       const found = dirs.find((d) => d.isDirectory() && (
@@ -89,7 +92,7 @@ export async function viewCommand(args: string[]): Promise<string> {
   }
 
   const skillPath = resolveSkillPath(skillName);
-  const workspaceDir = skillPath ? resolveWorkspaceDir(skillPath) : process.cwd();
+  const workspaceDir = resolveWorkspaceDir(skillPath || undefined);
 
   let engine: FSMEngine | undefined;
   let eventStore: EventStore | undefined;

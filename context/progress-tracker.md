@@ -1,5 +1,22 @@
 # Progress Tracker: Reactive Skills Architecture (RSA)
 
+## Explicit AXI workspace binding
+
+AXI selects one canonical workspace at the CLI boundary before opening a runtime store.
+`--workspace` takes precedence over `WORKSPACE_DIR`; subsequent commands discover recorded roots through a per-user root catalog and legacy ancestor stores.
+Competing matches require an explicit root, named `state` and `emit` calls cannot bootstrap unknown jobs, and `context.workspace_root` remains descriptive.
+Job metadata now records optional `workspaceRoot`, preserving existing jobs without the field.
+Legacy text and compact JSON include workspace diagnostics, and job rows include each recorded root.
+The subdirectory emit regression from issue 26 is covered alongside all six issue 14 acceptance criteria.
+
+Changed files: `apps/axi/src/workspace-binding.ts`, `workspace-context.ts`, `args.ts`, `cli/index.ts`, `commands/jobs.ts`, `events.ts`, `reset.ts`, `view.ts`, `dashboard.ts`, `rebuild-sqlite.ts`; `packages/runtime/src/core/types.ts`, `job-manager.ts`; `apps/axi/tests/commands/workspace-binding.test.ts`; `packages/runtime/tests/workspace-metadata.test.ts`; `packages/runtime/scripts/transport-benchmark/fixtures/expected-bytes.json`; `docs/workspace-binding.md`, `apps/axi/README.md`, `PERFORMANCE-STANDARDS.md` and this tracker.
+Validation: 15 installed-CLI workspace regressions and the full AXI suite pass (404 passed, one existing skip); four runtime metadata tests also passed.
+The normalized AXI trace adds 119 diagnostic bytes per operation; MCP/SDK expectations and the historical baseline remain unchanged.
+Small argument-parser extractions reduce touched job/telemetry orchestration below the CC 30 ceiling; new workspace orchestration measures CC 15.
+The full runtime run passes 1,097 tests and fails only the existing host-local timing assertion in `perf-budget.test.ts:169`; its test and thresholds remain unchanged, with CI designated the final check.
+Both package builds and documentation/prose gates pass.
+Pipeline validation is pending.
+
 ## Agent-first site entry paths
 
 - Homepage hero, header, early start paths and closing CTA now lead to using a skill or creating one with an agent; use/create paths and registry details offer copyable prompts.

@@ -556,6 +556,7 @@ export type JobStatus = z.infer<typeof JobStatusSchema>;
 
 export const JobMetadataSchema = z.object({
   id: z.string(),
+  workspaceRoot: z.string().optional(),
   runId: z.string().optional(),
   name: z.string(),
   skillId: z.string(),

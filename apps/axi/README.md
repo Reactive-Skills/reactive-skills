@@ -27,6 +27,9 @@ npm install -g @reactive-skills/axi
 
 ## Usage
 
+Ask your agent to bind each run to its project directory and report the resolved workspace before continuing.
+Workspace selection, diagnostics and compatibility are described in the [workspace binding reference](../../docs/workspace-binding.md).
+
 ```bash
 # Zero-install via npx:
 npx -y @reactive-skills/axi                          # dashboard

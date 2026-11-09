@@ -128,6 +128,12 @@ export class JobManager {
 
   /**
    * Creates a new isolated job and persists its job.json metadata.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target on local filesystem)
+   * - Complexity: O(d + b), directory depth and metadata bytes
+   * - Cyclomatic Complexity (CC): target <=12
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=15
    */
   public createJob(skillId: string, options: CreateJobOptions = {}): JobMetadata {
     const id = options.runId || options.id || createSortableId();
@@ -152,6 +158,8 @@ export class JobManager {
     }
     fs.mkdirSync(path.join(jobDir, 'artifacts'), { recursive: true });
     fs.mkdirSync(path.join(jobDir, 'logs'), { recursive: true });
+
+    metadata.workspaceRoot = fs.realpathSync(this.workspaceDir);
 
     const metadataPath = path.join(jobDir, 'job.json');
     fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');

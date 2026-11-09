@@ -1,0 +1,63 @@
+# AXI workspace binding
+
+Bind the workspace when an agent starts a skill, especially when the skill is globally installed and the project is below the agent's launch directory.
+The workspace owns the `.reactive` ledger, run metadata, evidence and generated `.docs` projections.
+
+```bash
+reactive-skills-axi invoke my-skill --job feature-a --workspace ./projects/example
+reactive-skills-axi state my-skill --job feature-a
+reactive-skills-axi emit my-skill ADVANCE --job feature-a
+```
+
+`--workspace` accepts an existing directory and resolves relative paths against the caller's directory.
+It takes precedence over `WORKSPACE_DIR`, which accepts the same directory syntax.
+The CLI resolves symlinks and records the canonical absolute path as `workspaceRoot` in each new job's `job.json`.
+Without an explicit choice, the first run retains the local skill workspace or current-directory default.
+Check the reported `workspace_root` before proceeding when that default may be a launch directory above the project.
+
+`context.workspace_root` is descriptive only.
+Neither an invoke payload nor a later context update changes the runtime workspace.
+Use `--workspace` or `WORKSPACE_DIR` to select storage explicitly.
+
+## Later commands
+
+The CLI applies the same selection to `invoke`, `state`, `emit`, `events`, `jobs`, `reset`, `evidence`, `approve`, `rebuild-sqlite`, `view`, `watch` and `dashboard`.
+With no explicit root, it considers known workspace roots and ancestor stores before opening a runtime engine.
+A named job selects the matching store; multiple matching roots require `--workspace` or `WORKSPACE_DIR` even when one is the caller's directory.
+With no job reference, multiple stores for that skill also require a workspace choice.
+An omitted skill can use the default only when a single known workspace is available, or an explicit root selects it.
+The workspace-wide `dashboard` retains its caller-directory default and honors either explicit workspace option.
+This discovery does not recursively search project descendants or read event history.
+
+After a CLI operation finds or creates a skill store, it registers the root under `${XDG_STATE_HOME}/reactive-skills/workspaces`, or `~/.local/state/reactive-skills/workspaces` when `XDG_STATE_HOME` is unset.
+Each hash-named JSON file contains one canonical workspace path, allowing later processes in parent, sibling or unrelated directories to find it.
+The catalog is a discovery hint; job metadata and the selected store remain authoritative.
+Deleted workspace paths are ignored, and corrupt catalog entries fail closed unless a workspace is supplied explicitly.
+Copied or moved stores whose recorded root differs from their location are refused; this change does not migrate stores.
+
+Jobs created before workspace binding remain usable without `workspaceRoot`.
+An ancestor store or explicit workspace selects their existing location, and subsequent reads and updates preserve their metadata and history.
+If a legacy store is outside the caller's ancestors and has never been registered, select it once with `--workspace`.
+The historical skill-parent store location is also considered for compatibility.
+
+Named `state` and ordinary `emit` calls refuse unknown jobs rather than creating a fresh run at the initial state.
+Use `invoke` to start a named run.
+Explicit evidence import, including folded import-and-emit, retains its existing run-registration behavior within the selected workspace.
+Competing stores still require a workspace choice for evidence operations.
+This fixes the subdirectory resume behavior reported in issue 26 for known jobs and prevents ordinary named emits from silently bootstrapping unknown runs.
+
+`reset --purge` deletes only the selected workspace's skill store.
+It does not remove another store beside the installed skill.
+
+## Diagnostics
+
+Legacy text includes `workspace_root`, `workspace_source`, `WORKSPACE_DIR` and `workspace_warning` fields.
+Compact JSON includes the same fields under `workspace`.
+For long-running telemetry commands, `--once` returns workspace diagnostics with the listener summary.
+Evidence JSON receipts retain their first-line format and include additive workspace diagnostics.
+When the caller's physical directory differs from the selected root, `workspace_warning` is `caller_directory_differs`, including when the caller is a subdirectory.
+Job listings also show each recorded workspace root, falling back to the selected root for legacy jobs.
+
+Use an explicit root to resolve ambiguity; a caller-directory change alone never selects between competing stores.
+This contract applies to the AXI executable.
+SDK and MCP callers continue to supply their runtime `workspaceDir` explicitly; direct command-handler helpers retain their legacy fallback behavior.
