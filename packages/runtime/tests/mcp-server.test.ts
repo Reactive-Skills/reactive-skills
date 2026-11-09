@@ -64,7 +64,7 @@ describe('Reactive MCP Server Integration', () => {
     const parsed = JSON.parse(result.content[0].text);
 
     expect(parsed.skill).toBe('test-fsm');
-    expect(parsed.bootloader_version).toBe('1.0.0');
+    expect(parsed.bootloader_version).toBe('1.0.1');
     expect(parsed.instructions).toContain('reactive_context_prepare');
   });
 
