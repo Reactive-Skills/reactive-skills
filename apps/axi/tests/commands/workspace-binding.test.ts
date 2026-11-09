@@ -119,6 +119,37 @@ describe('explicit workspace binding through the installed CLI', () => {
     expect(run(parent, ['state', skill, '--job', 'shared', '--workspace', project]).text).toContain(jobs()[0].id);
   });
 
+  it('starts a new run in the caller directory instead of another cataloged project store', () => {
+    const other = path.join(sandbox, 'other');
+    fs.mkdirSync(other);
+    run(project, ['invoke', skill, '--job', 'shared']);
+    const before = events(project).length;
+    for (const args of [['invoke', skill, '--job', 'feature-x'], ['invoke', skill]]) {
+      const output = run(other, args);
+      expect(output.text).not.toMatch(/^error:/m);
+      expect(output.text).not.toContain('caller_directory_differs');
+    }
+    expect(jobs(other).length).toBeGreaterThan(0);
+    expect(events(project)).toHaveLength(before);
+    expect(jobs(project)).toHaveLength(1);
+  });
+
+  it('prefers the caller store over other cataloged stores and fails closed only outside them', () => {
+    const other = path.join(sandbox, 'other');
+    fs.mkdirSync(other);
+    run(project, ['invoke', skill, '--job', 'shared']);
+    run(other, ['invoke', skill, '--job', 'shared', '--workspace', other]);
+    for (const args of [['state', skill], ['state', skill, '--job', 'shared']]) {
+      const output = run(path.join(project, 'src'), args);
+      expect(output.text).toContain(`workspace_root: ${JSON.stringify(fs.realpathSync(project))}`);
+      expect(output.text).toContain('other_workspace_stores');
+    }
+    const elsewhere = path.join(sandbox, 'elsewhere');
+    fs.mkdirSync(elsewhere);
+    expect(run(elsewhere, ['state', skill, '--job', 'shared']).text).toContain('Ambiguous workspace');
+    expect(fs.existsSync(path.join(elsewhere, '.reactive'))).toBe(false);
+  });
+
   it('rejects an unknown global job on emit without bootstrapping a store (issue 26)', () => {
     expect(run(project, ['emit', skill, 'ADVANCE', '--job', 'missing']).text).toContain('invoke');
     expect(fs.existsSync(path.join(project, '.reactive'))).toBe(false);

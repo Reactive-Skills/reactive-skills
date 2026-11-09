@@ -164,13 +164,29 @@ function targetSkillPath(skill: string | undefined, root: string | undefined): s
  * - Branch Coverage: target >=70%
  * - CRAP Score: target <=25
  */
-function defaultBinding(): { root: string; source: string } {
+function defaultBinding(): { root: string; source: string; warning?: string } {
   const fallback = resolveWorkspaceDir();
   const stores = candidateRoots(fallback).filter(root => fs.existsSync(path.join(root, '.reactive', 'skills')));
-  if (stores.length > 1) {
-    throw new AxiError('Ambiguous workspace for default skill selection', 'VALIDATION_ERROR', stores.map(root => `Pass --workspace ${JSON.stringify(root)}`));
+  const local = stores.filter(root => isCallerRoot(root, fallback));
+  const choices = local.length ? local : stores;
+  if (choices.length > 1) {
+    throw new AxiError('Ambiguous workspace for default skill selection', 'VALIDATION_ERROR', choices.map(root => `Pass --workspace ${JSON.stringify(root)}`));
   }
-  return { root: stores[0] || canonicalRoot(fallback), source: stores.length ? 'recorded_or_legacy_store' : 'caller_directory' };
+  return { root: choices[0] || canonicalRoot(fallback), source: choices.length ? 'recorded_or_legacy_store' : 'caller_directory', warning: stores.length > choices.length ? 'other_workspace_stores' : undefined };
+}
+
+/**
+ * Report whether a root is the caller default or contains the caller's physical directory.
+ * # Performance & Risk Budget
+ * - Tier: P0 (<5ms target)
+ * - Complexity: O(d), path depth
+ * - Cyclomatic Complexity (CC): target <=4
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+function isCallerRoot(root: string, fallback: string): boolean {
+  const relative = path.relative(root, canonicalRoot(process.cwd()));
+  return root === canonicalRoot(fallback) || !(relative.split(path.sep)[0] === '..' || path.isAbsolute(relative));
 }
 
 /**
@@ -192,7 +208,8 @@ function checkRecordedRoot(root: string, skill: string, reference?: string): boo
 }
 
 /**
- * Choose one store before booting an engine; competing stores always fail closed.
+ * Choose one store before booting an engine. The caller's own store wins; other stores are
+ * used only for an existing job; new runs never start in another project's store.
  * # Performance & Risk Budget
  * - Tier: P2 (<100ms target on local filesystem)
  * - Complexity: O(w * j + d), known workspaces, metadata alias lookup and caller depth
@@ -200,16 +217,17 @@ function checkRecordedRoot(root: string, skill: string, reference?: string): boo
  * - Branch Coverage: target >=70%
  * - CRAP Score: target <=25
  */
-function selectRoot(skill: string, reference: string | undefined, fallback: string, legacyRoot: string): { root: string; source: string } {
+function selectRoot(command: string, skill: string, reference: string | undefined, fallback: string, legacyRoot: string): { root: string; source: string; warning?: string } {
   const stores = candidateRoots(fallback, legacyRoot).filter(root => fs.existsSync(new JobManager(root).getSkillDir(skill)));
-  const matches = reference ? stores.filter(root => checkRecordedRoot(root, skill, reference)) : stores;
-  const choices = matches.length ? matches : stores;
+  const matches = reference ? stores.filter(root => checkRecordedRoot(root, skill, reference)) : command === 'invoke' ? [] : stores;
+  const localMatches = matches.filter(root => isCallerRoot(root, fallback));
+  const choices = localMatches.length ? localMatches : matches.length ? matches : stores.filter(root => isCallerRoot(root, fallback));
   if (choices.length > 1) {
     throw new AxiError(`Ambiguous workspace for '${skill}'${reference ? ` job '${reference}'` : ''}`, 'VALIDATION_ERROR', choices.map(root => `Pass --workspace ${JSON.stringify(root)}`));
   }
   const root = choices[0] || canonicalRoot(fallback);
   checkRecordedRoot(root, skill, reference);
-  return { root, source: choices.length ? 'recorded_or_legacy_store' : 'caller_directory' };
+  return { root, source: choices.length ? 'recorded_or_legacy_store' : 'caller_directory', warning: matches.some(other => other !== root) ? 'other_workspace_stores' : undefined };
 }
 
 /**
@@ -235,7 +253,7 @@ export async function withWorkspaceBinding(command: string, args: string[], run:
   const skill = resolveSkillId(skillPath);
   const binding = explicitRoot
     ? { root: explicitRoot, source: selected.source }
-    : selectRoot(skill, target.job, resolveWorkspaceDir(skillPath), path.dirname(skillPath));
+    : selectRoot(command, skill, target.job, resolveWorkspaceDir(skillPath), path.dirname(skillPath));
   const found = checkRecordedRoot(binding.root, skill, target.job);
   const explicitEvidenceImport = command === 'emit' && selected.args.some(arg => arg === '--evidence' || arg.startsWith('--evidence='));
   if (target.job && !found && ['state', 'emit'].includes(command) && !explicitEvidenceImport) {
@@ -255,14 +273,14 @@ export async function withWorkspaceBinding(command: string, args: string[], run:
  * - Branch Coverage: target >=70%
  * - CRAP Score: target <=25
  */
-async function executeBound(binding: { root: string; source: string }, args: string[], run: (args: string[]) => Promise<string | void>): Promise<string | void> {
+async function executeBound(binding: { root: string; source: string; warning?: string }, args: string[], run: (args: string[]) => Promise<string | void>): Promise<string | void> {
   const output = await workspaceContext.run({ root: binding.root }, () => run(args));
   if (typeof output !== 'string') return output;
   const diagnostics = {
     workspace_root: binding.root,
     workspace_source: binding.source,
     WORKSPACE_DIR: process.env.WORKSPACE_DIR || 'unset',
-    workspace_warning: canonicalRoot(process.cwd()) !== binding.root ? 'caller_directory_differs' : 'none',
+    workspace_warning: [canonicalRoot(process.cwd()) !== binding.root && 'caller_directory_differs', binding.warning].filter(Boolean).join(',') || 'none',
   };
   if (output.startsWith('{')) {
     // Folded evidence output is a JSON receipt line followed by the legacy view.

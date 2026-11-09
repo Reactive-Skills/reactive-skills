@@ -23,9 +23,11 @@ Use `--workspace` or `WORKSPACE_DIR` to select storage explicitly.
 
 The CLI applies the same selection to `invoke`, `state`, `emit`, `events`, `jobs`, `reset`, `evidence`, `approve`, `rebuild-sqlite`, `view`, `watch` and `dashboard`.
 With no explicit root, it considers known workspace roots and ancestor stores before opening a runtime engine.
-A named job selects the matching store; multiple matching roots require `--workspace` or `WORKSPACE_DIR` even when one is the caller's directory.
-With no job reference, multiple stores for that skill also require a workspace choice.
-An omitted skill can use the default only when a single known workspace is available, or an explicit root selects it.
+A store containing the caller's directory, or the caller default, wins over other known stores, and the diagnostics then report `other_workspace_stores` when other stores also hold the job.
+Another known store is selected only when the caller is inside no candidate store; a named job selects the store that holds it, and multiple candidates require `--workspace` or `WORKSPACE_DIR`.
+Multiple stores that all contain the caller's directory also require a workspace choice.
+`invoke` for a job that no store holds, or with no job reference, starts or resumes in the caller's store or default and never in another project's store.
+An omitted skill follows the same preference across known workspaces, or an explicit root selects it.
 The workspace-wide `dashboard` retains its caller-directory default and honors either explicit workspace option.
 This discovery does not recursively search project descendants or read event history.
 
@@ -58,6 +60,6 @@ Evidence JSON receipts retain their first-line format and include additive works
 When the caller's physical directory differs from the selected root, `workspace_warning` is `caller_directory_differs`, including when the caller is a subdirectory.
 Job listings also show each recorded workspace root, falling back to the selected root for legacy jobs.
 
-Use an explicit root to resolve ambiguity; a caller-directory change alone never selects between competing stores.
+Use an explicit root to resolve ambiguity between stores that are all outside the caller's directory, or that all contain it.
 This contract applies to the AXI executable.
 SDK and MCP callers continue to supply their runtime `workspaceDir` explicitly; direct command-handler helpers retain their legacy fallback behavior.
