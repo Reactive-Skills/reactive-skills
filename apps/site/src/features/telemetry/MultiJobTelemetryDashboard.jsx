@@ -42,6 +42,9 @@ function normalizeBrokerUrl(value) {
   return value.trim().replace(/\/$/, '');
 }
 
+// Last path segment of a broker-reported workspace root, so jobs from different projects are told apart.
+const workspaceLabel = (root) => (root ? root.split(/[\\/]/).filter(Boolean).pop() || root : '');
+
 function findCatalogTarget(catalog, target) {
   const skill = catalog?.skills?.find((entry) => entry.skillId === target.skillId);
   return skill?.jobs?.find((entry) => entry.jobId === target.jobId) || null;
@@ -376,7 +379,7 @@ export function MultiJobTelemetryDashboard() {
             <label htmlFor="telemetry-job" className="mb-1.5 block text-xs font-semibold text-phino-text-muted">Job</label>
             <select id="telemetry-job" value={selectedJobId} onChange={(event) => setSelectedJobId(event.target.value)} className="w-full rounded-lg border border-phino-border bg-phino-canvas px-3 py-2.5 text-sm text-phino-text outline-none focus:border-phino-focus focus:ring-1 focus:ring-phino-focus" disabled={!selectedSkill}>
               <option value="">Select a job</option>
-              {(selectedSkill?.jobs || []).map((job) => <option key={job.jobId} value={job.jobId}>{job.jobId} · {job.currentState}</option>)}
+              {(selectedSkill?.jobs || []).map((job) => <option key={job.jobId} value={job.jobId}>{job.jobId} · {job.currentState}{job.workspaceRoot ? ` · ${workspaceLabel(job.workspaceRoot)}` : ''}</option>)}
             </select>
           </div>
           <button type="button" onClick={addSelectedTarget} disabled={!selectedSkillId || !selectedJobId} className="inline-flex items-center justify-center gap-2 rounded-lg bg-phino-signal px-4 py-2.5 text-sm font-semibold text-phino-signal-on transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
@@ -430,6 +433,7 @@ export function MultiJobTelemetryDashboard() {
                     <div className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-phino-signal-text">{target.skillId}</div>
                     <h2 className="mt-1 truncate font-mono text-lg font-semibold text-phino-text" data-testid={`telemetry-job-${key}`}>{target.jobId}</h2>
                     <p className="mt-1 text-xs text-phino-text-muted">{catalogTarget?.isActive ? 'Active job' : 'Parallel job'} · {catalogTarget?.status || 'Unknown status'}</p>
+                    {catalogTarget?.workspaceRoot && <p className="mt-1 truncate font-mono text-xs text-phino-text-subtle" title={catalogTarget.workspaceRoot}>{catalogTarget.workspaceRoot}</p>}
                   </div>
                   <button type="button" onClick={() => removeTarget(target)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-phino-text-muted transition-colors hover:bg-phino-surface-raised hover:text-phino-text" aria-label={`Remove ${target.jobId}`}>
                     <Trash2 className="h-4 w-4" aria-hidden="true" />

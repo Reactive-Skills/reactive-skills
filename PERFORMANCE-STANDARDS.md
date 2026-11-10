@@ -600,6 +600,9 @@ Default-skill discovery costs O(w + d); legacy job-list alias resolution retains
 The per-user catalog stores one hash-named path entry per canonical workspace, with an atomic P1 (<25ms target) write costing O(p) in path bytes.
 Job creation adds one P1 canonical-path lookup, O(d), before persisting metadata.
 CLI argument extraction is P0 (<5ms target), O(a) in arguments; diagnostic serialization adds O(b) in output bytes.
+The `dashboard` broker lists known roots with the same O(w + d) discovery and then refreshes its catalog in P2 (<100ms target per refresh) at O(w * (s + j)) for w roots, s skills and j jobs, opening one read-only reader per newly seen job.
+Refreshes back off to six times the last refresh's duration when that exceeds the one-second interval, so a slow filesystem cannot keep the synchronous scan running back to back; the root list is re-read at most once per refresh interval.
+Measured with 35 roots and 144 jobs: about 37ms per catalog request and 0.2s startup on local disk, and about 0.6s per request and 11s startup over a WSL drive mount, where the first refresh opens one reader per job.
 New discovery/orchestration helpers target CC <=15, branch coverage >=70% and CRAP <=25; path/catalog helpers target CC <=8, branch coverage >=80% and CRAP <=15.
 These are budgets, not end-to-end latency claims.
 The offline AXI byte fixture includes the additive diagnostics; MCP and SDK byte contracts are unchanged.

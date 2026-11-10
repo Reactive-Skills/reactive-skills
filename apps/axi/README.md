@@ -305,6 +305,8 @@ npx -y @reactive-skills/axi dashboard --host 0.0.0.0 --port 4500
 
 The broker binds to `127.0.0.1` by default and reports the actual URL and port after binding.
 
+It lists the jobs of every known workspace (the caller's stores first, then ancestors and recorded roots) and reports each job's `workspace_scope`, workspace count and workspace root. Pass `--workspace <directory>` or set `WORKSPACE_DIR` to limit it to one store.
+
 When `--port` is omitted, the broker makes real bind attempts starting at `127.0.0.1:4242` and falls back through a bounded deterministic range when the preferred port is occupied.
 
 An explicit `--port` is strict and fails clearly if that port is unavailable.

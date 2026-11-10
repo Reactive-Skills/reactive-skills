@@ -26,7 +26,9 @@ An explicit port remains strict, while `--port 0` requests an OS-assigned epheme
 
 The broker is a separate runtime class from `TelemetryServer` so the existing single-job HTTP and signal behavior remains compatible.
 
-The broker discovers targets from the current workspace's `.reactive/skills` directory through `JobManager` and reads optional skill metadata from the workspace skill manifest.
+The broker discovers targets from the `.reactive/skills` directory of `workspaceDir` and any further `workspaceDirs` through one `JobManager` per root, and reads optional skill metadata from each root's skill manifest.
+
+When two roots hold the same skill and job identifiers, the first root listed wins, and each catalog job reports the `workspaceRoot` that holds it.
 
 The broker never constructs a store from an HTTP-supplied path.
 

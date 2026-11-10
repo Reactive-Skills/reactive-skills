@@ -436,7 +436,7 @@ The command reports the actual listener URL and bound port.
 
 Open the site `/telemetry` route and enter that broker URL in the connection field.
 
-The broker catalog discovers skills and jobs from the current workspace's `.reactive/skills` directory and returns skill names, job IDs, status, current HSM state, local latest sequence, update time, and active-job metadata.
+The broker catalog discovers skills and jobs from the `.reactive/skills` directory of every known workspace (the caller's stores first, then recorded roots), or from only the selected workspace when `--workspace` or `WORKSPACE_DIR` is set. It returns skill names, job IDs, status, current HSM state, local latest sequence, update time, active-job metadata and each job's workspace root.
 
 The dashboard uses `GET /catalog`, job-scoped `GET /state?skillId=<skill-id>&jobId=<job-id>`, and one filtered `GET /events` SSE connection for all tracked targets.
 

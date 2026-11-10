@@ -218,7 +218,7 @@ Omit `--job` to preserve existing resolution through `REACTIVE_JOB_ID`, the acti
 
 ### Multi-Job Telemetry Broker
 
-`TelemetryBroker` reads the current workspace's `.reactive/skills` catalog and opens run-scoped readers over each skill's shared SQLite ledger.
+`TelemetryBroker` reads the `.reactive/skills` catalog of `workspaceDir` plus any `workspaceDirs` and opens run-scoped readers over each skill's shared SQLite ledger. When two roots hold the same skill and job identifiers, the first root wins, and every catalog job reports its `workspaceRoot`.
 
 It exposes `GET /catalog`, job-scoped `GET /state`, and one filtered `GET /events` SSE stream.
 

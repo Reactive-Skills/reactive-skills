@@ -1,5 +1,13 @@
 # Progress Tracker: Reactive Skills Architecture (RSA)
 
+## Telemetry dashboard lists every known workspace
+
+The `dashboard` broker read only the caller directory's `.reactive/skills`, so jobs recorded in other project workspaces (the normal result of workspace binding) never reached the catalog.
+`TelemetryBroker` now accepts `workspaceDirs` beside `workspaceDir`, first root wins on duplicate skill and job identifiers, and each catalog job reports its `workspaceRoot`.
+`dashboard` passes the known roots (caller stores first, then ancestors and recorded roots) unless `--workspace` or `WORKSPACE_DIR` selects one store, re-reading them while it runs so a project's first run after startup is listed; the telemetry page shows each job's workspace.
+Catalog refreshes now back off to six times their own duration, which cut a 144-job, 35-root catalog request over a slow drive mount from about 21s to 0.6s.
+Changed files: `packages/runtime/src/telemetry/broker.ts`, `types.ts`, `core/job-manager.ts`; `apps/axi/src/commands/dashboard.ts`, `workspace-binding.ts`; `apps/site/src/features/telemetry/MultiJobTelemetryDashboard.jsx`; broker and dashboard regression tests; README, runtime and AXI READMEs, site telemetry docs, `docs/workspace-binding.md`, spec 0005 and `PERFORMANCE-STANDARDS.md`.
+
 ## Explicit AXI workspace binding
 
 AXI selects one canonical workspace at the CLI boundary before opening a runtime store.

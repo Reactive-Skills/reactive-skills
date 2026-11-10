@@ -188,6 +188,87 @@ describe('TelemetryBroker', () => {
     });
   });
 
+  it('lists jobs and streams events from every workspace root it is given', async () => {
+    const callerWorkspace = createWorkspace();
+    const projectWorkspace = createWorkspace();
+    const duplicateWorkspace = createWorkspace();
+    createSkill(callerWorkspace, 'skill-alpha', 'Alpha Skill');
+    createJob(callerWorkspace, 'skill-alpha', 'caller-job');
+    createJob(projectWorkspace, 'skill-alpha', 'project-job');
+    createJob(projectWorkspace, 'skill-beta', 'beta-job');
+    createJob(duplicateWorkspace, 'skill-alpha', 'caller-job');
+    const projectStore = openStore(projectWorkspace, 'skill-alpha', 'project-job');
+    projectStore.append('PROJECT_BASE', {}, { source: 'project' });
+    projectStore.close();
+
+    const broker = new TelemetryBroker({
+      workspaceDir: callerWorkspace,
+      workspaceDirs: [projectWorkspace, duplicateWorkspace],
+      port: 0,
+      tailIntervalMs: 10,
+      catalogRefreshIntervalMs: 10,
+    });
+    brokers.push(broker);
+    const { url } = await broker.start();
+
+    const catalog = await (await fetch(`${url}/catalog`)).json();
+    const alpha = catalog.skills.find((skill: any) => skill.skillId === 'skill-alpha');
+    expect(alpha.jobs.map((job: any) => job.jobId)).toEqual(expect.arrayContaining(['caller-job', 'project-job']));
+    expect(alpha.jobs.filter((job: any) => job.jobId === 'caller-job')).toHaveLength(1);
+    expect(alpha.jobs.find((job: any) => job.jobId === 'caller-job').workspaceRoot).toBe(fs.realpathSync(callerWorkspace));
+    expect(alpha.jobs.find((job: any) => job.jobId === 'project-job').workspaceRoot).toBe(fs.realpathSync(projectWorkspace));
+    expect(catalog.skills.find((skill: any) => skill.skillId === 'skill-beta').jobs).toHaveLength(1);
+
+    const stream = await openSse(`${url}/events?target=skill-alpha%2Fproject-job&sinceSeq=0`);
+    await stream.waitFor((value) => value.includes('PROJECT_BASE'));
+    const liveStore = openStore(projectWorkspace, 'skill-alpha', 'project-job');
+    liveStore.append('PROJECT_LIVE', {}, { source: 'project' });
+    await stream.waitFor((value) => value.includes('PROJECT_LIVE'));
+    liveStore.close();
+    stream.close();
+
+    const state = await (await fetch(`${url}/state?skillId=skill-alpha&jobId=project-job`)).json();
+    expect(state.eventCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('picks up a workspace root that appears after the broker started', async () => {
+    const callerWorkspace = createWorkspace();
+    const lateWorkspace = createWorkspace();
+    createJob(callerWorkspace, 'skill-alpha', 'caller-job');
+    const roots: string[] = [];
+    const broker = new TelemetryBroker({
+      workspaceDir: callerWorkspace,
+      workspaceDirs: () => roots,
+      port: 0,
+      tailIntervalMs: 10,
+      catalogRefreshIntervalMs: 10,
+    });
+    brokers.push(broker);
+    const { url } = await broker.start();
+    const jobIds = async () => (await (await fetch(`${url}/catalog`)).json()).skills.flatMap((skill: any) => skill.jobs.map((job: any) => job.jobId));
+    expect(await jobIds()).not.toContain('late-job');
+
+    createJob(lateWorkspace, 'skill-alpha', 'late-job');
+    roots.push(lateWorkspace);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(await jobIds()).toContain('late-job');
+  });
+
+  it('reuses the catalog inside the refresh back-off window', async () => {
+    const workspace = createWorkspace();
+    createJob(workspace, 'skill-alpha', 'first-job');
+    const broker = new TelemetryBroker({ workspaceDir: workspace, port: 0, tailIntervalMs: 10, catalogRefreshIntervalMs: 60_000 });
+    brokers.push(broker);
+    const { url } = await broker.start();
+    createJob(workspace, 'skill-alpha', 'second-job');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const catalog = await (await fetch(`${url}/catalog`)).json();
+    const jobIds = catalog.skills.flatMap((skill: any) => skill.jobs.map((job: any) => job.jobId));
+    expect(jobIds).toContain('first-job');
+    expect(jobIds).not.toContain('second-job');
+  });
+
   it('isolates job-scoped state and reports event metadata', async () => {
     const workspace = createWorkspace();
     createSkill(workspace, 'skill-alpha');

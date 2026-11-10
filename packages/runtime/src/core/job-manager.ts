@@ -63,6 +63,10 @@ export class JobManager {
     this.workspaceDir = path.resolve(workspaceDir);
   }
 
+  public getWorkspaceDir(): string {
+    return this.workspaceDir;
+  }
+
   public getSkillDir(skillId: string): string {
     return path.join(this.workspaceDir, '.reactive', 'skills', skillId);
   }
