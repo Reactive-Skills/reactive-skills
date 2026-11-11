@@ -63,6 +63,30 @@ function catalogDirectory(): string {
 }
 
 /**
+ * Read every recorded root from the per-user catalog in directory order; a malformed entry fails closed.
+ * # Performance & Risk Budget
+ * - Tier: P2 (<100ms target on local filesystem)
+ * - Complexity: O(w), catalog entries
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=80%
+ * - CRAP Score: target <=15
+ */
+export function recordedRoots(): string[] {
+  const catalog = catalogDirectory();
+  if (!fs.existsSync(catalog)) return [];
+  const roots: string[] = [];
+  for (const entry of fs.readdirSync(catalog)) {
+    if (!entry.endsWith('.json')) continue;
+    const root: unknown = JSON.parse(fs.readFileSync(path.join(catalog, entry), 'utf8'));
+    if (typeof root !== 'string' || !path.isAbsolute(root)) {
+      throw new AxiError(`Invalid workspace catalog entry: ${entry}`, 'VALIDATION_ERROR', ['Repair the catalog entry or pass --workspace explicitly.']);
+    }
+    roots.push(root);
+  }
+  return roots;
+}
+
+/**
  * Discover known roots and ancestor stores without scanning descendant directories or events.
  * # Performance & Risk Budget
  * - Tier: P2 (<100ms target on local filesystem)
@@ -81,14 +105,7 @@ function candidateRoots(fallback: string, legacyRoot?: string): string[] {
     if (parent === directory) break;
     directory = parent;
   }
-  const catalog = catalogDirectory();
-  if (!fs.existsSync(catalog)) return [...roots];
-  for (const entry of fs.readdirSync(catalog)) {
-    if (!entry.endsWith('.json')) continue;
-    const root: unknown = JSON.parse(fs.readFileSync(path.join(catalog, entry), 'utf8'));
-    if (typeof root !== 'string' || !path.isAbsolute(root)) {
-      throw new AxiError(`Invalid workspace catalog entry: ${entry}`, 'VALIDATION_ERROR', ['Repair the catalog entry or pass --workspace explicitly.']);
-    }
+  for (const root of recordedRoots()) {
     // Deleted workspaces are stale hints, not permission to recreate their stores.
     if (fs.existsSync(root)) roots.add(canonicalRoot(root));
   }
@@ -110,7 +127,6 @@ export function isRecordedRoot(root: string): boolean {
 
 /**
  * Publish one idempotent discovery hint atomically; parallel roots never overwrite each other.
- * Returns true only when this call created the entry.
  * # Performance & Risk Budget
  * - Tier: P1 (<25ms target on local filesystem)
  * - Complexity: O(p), canonical path bytes
@@ -118,8 +134,8 @@ export function isRecordedRoot(root: string): boolean {
  * - Branch Coverage: target >=80%
  * - CRAP Score: target <=15
  */
-export function rememberRoot(root: string): boolean {
-  if (isRecordedRoot(root)) return false;
+export function rememberRoot(root: string): void {
+  if (isRecordedRoot(root)) return;
   const directory = catalogDirectory();
   const name = createHash('sha256').update(root).digest('hex') + '.json';
   const target = path.join(directory, name);
@@ -131,32 +147,6 @@ export function rememberRoot(root: string): boolean {
   } finally {
     fs.rmSync(temporary, { force: true });
   }
-  return true;
-}
-
-/**
- * List the roots recorded in the per-user catalog; unreadable or malformed entries are ignored.
- * # Performance & Risk Budget
- * - Tier: P2 (<100ms target on local filesystem)
- * - Complexity: O(w), catalog entries
- * - Cyclomatic Complexity (CC): target <=8
- * - Branch Coverage: target >=80%
- * - CRAP Score: target <=15
- */
-export function recordedRoots(): string[] {
-  const directory = catalogDirectory();
-  if (!fs.existsSync(directory)) return [];
-  const roots: string[] = [];
-  for (const entry of fs.readdirSync(directory)) {
-    if (!entry.endsWith('.json')) continue;
-    try {
-      const root: unknown = JSON.parse(fs.readFileSync(path.join(directory, entry), 'utf8'));
-      if (typeof root === 'string' && path.isAbsolute(root)) roots.push(root);
-    } catch {
-      // A damaged entry is reported by the commands that must trust it; listing just skips it.
-    }
-  }
-  return roots.sort();
 }
 
 /**

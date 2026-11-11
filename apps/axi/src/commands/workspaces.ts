@@ -79,7 +79,7 @@ function hasStore(root: string): boolean {
  * Breadth-first search for workspace roots below a parent, to a depth limit (the parent is depth 0).
  * Symlinks are not followed, dependency and build folders are not entered, and nothing is written.
  * # Performance & Risk Budget
- * - Tier: P3 (about 4ms per directory on a WSL-mounted drive; bound the scan with --max-depth)
+ * - Tier: P3 (about 4ms per scanned folder on a WSL-mounted drive; bound the scan with --max-depth)
  * - Complexity: O(n), directories within the depth limit that are not skipped
  * - Cyclomatic Complexity (CC): target <=12
  * - Branch Coverage: target >=80%
@@ -134,7 +134,7 @@ function canonicalDirectory(value: string): { root: string } | Skip {
  * Register (or preview registering) existing workspace roots, or list the registry.
  * Idempotent: roots already recorded are reported, never rewritten, and stores are never touched.
  * # Performance & Risk Budget
- * - Tier: P3 (<2000ms target on a WSL-mounted drive for the default scan depth)
+ * - Tier: P3 (about 4ms per scanned folder on a WSL-mounted drive; bound the scan with --max-depth)
  * - Complexity: O(a + n + r), arguments, scanned directories and registry entries
  * - Cyclomatic Complexity (CC): target <=12
  * - Branch Coverage: target >=70%
@@ -143,7 +143,7 @@ function canonicalDirectory(value: string): { root: string } | Skip {
 export async function workspacesCommand(args: string[]): Promise<string> {
   const options = parseOptions(args);
   if (options.action === 'list') {
-    const workspaces = recordedRoots().map(root => ({ root, has_store: hasStore(root) }));
+    const workspaces = recordedRoots().sort().map(root => ({ root, has_store: hasStore(root) }));
     if (options.json) return JSON.stringify({ action: 'list', workspaces });
     return renderOutput([
       renderDetail('workspaces', { action: 'list', registered: workspaces.length }, [{ type: 'field', key: 'action' }, { type: 'field', key: 'registered' }]),

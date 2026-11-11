@@ -151,6 +151,40 @@ describe('workspaces register --scan', () => {
   });
 });
 
+describe('workspaces list', () => {
+  const writeEntry = (name: string, content: string) => {
+    const dir = path.join(home, 'state', 'reactive-skills', 'workspaces');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, name), content);
+  };
+
+  it('lists recorded roots in order and flags a root whose store is gone', () => {
+    const kept = path.join(tree, 'kept');
+    const gone = path.join(tree, 'gone');
+    for (const dir of [kept, gone]) fs.mkdirSync(dir, { recursive: true });
+    const keptRoot = makeStore(kept);
+    const goneRoot = makeStore(gone);
+    json(['workspaces', 'register', keptRoot, goneRoot]);
+    fs.rmSync(path.join(gone, '.reactive'), { recursive: true });
+    expect(json(['workspaces', 'list']).workspaces).toEqual([{ root: goneRoot, has_store: false }, { root: keptRoot, has_store: true }]);
+  });
+
+  it.each([
+    ['a non-string value', '{"root":"/tmp"}'],
+    ['a relative path', '"relative/path"'],
+  ])('fails on a catalog entry holding %s, as the workspace binding does', (_label, content) => {
+    writeEntry('bad.json', content);
+    const { text, status } = run(['workspaces', 'list', '--json']);
+    expect(status).not.toBe(0);
+    expect(text).toContain('Invalid workspace catalog entry: bad.json');
+  });
+
+  it('fails on a catalog entry that is not JSON', () => {
+    writeEntry('broken.json', '{not json');
+    expect(run(['workspaces', 'list', '--json']).status).not.toBe(0);
+  });
+});
+
 describe('workspaces register <paths>', () => {
   it('registers listed workspace roots without descending and skips paths with no store', () => {
     const project = path.join(tree, 'project');

@@ -305,7 +305,7 @@ npx -y @reactive-skills/axi workspaces register ~/projects/app ~/projects/api
 npx -y @reactive-skills/axi workspaces list
 ```
 
-`register` takes workspace roots, `--scan <parent>` (repeatable; the parent is depth 0), `--max-depth <n>` (default 3), `--dry-run` and `--json`. It skips `node_modules`, `.git`, build output and cache folders, does not follow symlinks, and reports `added`, `already_known` and `skipped` roots. It is idempotent and only writes the catalog; stores are never opened, changed or moved. See [workspace binding](../../docs/workspace-binding.md#register-existing-workspaces).
+`register` takes workspace roots, `--scan <parent>` (repeatable; the parent is depth 0), `--max-depth <n>` (default 3), `--dry-run` and `--json`. It skips `node_modules`, `.git`, build output and cache folders, does not follow symlinks, and reports `added`, `already_known` and `skipped` roots. It is idempotent and only writes the catalog; stores are never opened, changed or moved. `list` prints the recorded roots and whether each still holds a store, and fails on a malformed catalog entry like every other command. See [workspace binding](../../docs/workspace-binding.md#register-existing-workspaces).
 
 ### dashboard
 

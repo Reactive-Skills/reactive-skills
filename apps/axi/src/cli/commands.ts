@@ -241,6 +241,7 @@ export const COMMANDS: Record<string, CommandSpec> = {
       '--max-depth <n>   Directory levels to search below each --scan parent, which is level 0 (default 3).',
       '--dry-run         Report what would be added without writing the registry.',
       '--json            Print machine-readable JSON.',
+      'list              Print the recorded roots and whether each still holds a store; a malformed catalog entry fails it.',
       'Idempotent: roots already recorded are reported, and stores are never opened, changed or moved.',
       `Example: ${BIN} workspaces register --scan ~/projects --dry-run`,
     ]),

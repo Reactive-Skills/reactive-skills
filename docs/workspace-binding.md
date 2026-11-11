@@ -38,6 +38,7 @@ After a CLI operation finds or creates a skill store, it registers the root unde
 Each hash-named JSON file contains one canonical workspace path, allowing later processes in parent, sibling or unrelated directories to find it.
 The catalog is a discovery hint; job metadata and the selected store remain authoritative.
 Deleted workspace paths are ignored, and corrupt catalog entries fail closed unless a workspace is supplied explicitly.
+
 ## Register existing workspaces
 
 Stores created before the catalog existed stay out of a plain `dashboard` until their roots are recorded.
@@ -55,6 +56,7 @@ reactive-skills-axi workspaces list
 - `--dry-run` reports what would be added and writes nothing. Run it first and share the `added` list before registering.
 - The report lists `added`, `already_known` and `skipped` roots with a reason for each skipped path, plus the folders scanned. `--json` prints the same report as JSON.
 - Registering twice is safe: roots already in the catalog are reported as `already_known` and not rewritten.
+- `workspaces list` prints every recorded root and whether it still holds a store. It reads the catalog through the same parser as workspace binding, so a malformed entry fails it with `Invalid workspace catalog entry` instead of being skipped.
 - Stores are only checked for a `.reactive/skills` folder. They are never opened, changed or moved, and only the catalog under `${XDG_STATE_HOME}/reactive-skills/workspaces` is written.
 - Scanning costs about 4ms per folder on a WSL-mounted drive (a few thousand folders take several seconds), so scan project parents with a small `--max-depth` rather than a whole drive.
 
