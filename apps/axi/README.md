@@ -4,12 +4,12 @@ AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TO
 
 This is a CLI-only package with the `reactive-skills-axi` and `axi` commands; use `@reactive-skills/runtime` for the programmatic SDK.
 
-> 🚀 **What's New in v0.21.0:**
-> - `emit` passes large inline text at declared evidence fields by evidence reference automatically; set `REACTIVE_AUTO_EVIDENCE_MIN_BYTES` to change the threshold or `off` to disable it.
-> - The MCP server started by `reactive-skills-axi mcp` now defaults to lean continuation and compact state views; legacy outputs stay behind explicit options for one release.
-> - Review the MCP migration notes before upgrading existing integrations.
+> 🚀 **What's New in v0.22.0:**
+> - Bind runs to a project with `--workspace` or `WORKSPACE_DIR`; unknown named jobs are refused, and `reset` and `reset --purge` need an explicit workspace outside the selected store.
+> - `workspaces register` and `workspaces list` record older workspaces so `dashboard` lists the jobs of every known workspace; the telemetry server answers only local `Host` headers.
+> - Review the workspace and telemetry migration notes before upgrading existing integrations.
 >
-> [Breaking Changes and Migration Notes](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.21.0.md) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
+> [Breaking Changes and Migration Notes](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.22.0.md) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
 ## Installation
 
