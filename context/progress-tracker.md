@@ -362,4 +362,7 @@ Both package builds, 1,033 runtime tests, 389 AXI tests (one existing skip), 64 
 - The reference preserves the 13 original topics with named destinations and examples, corrects approval retry limits and model routing hints, and qualifies legacy context and fallback behavior against current runtime and AXI source.
 - `DocPageView.jsx` now renders internal Markdown links and emphasized link titles; `guardsReference.test.js` covers registration, sitemap, compatibility anchors and link rendering, while existing heading and chrome tests enumerate the additional page automatically.
 - Updated `PERFORMANCE-STANDARDS.md` for inline parsing; the new route inherits the existing shared analytics tracker.
+
+## Register existing workspaces
+
 - Added `reactive-skills-axi workspaces register|list`: registers existing `.reactive/skills` workspaces (paths or `--scan <parent>` with `--max-depth`, skipping dependency/build folders, no symlinks) in the per-user catalog; idempotent, `--dry-run`, `--json`, never touches stores. `rememberRoot` and `isRecordedRoot` are exported, and `recordedRoots` is the single catalog parser shared by workspace binding and `workspaces list`, so `list` fails on a malformed entry like every other command. Documented in `docs/workspace-binding.md`, the AXI README and the telemetry docs page; scan time measured at about 4ms per folder on a WSL-mounted drive.

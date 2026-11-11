@@ -38,7 +38,6 @@ After a CLI operation finds or creates a skill store, it registers the root unde
 Each hash-named JSON file contains one canonical workspace path, allowing later processes in parent, sibling or unrelated directories to find it.
 The catalog is a discovery hint; job metadata and the selected store remain authoritative.
 Deleted workspace paths are ignored, and corrupt catalog entries fail closed unless a workspace is supplied explicitly.
-
 Copied or moved stores whose recorded root differs from their location are refused; this change does not migrate stores.
 
 Jobs created before workspace binding remain usable without `workspaceRoot`.
