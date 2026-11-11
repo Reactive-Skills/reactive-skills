@@ -1,13 +1,16 @@
 import { TelemetryBroker } from '@reactive-skills/runtime';
 import { AxiError } from '../errors.js';
 import { resolveWorkspaceDir } from '../args.js';
+import { knownStoreRoots } from '../workspace-binding.js';
+import { workspaceContext } from '../workspace-context.js';
 import { renderDetail, renderError, renderHelp, renderOutput } from '../toon.js';
 
 /**
- * Open the read-only telemetry broker in the selected workspace.
+ * Open the read-only telemetry broker. An explicit workspace limits it to that store;
+ * otherwise it lists every known store, with stores containing the caller first.
  * # Performance & Risk Budget
  * - Tier: P2 (<100ms target excluding listener startup and command lifetime)
- * - Complexity: O(a + c), arguments and existing catalog construction
+ * - Complexity: O(a + w + c), arguments, known workspaces and existing catalog construction
  * - Cyclomatic Complexity (CC): target <=12
  * - Branch Coverage: target >=70%
  * - CRAP Score: target <=25
@@ -31,8 +34,18 @@ export async function dashboardCommand(args: string[]): Promise<string> {
     }
   }
 
+  const explicit = workspaceContext.getStore() !== undefined;
+  const workspaceDir = resolveWorkspaceDir();
+  let knownRoots: string[] = [];
+  try {
+    if (!explicit) knownRoots = knownStoreRoots(workspaceDir);
+  } catch {
+    // The broker re-resolves roots while running, so a damaged catalog only delays the other workspaces.
+  }
   const broker = new TelemetryBroker({
-    workspaceDir: resolveWorkspaceDir(),
+    workspaceDir,
+    // Re-resolved while the broker runs, so a project's first run after startup is listed too.
+    workspaceDirs: explicit ? [] : () => knownStoreRoots(workspaceDir),
     port,
     host,
   });
@@ -42,16 +55,20 @@ export async function dashboardCommand(args: string[]): Promise<string> {
     const detail = renderDetail('dashboard', {
       status: 'listening',
       mode: 'read_only_broker',
+      workspace_scope: explicit ? 'explicit_workspace' : 'caller_and_known_workspaces',
+      workspaces: new Set([workspaceDir, ...knownRoots]).size,
       host,
       port: boundPort,
       url,
       catalog: `${url}/catalog`,
-      state_endpoint: `${url}/state?skillId=<skill-id>&jobId=<job-id>`,
+      state_endpoint: `${url}/state?skillId=<skill-id>&jobId=<job-id>[&workspaceRoot=<workspace-root>]`,
       events_sse: `${url}/events`,
       site_route: '/telemetry',
     }, [
       { type: 'field', key: 'status' },
       { type: 'field', key: 'mode' },
+      { type: 'field', key: 'workspace_scope' },
+      { type: 'field', key: 'workspaces' },
       { type: 'field', key: 'host' },
       { type: 'field', key: 'port' },
       { type: 'field', key: 'url' },

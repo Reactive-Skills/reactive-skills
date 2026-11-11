@@ -157,6 +157,20 @@ function targetSkillPath(command: string, skill: string | undefined, root: strin
 }
 
 /**
+ * List every known workspace that holds skill runs, caller-containing stores first.
+ * # Performance & Risk Budget
+ * - Tier: P2 (<100ms target on local filesystem)
+ * - Complexity: O(w + d), catalog entries and caller path depth
+ * - Cyclomatic Complexity (CC): target <=4
+ * - Branch Coverage: target >=80%
+ * - CRAP Score: target <=10
+ */
+export function knownStoreRoots(fallback: string): string[] {
+  const stores = candidateRoots(fallback).filter(root => fs.existsSync(path.join(root, '.reactive', 'skills')));
+  return [...stores.filter(root => isCallerRoot(root, fallback)), ...stores.filter(root => !isCallerRoot(root, fallback))];
+}
+
+/**
  * Resolve an omitted skill only when one known workspace can supply the default.
  * # Performance & Risk Budget
  * - Tier: P2 (<100ms target on local filesystem)

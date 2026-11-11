@@ -63,6 +63,19 @@ export class JobManager {
     this.workspaceDir = path.resolve(workspaceDir);
   }
 
+  /**
+   * Return the resolved workspace directory this manager reads.
+   * # Performance & Risk Budget
+   * - Tier: P0 (<1ms target)
+   * - Complexity: O(1)
+   * - Cyclomatic Complexity (CC): target <=1
+   * - Branch Coverage: target >=90%
+   * - CRAP Score: target <=2
+   */
+  public getWorkspaceDir(): string {
+    return this.workspaceDir;
+  }
+
   public getSkillDir(skillId: string): string {
     return path.join(this.workspaceDir, '.reactive', 'skills', skillId);
   }

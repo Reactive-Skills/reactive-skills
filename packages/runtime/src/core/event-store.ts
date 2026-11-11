@@ -945,8 +945,10 @@ export class EventStore {
         this.sqliteDriver.ensureRun(runId, { name: options.runName || options.run_name, skillId: options.skillId, parentRunId: options.parentRunId || options.parent_run_id });
         if (options.skillId) this.importLegacyRunStores(scopeDir, options.skillId);
       }
-      fs.mkdirSync(path.join(this.runDir, 'artifacts'), { recursive: true });
-      fs.mkdirSync(path.join(this.runDir, 'logs'), { recursive: true });
+      if (!this.readOnly) {
+        fs.mkdirSync(path.join(this.runDir, 'artifacts'), { recursive: true });
+        fs.mkdirSync(path.join(this.runDir, 'logs'), { recursive: true });
+      }
       if (options.acquireLock) this.acquireRunLock(this.runDir);
       this.initializeStorage();
     } catch (error) {

@@ -26,19 +26,33 @@ An explicit port remains strict, while `--port 0` requests an OS-assigned epheme
 
 The broker is a separate runtime class from `TelemetryServer` so the existing single-job HTTP and signal behavior remains compatible.
 
-The broker discovers targets from the current workspace's `.reactive/skills` directory through `JobManager` and reads optional skill metadata from the workspace skill manifest.
+The broker discovers targets from the `.reactive/skills` directory of `workspaceDir` and any further `workspaceDirs` through one `JobManager` per root, and reads optional skill metadata from each root's skill manifest.
+
+When two roots hold the same skill and job identifiers, the job is listed once per root, in root order with the caller's root first, and each catalog job reports the `workspaceRoot` that holds it.
+
+A failing root or job is skipped with one warning, keeps its previous targets, and never stops the other roots or the prune pass from running.
 
 The broker never constructs a store from an HTTP-supplied path.
 
-The broker refreshes the catalog on a bounded interval and refreshes it before catalog and target validation responses.
+The broker refreshes the catalog on a bounded interval and before catalog and target validation responses, but skips a refresh that falls inside a back-off window: the refresh interval, or six times the last refresh's duration when that is longer.
 
 Each discovered skill and job pair has one SQLite-backed `EventStore` reader and one local tail cursor.
 
-SQLite remains the authoritative event source, and the broker polls each target store so writers in separate CLI, MCP, and worker processes are visible.
+Every reader is opened read-only, including for legacy JSONL-only stores, so the broker creates no run directories or other files in a recorded workspace.
+
+A skill whose jobs cannot be listed is skipped with one warning and keeps its previous targets, so its sibling skills in the same root still refresh.
+
+SQLite remains the authoritative event source, and the broker polls the store of every target a connected SSE client subscribes to, so writers in separate CLI, MCP, and worker processes are visible; with no client connected it issues no store queries.
+
+The first client to subscribe to a target seeds its tail cursor at the latest sequence, so later events are delivered once and none are replayed.
 
 Each target retains its own local sequence numbers.
 
-The broker uses the target key `skillId/jobId` only as a validated catalog identifier for repeated `target` query parameters.
+The broker identifies a target by workspace root, skill and job, and uses `[workspaceRoot/]skillId/jobId` only as a validated catalog identifier for repeated `target` query parameters.
+
+An omitted workspace root resolves to the first root in order that holds the skill and job.
+
+A request that names a target the catalog does not hold runs one immediate catalog refresh, limited to one per back-off window, before the broker answers with a client error.
 
 The broker exposes only read-oriented routes and does not expose signal dispatch.
 
@@ -46,23 +60,35 @@ The broker exposes only read-oriented routes and does not expose signal dispatch
 
 `GET /catalog` returns `{ skills: [{ skillId, skillName, jobs: [...] }] }`.
 
-Each job entry includes `jobId`, `status`, `currentState`, `latestSeq`, `updatedAt`, and `isActive`.
+Each job entry includes `jobId`, `workspaceRoot`, `status`, `currentState`, `latestSeq`, `updatedAt`, and `isActive`.
 
-`GET /state?skillId=<id>&jobId=<id>` validates both identifiers against the catalog and returns `skillId`, `skillName`, `jobId`, `latestSeq`, `activeState`, `context`, `snapshot`, `eventCount`, and `latestSignal`.
+`GET /state?skillId=<id>&jobId=<id>[&workspaceRoot=<root>]` validates the identifiers against the catalog and returns `skillId`, `skillName`, `jobId`, `workspaceRoot`, `latestSeq`, `activeState`, `context`, `snapshot`, `eventCount`, and `latestSignal`.
 
 `GET /events` opens one SSE stream for all discovered targets when no filters are supplied.
 
-Repeated `target=<skillId>/<jobId>` parameters restrict the stream to selected catalog targets.
+Repeated `target=[<workspaceRoot>/]<skillId>/<jobId>` parameters restrict the stream to selected catalog targets.
 
 `sinceSeq` is applied independently to every selected target because sequence numbers are local to each job.
 
-Every streamed telemetry event contains `skillId`, `jobId`, `seq`, `type`, `timestamp`, and the original event `payload`.
+Every streamed telemetry event contains `skillId`, `jobId`, `workspaceRoot`, `seq`, `type`, `timestamp`, and the original event `payload`.
 
 The SSE event also retains the complete original `SignalEvent` under `event`.
 
 `GET /health` reports broker status, listener metadata, and catalog counts.
 
-`OPTIONS` responses retain the existing CORS and Local Network Access headers.
+`OPTIONS` responses carry the CORS and Local Network Access headers only for allowlisted origins: `https://reactive-skills.com` and `http://localhost` or `http://127.0.0.1` on any port.
+
+The broker reflects the matched origin and adds `Vary: Origin`; other origins receive no CORS headers, and requests without an `Origin` header are served unchanged.
+
+The broker answers only requests whose `Host` header is `localhost`, `127.0.0.1` or `[::1]`, with any port, and refuses every other `Host` with `403` before CORS handling or any route runs, including `OPTIONS` and the SSE route, so DNS rebinding cannot reach it under another name.
+
+A request with no `Host` header is left to the HTTP platform, which already rejects it for HTTP/1.1.
+
+Because only loopback names are answered, binding with `--host 0.0.0.0` listens on every interface but is reachable only through `localhost` or `127.0.0.1`, and the printed `0.0.0.0` URL is refused.
+
+Neither the Host rule nor the CORS allowlist stops a non-browser client on a network the broker is bound to.
+
+The single-job `TelemetryServer` is outside this slice and keeps its wildcard CORS headers.
 
 Invalid skill and job identifiers return a JSON client error without touching a filesystem path.
 
@@ -76,9 +102,9 @@ The dashboard fetches `/catalog`, offers skill and job selectors, and lets the u
 
 The dashboard opens one `EventSource` for the current target set and reconnects it when the target set changes.
 
-Each tracked card fetches job-scoped state and displays the skill, job ID, connection status, current HSM state, recorded event count, latest signal, and a live event ledger.
+Each tracked card fetches job-scoped state and displays the skill, job ID, workspace label, connection status, current HSM state, recorded event count, latest signal, and a live event ledger.
 
-Events are accepted by a card only when both `skillId` and `jobId` match the card target.
+Events are accepted by a card only when `skillId`, `jobId` and `workspaceRoot` all match the card target.
 
 The dashboard has explicit loading, empty, invalid-target, and connection-error states.
 

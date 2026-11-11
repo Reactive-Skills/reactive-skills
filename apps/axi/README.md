@@ -305,6 +305,8 @@ npx -y @reactive-skills/axi dashboard --host 0.0.0.0 --port 4500
 
 The broker binds to `127.0.0.1` by default and reports the actual URL and port after binding.
 
+It lists the jobs of every known workspace (the caller's stores first, then ancestors and recorded roots) and reports each job's `workspace_scope`, workspace count and workspace root. Pass `--workspace <directory>` or set `WORKSPACE_DIR` to limit it to one store; that single-store view does not register the workspace.
+
 When `--port` is omitted, the broker makes real bind attempts starting at `127.0.0.1:4242` and falls back through a bounded deterministic range when the preferred port is occupied.
 
 An explicit `--port` is strict and fails clearly if that port is unavailable.
@@ -315,9 +317,11 @@ Use the reported URL in the site's `/telemetry` dashboard.
 
 The dashboard discovers skill and job metadata from the broker catalog instead of reading local files in the browser.
 
-The broker exposes `GET /catalog`, `GET /state?skillId=<skill-id>&jobId=<job-id>`, and filtered `GET /events` SSE.
+The broker exposes `GET /catalog`, `GET /state?skillId=<skill-id>&jobId=<job-id>[&workspaceRoot=<workspace-root>]`, and filtered `GET /events` SSE.
 
-Use repeated `target=<skill-id>/<job-id>` parameters to restrict one SSE connection to selected jobs.
+Use repeated `target=[<workspace-root>/]<skill-id>/<job-id>` parameters to restrict one SSE connection to selected jobs. A skill and job identifier held by several workspaces is listed once per workspace; an omitted workspace root resolves to the first workspace in order.
+
+The broker answers only requests with a local `Host` header (so `--host 0.0.0.0` is reachable only as `localhost` or `127.0.0.1`) and sends CORS headers only to allowlisted origins; the exact rules are in [spec 0005](../../docs/specs/0005-multi-job-telemetry-broker.md).
 
 Sequence numbers remain local to each UUID-backed run and every streamed event includes its skill ID and run ID.
 

@@ -1,5 +1,18 @@
 # Progress Tracker: Reactive Skills Architecture (RSA)
 
+## Telemetry dashboard lists every known workspace
+
+The `dashboard` broker read only the caller directory's `.reactive/skills`, so jobs recorded in other project workspaces (the normal result of workspace binding) never reached the catalog.
+`TelemetryBroker` now accepts `workspaceDirs` beside `workspaceDir`, identifies each target by workspace root plus skill and job so duplicates across roots are all listed (caller root first), and each catalog job, state response and event envelope reports its `workspaceRoot`.
+`/state` takes an optional `workspaceRoot` and the `/events` filter accepts `target=[<workspaceRoot>/]<skillId>/<jobId>`; an omitted root resolves to the first root in order, so existing single-root URLs keep working. The site dashboard selects, tracks and keys cards by workspace root and labels each job with its folder. The existing duplicate-key test changed meaning from first-root-wins to one entry per root.
+`dashboard` passes the known roots (caller stores first, then ancestors and recorded roots) unless `--workspace` or `WORKSPACE_DIR` selects one store, re-reading them while it runs so a project's first run after startup is listed; the telemetry page shows each job's workspace.
+Periodic catalog refreshes back off to six times their own duration, which cut a 144-job, 35-root catalog request over a slow drive mount from about 21s to 0.6s; a request naming an unknown target forces one rate-limited refresh so a job created just before it is found instead of answering 404.
+A failing root, job or root provider is skipped with one warning per target and the other roots still refresh and prune; `dashboard` no longer crashes at startup on a damaged workspace catalog.
+CORS is now an allowlist (`https://reactive-skills.com`, `http://localhost` and `http://127.0.0.1` on any port) with `Vary: Origin` and no CORS headers for other origins; the old wildcard assertion changed meaning. The broker opens every store read-only (legacy JSONL-only stores no longer get `runs/<job>/{artifacts,logs}` created in recorded workspaces), isolates failures per skill as well as per root and job, and the site labels each workspace with its shortest unique path suffix.
+The tail poll now queries only targets with a connected SSE client (the first subscriber seeds the cursor, so nothing is replayed or dropped) and logs a failing poll once per target.
+The broker also refuses (403) any request whose `Host` header is not `localhost`, `127.0.0.1` or `[::1]`, before CORS or routing, to block DNS rebinding; `--host 0.0.0.0` is therefore reachable only through a loopback name. The single-job `TelemetryServer` still sends wildcard CORS and was left unchanged because its CORS contract is documented and tested.
+Changed files: `packages/runtime/src/telemetry/broker.ts`, `types.ts`, `core/job-manager.ts`; `apps/axi/src/commands/dashboard.ts`, `workspace-binding.ts`; `apps/site/src/features/telemetry/MultiJobTelemetryDashboard.jsx`; broker and dashboard regression tests; README, runtime and AXI READMEs, site telemetry docs, `docs/workspace-binding.md`, spec 0005 and `PERFORMANCE-STANDARDS.md`.
+
 ## Explicit AXI workspace binding
 
 AXI selects one canonical workspace at the CLI boundary before opening a runtime store.

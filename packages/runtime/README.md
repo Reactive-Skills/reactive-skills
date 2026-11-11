@@ -218,13 +218,15 @@ Omit `--job` to preserve existing resolution through `REACTIVE_JOB_ID`, the acti
 
 ### Multi-Job Telemetry Broker
 
-`TelemetryBroker` reads the current workspace's `.reactive/skills` catalog and opens run-scoped readers over each skill's shared SQLite ledger.
+`TelemetryBroker` reads the `.reactive/skills` catalog of `workspaceDir` plus any `workspaceDirs` and opens run-scoped readers over each skill's shared SQLite ledger. A skill and job identifier held by several roots is listed once per root, caller root first, and every catalog job reports its `workspaceRoot`.
 
-It exposes `GET /catalog`, job-scoped `GET /state`, and one filtered `GET /events` SSE stream.
+It exposes `GET /catalog`, job-scoped `GET /state` (with an optional `workspaceRoot` parameter), and one filtered `GET /events` SSE stream whose `target=[<workspaceRoot>/]<skillId>/<jobId>` filters resolve an omitted root to the first root in order.
+
+The broker answers only requests with a local `Host` header and sends CORS headers only to allowlisted origins; the exact rules are in [spec 0005](../../docs/specs/0005-multi-job-telemetry-broker.md). The single-job `TelemetryServer` keeps its existing wildcard CORS headers.
 
 The broker preserves each run's local sequence numbers and includes skill and run identity in every event envelope.
 
-It refreshes the catalog on a bounded interval so new jobs appear without a process restart.
+It refreshes the catalog on a bounded interval so new jobs appear without a process restart. A failing root or job is skipped with one warning while the other roots keep refreshing, and a request naming a target the catalog lacks triggers one rate-limited immediate refresh before answering 404.
 
 It polls SQLite so events written by separate CLI, MCP, and worker processes reach connected clients.
 

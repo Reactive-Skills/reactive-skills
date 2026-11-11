@@ -28,7 +28,10 @@ Another known store is selected only when the caller is inside no candidate stor
 Multiple stores that all contain the caller's directory also require a workspace choice.
 `invoke` for a job that no store holds, or with no job reference, starts or resumes in the caller's store or default and never in another project's store.
 An omitted skill follows the same preference across known workspaces, or an explicit root selects it.
-The workspace-wide `dashboard` retains its caller-directory default and honors either explicit workspace option.
+The workspace-wide `dashboard` lists the jobs of every known workspace that holds skill stores (stores containing the caller first, then ancestors and recorded roots), so runs started from different project directories appear in one catalog, each with its workspace root.
+An explicit `--workspace` or `WORKSPACE_DIR` limits it to that single store.
+A store is known once a skill-targeted CLI run (for example `invoke`, `state`, `emit` or `jobs` for a skill that store holds) has found or created a skill store in it and recorded the root, or when it is an ancestor of the caller's directory.
+`dashboard --workspace <directory>` is a single-store view and records nothing, so a store that is neither recorded nor an ancestor stays out of a plain `dashboard` until a skill-targeted command records it with `--workspace`; a register or scan command is a separate follow-up.
 This discovery does not recursively search project descendants or read event history.
 
 After a CLI operation finds or creates a skill store, it registers the root under `${XDG_STATE_HOME}/reactive-skills/workspaces`, or `~/.local/state/reactive-skills/workspaces` when `XDG_STATE_HOME` is unset.

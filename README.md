@@ -436,15 +436,17 @@ The command reports the actual listener URL and bound port.
 
 Open the site `/telemetry` route and enter that broker URL in the connection field.
 
-The broker catalog discovers skills and jobs from the current workspace's `.reactive/skills` directory and returns skill names, job IDs, status, current HSM state, local latest sequence, update time, and active-job metadata.
+The broker catalog discovers skills and jobs from the `.reactive/skills` directory of every known workspace (the caller's stores first, then recorded roots), or from only the selected workspace when `--workspace` or `WORKSPACE_DIR` is set. It returns skill names, job IDs, status, current HSM state, local latest sequence, update time, active-job metadata and each job's workspace root. A skill and job identifier held by several workspaces is listed once per workspace, caller's stores first.
 
-The dashboard uses `GET /catalog`, job-scoped `GET /state?skillId=<skill-id>&jobId=<job-id>`, and one filtered `GET /events` SSE connection for all tracked targets.
+The dashboard uses `GET /catalog`, job-scoped `GET /state?skillId=<skill-id>&jobId=<job-id>[&workspaceRoot=<workspace-root>]`, and one filtered `GET /events` SSE connection for all tracked targets. Event filters take `target=[<workspace-root>/]<skill-id>/<job-id>`; when the workspace root is omitted, the first workspace in order that holds the job is used.
+
+The broker answers only requests with a local `Host` header and sends CORS headers only to allowlisted origins; the exact rules are in [spec 0005](docs/specs/0005-multi-job-telemetry-broker.md).
 
 Add two jobs from the catalog, such as `jsm-workflow/review-slice` and `jsm-workflow/test-slice`, to monitor them simultaneously.
 
-Every card verifies both skill ID and job ID before accepting an event, so a signal written to one job cannot update another card.
+Every card verifies skill ID, job ID and workspace root before accepting an event, so a signal written to one job cannot update another card.
 
-The broker tails each job's SQLite event store and refreshes the catalog on a bounded interval, so new jobs and cross-process events appear without restarting it.
+The broker tails the SQLite event store of every job a connected dashboard tracks and refreshes the catalog on a bounded interval, so new jobs and cross-process events appear without restarting it.
 
 The broker is read-only telemetry.
 
