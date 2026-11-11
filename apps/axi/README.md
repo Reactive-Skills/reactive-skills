@@ -49,6 +49,7 @@ npx -y @reactive-skills/axi inspect <path>           # inspect statechart
 npx -y @reactive-skills/axi events [limit]           # tail event ledger
 npx -y @reactive-skills/axi view <skill>             # launch telemetry viewer
 npx -y @reactive-skills/axi dashboard                # launch multi-job read-only broker
+npx -y @reactive-skills/axi workspaces register --scan <parent> --dry-run  # register existing workspaces
 
 # Or if installed globally:
 reactive-skills-axi state <skill>
@@ -292,6 +293,19 @@ Output (TOON format):
 - SSE events endpoint (`/events`)
 - State inspection endpoint (`/state`)
 - Health check endpoint (`/health`)
+
+### workspaces
+
+Record existing workspaces so the dashboard lists their jobs. A workspace enters the catalog automatically once a skill-targeted command touches it; this command registers older stores in one step.
+
+```bash
+npx -y @reactive-skills/axi workspaces register --scan ~/projects --dry-run
+npx -y @reactive-skills/axi workspaces register --scan ~/projects --max-depth 3
+npx -y @reactive-skills/axi workspaces register ~/projects/app ~/projects/api
+npx -y @reactive-skills/axi workspaces list
+```
+
+`register` takes workspace roots, `--scan <parent>` (repeatable; the parent is depth 0), `--max-depth <n>` (default 3), `--dry-run` and `--json`. It skips `node_modules`, `.git`, build output and cache folders, does not follow symlinks, and reports `added`, `already_known` and `skipped` roots. It is idempotent and only writes the catalog; stores are never opened, changed or moved. See [workspace binding](../../docs/workspace-binding.md#register-existing-workspaces).
 
 ### dashboard
 

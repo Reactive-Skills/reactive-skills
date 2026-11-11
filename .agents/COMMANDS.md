@@ -24,4 +24,5 @@
   - `jobs <skill>` — List, switch, and manage job isolation for a skill.
   - `rebuild-sqlite <skill>` — Explicitly import or reconcile JSONL with canonical SQLite.
   - `view <skill>` — Launch real-time telemetry viewer and SSE event stream.
+  - `workspaces register [paths...] [--scan <parent>] [--max-depth <n>] [--dry-run]` / `workspaces list` — Register existing workspaces so the dashboard lists their jobs.
   - `sync [skill]` — Synchronize workspace skill registry.

@@ -10,7 +10,9 @@ export const telemetry = {
       id: 'start-broker',
       heading: 'Start the broker',
       blocks: [
-        { type: 'text', text: 'Run the AXI dashboard command from any directory. It lists jobs from every workspace the CLI knows about (a workspace is known once a skill-targeted command has recorded it, or when it is an ancestor of the current directory), or only from one store when you pass `--workspace`, which records nothing.' },
+        { type: 'text', text: 'Run the AXI dashboard command from any directory. It lists jobs from every workspace the CLI knows about (a workspace is known once a skill-targeted command or `workspaces register` has recorded it, or when it is an ancestor of the current directory), or only from one store when you pass `--workspace`, which records nothing.' },
+        { type: 'text', text: 'Workspaces created before the CLI recorded them can be registered in one step. Preview with `--dry-run`, then register; the command only reads folder names and writes the catalog, never the stores.' },
+        { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi workspaces register --scan ~/projects --dry-run\nnpx -y @reactive-skills/axi workspaces register --scan ~/projects', explanation: 'Finds .reactive/skills stores up to three levels below the parent, skipping dependency and build folders, and lists what it added, already knew and skipped.' } },
         { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi dashboard', explanation: 'Starts a loopback broker on the default port and prints its actual listener URL.' } },
         { type: 'text', text: 'When `--port` is omitted, the broker starts at `127.0.0.1:4242` and falls back through a bounded range if that port is occupied. Use `--port 0` to request an OS-assigned port or provide an explicit port for a stable local URL.' },
         { type: 'code', example: { language: 'bash', command: 'npx -y @reactive-skills/axi dashboard --port 0\nnpx -y @reactive-skills/axi dashboard --host 0.0.0.0 --port 4500', explanation: 'The command reports the bound port after the listener starts.' } },

@@ -96,7 +96,21 @@ function candidateRoots(fallback: string, legacyRoot?: string): string[] {
 }
 
 /**
+ * Report whether a canonical root already has a catalog entry, without reading or writing it.
+ * # Performance & Risk Budget
+ * - Tier: P0 (<5ms target on local filesystem)
+ * - Complexity: O(p), canonical path bytes
+ * - Cyclomatic Complexity (CC): target <=2
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+export function isRecordedRoot(root: string): boolean {
+  return fs.existsSync(path.join(catalogDirectory(), createHash('sha256').update(root).digest('hex') + '.json'));
+}
+
+/**
  * Publish one idempotent discovery hint atomically; parallel roots never overwrite each other.
+ * Returns true only when this call created the entry.
  * # Performance & Risk Budget
  * - Tier: P1 (<25ms target on local filesystem)
  * - Complexity: O(p), canonical path bytes
@@ -104,11 +118,11 @@ function candidateRoots(fallback: string, legacyRoot?: string): string[] {
  * - Branch Coverage: target >=80%
  * - CRAP Score: target <=15
  */
-function rememberRoot(root: string): void {
+export function rememberRoot(root: string): boolean {
+  if (isRecordedRoot(root)) return false;
   const directory = catalogDirectory();
   const name = createHash('sha256').update(root).digest('hex') + '.json';
   const target = path.join(directory, name);
-  if (fs.existsSync(target)) return;
   fs.mkdirSync(directory, { recursive: true });
   const temporary = path.join(directory, `${name}.${randomUUID()}.tmp`);
   try {
@@ -117,6 +131,32 @@ function rememberRoot(root: string): void {
   } finally {
     fs.rmSync(temporary, { force: true });
   }
+  return true;
+}
+
+/**
+ * List the roots recorded in the per-user catalog; unreadable or malformed entries are ignored.
+ * # Performance & Risk Budget
+ * - Tier: P2 (<100ms target on local filesystem)
+ * - Complexity: O(w), catalog entries
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=80%
+ * - CRAP Score: target <=15
+ */
+export function recordedRoots(): string[] {
+  const directory = catalogDirectory();
+  if (!fs.existsSync(directory)) return [];
+  const roots: string[] = [];
+  for (const entry of fs.readdirSync(directory)) {
+    if (!entry.endsWith('.json')) continue;
+    try {
+      const root: unknown = JSON.parse(fs.readFileSync(path.join(directory, entry), 'utf8'));
+      if (typeof root === 'string' && path.isAbsolute(root)) roots.push(root);
+    } catch {
+      // A damaged entry is reported by the commands that must trust it; listing just skips it.
+    }
+  }
+  return roots.sort();
 }
 
 /**
