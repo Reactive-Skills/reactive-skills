@@ -440,13 +440,13 @@ The broker catalog discovers skills and jobs from the `.reactive/skills` directo
 
 The dashboard uses `GET /catalog`, job-scoped `GET /state?skillId=<skill-id>&jobId=<job-id>[&workspaceRoot=<workspace-root>]`, and one filtered `GET /events` SSE connection for all tracked targets. Event filters take `target=[<workspace-root>/]<skill-id>/<job-id>`; when the workspace root is omitted, the first workspace in order that holds the job is used.
 
-Cross-origin access is limited to an allowlist: the official site origin `https://reactive-skills.com` and `http://localhost` or `http://127.0.0.1` on any port. The broker reflects the matched origin, adds `Vary: Origin`, and sends `Access-Control-Allow-Private-Network` only to those origins; other origins, including preflights, receive no CORS headers, and requests without an `Origin` header (CLI, curl) are unaffected. The broker also refuses, with 403 and before any route or CORS handling runs, every request whose `Host` header is not `localhost`, `127.0.0.1` or `[::1]` (any port), so a page that rebinds its own hostname to loopback cannot read it. A request without a `Host` header is left to the HTTP platform. Because only loopback names are answered, `--host 0.0.0.0` listens on every interface but is reachable only as `localhost` or `127.0.0.1` (the printed `0.0.0.0` URL is refused), and neither rule stops a non-browser client on a network the broker is bound to.
+The broker answers only requests with a local `Host` header and sends CORS headers only to allowlisted origins; the exact rules are in [spec 0005](docs/specs/0005-multi-job-telemetry-broker.md).
 
 Add two jobs from the catalog, such as `jsm-workflow/review-slice` and `jsm-workflow/test-slice`, to monitor them simultaneously.
 
-Every card verifies both skill ID and job ID before accepting an event, so a signal written to one job cannot update another card.
+Every card verifies skill ID, job ID and workspace root before accepting an event, so a signal written to one job cannot update another card.
 
-The broker tails each job's SQLite event store and refreshes the catalog on a bounded interval, so new jobs and cross-process events appear without restarting it.
+The broker tails the SQLite event store of every job a connected dashboard tracks and refreshes the catalog on a bounded interval, so new jobs and cross-process events appear without restarting it.
 
 The broker is read-only telemetry.
 

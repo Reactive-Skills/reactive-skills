@@ -84,7 +84,9 @@ The broker answers only requests whose `Host` header is `localhost`, `127.0.0.1`
 
 A request with no `Host` header is left to the HTTP platform, which already rejects it for HTTP/1.1.
 
-Because only loopback names are answered, binding with `--host 0.0.0.0` listens on every interface but is reachable only through `localhost` or `127.0.0.1`.
+Because only loopback names are answered, binding with `--host 0.0.0.0` listens on every interface but is reachable only through `localhost` or `127.0.0.1`, and the printed `0.0.0.0` URL is refused.
+
+Neither the Host rule nor the CORS allowlist stops a non-browser client on a network the broker is bound to.
 
 The single-job `TelemetryServer` is outside this slice and keeps its wildcard CORS headers.
 
