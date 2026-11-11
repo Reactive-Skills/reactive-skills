@@ -141,6 +141,7 @@ If Jev is unavailable, it returns `route: none` and the agent can continue its d
 | `jobs` | `npx -y @reactive-skills/axi jobs <skill> [list\|switch\|archive]` | Inspect, switch, and archive isolated execution runs and deliverables |
 | `view` | `npx -y @reactive-skills/axi view <skill>` | Launch real-time telemetry server and live visual statechart viewer |
 | `dashboard` | `npx -y @reactive-skills/axi dashboard [--host <host>] [--port <port>]` | Launch one read-only broker for multi-job telemetry |
+| `workspaces` | `npx -y @reactive-skills/axi workspaces register [paths...] [--scan <parent>] [--dry-run]` | Register existing workspaces so the dashboard lists their jobs |
 | `sync` | `npx -y @reactive-skills/axi sync [skill]` | Copy ordered sources into a physical central directory, then update linked or physical satellites |
 | `capabilities` | `npx -y @reactive-skills/axi capabilities --json` | Report runtime version and capabilities for INIT negotiation |
 | `bootloader` | `npx -y @reactive-skills/axi bootloader <skill> --json` | Retrieve the versioned authoritative runtime bootloader |

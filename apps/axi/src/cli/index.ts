@@ -12,8 +12,8 @@ const VERSION = packageMetadata.version ?? 'unknown';
 const DESCRIPTION = 'AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format';
 
 export const TOP_HELP = `usage: reactive-skills-axi [command] [args] [flags]
-commands[25]:
-  (none)=home, init, upgrade, inspect, validate, vet, preflight, capabilities, context-route, bootloader, events, invoke, state, emit, evidence, approve, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard
+commands[26]:
+  (none)=home, init, upgrade, inspect, validate, vet, preflight, capabilities, context-route, bootloader, events, invoke, state, emit, evidence, approve, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard, workspaces
 flags[2]:
   --help, --version
 examples:
@@ -41,6 +41,8 @@ examples:
   reactive-skills-axi rebuild-sqlite my-skill
   reactive-skills-axi view my-skill [--job <alias-or-run-id>]
   reactive-skills-axi dashboard [--host 127.0.0.1] [--port <number>]
+  reactive-skills-axi workspaces register --scan <parent> [--max-depth <n>] [--dry-run]
+  reactive-skills-axi workspaces list
   reactive-skills-axi sync [my-skill | --skill <name>[,<name>...] [--skill <name>[,<name>...] ...]]
   reactive-skills-axi mcp
 `;

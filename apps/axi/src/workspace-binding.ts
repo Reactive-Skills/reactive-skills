@@ -63,6 +63,30 @@ function catalogDirectory(): string {
 }
 
 /**
+ * Read every recorded root from the per-user catalog in directory order; a malformed entry fails closed.
+ * # Performance & Risk Budget
+ * - Tier: P2 (<100ms target on local filesystem)
+ * - Complexity: O(w), catalog entries
+ * - Cyclomatic Complexity (CC): target <=8
+ * - Branch Coverage: target >=80%
+ * - CRAP Score: target <=15
+ */
+export function recordedRoots(): string[] {
+  const catalog = catalogDirectory();
+  if (!fs.existsSync(catalog)) return [];
+  const roots: string[] = [];
+  for (const entry of fs.readdirSync(catalog)) {
+    if (!entry.endsWith('.json')) continue;
+    const root: unknown = JSON.parse(fs.readFileSync(path.join(catalog, entry), 'utf8'));
+    if (typeof root !== 'string' || !path.isAbsolute(root)) {
+      throw new AxiError(`Invalid workspace catalog entry: ${entry}`, 'VALIDATION_ERROR', ['Repair the catalog entry or pass --workspace explicitly.']);
+    }
+    roots.push(root);
+  }
+  return roots;
+}
+
+/**
  * Discover known roots and ancestor stores without scanning descendant directories or events.
  * # Performance & Risk Budget
  * - Tier: P2 (<100ms target on local filesystem)
@@ -81,18 +105,24 @@ function candidateRoots(fallback: string, legacyRoot?: string): string[] {
     if (parent === directory) break;
     directory = parent;
   }
-  const catalog = catalogDirectory();
-  if (!fs.existsSync(catalog)) return [...roots];
-  for (const entry of fs.readdirSync(catalog)) {
-    if (!entry.endsWith('.json')) continue;
-    const root: unknown = JSON.parse(fs.readFileSync(path.join(catalog, entry), 'utf8'));
-    if (typeof root !== 'string' || !path.isAbsolute(root)) {
-      throw new AxiError(`Invalid workspace catalog entry: ${entry}`, 'VALIDATION_ERROR', ['Repair the catalog entry or pass --workspace explicitly.']);
-    }
+  for (const root of recordedRoots()) {
     // Deleted workspaces are stale hints, not permission to recreate their stores.
     if (fs.existsSync(root)) roots.add(canonicalRoot(root));
   }
   return [...roots];
+}
+
+/**
+ * Report whether a canonical root already has a catalog entry, without reading or writing it.
+ * # Performance & Risk Budget
+ * - Tier: P0 (<5ms target on local filesystem)
+ * - Complexity: O(p), canonical path bytes
+ * - Cyclomatic Complexity (CC): target <=2
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=10
+ */
+export function isRecordedRoot(root: string): boolean {
+  return fs.existsSync(path.join(catalogDirectory(), createHash('sha256').update(root).digest('hex') + '.json'));
 }
 
 /**
@@ -104,11 +134,11 @@ function candidateRoots(fallback: string, legacyRoot?: string): string[] {
  * - Branch Coverage: target >=80%
  * - CRAP Score: target <=15
  */
-function rememberRoot(root: string): void {
+export function rememberRoot(root: string): void {
+  if (isRecordedRoot(root)) return;
   const directory = catalogDirectory();
   const name = createHash('sha256').update(root).digest('hex') + '.json';
   const target = path.join(directory, name);
-  if (fs.existsSync(target)) return;
   fs.mkdirSync(directory, { recursive: true });
   const temporary = path.join(directory, `${name}.${randomUUID()}.tmp`);
   try {

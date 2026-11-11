@@ -30,8 +30,8 @@ Multiple stores that all contain the caller's directory also require a workspace
 An omitted skill follows the same preference across known workspaces, or an explicit root selects it.
 The workspace-wide `dashboard` lists the jobs of every known workspace that holds skill stores (stores containing the caller first, then ancestors and recorded roots), so runs started from different project directories appear in one catalog, each with its workspace root.
 An explicit `--workspace` or `WORKSPACE_DIR` limits it to that single store.
-A store is known once a skill-targeted CLI run (for example `invoke`, `state`, `emit` or `jobs` for a skill that store holds) has found or created a skill store in it and recorded the root, or when it is an ancestor of the caller's directory.
-`dashboard --workspace <directory>` is a single-store view and records nothing, so a store that is neither recorded nor an ancestor stays out of a plain `dashboard` until a skill-targeted command records it with `--workspace`; a register or scan command is a separate follow-up.
+A store is known once a skill-targeted CLI run (for example `invoke`, `state`, `emit` or `jobs` for a skill that store holds) has found or created a skill store in it and recorded the root, when `workspaces register` recorded it, or when it is an ancestor of the caller's directory.
+`dashboard --workspace <directory>` is a single-store view and records nothing, so a store that is neither recorded nor an ancestor stays out of a plain `dashboard` until a skill-targeted command records it with `--workspace`; `workspaces register` records existing stores in bulk (see below).
 This discovery does not recursively search project descendants or read event history.
 
 After a CLI operation finds or creates a skill store, it registers the root under `${XDG_STATE_HOME}/reactive-skills/workspaces`, or `~/.local/state/reactive-skills/workspaces` when `XDG_STATE_HOME` is unset.
@@ -56,6 +56,27 @@ This fixes the subdirectory resume behavior reported in issue 26 for known jobs 
 When the only candidate is another known store, they fail and name that store with the `--workspace` flag to pass; `state`, `events`, `jobs`, `view` and `emit` can still select it with the `caller_directory_differs` warning.
 `reset --purge` deletes only the selected workspace's skill store.
 It does not remove another store beside the installed skill.
+
+## Register existing workspaces
+
+Stores created before the catalog existed stay out of a plain `dashboard` until their roots are recorded.
+The agent registers them in one step; a person can run the same commands by hand.
+
+```bash
+reactive-skills-axi workspaces register --scan <parent> --dry-run
+reactive-skills-axi workspaces register --scan <parent>
+reactive-skills-axi workspaces register <workspace-root>...
+reactive-skills-axi workspaces list
+```
+
+- `<workspace-root>` registers that folder when it holds `.reactive/skills`, and does not search below it.
+- `--scan <parent>` (repeatable) searches below the parent for workspace roots. The parent is depth 0, and `--max-depth <n>` (default 3) limits how far down it looks. It skips `node_modules`, `.git`, build output, cache and tooling folders, and does not follow symlinks.
+- `--dry-run` reports what would be added and writes nothing. Run it first and share the `added` list before registering.
+- The report lists `added`, `already_known` and `skipped` roots with a reason for each skipped path, plus the folders scanned. `--json` prints the same report as JSON.
+- Registering twice is safe: roots already in the catalog are reported as `already_known` and not rewritten.
+- `workspaces list` prints every recorded root and whether it still holds a store. It reads the catalog through the same parser as workspace binding, so a malformed entry fails it with `Invalid workspace catalog entry` instead of being skipped.
+- Stores are only checked for a `.reactive/skills` folder. They are never opened, changed or moved, and only the catalog under `${XDG_STATE_HOME}/reactive-skills/workspaces` is written.
+- Scanning costs about 4ms per scanned folder on a WSL-mounted drive (a few thousand folders take several seconds), so scan project parents with a small `--max-depth` rather than a whole drive.
 
 ## Diagnostics
 
