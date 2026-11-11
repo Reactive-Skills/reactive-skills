@@ -44,6 +44,7 @@ const DEFAULT_TAIL_INTERVAL_MS = 250;
 const DEFAULT_CATALOG_REFRESH_INTERVAL_MS = 1_000;
 const SITE_ORIGINS = new Set(['https://reactive-skills.com']);
 const LOCAL_ORIGIN = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d{1,5})?$/;
+const LOOPBACK_HOST = /^(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/i;
 // Keeps the synchronous catalog refresh under roughly one seventh of the event loop.
 const REFRESH_BACKOFF_FACTOR = 6;
 
@@ -189,7 +190,23 @@ export class TelemetryBroker {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Last-Event-ID, Cache-Control');
   }
 
+  /**
+   * Refuse any request not addressed to a loopback host name before CORS or a route runs, which defeats DNS rebinding.
+   * A request without a Host header is left to the platform, which already rejects it for HTTP/1.1.
+   * # Performance & Risk Budget
+   * - Tier: P0 (<1ms target for the Host check)
+   * - Complexity: O(1) per request before routing
+   * - Cyclomatic Complexity (CC): target <=10
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=12
+   */
   private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
+    const requestHost = req.headers.host;
+    if (requestHost !== undefined && !LOOPBACK_HOST.test(requestHost)) {
+      this.sendJson(res, 403, { error: 'Host not allowed. Address the broker as localhost, 127.0.0.1 or [::1].' }, req.method === 'HEAD');
+      return;
+    }
+
     this.setCorsHeaders(req, res);
 
     if (req.method === 'OPTIONS') {
@@ -198,7 +215,7 @@ export class TelemetryBroker {
       return;
     }
 
-    const hostHeader = req.headers.host || `${this.host}:${this.getPort()}`;
+    const hostHeader = requestHost ?? `${this.host}:${this.getPort()}`;
     const parsedUrl = new URL(req.url || '/', `http://${hostHeader}`);
     const pathname = parsedUrl.pathname;
     const isGetOrHead = req.method === 'GET' || req.method === 'HEAD';

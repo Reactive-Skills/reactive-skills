@@ -74,6 +74,12 @@ The SSE event also retains the complete original `SignalEvent` under `event`.
 
 The broker reflects the matched origin and adds `Vary: Origin`; other origins receive no CORS headers, and requests without an `Origin` header are served unchanged.
 
+The broker answers only requests whose `Host` header is `localhost`, `127.0.0.1` or `[::1]`, with any port, and refuses every other `Host` with `403` before CORS handling or any route runs, including `OPTIONS` and the SSE route, so DNS rebinding cannot reach it under another name.
+
+A request with no `Host` header is left to the HTTP platform, which already rejects it for HTTP/1.1.
+
+Because only loopback names are answered, binding with `--host 0.0.0.0` listens on every interface but is reachable only through `localhost` or `127.0.0.1`.
+
 The single-job `TelemetryServer` is outside this slice and keeps its wildcard CORS headers.
 
 Invalid skill and job identifiers return a JSON client error without touching a filesystem path.

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { EventStore, JobManager, TelemetryBroker } from '../src/index.js';
@@ -94,6 +95,17 @@ function rawRequest(url: string, method: string, headers: http.OutgoingHttpHeade
     });
     request.on('error', reject);
     request.end();
+  });
+}
+
+function rawSocket(port: number, payload: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let response = '';
+    const socket = net.connect(port, '127.0.0.1', () => socket.write(payload));
+    socket.setEncoding('utf8');
+    socket.on('data', (chunk) => { response += chunk; });
+    socket.on('end', () => resolve(response));
+    socket.on('error', reject);
   });
 }
 
@@ -630,6 +642,75 @@ describe('TelemetryBroker', () => {
       expect(corsHeaders).toEqual([]);
       expect(response.headers.vary).toContain('Origin');
     }
+  });
+
+  it.each([
+    '127.0.0.1',
+    '127.0.0.1:4242',
+    'localhost',
+    'localhost:3000',
+    'LOCALHOST:8080',
+    '[::1]',
+    '[::1]:4242',
+  ])('serves requests addressed to the loopback host %s', async (host) => {
+    const workspace = createWorkspace();
+    createJob(workspace, 'skill-alpha', 'job-one');
+    const { url } = await startBroker(workspace);
+
+    expect((await rawRequest(url, 'OPTIONS', { Host: host })).status).toBe(204);
+    for (const route of ['/', '/health', '/catalog', '/state?skillId=skill-alpha&jobId=job-one']) {
+      const response = await rawRequest(`${url}${route}`, 'GET', { Host: host });
+      expect(response.status).toBe(200);
+    }
+  });
+
+  it.each([
+    'attacker.example',
+    'attacker.example:4242',
+    '127.0.0.1.attacker.example:4242',
+    'localhost.attacker.example',
+    '127.0.0.1:4242@attacker.example',
+    'localhost:abc',
+    '0.0.0.0:4242',
+    '192.168.1.5:4242',
+    '[::2]:4242',
+  ])('refuses every route for the non-loopback host %j before any handler runs', async (host) => {
+    const workspace = createWorkspace();
+    createJob(workspace, 'skill-alpha', 'job-one');
+    const { url } = await startBroker(workspace);
+    const routes: Array<[string, string]> = [
+      ['OPTIONS', '/'],
+      ['GET', '/'],
+      ['GET', '/health'],
+      ['GET', '/catalog'],
+      ['HEAD', '/catalog'],
+      ['GET', '/state?skillId=skill-alpha&jobId=job-one'],
+      ['GET', '/events?sinceSeq=0'],
+      ['GET', '/events?target=skill-alpha%2Fjob-one'],
+      ['GET', '/missing'],
+    ];
+
+    for (const [method, route] of routes) {
+      const response = await rawRequest(`${url}${route}`, method, { Host: host, Origin: 'https://reactive-skills.com' });
+      expect(response.status, `${method} ${route}`).toBe(403);
+      expect(response.headers['content-type']).toContain('application/json');
+      expect(Object.keys(response.headers).filter((name) => name.startsWith('access-control-'))).toEqual([]);
+      if (method !== 'HEAD') expect(JSON.parse(response.body).error).toContain('Host not allowed');
+      else expect(response.body).toBe('');
+    }
+  });
+
+  it('leaves a request without a Host header to the HTTP platform', async () => {
+    const workspace = createWorkspace();
+    createJob(workspace, 'skill-alpha', 'job-one');
+    const { broker } = await startBroker(workspace);
+
+    const http10 = await rawSocket(broker.getPort(), 'GET /catalog HTTP/1.0\r\n\r\n');
+    expect(http10).toMatch(/^HTTP\/1\.1 200 /);
+    expect(http10).toContain('"jobId":"job-one"');
+
+    const http11 = await rawSocket(broker.getPort(), 'GET /catalog HTTP/1.1\r\nConnection: close\r\n\r\n');
+    expect(http11).toMatch(/^HTTP\/1\.1 400 /);
   });
 
   it('serves requests that carry no Origin header without CORS headers', async () => {

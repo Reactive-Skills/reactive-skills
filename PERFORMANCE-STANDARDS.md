@@ -602,7 +602,7 @@ Job creation adds one P1 canonical-path lookup, O(d), before persisting metadata
 CLI argument extraction is P0 (<5ms target), O(a) in arguments; diagnostic serialization adds O(b) in output bytes.
 The `dashboard` broker lists known roots with the same O(w + d) discovery and then refreshes its catalog in P2 (<100ms target per refresh) at O(w * (s + j)) for w roots, s skills and j jobs, opening one read-only reader per newly seen job.
 Periodic refreshes back off to six times the last refresh's duration when that exceeds the one-second interval, so a slow filesystem cannot keep the synchronous scan running back to back; the root list is re-read at most once per refresh interval.
-A state or event request naming an unknown target forces one refresh past that window, itself limited to one per window; target lookup is a P0 (<5ms target) O(r) probe over r roots, and the CORS allowlist check is P0 (<1ms target), O(1).
+A state or event request naming an unknown target forces one refresh past that window, itself limited to one per window; target lookup is a P0 (<5ms target) O(r) probe over r roots, and the Host and CORS allowlist checks are P0 (<1ms target), O(1) per request, with the Host check running before routing.
 A failing root or job is skipped with one warning per target, so one bad store costs one failed open per refresh instead of stopping the scan.
 Measured with 35 roots and 144 jobs: about 37ms per catalog request and 0.2s startup on local disk, and about 0.6s per request and 11s startup over a WSL drive mount, where the first refresh opens one reader per job.
 New discovery/orchestration helpers target CC <=15, branch coverage >=70% and CRAP <=25; path/catalog helpers target CC <=8, branch coverage >=80% and CRAP <=15.
