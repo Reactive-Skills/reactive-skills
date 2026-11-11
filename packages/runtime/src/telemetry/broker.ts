@@ -274,6 +274,15 @@ export class TelemetryBroker {
     this.sendJson(res, 200, this.buildCatalog(), req.method === 'HEAD');
   }
 
+  /**
+   * Answer one job-scoped state request, resolving an omitted workspace root to the first root holding the job.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target excluding a rate-limited catalog refresh)
+   * - Complexity: O(r + s), roots probed and snapshot read
+   * - Cyclomatic Complexity (CC): target <=4
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=6
+   */
   private handleState(req: http.IncomingMessage, url: URL, res: http.ServerResponse): void {
     this.refreshCatalog();
     const skillId = url.searchParams.get('skillId') || '';
@@ -295,6 +304,15 @@ export class TelemetryBroker {
     this.sendJson(res, 200, state, req.method === 'HEAD');
   }
 
+  /**
+   * Open one SSE stream over the filtered targets and replay from `sinceSeq` per target.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target excluding replay of stored events)
+   * - Complexity: O(t + e), selected targets and replayed events
+   * - Cyclomatic Complexity (CC): target <=10
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=14
+   */
   private handleSseEvents(req: http.IncomingMessage, url: URL, res: http.ServerResponse): void {
     this.refreshCatalog();
     const filter = this.parseTargetFilter(url, res);
@@ -416,6 +434,15 @@ export class TelemetryBroker {
     return Number.isInteger(sinceSeq) && sinceSeq >= 0 ? sinceSeq : null;
   }
 
+  /**
+   * Write one event, tagged with its workspace root, to a client that has not yet seen its sequence number.
+   * # Performance & Risk Budget
+   * - Tier: P0 (<5ms target)
+   * - Complexity: O(b), serialized event bytes
+   * - Cyclomatic Complexity (CC): target <=4
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=6
+   */
   private sendSseEvent(client: BrokerClient, target: BrokerTarget, event: SignalEvent): void {
     const lastSeq = client.lastSeqByTarget.get(target.key);
     if (lastSeq !== undefined && event.seq <= lastSeq) return;
@@ -539,11 +566,12 @@ export class TelemetryBroker {
   }
 
   /**
-   * Upsert every job of one root, isolating each job so one unreadable store never hides its siblings.
+   * Upsert every job of one root, isolating each skill and job so one unreadable store never hides its siblings.
+   * A failing skill keeps its previous targets.
    * # Performance & Risk Budget
    * - Tier: P2 (<50ms target per root on local disk)
-   * - Complexity: O(s + j), skills and jobs in the root
-   * - Cyclomatic Complexity (CC): target <=7
+   * - Complexity: O(s * (j + t)), skills and jobs in the root, t catalog targets rescanned for a failing skill
+   * - Cyclomatic Complexity (CC): target <=10
    * - Branch Coverage: target >=80%
    * - CRAP Score: target <=14
    */
@@ -556,19 +584,35 @@ export class TelemetryBroker {
 
     for (const skillEntry of skillEntries) {
       const skillId = skillEntry.name;
-      const skillName = this.resolveSkillName(workspaceDir, skillId);
-      for (const job of jobManager.listJobs(skillId)) {
-        const key = this.targetKey(workspaceDir, skillId, job.id);
-        discoveredKeys.add(key);
-        try {
-          this.upsertTarget(jobManager, workspaceDir, skillId, skillName, job, key);
-        } catch (error) {
-          this.warnOnce(key, `Telemetry broker could not open ${skillId}/${job.id} in ${workspaceDir}; skipping it.`, error);
+      try {
+        const skillName = this.resolveSkillName(workspaceDir, skillId);
+        for (const job of jobManager.listJobs(skillId)) {
+          const key = this.targetKey(workspaceDir, skillId, job.id);
+          discoveredKeys.add(key);
+          try {
+            this.upsertTarget(jobManager, workspaceDir, skillId, skillName, job, key);
+          } catch (error) {
+            this.warnOnce(key, `Telemetry broker could not open ${skillId}/${job.id} in ${workspaceDir}; skipping it.`, error);
+          }
         }
+      } catch (error) {
+        for (const target of this.targets.values()) {
+          if (target.workspaceDir === workspaceDir && target.skillId === skillId) discoveredKeys.add(target.key);
+        }
+        this.warnOnce(JSON.stringify([workspaceDir, skillId]), `Telemetry broker could not list ${skillId} in ${workspaceDir}; keeping its previous targets.`, error);
       }
     }
   }
 
+  /**
+   * Log a failure once per label so a persistently broken store cannot flood the log on every refresh.
+   * # Performance & Risk Budget
+   * - Tier: P0 (<1ms target)
+   * - Complexity: O(1) set probe
+   * - Cyclomatic Complexity (CC): target <=2
+   * - Branch Coverage: target >=90%
+   * - CRAP Score: target <=3
+   */
   private warnOnce(label: string, message: string, error: unknown): void {
     if (this.warned.has(label)) return;
     this.warned.add(label);
@@ -608,7 +652,7 @@ export class TelemetryBroker {
         skillId,
         jobId: job.id,
         enableSqlite: hasSqliteStore,
-        readOnly: hasSqliteStore,
+        readOnly: true,
       });
       if (!this.server) target.tailCursor = target.eventStore.getLatestSequence();
     }
@@ -622,6 +666,15 @@ export class TelemetryBroker {
     this.targets.set(key, target);
   }
 
+  /**
+   * Group catalog targets by skill, ordering jobs by root order (caller first) and then job identifier.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target)
+   * - Complexity: O(t log t + r), targets sorted and roots indexed
+   * - Cyclomatic Complexity (CC): target <=6
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=10
+   */
   private buildCatalog(): TelemetryCatalogResponse {
     const skills = new Map<string, TelemetryCatalogSkill>();
     const rootOrder = new Map(this.jobManagers.map((manager, index) => [manager.getWorkspaceDir(), index]));

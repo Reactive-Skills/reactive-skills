@@ -13,10 +13,20 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { workspaceLabels } from '@/features/telemetry/workspaceLabels';
 
 const DEFAULT_BROKER_URL = 'http://127.0.0.1:4242';
 
-// Also the broker's `target` filter form: `[<workspaceRoot>/]<skillId>/<jobId>`.
+/**
+ * Identify a tracked job; this is also the broker's `target` filter form `[<workspaceRoot>/]<skillId>/<jobId>`.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P0 (<1ms target)
+ * - Complexity: O(1)
+ * - Cyclomatic Complexity (CC): target <=1
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=2
+ */
 export const telemetryTargetKey = ({ workspaceRoot, skillId, jobId }) => [workspaceRoot, skillId, jobId].filter(Boolean).join('/');
 
 const getErrorMessage = (error) => {
@@ -43,9 +53,16 @@ function normalizeBrokerUrl(value) {
   return value.trim().replace(/\/$/, '');
 }
 
-// Last path segment of a broker-reported workspace root, so jobs from different projects are told apart.
-const workspaceLabel = (root) => (root ? root.split(/[\\/]/).filter(Boolean).pop() || root : '');
-
+/**
+ * Build the target identity for one catalog job under a skill.
+ *
+ * # Performance & Risk Budget
+ * - Tier: P0 (<1ms target)
+ * - Complexity: O(1)
+ * - Cyclomatic Complexity (CC): target <=1
+ * - Branch Coverage: target >=90%
+ * - CRAP Score: target <=2
+ */
 const jobTarget = (skillId, job) => ({ skillId, jobId: job.jobId, workspaceRoot: job.workspaceRoot });
 
 function findCatalogTarget(catalog, target) {
@@ -78,6 +95,11 @@ export function MultiJobTelemetryDashboard() {
   const selectedSkill = useMemo(
     () => catalog?.skills?.find((skill) => skill.skillId === selectedSkillId) || null,
     [catalog, selectedSkillId],
+  );
+
+  const rootLabels = useMemo(
+    () => workspaceLabels((catalog?.skills || []).flatMap((skill) => skill.jobs.map((job) => job.workspaceRoot))),
+    [catalog],
   );
 
   const targetQuery = useMemo(
@@ -386,7 +408,7 @@ export function MultiJobTelemetryDashboard() {
               <option value="">Select a job</option>
               {(selectedSkill?.jobs || []).map((job) => {
                 const key = telemetryTargetKey(jobTarget(selectedSkillId, job));
-                return <option key={key} value={key}>{job.jobId} · {job.currentState}{job.workspaceRoot ? ` · ${workspaceLabel(job.workspaceRoot)}` : ''}</option>;
+                return <option key={key} value={key} title={job.workspaceRoot}>{job.jobId} · {job.currentState}{job.workspaceRoot ? ` · ${rootLabels.get(job.workspaceRoot)}` : ''}</option>;
               })}
             </select>
           </div>
@@ -441,7 +463,7 @@ export function MultiJobTelemetryDashboard() {
                     <div className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-phino-signal-text">{target.skillId}</div>
                     <h2 className="mt-1 truncate font-mono text-lg font-semibold text-phino-text" data-testid={`telemetry-job-${key}`}>{target.jobId}</h2>
                     <p className="mt-1 text-xs text-phino-text-muted">{catalogTarget?.isActive ? 'Active job' : 'Parallel job'} · {catalogTarget?.status || 'Unknown status'}</p>
-                    {catalogTarget?.workspaceRoot && <p className="mt-1 truncate font-mono text-xs text-phino-text-subtle" title={catalogTarget.workspaceRoot}>{workspaceLabel(catalogTarget.workspaceRoot)}</p>}
+                    {catalogTarget?.workspaceRoot && <p className="mt-1 truncate font-mono text-xs text-phino-text-subtle" title={catalogTarget.workspaceRoot}>{rootLabels.get(catalogTarget.workspaceRoot)}</p>}
                   </div>
                   <button type="button" onClick={() => removeTarget(target)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-phino-text-muted transition-colors hover:bg-phino-surface-raised hover:text-phino-text" aria-label={`Remove ${target.jobId}`}>
                     <Trash2 className="h-4 w-4" aria-hidden="true" />

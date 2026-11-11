@@ -272,8 +272,13 @@ describe('TelemetryBroker', () => {
 
     createJob(lateWorkspace, 'skill-alpha', 'late-job');
     roots.push(lateWorkspace);
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    expect(await jobIds()).toContain('late-job');
+    const deadline = Date.now() + 5_000;
+    let ids = await jobIds();
+    while (!ids.includes('late-job') && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      ids = await jobIds();
+    }
+    expect(ids).toContain('late-job');
   });
 
   it('finds a job created just before a request even inside the refresh back-off window', async () => {
@@ -351,6 +356,35 @@ describe('TelemetryBroker', () => {
       expect(ids).toEqual(expect.arrayContaining(['sibling-job', 'good-job', 'new-job']));
       expect(ids).not.toContain('stale-job');
       expect(warn.mock.calls.filter((call) => String(call[0]).includes('bad-job'))).toHaveLength(1);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('keeps the other skills and the failing skill\'s previous jobs when one skill cannot be listed', async () => {
+    const workspace = createWorkspace();
+    createJob(workspace, 'skill-alpha', 'kept-job');
+    createJob(workspace, 'skill-beta', 'sibling-job');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const { url } = await startBroker(workspace);
+      const jobIds = async () => (await (await fetch(`${url}/catalog`)).json()).skills.flatMap((skill: any) => skill.jobs.map((job: any) => job.jobId));
+      expect(await jobIds()).toEqual(expect.arrayContaining(['kept-job', 'sibling-job']));
+
+      const runsDir = new JobManager(workspace).getJobsDir('skill-alpha');
+      fs.rmSync(runsDir, { recursive: true, force: true });
+      fs.writeFileSync(runsDir, 'not a directory', 'utf8');
+      createJob(workspace, 'skill-beta', 'new-job');
+      const deadline = Date.now() + 5_000;
+      let ids = await jobIds();
+      while (!ids.includes('new-job') && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        ids = await jobIds();
+      }
+
+      expect(ids).toEqual(expect.arrayContaining(['kept-job', 'sibling-job', 'new-job']));
+      expect(warn.mock.calls.filter((call) => String(call[0]).includes('skill-alpha'))).toHaveLength(1);
     } finally {
       warn.mockRestore();
     }
@@ -438,6 +472,23 @@ describe('TelemetryBroker', () => {
     const all = await openSse(`${url}/events?sinceSeq=0`);
     await all.waitFor((value) => value.includes('CALLER_EVENT') && value.includes('PROJECT_EVENT_TWO'));
     all.close();
+  });
+
+  it('reads a legacy JSONL-only store without creating run directories in its workspace', async () => {
+    const workspace = createWorkspace();
+    const skillDir = path.join(workspace, '.reactive', 'skills', 'legacy-skill');
+    const legacyStore = new EventStore({ workspaceDir: workspace, skillId: 'legacy-skill', jobId: 'default' });
+    legacyStore.append('LEGACY_EVENT', {}, { source: 'legacy' });
+    legacyStore.close();
+    fs.rmSync(path.join(skillDir, 'runs'), { recursive: true, force: true });
+    expect(fs.existsSync(path.join(skillDir, 'events.jsonl'))).toBe(true);
+    expect(fs.existsSync(path.join(skillDir, 'events.db'))).toBe(false);
+
+    const { url } = await startBroker(workspace);
+    const state = await (await fetch(`${url}/state?skillId=legacy-skill&jobId=default`)).json();
+
+    expect(state).toMatchObject({ skillId: 'legacy-skill', jobId: 'default', eventCount: 1, latestSignal: 'LEGACY_EVENT' });
+    expect(fs.existsSync(path.join(skillDir, 'runs'))).toBe(false);
   });
 
   it('isolates job-scoped state and reports event metadata', async () => {

@@ -38,6 +38,10 @@ The broker refreshes the catalog on a bounded interval and refreshes it before c
 
 Each discovered skill and job pair has one SQLite-backed `EventStore` reader and one local tail cursor.
 
+Every reader is opened read-only, including for legacy JSONL-only stores, so the broker creates no run directories or other files in a recorded workspace.
+
+A skill whose jobs cannot be listed is skipped with one warning and keeps its previous targets, so its sibling skills in the same root still refresh.
+
 SQLite remains the authoritative event source, and the broker polls each target store so writers in separate CLI, MCP, and worker processes are visible.
 
 Each target retains its own local sequence numbers.
