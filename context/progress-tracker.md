@@ -61,7 +61,8 @@ Local verification passed both package builds, 1,093 runtime tests, 389 AXI test
 | `@reactive-skills/runtime` | v0.17.2 | ✅ Published |
 | `@reactive-skills/axi` | v0.17.2 | ✅ Published |
 | `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.18.0 | ✅ Published (`docs/specs/0020-v0.18.0-release-preparation.md`) |
-| `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.21.0 | 🧪 Breaking 0.x minor release candidate; MCP default migration notes and measured results in `docs/releases/v0.21.0.md` |
+| `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.22.0 | 🧪 Breaking 0.x minor release candidate; workspace binding, multi-workspace dashboard, local-only telemetry broker and receipt path migration notes in `docs/releases/v0.22.0.md` |
+| `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.21.0 | ✅ Tagged `v0.21.0`; MCP default migration notes and measured results in `docs/releases/v0.21.0.md` |
 | `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.20.0 | ✅ Tagged `v0.20.0`; breaking changes and migration checklist in `docs/releases/v0.20.0.md` |
 | `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.19.0 | 🧪 Candidate prepared (`docs/specs/0022-v0.19.0-release-preparation.md`) |
 | `@reactive-skills/runtime`, `@reactive-skills/axi` | v0.17.3 | ✅ Published (`docs/specs/0018-v0.17.3-release-preparation.md`) |
@@ -196,9 +197,9 @@ The capture now draws seam-free duration rectangles and arranges the live-map st
 | R2c | v0.17.3 | Agent-facing credentials reason (stop and ask the user, never unset the key) | ✅ Published |
 | R3a | v0.18.0 | #22 part 2 human approval and self-report grant (ADR 0012, `docs/specs/0019-human-approval.md`), #47, #32 | ✅ Published |
 | R3b | v0.19.0 | #10, #42, #44, #45, #24, #43, `vet` (#33 part), site fixes; #29, #39, #65 items 2-3 still open | 🧪 Candidate prepared (`docs/specs/0022-v0.19.0-release-preparation.md`) |
-| R4 | Unassigned | #14, #26 | ⏳ Queued; v0.20.0 instead carries the runtime/transport candidate |
+| R4 | v0.22.0 | #14, #26 | 🧪 Candidate prepared (`docs/releases/v0.22.0.md`) |
 | R5 | Unassigned | #31 | ⏳ Queued; v0.21.0 instead carries the delivered-context candidate |
-| R6 | v0.22.0 | #34 phase 1, #33 trust record, #40 | ⏳ Queued |
+| R6 | Unassigned | #34 phase 1, #33 trust record, #40 | ⏳ Queued; v0.22.0 instead carries the workspace-binding candidate |
 | R7 | v0.23.0 | #34 sandbox default, #33 strict mode | ⏳ Queued |
 | Triage | n/a | #12 Synthesis report scoping (likely skill or template side) | ⏳ Needs triage |
 
@@ -366,3 +367,14 @@ Both package builds, 1,033 runtime tests, 389 AXI tests (one existing skip), 64 
 ## Register existing workspaces
 
 - Added `reactive-skills-axi workspaces register|list`: registers existing `.reactive/skills` workspaces (paths or `--scan <parent>` with `--max-depth`, skipping dependency/build folders, no symlinks) in the per-user catalog; idempotent, `--dry-run`, `--json`, never touches stores. `rememberRoot` and `isRecordedRoot` are exported, and `recordedRoots` is the single catalog parser shared by workspace binding and `workspaces list`, so `list` fails on a malformed entry like every other command. Documented in `docs/workspace-binding.md`, the AXI README and the telemetry docs page; scan time measured at about 4ms per folder on a WSL-mounted drive.
+
+## v0.22.0 release preparation
+
+The root, runtime, AXI and site package manifests advance to `0.22.0`; individual skill versions remain unchanged.
+The Unreleased runtime changelog entries move into a `0.22.0` section, with entries added for bootloader retrieval, workspace binding, the multi-workspace dashboard, `workspaces register|list`, the local-only telemetry broker and the pinned AXI output change; the AXI changelog carries the same section, and `scripts/sync-changelog.js` synchronizes the root changelog and the generated site release history.
+`docs/releases/v0.22.0.md` records the one breaking change (workspace-relative MCP receipt paths with the `receipt_paths: "absolute"` option), the workspace binding behavior and the `--workspace` and `WORKSPACE_DIR` options, unknown-job refusal, the explicit workspace that `reset` and `reset --purge` need outside the selected store, the dashboard listing every known workspace and the one-time `workspaces register` step for older jobs, the `Host` and origin restrictions on the telemetry broker, the 119-byte AXI diagnostic addition to the pinned outputs, and the bootloader retrieval wording.
+The root, AXI and runtime README release banners describe the 0.22.0 candidate and link its migration notes.
+The R4 workspace-binding train is assigned to v0.22.0, and the R6 sandbox opt-in train is unassigned, because v0.22.0 carries the workspace-binding work instead.
+
+Candidate verification on Node 22.23.3: both package builds, `pnpm test:all` (78 runtime test files with 1,139 tests; 41 AXI test files with 427 passing tests and one existing skip; documentation and prose gates) and the 125 site tests pass.
+`RELEASE_TAG=v0.22.0 node scripts/verify-release-tag.js` passes; no release tag was created or pushed during preparation.

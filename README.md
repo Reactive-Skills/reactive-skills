@@ -5,17 +5,17 @@
 [![CI](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Reactive-Skills/reactive-skills/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![npm version](https://img.shields.io/npm/v/@reactive-skills/axi.svg)](https://www.npmjs.com/package/@reactive-skills/axi)
-[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.21.0)
+[![Release Notes](https://img.shields.io/github/v/release/Reactive-Skills/reactive-skills?label=release%20notes)](https://github.com/Reactive-Skills/reactive-skills/releases/tag/v0.22.0)
 
 ---
 
-> 🚀 **What's New in v0.21.0:**
-> - Breaking 0.x minor release: MCP emit and human response return a continuation envelope with a `delta-v1` view by default, and `reactive_state` returns the complete `compact-v1` view.
-> - Delta views send the instructions plus only the context the ledger committed since the last delivered view; the complete recovery view is sent on resume.
-> - Large declared text evidence passes by evidence reference automatically, and MCP tool descriptions are shorter.
-> - `return_view: "none"` and `output: "legacy"` keep the previous outputs for one release.
+> 🚀 **What's New in v0.22.0:**
+> - Breaking 0.x minor release: MCP receipt `projectionsWritten` paths are relative to the server's workspace by default, and `receipt_paths: "absolute"` keeps the previous paths for one release.
+> - Agents bind runs to a canonical workspace with `--workspace` or `WORKSPACE_DIR` and resume them from any directory; unknown named jobs are refused, and `reset` and `reset --purge` need an explicit workspace outside the selected store.
+> - The dashboard lists every known workspace, `workspaces register` records older ones, and the telemetry server answers only local `Host` headers and allowlisted origins.
+> - Experimental runtime-executed states skip the model turn for mechanical states, and bootloader retrieval is now required rather than optional.
 >
-> [Breaking Changes and Migration Notes →](docs/releases/v0.21.0.md) · [View Changelog](CHANGELOG.md)
+> [Breaking Changes and Migration Notes →](docs/releases/v0.22.0.md) · [View Changelog](CHANGELOG.md)
 
 ---
 
