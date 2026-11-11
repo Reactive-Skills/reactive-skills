@@ -34,7 +34,7 @@ A failing root or job is skipped with one warning, keeps its previous targets, a
 
 The broker never constructs a store from an HTTP-supplied path.
 
-The broker refreshes the catalog on a bounded interval and refreshes it before catalog and target validation responses.
+The broker refreshes the catalog on a bounded interval and before catalog and target validation responses, but skips a refresh that falls inside a back-off window: the refresh interval, or six times the last refresh's duration when that is longer.
 
 Each discovered skill and job pair has one SQLite-backed `EventStore` reader and one local tail cursor.
 
@@ -42,7 +42,9 @@ Every reader is opened read-only, including for legacy JSONL-only stores, so the
 
 A skill whose jobs cannot be listed is skipped with one warning and keeps its previous targets, so its sibling skills in the same root still refresh.
 
-SQLite remains the authoritative event source, and the broker polls each target store so writers in separate CLI, MCP, and worker processes are visible.
+SQLite remains the authoritative event source, and the broker polls the store of every target a connected SSE client subscribes to, so writers in separate CLI, MCP, and worker processes are visible; with no client connected it issues no store queries.
+
+The first client to subscribe to a target seeds its tail cursor at the latest sequence, so later events are delivered once and none are replayed.
 
 Each target retains its own local sequence numbers.
 
@@ -98,9 +100,9 @@ The dashboard fetches `/catalog`, offers skill and job selectors, and lets the u
 
 The dashboard opens one `EventSource` for the current target set and reconnects it when the target set changes.
 
-Each tracked card fetches job-scoped state and displays the skill, job ID, connection status, current HSM state, recorded event count, latest signal, and a live event ledger.
+Each tracked card fetches job-scoped state and displays the skill, job ID, workspace label, connection status, current HSM state, recorded event count, latest signal, and a live event ledger.
 
-Events are accepted by a card only when both `skillId` and `jobId` match the card target.
+Events are accepted by a card only when `skillId`, `jobId` and `workspaceRoot` all match the card target.
 
 The dashboard has explicit loading, empty, invalid-target, and connection-error states.
 

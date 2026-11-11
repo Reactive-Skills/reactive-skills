@@ -52,7 +52,7 @@ export const telemetry = {
           'Confirm that both cards show their own job IDs and event ledgers.',
           'Append an event to one SQLite job store and confirm only that matching card updates.',
         ] },
-        { type: 'text', text: 'Every card checks both skill ID and job ID before accepting an event, so local sequence numbers are never treated as global ordering.' },
+        { type: 'text', text: 'Every card checks skill ID, job ID and workspace root before accepting an event, so local sequence numbers are never treated as global ordering.' },
       ],
     },
     {
@@ -69,7 +69,7 @@ export const telemetry = {
       heading: 'Read-only and network limits',
       blocks: [
         { type: 'callout', variant: 'warn', title: 'Read-only broker', text: 'The broker does not dispatch signals, append events, change the active-job pointer, or accept filesystem paths from HTTP parameters.' },
-        { type: 'text', text: 'SQLite is the authoritative source and the broker polls each job store so separate CLI, MCP, and worker writers become visible.' },
+        { type: 'text', text: 'SQLite is the authoritative source and the broker polls the store of each job a connected client subscribes to so separate CLI, MCP, and worker writers become visible.' },
         { type: 'text', text: 'The broker defaults to loopback binding. It sends CORS and Local Network Access headers only to `https://reactive-skills.com` and to `http://localhost` or `http://127.0.0.1` on any port; other origins receive no CORS headers. It also refuses, with 403, every request whose `Host` header is not `localhost`, `127.0.0.1` or `[::1]` (any port), so a page that rebinds its own hostname to loopback cannot read it. Because only loopback names are answered, `--host 0.0.0.0` listens on every interface but is reachable only as `localhost` or `127.0.0.1`, and neither rule stops a non-browser client on a network the broker is bound to.' },
         { type: 'text', text: 'If the browser reports a Local Network access error, grant the site permission to reach the supplied broker URL and reconnect.' },
       ],
