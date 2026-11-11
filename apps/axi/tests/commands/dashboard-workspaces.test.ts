@@ -114,8 +114,13 @@ describe('dashboard workspace scope', () => {
     expect((await catalogJobs(url)).map((job) => job.name)).not.toContain('late-feature');
 
     run(path.join(launch, 'other'), ['invoke', skill, '--job', 'late-feature']);
-    await new Promise((resolve) => setTimeout(resolve, 2_500));
-    expect((await catalogJobs(url)).map((job) => job.name)).toContain('late-feature');
+    const deadline = Date.now() + 12_000;
+    let names = (await catalogJobs(url)).map((job) => job.name);
+    while (!names.includes('late-feature') && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      names = (await catalogJobs(url)).map((job) => job.name);
+    }
+    expect(names).toContain('late-feature');
   });
 
   it('still starts and lists the caller store when the user-level workspace catalog is damaged', async () => {

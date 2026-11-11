@@ -306,10 +306,11 @@ export class TelemetryBroker {
 
   /**
    * Open one SSE stream over the filtered targets and replay from `sinceSeq` per target.
+   * The first subscriber of a target seeds its tail cursor at the latest sequence, so later events are delivered once and none are replayed.
    * # Performance & Risk Budget
    * - Tier: P1 (<25ms target excluding replay of stored events)
-   * - Complexity: O(t + e), selected targets and replayed events
-   * - Cyclomatic Complexity (CC): target <=10
+   * - Complexity: O(t * c + e), selected targets, connected clients and replayed events
+   * - Cyclomatic Complexity (CC): target <=11
    * - Branch Coverage: target >=80%
    * - CRAP Score: target <=14
    */
@@ -319,6 +320,13 @@ export class TelemetryBroker {
     if (filter === false) return;
 
     const sinceSeq = this.parseSinceSeq(url.searchParams.get('sinceSeq'));
+    const selectedTargets = Array.from(this.targets.values()).filter((target) => {
+      return filter === null || filter.has(target.key);
+    });
+    for (const target of selectedTargets) {
+      if (target.eventStore && !this.hasSubscriber(target)) target.tailCursor = target.eventStore.getLatestSequence();
+    }
+
     const client: BrokerClient = {
       response: res,
       targetKeys: filter,
@@ -340,9 +348,6 @@ export class TelemetryBroker {
     });
     this.activeClients.add(client);
 
-    const selectedTargets = Array.from(this.targets.values()).filter((target) => {
-      return filter === null || filter.has(target.key);
-    });
     res.write(`event: connected\ndata: ${JSON.stringify({
       mode: 'broker',
       connectedAt: new Date().toISOString(),
@@ -470,11 +475,37 @@ export class TelemetryBroker {
     }
   }
 
+  /**
+   * Report whether any connected SSE client selects the target.
+   * # Performance & Risk Budget
+   * - Tier: P0 (<1ms target)
+   * - Complexity: O(c), connected clients
+   * - Cyclomatic Complexity (CC): target <=4
+   * - Branch Coverage: target >=90%
+   * - CRAP Score: target <=6
+   */
+  private hasSubscriber(target: BrokerTarget): boolean {
+    for (const client of this.activeClients) {
+      if (client.targetKeys === null || client.targetKeys.has(target.key)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Tail only the targets some client subscribes to, so an idle broker issues no store queries.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target per tick for the subscribed targets)
+   * - Complexity: O(s * (c + log n)) per tick for s subscribed targets, c clients and n stored events; O(1) with no clients
+   * - Cyclomatic Complexity (CC): target <=9
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=12
+   */
   private pollForNewEvents(): void {
     this.refreshCatalog();
+    if (this.activeClients.size === 0) return;
 
     for (const target of this.targets.values()) {
-      if (!target.eventStore) continue;
+      if (!target.eventStore || !this.hasSubscriber(target)) continue;
 
       try {
         for (const event of target.eventStore.getSince(target.tailCursor)) {
@@ -486,7 +517,7 @@ export class TelemetryBroker {
           }
         }
       } catch (error) {
-        console.warn(`Telemetry broker tail poll failed for ${target.key}; retrying.`, error);
+        this.warnOnce(`tail:${target.key}`, `Telemetry broker tail poll failed for ${target.key}; retrying.`, error);
       }
     }
   }
@@ -654,7 +685,6 @@ export class TelemetryBroker {
         enableSqlite: hasSqliteStore,
         readOnly: true,
       });
-      if (!this.server) target.tailCursor = target.eventStore.getLatestSequence();
     }
 
     if (target.eventStore && !hasPersistentStore) {

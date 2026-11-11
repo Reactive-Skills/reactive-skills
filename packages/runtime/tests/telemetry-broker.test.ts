@@ -85,6 +85,16 @@ async function startBroker(workspace: string): Promise<{ broker: TelemetryBroker
   return { broker, url };
 }
 
+async function waitFor<T>(read: () => Promise<T>, done: (value: T) => boolean, timeoutMs = 5_000): Promise<T> {
+  const deadline = Date.now() + timeoutMs;
+  let value = await read();
+  while (!done(value) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    value = await read();
+  }
+  return value;
+}
+
 function rawRequest(url: string, method: string, headers: http.OutgoingHttpHeaders = {}): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> {
   return new Promise((resolve, reject) => {
     const request = http.request(url, { method, headers }, (response) => {
@@ -272,13 +282,7 @@ describe('TelemetryBroker', () => {
 
     createJob(lateWorkspace, 'skill-alpha', 'late-job');
     roots.push(lateWorkspace);
-    const deadline = Date.now() + 5_000;
-    let ids = await jobIds();
-    while (!ids.includes('late-job') && Date.now() < deadline) {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      ids = await jobIds();
-    }
-    expect(ids).toContain('late-job');
+    expect(await waitFor(jobIds, (ids) => ids.includes('late-job'))).toContain('late-job');
   });
 
   it('finds a job created just before a request even inside the refresh back-off window', async () => {
@@ -350,9 +354,7 @@ describe('TelemetryBroker', () => {
 
       fs.rmSync(new JobManager(goodWorkspace).getJobDir('skill-alpha', 'stale-job'), { recursive: true, force: true });
       createJob(goodWorkspace, 'skill-alpha', 'new-job');
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      const ids = await jobIds();
+      const ids = await waitFor(jobIds, (current) => current.includes('new-job') && !current.includes('stale-job'));
       expect(ids).toEqual(expect.arrayContaining(['sibling-job', 'good-job', 'new-job']));
       expect(ids).not.toContain('stale-job');
       expect(warn.mock.calls.filter((call) => String(call[0]).includes('bad-job'))).toHaveLength(1);
@@ -376,12 +378,7 @@ describe('TelemetryBroker', () => {
       fs.rmSync(runsDir, { recursive: true, force: true });
       fs.writeFileSync(runsDir, 'not a directory', 'utf8');
       createJob(workspace, 'skill-beta', 'new-job');
-      const deadline = Date.now() + 5_000;
-      let ids = await jobIds();
-      while (!ids.includes('new-job') && Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, 20));
-        ids = await jobIds();
-      }
+      const ids = await waitFor(jobIds, (current) => current.includes('new-job'));
 
       expect(ids).toEqual(expect.arrayContaining(['kept-job', 'sibling-job', 'new-job']));
       expect(warn.mock.calls.filter((call) => String(call[0]).includes('skill-alpha'))).toHaveLength(1);
@@ -598,6 +595,56 @@ describe('TelemetryBroker', () => {
     } finally {
       client.close();
       writerStore.close();
+    }
+  });
+
+  it('queries only the targets a client subscribes to and nothing while no client is connected', async () => {
+    const workspace = createWorkspace();
+    createJob(workspace, 'skill-alpha', 'tracked-job');
+    createJob(workspace, 'skill-alpha', 'untracked-job');
+    openStore(workspace, 'skill-alpha', 'tracked-job').close();
+    openStore(workspace, 'skill-alpha', 'untracked-job').close();
+    const { url } = await startBroker(workspace);
+    const getSince = vi.spyOn(EventStore.prototype, 'getSince');
+    const queriedRuns = () => getSince.mock.contexts.map((store) => (store as EventStore).getEventContext().run_id);
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(queriedRuns()).toEqual([]);
+
+      const stream = await openSse(`${url}/events?target=skill-alpha%2Ftracked-job`);
+      await stream.waitFor((value) => value.includes('event: connected'));
+      const runs = await waitFor(async () => queriedRuns(), (current) => current.filter((run) => run === 'tracked-job').length >= 5);
+      expect(runs.filter((run) => run === 'tracked-job').length).toBeGreaterThanOrEqual(5);
+      expect(runs).not.toContain('untracked-job');
+      stream.close();
+    } finally {
+      getSince.mockRestore();
+    }
+  });
+
+  it('delivers once only the events written after a client connects to a previously unwatched target', async () => {
+    const workspace = createWorkspace();
+    createJob(workspace, 'skill-alpha', 'job-one');
+    const writer = openStore(workspace, 'skill-alpha', 'job-one');
+    writer.append('BEFORE_START', {}, { source: 'writer' });
+    const { url } = await startBroker(workspace);
+    writer.append('WHILE_UNWATCHED', {}, { source: 'writer' });
+
+    const stream = await openSse(`${url}/events?target=skill-alpha%2Fjob-one`);
+    try {
+      await stream.waitFor((value) => value.includes('event: connected'));
+      writer.append('AFTER_CONNECT', {}, { source: 'writer' });
+      await stream.waitFor((value) => value.includes('AFTER_CONNECT'));
+      writer.append('AFTER_CONNECT_TWO', {}, { source: 'writer' });
+      await stream.waitFor((value) => value.includes('AFTER_CONNECT_TWO'));
+
+      expect(stream.text()).not.toContain('BEFORE_START');
+      expect(stream.text()).not.toContain('WHILE_UNWATCHED');
+      expect(stream.text().match(/event: telemetry_event/g)).toHaveLength(2);
+    } finally {
+      stream.close();
+      writer.close();
     }
   });
 
