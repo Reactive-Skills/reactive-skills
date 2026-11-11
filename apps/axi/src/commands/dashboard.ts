@@ -36,7 +36,12 @@ export async function dashboardCommand(args: string[]): Promise<string> {
 
   const explicit = workspaceContext.getStore() !== undefined;
   const workspaceDir = resolveWorkspaceDir();
-  const knownRoots = explicit ? [] : knownStoreRoots(workspaceDir);
+  let knownRoots: string[] = [];
+  try {
+    if (!explicit) knownRoots = knownStoreRoots(workspaceDir);
+  } catch {
+    // The broker re-resolves roots while running, so a damaged catalog only delays the other workspaces.
+  }
   const broker = new TelemetryBroker({
     workspaceDir,
     // Re-resolved while the broker runs, so a project's first run after startup is listed too.
@@ -56,7 +61,7 @@ export async function dashboardCommand(args: string[]): Promise<string> {
       port: boundPort,
       url,
       catalog: `${url}/catalog`,
-      state_endpoint: `${url}/state?skillId=<skill-id>&jobId=<job-id>`,
+      state_endpoint: `${url}/state?skillId=<skill-id>&jobId=<job-id>[&workspaceRoot=<workspace-root>]`,
       events_sse: `${url}/events`,
       site_route: '/telemetry',
     }, [

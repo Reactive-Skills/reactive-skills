@@ -218,13 +218,15 @@ Omit `--job` to preserve existing resolution through `REACTIVE_JOB_ID`, the acti
 
 ### Multi-Job Telemetry Broker
 
-`TelemetryBroker` reads the `.reactive/skills` catalog of `workspaceDir` plus any `workspaceDirs` and opens run-scoped readers over each skill's shared SQLite ledger. When two roots hold the same skill and job identifiers, the first root wins, and every catalog job reports its `workspaceRoot`.
+`TelemetryBroker` reads the `.reactive/skills` catalog of `workspaceDir` plus any `workspaceDirs` and opens run-scoped readers over each skill's shared SQLite ledger. A skill and job identifier held by several roots is listed once per root, caller root first, and every catalog job reports its `workspaceRoot`.
 
-It exposes `GET /catalog`, job-scoped `GET /state`, and one filtered `GET /events` SSE stream.
+It exposes `GET /catalog`, job-scoped `GET /state` (with an optional `workspaceRoot` parameter), and one filtered `GET /events` SSE stream whose `target=[<workspaceRoot>/]<skillId>/<jobId>` filters resolve an omitted root to the first root in order.
+
+Cross-origin access is limited to an allowlist: the official site origin `https://reactive-skills.com` and `http://localhost` or `http://127.0.0.1` on any port. The broker reflects the matched origin, adds `Vary: Origin`, and sends `Access-Control-Allow-Private-Network` only to those origins; other origins, including preflights, receive no CORS headers, and requests without an `Origin` header (CLI, curl) are unaffected. The single-job `TelemetryServer` keeps its existing wildcard CORS headers.
 
 The broker preserves each run's local sequence numbers and includes skill and run identity in every event envelope.
 
-It refreshes the catalog on a bounded interval so new jobs appear without a process restart.
+It refreshes the catalog on a bounded interval so new jobs appear without a process restart. A failing root or job is skipped with one warning while the other roots keep refreshing, and a request naming a target the catalog lacks triggers one rate-limited immediate refresh before answering 404.
 
 It polls SQLite so events written by separate CLI, MCP, and worker processes reach connected clients.
 

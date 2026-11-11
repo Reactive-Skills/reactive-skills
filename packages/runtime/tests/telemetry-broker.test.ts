@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -82,6 +82,19 @@ async function startBroker(workspace: string): Promise<{ broker: TelemetryBroker
   brokers.push(broker);
   const { url } = await broker.start();
   return { broker, url };
+}
+
+function rawRequest(url: string, method: string, headers: http.OutgoingHttpHeaders = {}): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> {
+  return new Promise((resolve, reject) => {
+    const request = http.request(url, { method, headers }, (response) => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk) => { body += chunk; });
+      response.on('end', () => resolve({ status: response.statusCode ?? 0, headers: response.headers, body }));
+    });
+    request.on('error', reject);
+    request.end();
+  });
 }
 
 async function openSse(url: string): Promise<OpenSseConnection> {
@@ -191,19 +204,17 @@ describe('TelemetryBroker', () => {
   it('lists jobs and streams events from every workspace root it is given', async () => {
     const callerWorkspace = createWorkspace();
     const projectWorkspace = createWorkspace();
-    const duplicateWorkspace = createWorkspace();
     createSkill(callerWorkspace, 'skill-alpha', 'Alpha Skill');
     createJob(callerWorkspace, 'skill-alpha', 'caller-job');
     createJob(projectWorkspace, 'skill-alpha', 'project-job');
     createJob(projectWorkspace, 'skill-beta', 'beta-job');
-    createJob(duplicateWorkspace, 'skill-alpha', 'caller-job');
     const projectStore = openStore(projectWorkspace, 'skill-alpha', 'project-job');
     projectStore.append('PROJECT_BASE', {}, { source: 'project' });
     projectStore.close();
 
     const broker = new TelemetryBroker({
       workspaceDir: callerWorkspace,
-      workspaceDirs: [projectWorkspace, duplicateWorkspace],
+      workspaceDirs: [projectWorkspace],
       port: 0,
       tailIntervalMs: 10,
       catalogRefreshIntervalMs: 10,
@@ -214,9 +225,8 @@ describe('TelemetryBroker', () => {
     const catalog = await (await fetch(`${url}/catalog`)).json();
     const alpha = catalog.skills.find((skill: any) => skill.skillId === 'skill-alpha');
     expect(alpha.jobs.map((job: any) => job.jobId)).toEqual(expect.arrayContaining(['caller-job', 'project-job']));
-    expect(alpha.jobs.filter((job: any) => job.jobId === 'caller-job')).toHaveLength(1);
-    expect(alpha.jobs.find((job: any) => job.jobId === 'caller-job').workspaceRoot).toBe(fs.realpathSync(callerWorkspace));
-    expect(alpha.jobs.find((job: any) => job.jobId === 'project-job').workspaceRoot).toBe(fs.realpathSync(projectWorkspace));
+    expect(alpha.jobs.find((job: any) => job.jobId === 'caller-job').workspaceRoot).toBe(path.resolve(callerWorkspace));
+    expect(alpha.jobs.find((job: any) => job.jobId === 'project-job').workspaceRoot).toBe(path.resolve(projectWorkspace));
     expect(catalog.skills.find((skill: any) => skill.skillId === 'skill-beta').jobs).toHaveLength(1);
 
     const stream = await openSse(`${url}/events?target=skill-alpha%2Fproject-job&sinceSeq=0`);
@@ -254,19 +264,168 @@ describe('TelemetryBroker', () => {
     expect(await jobIds()).toContain('late-job');
   });
 
-  it('reuses the catalog inside the refresh back-off window', async () => {
+  it('finds a job created just before a request even inside the refresh back-off window', async () => {
     const workspace = createWorkspace();
     createJob(workspace, 'skill-alpha', 'first-job');
     const broker = new TelemetryBroker({ workspaceDir: workspace, port: 0, tailIntervalMs: 10, catalogRefreshIntervalMs: 60_000 });
     brokers.push(broker);
     const { url } = await broker.start();
+
     createJob(workspace, 'skill-alpha', 'second-job');
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    const state = await fetch(`${url}/state?skillId=skill-alpha&jobId=second-job`);
+    expect(state.status).toBe(200);
+    expect(await state.json()).toMatchObject({ skillId: 'skill-alpha', jobId: 'second-job' });
 
     const catalog = await (await fetch(`${url}/catalog`)).json();
-    const jobIds = catalog.skills.flatMap((skill: any) => skill.jobs.map((job: any) => job.jobId));
-    expect(jobIds).toContain('first-job');
-    expect(jobIds).not.toContain('second-job');
+    expect(catalog.skills[0].jobs.map((job: any) => job.jobId)).toContain('second-job');
+  });
+
+  it('finds a just-created job through the events target filter', async () => {
+    const workspace = createWorkspace();
+    createJob(workspace, 'skill-alpha', 'first-job');
+    const broker = new TelemetryBroker({ workspaceDir: workspace, port: 0, tailIntervalMs: 10, catalogRefreshIntervalMs: 60_000 });
+    brokers.push(broker);
+    const { url } = await broker.start();
+
+    createJob(workspace, 'skill-alpha', 'second-job');
+    const stream = await openSse(`${url}/events?target=skill-alpha%2Fsecond-job`);
+    await stream.waitFor((value) => value.includes('event: connected'));
+    expect(stream.text()).toContain('"jobId":"second-job"');
+    stream.close();
+  });
+
+  it('refreshes at most once per back-off window for a burst of unknown targets', async () => {
+    const workspace = createWorkspace();
+    createJob(workspace, 'skill-alpha', 'first-job');
+    const broker = new TelemetryBroker({ workspaceDir: workspace, port: 0, tailIntervalMs: 10, catalogRefreshIntervalMs: 60_000 });
+    brokers.push(broker);
+    const { url } = await broker.start();
+
+    expect((await fetch(`${url}/state?skillId=skill-alpha&jobId=missing`)).status).toBe(404);
+    createJob(workspace, 'skill-alpha', 'late-job');
+    expect((await fetch(`${url}/state?skillId=skill-alpha&jobId=late-job`)).status).toBe(404);
+  });
+
+  it('keeps refreshing the other roots and jobs when one store is corrupt', async () => {
+    const badWorkspace = createWorkspace();
+    const goodWorkspace = createWorkspace();
+    createJob(badWorkspace, 'skill-alpha', 'bad-job');
+    createJob(badWorkspace, 'skill-beta', 'sibling-job');
+    createJob(goodWorkspace, 'skill-alpha', 'good-job');
+    createJob(goodWorkspace, 'skill-alpha', 'stale-job');
+    openStore(badWorkspace, 'skill-alpha', 'bad-job').close();
+    fs.writeFileSync(path.join(badWorkspace, '.reactive', 'skills', 'skill-alpha', 'events.db'), 'not a sqlite database', 'utf8');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const broker = new TelemetryBroker({
+        workspaceDir: badWorkspace,
+        workspaceDirs: [goodWorkspace],
+        port: 0,
+        tailIntervalMs: 10,
+        catalogRefreshIntervalMs: 10,
+      });
+      brokers.push(broker);
+      const { url } = await broker.start();
+      const jobIds = async () => (await (await fetch(`${url}/catalog`)).json()).skills.flatMap((skill: any) => skill.jobs.map((job: any) => job.jobId));
+      expect(await jobIds()).toEqual(expect.arrayContaining(['sibling-job', 'good-job', 'stale-job']));
+      expect(await jobIds()).not.toContain('bad-job');
+
+      fs.rmSync(new JobManager(goodWorkspace).getJobDir('skill-alpha', 'stale-job'), { recursive: true, force: true });
+      createJob(goodWorkspace, 'skill-alpha', 'new-job');
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const ids = await jobIds();
+      expect(ids).toEqual(expect.arrayContaining(['sibling-job', 'good-job', 'new-job']));
+      expect(ids).not.toContain('stale-job');
+      expect(warn.mock.calls.filter((call) => String(call[0]).includes('bad-job'))).toHaveLength(1);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('starts and lists the caller root when the workspace root provider throws', async () => {
+    const workspace = createWorkspace();
+    createJob(workspace, 'skill-alpha', 'caller-job');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const broker = new TelemetryBroker({
+        workspaceDir: workspace,
+        workspaceDirs: () => { throw new Error('damaged workspace catalog'); },
+        port: 0,
+        tailIntervalMs: 10,
+        catalogRefreshIntervalMs: 10,
+      });
+      brokers.push(broker);
+      const { url } = await broker.start();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const catalog = await (await fetch(`${url}/catalog`)).json();
+      expect(catalog.skills[0].jobs.map((job: any) => job.jobId)).toEqual(['caller-job']);
+      expect(warn).toHaveBeenCalledTimes(1);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  // Replaces the first-root-wins duplicate assertion: a skill and job held by several roots is listed once per root.
+  it('lists, reads and streams a skill and job that several roots share', async () => {
+    const callerWorkspace = createWorkspace();
+    const projectWorkspace = createWorkspace();
+    createJob(callerWorkspace, 'skill-alpha', 'shared-job');
+    createJob(projectWorkspace, 'skill-alpha', 'shared-job');
+    const callerStore = openStore(callerWorkspace, 'skill-alpha', 'shared-job');
+    callerStore.append('CALLER_EVENT', {}, { source: 'caller' });
+    callerStore.saveSnapshot(1, 'ACTIVE.CALLER', { owner: 'caller' });
+    callerStore.close();
+    const projectStore = openStore(projectWorkspace, 'skill-alpha', 'shared-job');
+    projectStore.append('PROJECT_EVENT', {}, { source: 'project' });
+    projectStore.append('PROJECT_EVENT_TWO', {}, { source: 'project' });
+    projectStore.saveSnapshot(2, 'ACTIVE.PROJECT', { owner: 'project' });
+    projectStore.close();
+    const callerRoot = path.resolve(callerWorkspace);
+    const projectRoot = path.resolve(projectWorkspace);
+
+    const broker = new TelemetryBroker({
+      workspaceDir: callerWorkspace,
+      workspaceDirs: [projectWorkspace],
+      port: 0,
+      tailIntervalMs: 10,
+      catalogRefreshIntervalMs: 10,
+    });
+    brokers.push(broker);
+    const { url } = await broker.start();
+
+    const catalog = await (await fetch(`${url}/catalog`)).json();
+    expect(catalog.skills).toHaveLength(1);
+    const shared = catalog.skills[0].jobs.filter((job: any) => job.jobId === 'shared-job');
+    expect(shared.map((job: any) => [job.jobId, job.workspaceRoot])).toEqual([
+      ['shared-job', callerRoot],
+      ['shared-job', projectRoot],
+    ]);
+
+    const defaultState = await (await fetch(`${url}/state?skillId=skill-alpha&jobId=shared-job`)).json();
+    expect(defaultState).toMatchObject({ workspaceRoot: callerRoot, context: { owner: 'caller' }, eventCount: 1 });
+    const projectState = await (await fetch(`${url}/state?skillId=skill-alpha&jobId=shared-job&workspaceRoot=${encodeURIComponent(projectRoot)}`)).json();
+    expect(projectState).toMatchObject({ workspaceRoot: projectRoot, context: { owner: 'project' }, eventCount: 2 });
+    const unknownRoot = await fetch(`${url}/state?skillId=skill-alpha&jobId=shared-job&workspaceRoot=${encodeURIComponent(path.join(projectRoot, 'nested'))}`);
+    expect(unknownRoot.status).toBe(404);
+
+    const unqualified = await openSse(`${url}/events?target=skill-alpha%2Fshared-job&sinceSeq=0`);
+    await unqualified.waitFor((value) => value.includes('CALLER_EVENT'));
+    expect(unqualified.text()).not.toContain('PROJECT_EVENT');
+    unqualified.close();
+
+    const qualified = await openSse(`${url}/events?target=${encodeURIComponent(`${projectRoot}/skill-alpha/shared-job`)}&sinceSeq=0`);
+    await qualified.waitFor((value) => value.includes('PROJECT_EVENT_TWO'));
+    expect(qualified.text()).not.toContain('CALLER_EVENT');
+    expect(qualified.text()).toContain(`"workspaceRoot":${JSON.stringify(projectRoot)}`);
+    qualified.close();
+
+    const all = await openSse(`${url}/events?sinceSeq=0`);
+    await all.waitFor((value) => value.includes('CALLER_EVENT') && value.includes('PROJECT_EVENT_TWO'));
+    all.close();
   });
 
   it('isolates job-scoped state and reports event metadata', async () => {
@@ -403,7 +562,7 @@ describe('TelemetryBroker', () => {
     expect(fs.readFileSync(pointerPath, 'utf8')).toBe(pointerBefore);
   });
 
-  it('rejects invalid targets and retains Local Network Access and CORS headers', async () => {
+  it('rejects invalid targets', async () => {
     const workspace = createWorkspace();
     createSkill(workspace, 'skill-alpha');
     createJob(workspace, 'skill-alpha', 'job-one');
@@ -416,16 +575,73 @@ describe('TelemetryBroker', () => {
     const invalidStream = await fetch(`${url}/events?target=skill-alpha%2Fmissing-job`);
     expect(invalidStream.status).toBe(404);
 
-    const preflight = await fetch(url, {
-      method: 'OPTIONS',
-      headers: {
-        'Access-Control-Request-Method': 'GET',
-        'Access-Control-Request-Private-Network': 'true',
-      },
+    const malformed = await fetch(`${url}/events?target=skill-alpha`);
+    expect(malformed.status).toBe(400);
+  });
+
+  // Replaces the wildcard assertion: a request without an Origin now receives no CORS headers.
+  it.each([
+    'https://reactive-skills.com',
+    'http://localhost',
+    'http://localhost:3000',
+    'http://127.0.0.1:4242',
+  ])('grants Local Network Access and CORS headers to the allowed origin %s', async (origin) => {
+    const workspace = createWorkspace();
+    createJob(workspace, 'skill-alpha', 'job-one');
+    const { url } = await startBroker(workspace);
+
+    const preflight = await rawRequest(url, 'OPTIONS', {
+      Origin: origin,
+      'Access-Control-Request-Method': 'GET',
+      'Access-Control-Request-Private-Network': 'true',
     });
     expect(preflight.status).toBe(204);
-    expect(preflight.headers.get('access-control-allow-origin')).toBe('*');
-    expect(preflight.headers.get('access-control-allow-private-network')).toBe('true');
+    expect(preflight.headers['access-control-allow-origin']).toBe(origin);
+    expect(preflight.headers['access-control-allow-private-network']).toBe('true');
+    expect(preflight.headers['access-control-allow-methods']).toContain('GET');
+    expect(preflight.headers.vary).toContain('Origin');
+
+    const catalog = await rawRequest(`${url}/catalog`, 'GET', { Origin: origin });
+    expect(catalog.status).toBe(200);
+    expect(catalog.headers['access-control-allow-origin']).toBe(origin);
+    expect(JSON.parse(catalog.body).skills).toHaveLength(1);
+  });
+
+  it.each([
+    'https://evil.example',
+    'https://reactive-skills.com.evil.example',
+    'http://reactive-skills.com',
+    'https://www.reactive-skills.com',
+    'http://localhost.evil.example',
+    'https://localhost:3000',
+    'null',
+  ])('sends no CORS headers to the disallowed origin %s', async (origin) => {
+    const workspace = createWorkspace();
+    createJob(workspace, 'skill-alpha', 'job-one');
+    const { url } = await startBroker(workspace);
+
+    for (const [target, method] of [[url, 'OPTIONS'], [`${url}/catalog`, 'GET'], [`${url}/state?skillId=skill-alpha&jobId=missing`, 'GET']]) {
+      const response = await rawRequest(target, method, {
+        Origin: origin,
+        'Access-Control-Request-Method': 'GET',
+        'Access-Control-Request-Private-Network': 'true',
+      });
+      const corsHeaders = Object.keys(response.headers).filter((name) => name.startsWith('access-control-'));
+      expect(corsHeaders).toEqual([]);
+      expect(response.headers.vary).toContain('Origin');
+    }
+  });
+
+  it('serves requests that carry no Origin header without CORS headers', async () => {
+    const workspace = createWorkspace();
+    createJob(workspace, 'skill-alpha', 'job-one');
+    const { url } = await startBroker(workspace);
+
+    const response = await rawRequest(`${url}/catalog`, 'GET');
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body).skills[0].jobs[0].jobId).toBe('job-one');
+    expect(Object.keys(response.headers).filter((name) => name.startsWith('access-control-'))).toEqual([]);
+    expect(response.headers.vary).toContain('Origin');
   });
 
   it('does not expose signal dispatch or mutate the active job pointer', async () => {

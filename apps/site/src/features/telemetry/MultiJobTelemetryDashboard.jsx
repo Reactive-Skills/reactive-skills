@@ -16,7 +16,8 @@ import { cn } from '@/lib/utils';
 
 const DEFAULT_BROKER_URL = 'http://127.0.0.1:4242';
 
-export const telemetryTargetKey = ({ skillId, jobId }) => `${skillId}/${jobId}`;
+// Also the broker's `target` filter form: `[<workspaceRoot>/]<skillId>/<jobId>`.
+export const telemetryTargetKey = ({ workspaceRoot, skillId, jobId }) => [workspaceRoot, skillId, jobId].filter(Boolean).join('/');
 
 const getErrorMessage = (error) => {
   if (error?.message === 'Failed to fetch') {
@@ -45,9 +46,11 @@ function normalizeBrokerUrl(value) {
 // Last path segment of a broker-reported workspace root, so jobs from different projects are told apart.
 const workspaceLabel = (root) => (root ? root.split(/[\\/]/).filter(Boolean).pop() || root : '');
 
+const jobTarget = (skillId, job) => ({ skillId, jobId: job.jobId, workspaceRoot: job.workspaceRoot });
+
 function findCatalogTarget(catalog, target) {
   const skill = catalog?.skills?.find((entry) => entry.skillId === target.skillId);
-  return skill?.jobs?.find((entry) => entry.jobId === target.jobId) || null;
+  return skill?.jobs?.find((entry) => entry.jobId === target.jobId && entry.workspaceRoot === target.workspaceRoot) || null;
 }
 
 /**
@@ -67,7 +70,7 @@ export function MultiJobTelemetryDashboard() {
   const [catalogStatus, setCatalogStatus] = useState('idle');
   const [catalogError, setCatalogError] = useState('');
   const [selectedSkillId, setSelectedSkillId] = useState('');
-  const [selectedJobId, setSelectedJobId] = useState('');
+  const [selectedJobKey, setSelectedJobKey] = useState('');
   const [trackedTargets, setTrackedTargets] = useState([]);
   const [cards, setCards] = useState({});
   const eventSourceRef = useRef(null);
@@ -115,7 +118,7 @@ export function MultiJobTelemetryDashboard() {
     const firstSkill = catalog?.skills?.[0];
     if (!firstSkill) {
       setSelectedSkillId('');
-      setSelectedJobId('');
+      setSelectedJobKey('');
       return;
     }
 
@@ -123,11 +126,11 @@ export function MultiJobTelemetryDashboard() {
       ? selectedSkillId
       : firstSkill.skillId;
     const nextSkill = catalog.skills.find((skill) => skill.skillId === nextSkillId) || firstSkill;
-    const nextJobId = nextSkill.jobs.some((job) => job.jobId === selectedJobId)
-      ? selectedJobId
-      : nextSkill.jobs[0]?.jobId || '';
+    const nextJobKey = nextSkill.jobs.some((job) => telemetryTargetKey(jobTarget(nextSkill.skillId, job)) === selectedJobKey)
+      ? selectedJobKey
+      : nextSkill.jobs[0] ? telemetryTargetKey(jobTarget(nextSkill.skillId, nextSkill.jobs[0])) : '';
     setSelectedSkillId(nextSkill.skillId);
-    setSelectedJobId(nextJobId);
+    setSelectedJobKey(nextJobKey);
   }, [catalog]);
 
   useEffect(() => {
@@ -149,6 +152,7 @@ export function MultiJobTelemetryDashboard() {
         const key = telemetryTargetKey(target);
         try {
           const params = new URLSearchParams({ skillId: target.skillId, jobId: target.jobId });
+          if (target.workspaceRoot) params.set('workspaceRoot', target.workspaceRoot);
           const response = await fetch(`${normalizeBrokerUrl(brokerUrl)}/state?${params}`, {
             cache: 'no-store',
             targetAddressSpace: 'loopback',
@@ -229,7 +233,7 @@ export function MultiJobTelemetryDashboard() {
         const envelope = JSON.parse(message.data);
         const key = telemetryTargetKey(envelope);
         const target = trackedTargets.find((entry) => telemetryTargetKey(entry) === key);
-        if (!target || envelope.skillId !== target.skillId || envelope.jobId !== target.jobId) return;
+        if (!target || envelope.skillId !== target.skillId || envelope.jobId !== target.jobId || envelope.workspaceRoot !== target.workspaceRoot) return;
 
         setCards((previous) => {
           const card = previous[key] || emptyCard(target);
@@ -287,8 +291,9 @@ export function MultiJobTelemetryDashboard() {
   };
 
   const addSelectedTarget = () => {
-    if (!selectedSkillId || !selectedJobId) return;
-    const target = { skillId: selectedSkillId, jobId: selectedJobId };
+    const job = selectedSkill?.jobs?.find((entry) => telemetryTargetKey(jobTarget(selectedSkillId, entry)) === selectedJobKey);
+    if (!job) return;
+    const target = jobTarget(selectedSkillId, job);
     if (!findCatalogTarget(catalog, target)) return;
     setTrackedTargets((previous) => previous.some((entry) => telemetryTargetKey(entry) === telemetryTargetKey(target))
       ? previous
@@ -370,19 +375,22 @@ export function MultiJobTelemetryDashboard() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="flex-1">
             <label htmlFor="telemetry-skill" className="mb-1.5 block text-xs font-semibold text-phino-text-muted">Skill</label>
-            <select id="telemetry-skill" value={selectedSkillId} onChange={(event) => { setSelectedSkillId(event.target.value); setSelectedJobId(''); }} className="w-full rounded-lg border border-phino-border bg-phino-canvas px-3 py-2.5 text-sm text-phino-text outline-none focus:border-phino-focus focus:ring-1 focus:ring-phino-focus">
+            <select id="telemetry-skill" value={selectedSkillId} onChange={(event) => { setSelectedSkillId(event.target.value); setSelectedJobKey(''); }} className="w-full rounded-lg border border-phino-border bg-phino-canvas px-3 py-2.5 text-sm text-phino-text outline-none focus:border-phino-focus focus:ring-1 focus:ring-phino-focus">
               <option value="">Select a skill</option>
               {(catalog?.skills || []).map((skill) => <option key={skill.skillId} value={skill.skillId}>{skill.skillName} ({skill.skillId})</option>)}
             </select>
           </div>
           <div className="flex-1">
             <label htmlFor="telemetry-job" className="mb-1.5 block text-xs font-semibold text-phino-text-muted">Job</label>
-            <select id="telemetry-job" value={selectedJobId} onChange={(event) => setSelectedJobId(event.target.value)} className="w-full rounded-lg border border-phino-border bg-phino-canvas px-3 py-2.5 text-sm text-phino-text outline-none focus:border-phino-focus focus:ring-1 focus:ring-phino-focus" disabled={!selectedSkill}>
+            <select id="telemetry-job" value={selectedJobKey} onChange={(event) => setSelectedJobKey(event.target.value)} className="w-full rounded-lg border border-phino-border bg-phino-canvas px-3 py-2.5 text-sm text-phino-text outline-none focus:border-phino-focus focus:ring-1 focus:ring-phino-focus" disabled={!selectedSkill}>
               <option value="">Select a job</option>
-              {(selectedSkill?.jobs || []).map((job) => <option key={job.jobId} value={job.jobId}>{job.jobId} · {job.currentState}{job.workspaceRoot ? ` · ${workspaceLabel(job.workspaceRoot)}` : ''}</option>)}
+              {(selectedSkill?.jobs || []).map((job) => {
+                const key = telemetryTargetKey(jobTarget(selectedSkillId, job));
+                return <option key={key} value={key}>{job.jobId} · {job.currentState}{job.workspaceRoot ? ` · ${workspaceLabel(job.workspaceRoot)}` : ''}</option>;
+              })}
             </select>
           </div>
-          <button type="button" onClick={addSelectedTarget} disabled={!selectedSkillId || !selectedJobId} className="inline-flex items-center justify-center gap-2 rounded-lg bg-phino-signal px-4 py-2.5 text-sm font-semibold text-phino-signal-on transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
+          <button type="button" onClick={addSelectedTarget} disabled={!selectedSkillId || !selectedJobKey} className="inline-flex items-center justify-center gap-2 rounded-lg bg-phino-signal px-4 py-2.5 text-sm font-semibold text-phino-signal-on transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
             <Plus className="h-4 w-4" aria-hidden="true" />
             Track job
           </button>
@@ -433,7 +441,7 @@ export function MultiJobTelemetryDashboard() {
                     <div className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-phino-signal-text">{target.skillId}</div>
                     <h2 className="mt-1 truncate font-mono text-lg font-semibold text-phino-text" data-testid={`telemetry-job-${key}`}>{target.jobId}</h2>
                     <p className="mt-1 text-xs text-phino-text-muted">{catalogTarget?.isActive ? 'Active job' : 'Parallel job'} · {catalogTarget?.status || 'Unknown status'}</p>
-                    {catalogTarget?.workspaceRoot && <p className="mt-1 truncate font-mono text-xs text-phino-text-subtle" title={catalogTarget.workspaceRoot}>{catalogTarget.workspaceRoot}</p>}
+                    {catalogTarget?.workspaceRoot && <p className="mt-1 truncate font-mono text-xs text-phino-text-subtle" title={catalogTarget.workspaceRoot}>{workspaceLabel(catalogTarget.workspaceRoot)}</p>}
                   </div>
                   <button type="button" onClick={() => removeTarget(target)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-phino-text-muted transition-colors hover:bg-phino-surface-raised hover:text-phino-text" aria-label={`Remove ${target.jobId}`}>
                     <Trash2 className="h-4 w-4" aria-hidden="true" />

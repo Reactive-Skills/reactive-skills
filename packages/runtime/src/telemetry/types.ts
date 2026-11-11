@@ -52,7 +52,7 @@ export interface TelemetryServerOptions {
 export interface TelemetryBrokerOptions {
   workspaceDir?: string;
   /**
-   * Further workspace roots to list beside `workspaceDir`; the first root wins on duplicate skill and job identifiers.
+   * Further workspace roots to list beside `workspaceDir`; a skill and job identifier held by several roots is listed once per root, caller root first.
    * A function is re-read about once per catalog refresh interval so newly created workspaces appear without a restart.
    */
   workspaceDirs?: string[] | (() => string[]);
@@ -80,7 +80,7 @@ export interface TelemetryCatalogJob {
   latestSeq: number;
   updatedAt: string;
   isActive: boolean;
-  /** Workspace that holds the job's ledger; legacy jobs report the root the broker found them in. */
+  /** Workspace root the broker found the job in; with `skillId` and `jobId` it identifies the job. */
   workspaceRoot: string;
 }
 
@@ -98,6 +98,7 @@ export interface TelemetryBrokerStateResponse {
   skillId: string;
   skillName: string;
   jobId: string;
+  workspaceRoot: string;
   latestSeq: number;
   activeState: string;
   context?: Record<string, any>;
@@ -114,6 +115,7 @@ export interface TelemetryBrokerEventEnvelope {
   skillId: string;
   skillName: string;
   jobId: string;
+  workspaceRoot: string;
   seq: number;
   type: string;
   timestamp: string;

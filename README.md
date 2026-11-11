@@ -436,9 +436,11 @@ The command reports the actual listener URL and bound port.
 
 Open the site `/telemetry` route and enter that broker URL in the connection field.
 
-The broker catalog discovers skills and jobs from the `.reactive/skills` directory of every known workspace (the caller's stores first, then recorded roots), or from only the selected workspace when `--workspace` or `WORKSPACE_DIR` is set. It returns skill names, job IDs, status, current HSM state, local latest sequence, update time, active-job metadata and each job's workspace root.
+The broker catalog discovers skills and jobs from the `.reactive/skills` directory of every known workspace (the caller's stores first, then recorded roots), or from only the selected workspace when `--workspace` or `WORKSPACE_DIR` is set. It returns skill names, job IDs, status, current HSM state, local latest sequence, update time, active-job metadata and each job's workspace root. A skill and job identifier held by several workspaces is listed once per workspace, caller's stores first.
 
-The dashboard uses `GET /catalog`, job-scoped `GET /state?skillId=<skill-id>&jobId=<job-id>`, and one filtered `GET /events` SSE connection for all tracked targets.
+The dashboard uses `GET /catalog`, job-scoped `GET /state?skillId=<skill-id>&jobId=<job-id>[&workspaceRoot=<workspace-root>]`, and one filtered `GET /events` SSE connection for all tracked targets. Event filters take `target=[<workspace-root>/]<skill-id>/<job-id>`; when the workspace root is omitted, the first workspace in order that holds the job is used.
+
+Cross-origin access is limited to an allowlist: the official site origin `https://reactive-skills.com` and `http://localhost` or `http://127.0.0.1` on any port. The broker reflects the matched origin, adds `Vary: Origin`, and sends `Access-Control-Allow-Private-Network` only to those origins; other origins, including preflights, receive no CORS headers, and requests without an `Origin` header (CLI, curl) are unaffected. Binding with `--host 0.0.0.0` exposes the broker to that network regardless of CORS.
 
 Add two jobs from the catalog, such as `jsm-workflow/review-slice` and `jsm-workflow/test-slice`, to monitor them simultaneously.
 

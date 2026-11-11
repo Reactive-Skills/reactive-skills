@@ -118,6 +118,16 @@ describe('dashboard workspace scope', () => {
     expect((await catalogJobs(url)).map((job) => job.name)).toContain('late-feature');
   });
 
+  it('still starts and lists the caller store when the user-level workspace catalog is damaged', async () => {
+    run(path.join(launch, 'app'), ['invoke', skill, '--job', 'feature-a']);
+    const catalog = path.join(home, 'state', 'reactive-skills', 'workspaces');
+    fs.mkdirSync(catalog, { recursive: true });
+    fs.writeFileSync(path.join(catalog, 'damaged.json'), '"not-an-absolute-path"');
+
+    const url = await startDashboard(path.join(launch, 'app'));
+    expect((await catalogJobs(url)).map((job) => job.name)).toContain('feature-a');
+  });
+
   it('keeps an explicit workspace choice to that single store', async () => {
     run(path.join(launch, 'app'), ['invoke', skill, '--job', 'feature-a']);
     run(path.join(launch, 'other'), ['invoke', skill, '--job', 'feature-b']);

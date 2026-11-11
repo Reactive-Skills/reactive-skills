@@ -28,7 +28,9 @@ The broker is a separate runtime class from `TelemetryServer` so the existing si
 
 The broker discovers targets from the `.reactive/skills` directory of `workspaceDir` and any further `workspaceDirs` through one `JobManager` per root, and reads optional skill metadata from each root's skill manifest.
 
-When two roots hold the same skill and job identifiers, the first root listed wins, and each catalog job reports the `workspaceRoot` that holds it.
+When two roots hold the same skill and job identifiers, the job is listed once per root, in root order with the caller's root first, and each catalog job reports the `workspaceRoot` that holds it.
+
+A failing root or job is skipped with one warning, keeps its previous targets, and never stops the other roots or the prune pass from running.
 
 The broker never constructs a store from an HTTP-supplied path.
 
@@ -40,7 +42,11 @@ SQLite remains the authoritative event source, and the broker polls each target 
 
 Each target retains its own local sequence numbers.
 
-The broker uses the target key `skillId/jobId` only as a validated catalog identifier for repeated `target` query parameters.
+The broker identifies a target by workspace root, skill and job, and uses `[workspaceRoot/]skillId/jobId` only as a validated catalog identifier for repeated `target` query parameters.
+
+An omitted workspace root resolves to the first root in order that holds the skill and job.
+
+A request that names a target the catalog does not hold runs one immediate catalog refresh, limited to one per back-off window, before the broker answers with a client error.
 
 The broker exposes only read-oriented routes and does not expose signal dispatch.
 
@@ -48,23 +54,27 @@ The broker exposes only read-oriented routes and does not expose signal dispatch
 
 `GET /catalog` returns `{ skills: [{ skillId, skillName, jobs: [...] }] }`.
 
-Each job entry includes `jobId`, `status`, `currentState`, `latestSeq`, `updatedAt`, and `isActive`.
+Each job entry includes `jobId`, `workspaceRoot`, `status`, `currentState`, `latestSeq`, `updatedAt`, and `isActive`.
 
-`GET /state?skillId=<id>&jobId=<id>` validates both identifiers against the catalog and returns `skillId`, `skillName`, `jobId`, `latestSeq`, `activeState`, `context`, `snapshot`, `eventCount`, and `latestSignal`.
+`GET /state?skillId=<id>&jobId=<id>[&workspaceRoot=<root>]` validates the identifiers against the catalog and returns `skillId`, `skillName`, `jobId`, `workspaceRoot`, `latestSeq`, `activeState`, `context`, `snapshot`, `eventCount`, and `latestSignal`.
 
 `GET /events` opens one SSE stream for all discovered targets when no filters are supplied.
 
-Repeated `target=<skillId>/<jobId>` parameters restrict the stream to selected catalog targets.
+Repeated `target=[<workspaceRoot>/]<skillId>/<jobId>` parameters restrict the stream to selected catalog targets.
 
 `sinceSeq` is applied independently to every selected target because sequence numbers are local to each job.
 
-Every streamed telemetry event contains `skillId`, `jobId`, `seq`, `type`, `timestamp`, and the original event `payload`.
+Every streamed telemetry event contains `skillId`, `jobId`, `workspaceRoot`, `seq`, `type`, `timestamp`, and the original event `payload`.
 
 The SSE event also retains the complete original `SignalEvent` under `event`.
 
 `GET /health` reports broker status, listener metadata, and catalog counts.
 
-`OPTIONS` responses retain the existing CORS and Local Network Access headers.
+`OPTIONS` responses carry the CORS and Local Network Access headers only for allowlisted origins: `https://reactive-skills.com` and `http://localhost` or `http://127.0.0.1` on any port.
+
+The broker reflects the matched origin and adds `Vary: Origin`; other origins receive no CORS headers, and requests without an `Origin` header are served unchanged.
+
+The single-job `TelemetryServer` is outside this slice and keeps its wildcard CORS headers.
 
 Invalid skill and job identifiers return a JSON client error without touching a filesystem path.
 

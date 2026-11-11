@@ -317,9 +317,11 @@ Use the reported URL in the site's `/telemetry` dashboard.
 
 The dashboard discovers skill and job metadata from the broker catalog instead of reading local files in the browser.
 
-The broker exposes `GET /catalog`, `GET /state?skillId=<skill-id>&jobId=<job-id>`, and filtered `GET /events` SSE.
+The broker exposes `GET /catalog`, `GET /state?skillId=<skill-id>&jobId=<job-id>[&workspaceRoot=<workspace-root>]`, and filtered `GET /events` SSE.
 
-Use repeated `target=<skill-id>/<job-id>` parameters to restrict one SSE connection to selected jobs.
+Use repeated `target=[<workspace-root>/]<skill-id>/<job-id>` parameters to restrict one SSE connection to selected jobs. A skill and job identifier held by several workspaces is listed once per workspace; an omitted workspace root resolves to the first workspace in order.
+
+Cross-origin access is limited to an allowlist: the official site origin `https://reactive-skills.com` and `http://localhost` or `http://127.0.0.1` on any port. The broker reflects the matched origin, adds `Vary: Origin`, and sends `Access-Control-Allow-Private-Network` only to those origins; other origins, including preflights, receive no CORS headers, and requests without an `Origin` header (CLI, curl) are unaffected.
 
 Sequence numbers remain local to each UUID-backed run and every streamed event includes its skill ID and run ID.
 

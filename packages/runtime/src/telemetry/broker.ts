@@ -42,6 +42,8 @@ const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 15_000;
 const DEFAULT_TAIL_INTERVAL_MS = 250;
 const DEFAULT_CATALOG_REFRESH_INTERVAL_MS = 1_000;
+const SITE_ORIGINS = new Set(['https://reactive-skills.com']);
+const LOCAL_ORIGIN = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d{1,5})?$/;
 // Keeps the synchronous catalog refresh under roughly one seventh of the event loop.
 const REFRESH_BACKOFF_FACTOR = 6;
 
@@ -67,6 +69,8 @@ export class TelemetryBroker {
   private catalogTimer?: ReturnType<typeof setInterval>;
   private refreshInProgress = false;
   private nextRefreshAt = 0;
+  private nextForcedRefreshAt = 0;
+  private readonly warned = new Set<string>();
   private startTime = Date.now();
 
   constructor(options: TelemetryBrokerOptions = {}) {
@@ -166,15 +170,27 @@ export class TelemetryBroker {
     }
   }
 
-  private setCorsHeaders(res: http.ServerResponse): void {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+  /**
+   * Grant cross-origin access only to the official site and loopback pages; other origins get no CORS headers.
+   * # Performance & Risk Budget
+   * - Tier: P0 (<1ms target)
+   * - Complexity: O(1)
+   * - Cyclomatic Complexity (CC): target <=4
+   * - Branch Coverage: target >=90%
+   * - CRAP Score: target <=6
+   */
+  private setCorsHeaders(req: http.IncomingMessage, res: http.ServerResponse): void {
+    res.setHeader('Vary', 'Origin');
+    const origin = req.headers.origin;
+    if (typeof origin !== 'string' || !(SITE_ORIGINS.has(origin) || LOCAL_ORIGIN.test(origin))) return;
+    res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Last-Event-ID, Cache-Control');
   }
 
   private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
-    this.setCorsHeaders(res);
+    this.setCorsHeaders(req, res);
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
@@ -216,7 +232,7 @@ export class TelemetryBroker {
       service: 'reactive-skills-telemetry-broker',
       readOnly: true,
       catalog: '/catalog',
-      state: '/state?skillId=<skill-id>&jobId=<job-id>',
+      state: '/state?skillId=<skill-id>&jobId=<job-id>[&workspaceRoot=<workspace-root>]',
       events: '/events',
     }, req.method === 'HEAD');
   }
@@ -245,13 +261,15 @@ export class TelemetryBroker {
     this.refreshCatalog();
     const skillId = url.searchParams.get('skillId') || '';
     const jobId = url.searchParams.get('jobId') || '';
-    const target = this.targets.get(this.targetKey(skillId, jobId));
+    const workspaceRoot = url.searchParams.get('workspaceRoot') || undefined;
+    const target = this.findTarget(workspaceRoot, skillId, jobId);
 
     if (!target) {
       this.sendJson(res, 404, {
         error: 'Invalid telemetry target',
         skillId,
         jobId,
+        workspaceRoot,
       }, req.method === 'HEAD');
       return;
     }
@@ -293,7 +311,11 @@ export class TelemetryBroker {
     res.write(`event: connected\ndata: ${JSON.stringify({
       mode: 'broker',
       connectedAt: new Date().toISOString(),
-      targets: selectedTargets.map((target) => ({ skillId: target.skillId, jobId: target.jobId })),
+      targets: selectedTargets.map((target) => ({
+        skillId: target.skillId,
+        jobId: target.jobId,
+        workspaceRoot: target.workspaceDir,
+      })),
     })}\n\n`);
 
     for (const target of selectedTargets) {
@@ -312,28 +334,63 @@ export class TelemetryBroker {
     });
   }
 
+  /**
+   * Parse repeated `target=[<workspaceRoot>/]<skillId>/<jobId>` filters; an omitted root resolves to the first root holding the job.
+   * # Performance & Risk Budget
+   * - Tier: P1 (<25ms target excluding a rate-limited catalog refresh)
+   * - Complexity: O(t * r), filters and roots
+   * - Cyclomatic Complexity (CC): target <=8
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=12
+   */
   private parseTargetFilter(url: URL, res: http.ServerResponse): Set<string> | null | false {
     const rawTargets = url.searchParams.getAll('target');
     if (rawTargets.length === 0) return null;
 
     const targetKeys = new Set<string>();
     for (const rawTarget of rawTargets) {
-      const separator = rawTarget.indexOf('/');
-      if (separator <= 0 || separator === rawTarget.length - 1) {
-        this.sendJson(res, 400, { error: 'Invalid target filter. Use target=<skillId>/<jobId>.' });
+      const parts = rawTarget.split('/');
+      const jobId = parts.pop() ?? '';
+      const skillId = parts.pop() ?? '';
+      if (!skillId || !jobId) {
+        this.sendJson(res, 400, { error: 'Invalid target filter. Use target=[<workspaceRoot>/]<skillId>/<jobId>.' });
         return false;
       }
 
-      const skillId = rawTarget.slice(0, separator);
-      const jobId = rawTarget.slice(separator + 1);
-      const key = this.targetKey(skillId, jobId);
-      if (!this.targets.has(key)) {
-        this.sendJson(res, 404, { error: 'Invalid telemetry target', skillId, jobId });
+      const workspaceRoot = parts.length > 0 ? parts.join('/') : undefined;
+      const target = this.findTarget(workspaceRoot, skillId, jobId);
+      if (!target) {
+        this.sendJson(res, 404, { error: 'Invalid telemetry target', skillId, jobId, workspaceRoot });
         return false;
       }
-      targetKeys.add(key);
+      targetKeys.add(target.key);
     }
     return targetKeys;
+  }
+
+  /**
+   * Resolve a validated target by workspace root, skill and job, taking the first root in order when no root is given.
+   * A miss runs one rate-limited catalog refresh so a job created just before the request is still found.
+   * # Performance & Risk Budget
+   * - Tier: P0 (<5ms target on a hit); a miss adds one rate-limited P2 refresh
+   * - Complexity: O(r), roots
+   * - Cyclomatic Complexity (CC): target <=6
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=8
+   */
+  private findTarget(workspaceRoot: string | undefined, skillId: string, jobId: string): BrokerTarget | undefined {
+    const lookup = (): BrokerTarget | undefined => {
+      const roots = workspaceRoot === undefined ? this.jobManagers.map((manager) => manager.getWorkspaceDir()) : [workspaceRoot];
+      for (const root of roots) {
+        const target = this.targets.get(this.targetKey(root, skillId, jobId));
+        if (target) return target;
+      }
+      return undefined;
+    };
+    const found = lookup();
+    if (found) return found;
+    this.refreshCatalog(true);
+    return lookup();
   }
 
   private parseSinceSeq(rawSinceSeq: string | null): number | null {
@@ -350,6 +407,7 @@ export class TelemetryBroker {
       skillId: target.skillId,
       skillName: target.skillName,
       jobId: target.jobId,
+      workspaceRoot: target.workspaceDir,
       seq: event.seq,
       type: event.type,
       timestamp: event.timestamp,
@@ -391,19 +449,25 @@ export class TelemetryBroker {
 
   /**
    * Resolve the root list, re-reading a provider function at most once per catalog refresh interval.
-   * The first root wins when two roots hold the same skill and job identifiers.
+   * A failing provider keeps the roots resolved so far; each root keeps its own targets even when another root repeats a skill and job.
    * # Performance & Risk Budget
    * - Tier: P2 (<100ms target per resolution)
    * - Complexity: O(w), roots returned by the provider
-   * - Cyclomatic Complexity (CC): target <=6
+   * - Cyclomatic Complexity (CC): target <=7
    * - Branch Coverage: target >=80%
-   * - CRAP Score: target <=12
+   * - CRAP Score: target <=14
    */
   private resolveRoots(): void {
     const now = Date.now();
     if (this.jobManagers.length > 0 && (typeof this.extraDirs !== 'function' || now - this.rootsResolvedAt < this.catalogRefreshIntervalMs)) return;
     this.rootsResolvedAt = now;
-    const extra = typeof this.extraDirs === 'function' ? this.extraDirs() : this.extraDirs;
+    let extra: string[];
+    try {
+      extra = typeof this.extraDirs === 'function' ? this.extraDirs() : this.extraDirs;
+    } catch (error) {
+      this.warnOnce('workspace roots', 'Telemetry broker could not resolve workspace roots; keeping the previous roots.', error);
+      extra = this.jobManagers.map((manager) => manager.getWorkspaceDir());
+    }
     const known = new Map(this.jobManagers.map((manager) => [manager.getWorkspaceDir(), manager]));
     const dirs = [...new Set([this.primaryDir, ...extra].map((dir) => path.resolve(dir)))];
     this.jobManagers = dirs.map((dir) => known.get(dir) ?? new JobManager(dir));
@@ -411,45 +475,38 @@ export class TelemetryBroker {
 
   /**
    * Rebuild the target catalog from every configured workspace root.
-   * Calls inside the back-off window reuse the previous catalog: the window is the refresh interval, or
+   * A failing root or job is skipped with one warning and keeps its previous targets; the other roots still refresh and stale targets are still pruned.
+   * Periodic calls inside the back-off window reuse the previous catalog: the window is the refresh interval, or
    * several times the last refresh's duration when that is longer, so a slow filesystem with many
    * workspaces cannot keep the synchronous refresh running back to back.
+   * A forced call (a request naming an unknown target) bypasses that window but is itself limited to one per window.
    * # Performance & Risk Budget
    * - Tier: P2 (<100ms target per refresh for tens of roots on local disk)
    * - Complexity: O(w * (s + j)), roots, skills and jobs per refresh; opens one reader per new job
-   * - Cyclomatic Complexity (CC): target <=18
+   * - Cyclomatic Complexity (CC): target <=12
    * - Branch Coverage: target >=80%
-   * - CRAP Score: target <=30
+   * - CRAP Score: target <=24
    */
-  private refreshCatalog(): void {
-    if (this.refreshInProgress || Date.now() < this.nextRefreshAt) return;
+  private refreshCatalog(force = false): void {
+    if (this.refreshInProgress || Date.now() < (force ? this.nextForcedRefreshAt : this.nextRefreshAt)) return;
     this.refreshInProgress = true;
     const startedAt = Date.now();
 
     try {
       this.resolveRoots();
       const discoveredKeys = new Set<string>();
+      const failedRoots = new Set<string>();
       for (const jobManager of this.jobManagers) {
-        const workspaceDir = jobManager.getWorkspaceDir();
-        const skillRoot = path.join(workspaceDir, '.reactive', 'skills');
-        const skillEntries = fs.existsSync(skillRoot)
-          ? fs.readdirSync(skillRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory())
-          : [];
-
-        for (const skillEntry of skillEntries) {
-          const skillId = skillEntry.name;
-          const skillName = this.resolveSkillName(workspaceDir, skillId);
-          for (const job of jobManager.listJobs(skillId)) {
-            const key = this.targetKey(skillId, job.id);
-            if (discoveredKeys.has(key)) continue;
-            discoveredKeys.add(key);
-            this.upsertTarget(jobManager, workspaceDir, skillId, skillName, job, key);
-          }
+        try {
+          this.scanRoot(jobManager, discoveredKeys);
+        } catch (error) {
+          failedRoots.add(jobManager.getWorkspaceDir());
+          this.warnOnce(jobManager.getWorkspaceDir(), `Telemetry broker could not scan ${jobManager.getWorkspaceDir()}; keeping its previous targets.`, error);
         }
       }
 
       for (const [key, target] of this.targets) {
-        if (discoveredKeys.has(key)) continue;
+        if (discoveredKeys.has(key) || failedRoots.has(target.workspaceDir)) continue;
         target.eventStore?.close();
         this.targets.delete(key);
       }
@@ -458,8 +515,47 @@ export class TelemetryBroker {
     } finally {
       this.refreshInProgress = false;
       const finishedAt = Date.now();
-      this.nextRefreshAt = finishedAt + Math.max(this.catalogRefreshIntervalMs, (finishedAt - startedAt) * REFRESH_BACKOFF_FACTOR);
+      const backoffUntil = finishedAt + Math.max(this.catalogRefreshIntervalMs, (finishedAt - startedAt) * REFRESH_BACKOFF_FACTOR);
+      this.nextRefreshAt = backoffUntil;
+      if (force) this.nextForcedRefreshAt = backoffUntil;
     }
+  }
+
+  /**
+   * Upsert every job of one root, isolating each job so one unreadable store never hides its siblings.
+   * # Performance & Risk Budget
+   * - Tier: P2 (<50ms target per root on local disk)
+   * - Complexity: O(s + j), skills and jobs in the root
+   * - Cyclomatic Complexity (CC): target <=7
+   * - Branch Coverage: target >=80%
+   * - CRAP Score: target <=14
+   */
+  private scanRoot(jobManager: JobManager, discoveredKeys: Set<string>): void {
+    const workspaceDir = jobManager.getWorkspaceDir();
+    const skillRoot = path.join(workspaceDir, '.reactive', 'skills');
+    const skillEntries = fs.existsSync(skillRoot)
+      ? fs.readdirSync(skillRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory())
+      : [];
+
+    for (const skillEntry of skillEntries) {
+      const skillId = skillEntry.name;
+      const skillName = this.resolveSkillName(workspaceDir, skillId);
+      for (const job of jobManager.listJobs(skillId)) {
+        const key = this.targetKey(workspaceDir, skillId, job.id);
+        discoveredKeys.add(key);
+        try {
+          this.upsertTarget(jobManager, workspaceDir, skillId, skillName, job, key);
+        } catch (error) {
+          this.warnOnce(key, `Telemetry broker could not open ${skillId}/${job.id} in ${workspaceDir}; skipping it.`, error);
+        }
+      }
+    }
+  }
+
+  private warnOnce(label: string, message: string, error: unknown): void {
+    if (this.warned.has(label)) return;
+    this.warned.add(label);
+    console.warn(message, error);
   }
 
   /**
@@ -511,7 +607,12 @@ export class TelemetryBroker {
 
   private buildCatalog(): TelemetryCatalogResponse {
     const skills = new Map<string, TelemetryCatalogSkill>();
-    const sortedTargets = Array.from(this.targets.values()).sort((a, b) => a.key.localeCompare(b.key));
+    const rootOrder = new Map(this.jobManagers.map((manager, index) => [manager.getWorkspaceDir(), index]));
+    const sortedTargets = Array.from(this.targets.values()).sort((a, b) => {
+      return a.skillId.localeCompare(b.skillId)
+        || (rootOrder.get(a.workspaceDir) ?? rootOrder.size) - (rootOrder.get(b.workspaceDir) ?? rootOrder.size)
+        || a.jobId.localeCompare(b.jobId);
+    });
 
     for (const target of sortedTargets) {
       let skill = skills.get(target.skillId);
@@ -539,7 +640,7 @@ export class TelemetryBroker {
       latestSeq,
       updatedAt,
       isActive: target.jobManager.getActiveJobId(target.skillId) === target.jobId,
-      workspaceRoot: target.job.workspaceRoot ?? target.workspaceDir,
+      workspaceRoot: target.workspaceDir,
     };
   }
 
@@ -550,6 +651,7 @@ export class TelemetryBroker {
       skillId: target.skillId,
       skillName: target.skillName,
       jobId: target.jobId,
+      workspaceRoot: target.workspaceDir,
       latestSeq: target.eventStore?.getLatestSequence() || 0,
       activeState: this.readActiveState(target),
       context: snapshot?.context,
@@ -593,8 +695,8 @@ export class TelemetryBroker {
     return fs.existsSync(path.join(skillDir, 'events.jsonl'));
   }
 
-  private targetKey(skillId: string, jobId: string): string {
-    return `${skillId}/${jobId}`;
+  private targetKey(workspaceDir: string, skillId: string, jobId: string): string {
+    return JSON.stringify([workspaceDir, skillId, jobId]);
   }
 
   private sendJson(

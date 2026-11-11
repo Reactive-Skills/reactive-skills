@@ -34,9 +34,9 @@ export const telemetry = {
       blocks: [
         { type: 'text', text: 'The broker discovers skill directories under `.reactive/skills` and job metadata through the runtime `JobManager`.' },
         { type: 'text', text: 'Skill names come from a workspace skill manifest when available and otherwise fall back to the skill ID.' },
-        { type: 'text', text: '`GET /catalog` returns skill IDs, skill names, job IDs, status, current HSM state, latest local sequence, update time, and active-job metadata.' },
-        { type: 'text', text: '`GET /state?skillId=<skill-id>&jobId=<job-id>` returns only the validated target state, snapshot, event count, and latest signal.' },
-        { type: 'text', text: '`GET /events` streams all discovered targets unless repeated `target=<skill-id>/<job-id>` parameters restrict the subscription.' },
+        { type: 'text', text: '`GET /catalog` returns skill IDs, skill names, job IDs, each job\'s workspace root, status, current HSM state, latest local sequence, update time, and active-job metadata. A job held by several workspaces appears once per workspace, and the dashboard labels each with its folder.' },
+        { type: 'text', text: '`GET /state?skillId=<skill-id>&jobId=<job-id>` returns only the validated target state, snapshot, event count, and latest signal. When several workspaces hold the same skill and job, add `workspaceRoot=<workspace-root>`; otherwise the first workspace in order is used.' },
+        { type: 'text', text: '`GET /events` streams all discovered targets unless repeated `target=<skill-id>/<job-id>` or `target=<workspace-root>/<skill-id>/<job-id>` parameters restrict the subscription.' },
         { type: 'text', text: 'The `sinceSeq` value applies independently to each target because sequence numbers are local to each job.' },
       ],
     },
@@ -70,7 +70,7 @@ export const telemetry = {
       blocks: [
         { type: 'callout', variant: 'warn', title: 'Read-only broker', text: 'The broker does not dispatch signals, append events, change the active-job pointer, or accept filesystem paths from HTTP parameters.' },
         { type: 'text', text: 'SQLite is the authoritative source and the broker polls each job store so separate CLI, MCP, and worker writers become visible.' },
-        { type: 'text', text: 'The broker defaults to loopback binding and retains CORS and Local Network Access headers for a site served from another origin.' },
+        { type: 'text', text: 'The broker defaults to loopback binding. It sends CORS and Local Network Access headers only to `https://reactive-skills.com` and to `http://localhost` or `http://127.0.0.1` on any port; other origins receive no CORS headers. Binding with `--host 0.0.0.0` exposes the broker to that network regardless of CORS.' },
         { type: 'text', text: 'If the browser reports a Local Network access error, grant the site permission to reach the supplied broker URL and reconnect.' },
       ],
     },
