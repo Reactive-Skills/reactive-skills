@@ -39,6 +39,25 @@ Each hash-named JSON file contains one canonical workspace path, allowing later 
 The catalog is a discovery hint; job metadata and the selected store remain authoritative.
 Deleted workspace paths are ignored, and corrupt catalog entries fail closed unless a workspace is supplied explicitly.
 
+Copied or moved stores whose recorded root differs from their location are refused; this change does not migrate stores.
+
+Jobs created before workspace binding remain usable without `workspaceRoot`.
+An ancestor store or explicit workspace selects their existing location, and subsequent reads and updates preserve their metadata and history.
+If a legacy store is outside the caller's ancestors and has never been registered, select it once with `--workspace`.
+Resetting a legacy or registered store outside the caller's directory also requires `--workspace`.
+The historical skill-parent store location is also considered for compatibility.
+
+Named `state` and ordinary `emit` calls refuse unknown jobs rather than creating a fresh run at the initial state.
+Use `invoke` to start a named run.
+Explicit evidence import, including folded import-and-emit, retains its existing run-registration behavior within the selected workspace.
+Competing stores still require a workspace choice for evidence operations.
+This fixes the subdirectory resume behavior reported in issue 26 for known jobs and prevents ordinary named emits from silently bootstrapping unknown runs.
+
+`reset` and `reset --purge` act only on a store that contains the caller's directory or on an explicit `--workspace` or `WORKSPACE_DIR` root.
+When the only candidate is another known store, they fail and name that store with the `--workspace` flag to pass; `state`, `events`, `jobs`, `view` and `emit` can still select it with the `caller_directory_differs` warning.
+`reset --purge` deletes only the selected workspace's skill store.
+It does not remove another store beside the installed skill.
+
 ## Register existing workspaces
 
 Stores created before the catalog existed stay out of a plain `dashboard` until their roots are recorded.
@@ -58,26 +77,7 @@ reactive-skills-axi workspaces list
 - Registering twice is safe: roots already in the catalog are reported as `already_known` and not rewritten.
 - `workspaces list` prints every recorded root and whether it still holds a store. It reads the catalog through the same parser as workspace binding, so a malformed entry fails it with `Invalid workspace catalog entry` instead of being skipped.
 - Stores are only checked for a `.reactive/skills` folder. They are never opened, changed or moved, and only the catalog under `${XDG_STATE_HOME}/reactive-skills/workspaces` is written.
-- Scanning costs about 4ms per folder on a WSL-mounted drive (a few thousand folders take several seconds), so scan project parents with a small `--max-depth` rather than a whole drive.
-
-Copied or moved stores whose recorded root differs from their location are refused; this change does not migrate stores.
-
-Jobs created before workspace binding remain usable without `workspaceRoot`.
-An ancestor store or explicit workspace selects their existing location, and subsequent reads and updates preserve their metadata and history.
-If a legacy store is outside the caller's ancestors and has never been registered, select it once with `--workspace`.
-Resetting a legacy or registered store outside the caller's directory also requires `--workspace`.
-The historical skill-parent store location is also considered for compatibility.
-
-Named `state` and ordinary `emit` calls refuse unknown jobs rather than creating a fresh run at the initial state.
-Use `invoke` to start a named run.
-Explicit evidence import, including folded import-and-emit, retains its existing run-registration behavior within the selected workspace.
-Competing stores still require a workspace choice for evidence operations.
-This fixes the subdirectory resume behavior reported in issue 26 for known jobs and prevents ordinary named emits from silently bootstrapping unknown runs.
-
-`reset` and `reset --purge` act only on a store that contains the caller's directory or on an explicit `--workspace` or `WORKSPACE_DIR` root.
-When the only candidate is another known store, they fail and name that store with the `--workspace` flag to pass; `state`, `events`, `jobs`, `view` and `emit` can still select it with the `caller_directory_differs` warning.
-`reset --purge` deletes only the selected workspace's skill store.
-It does not remove another store beside the installed skill.
+- Scanning costs about 4ms per scanned folder on a WSL-mounted drive (a few thousand folders take several seconds), so scan project parents with a small `--max-depth` rather than a whole drive.
 
 ## Diagnostics
 
