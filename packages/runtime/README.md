@@ -86,6 +86,7 @@ See [payload contracts and targeted guard inspection](../../docs/payload-contrac
 
 A manifest that requires `state.runtime_actions` can mark mechanical states with `runtime_action`: the runtime runs a declared command, path check, schema check or expression itself, records the result as ledger evidence and follows the declared success or failure transition without delivering the state to the model.
 See [runtime-executed states](../../docs/runtime-actions.md) for the safety rules, recovery semantics and the measured prototype.
+
 ### Approval for Gates No Model Can Judge
 
 A natural-language criterion that no model can judge refuses the signal and waits for a person (ADR 0012).

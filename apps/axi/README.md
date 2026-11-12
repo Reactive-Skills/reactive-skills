@@ -543,6 +543,7 @@ Each `--source`, `--target`, and `--physical-target` value may contain comma-sep
 Surrounding whitespace is ignored, and empty path entries are rejected.
 Do not combine the positional skill form with `--skill` flags.
 Unknown selected names stop the full request before any target directory changes.
+
 ### Design Principles
 
 This CLI follows the [AXI (Agent eXperience Interface)](https://axi.md) principles:
