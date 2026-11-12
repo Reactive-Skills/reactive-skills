@@ -1,6 +1,6 @@
 # @reactive-skills/axi
 
-AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format.
+AXI-compliant CLI for Reactive Skills Architecture: state, emit, events in TOON format.
 
 This is a CLI-only package with the `reactive-skills-axi` and `axi` commands; use `@reactive-skills/runtime` for the programmatic SDK.
 
@@ -11,7 +11,87 @@ This is a CLI-only package with the `reactive-skills-axi` and `axi` commands; us
 >
 > [Breaking Changes and Migration Notes](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.22.0.md) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
-## Installation
+## Quickstart
+
+Tell your agent:
+
+```text
+"Run the reactive skill <skill> with Reactive Skills AXI."
+```
+
+The command your agent runs (zero install, works for any agent or shell):
+
+```bash
+npx -y @reactive-skills/axi invoke <skill>
+```
+
+Ask your agent to bind each run to its project directory and report the resolved workspace before continuing.
+Workspace selection, diagnostics and compatibility are described in the [workspace binding reference](../../docs/workspace-binding.md).
+
+## Common Tasks
+
+Each task below shows what to tell your agent and the command your agent runs.
+
+### Check or resume a run
+
+Tell your agent: "Show me where the `<skill>` run stands."
+
+```bash
+npx -y @reactive-skills/axi state <skill> --output compact-v1
+```
+
+### Advance a run
+
+Tell your agent: "Report the result and advance the `<skill>` run."
+
+```bash
+npx -y @reactive-skills/axi emit <skill> <signal> --output compact-v1
+```
+
+When capabilities include `state.compact_v1`, use `--output compact-v1` on `invoke`, `emit`, and recovery `state` commands.
+Consume the complete view returned by `invoke` or the `view` in an `emit` receipt before doing the next state's work.
+Fetch `state <skill> --job <run_id> --output compact-v1` again after resume, transcript compaction, stale state, or a lost response.
+The compact view supplies scoped context once, exact transition requirements, active gates and refusal warnings.
+Use `inspect <skill-path>` for guard details and `<command> --help` for usage; omitting the output flag or selecting `--output legacy` retains terminal output with suggestions.
+AXI does not count these state deliveries as strict turns; its strict status fields do not provide MCP turn enforcement.
+
+### Create a skill
+
+Tell your agent: "Scaffold a new reactive skill named `my-skill`."
+
+```bash
+npx -y @reactive-skills/axi init my-skill
+```
+
+### Check a skill
+
+Tell your agent: "Validate my reactive skill."
+
+```bash
+npx -y @reactive-skills/axi validate skills/my-skill
+```
+
+### Watch runs live
+
+Tell your agent: "Open the telemetry dashboard."
+
+```bash
+npx -y @reactive-skills/axi dashboard
+```
+
+### Sync skills to your agents
+
+Tell your agent: "Sync my skills."
+
+```bash
+npx -y @reactive-skills/axi sync
+```
+
+The sections under Reference describe every command in full.
+
+## Manual Install & Configuration
+
+### Installation
 
 Run directly without installing (zero install, recommended for agents):
 
@@ -25,10 +105,27 @@ Or install globally for instant local commands (`reactive-skills-axi` or `axi`):
 npm install -g @reactive-skills/axi
 ```
 
-## Usage
+### Register the MCP server (`setup`)
 
-Ask your agent to bind each run to its project directory and report the resolved workspace before continuing.
-Workspace selection, diagnostics and compatibility are described in the [workspace binding reference](../../docs/workspace-binding.md).
+Register the MCP server with every detected agent client (Claude Desktop, Cursor, Antigravity, Cline, Roo Code, `~/.agents`).
+
+```bash
+npx -y @reactive-skills/axi setup [--client <id|all>] [--dry-run] [--force] [--local]
+```
+
+Each client gets an entry that runs the scoped package pinned to the CLI's own exact version, never the bare `reactive-skills-axi` name and never an unpinned version:
+
+```json
+{ "mcpServers": { "reactive-skills-axi": { "command": "npx", "args": ["-y", "@reactive-skills/axi@<version>", "mcp"] } } }
+```
+
+When setup runs from a global install, the entry instead points at the installed script by absolute path (`node <path>/dist/cli/index.js mcp`). Existing entries that launch this package through the bare alias, an unpinned name, or an older pin are rewritten to the current pinned form and reported as `updated`. `--dry-run` reports `would_configure` / `would_update` without touching any file.
+
+A pinned entry never moves on its own: after upgrading, re-run `setup` to re-pin existing entries to the new version.
+
+## Reference
+
+### Command overview
 
 ```bash
 # Zero-install via npx:
@@ -56,34 +153,9 @@ reactive-skills-axi state <skill>
 axi emit <skill> <signal>
 ```
 
-When capabilities include `state.compact_v1`, use `--output compact-v1` on `invoke`, `emit`, and recovery `state` commands.
-Consume the complete view returned by `invoke` or the `view` in an `emit` receipt before doing the next state's work.
-Fetch `state <skill> --job <run_id> --output compact-v1` again after resume, transcript compaction, stale state, or a lost response.
-The compact view supplies scoped context once, exact transition requirements, active gates and refusal warnings.
-Use `inspect <skill-path>` for guard details and `<command> --help` for usage; omitting the output flag or selecting `--output legacy` retains terminal output with suggestions.
-AXI does not count these state deliveries as strict turns; its strict status fields do not provide MCP turn enforcement.
+### Commands
 
-## Commands
-
-### setup
-
-Register the MCP server with every detected agent client (Claude Desktop, Cursor, Antigravity, Cline, Roo Code, `~/.agents`).
-
-```bash
-npx -y @reactive-skills/axi setup [--client <id|all>] [--dry-run] [--force] [--local]
-```
-
-Each client gets an entry that runs the scoped package pinned to the CLI's own exact version, never the bare `reactive-skills-axi` name and never an unpinned version:
-
-```json
-{ "mcpServers": { "reactive-skills-axi": { "command": "npx", "args": ["-y", "@reactive-skills/axi@<version>", "mcp"] } } }
-```
-
-When setup runs from a global install, the entry instead points at the installed script by absolute path (`node <path>/dist/cli/index.js mcp`). Existing entries that launch this package through the bare alias, an unpinned name, or an older pin are rewritten to the current pinned form and reported as `updated`. `--dry-run` reports `would_configure` / `would_update` without touching any file.
-
-A pinned entry never moves on its own: after upgrading, re-run `setup` to re-pin existing entries to the new version.
-
-### init
+#### init
 
 Scaffold a new reactive skill in `skills/<name>/`.
 
@@ -92,12 +164,12 @@ npx -y @reactive-skills/axi init my-skill
 ```
 
 Creates:
-- `skills/my-skill/skill.yaml` — skill manifest
-- `skills/my-skill/SKILL.md` — skill documentation
-- `skills/my-skill/states/start.md` — initial state prompt
-- `skills/my-skill/states/done.md` — terminal state prompt
+- `skills/my-skill/skill.yaml`: skill manifest
+- `skills/my-skill/SKILL.md`: skill documentation
+- `skills/my-skill/states/start.md`: initial state prompt
+- `skills/my-skill/states/done.md`: terminal state prompt
 
-### capabilities
+#### capabilities
 
 Report AXI and runtime versions plus available capabilities for one-time INIT negotiation.
 
@@ -105,7 +177,7 @@ Report AXI and runtime versions plus available capabilities for one-time INIT ne
 npx -y @reactive-skills/axi capabilities --json
 ```
 
-### context-route
+#### context-route
 
 Use Jev to select one skill and the smallest useful context slice before prompt assembly.
 
@@ -129,7 +201,7 @@ The MCP equivalent is `reactive_context_prepare`.
 It routes the current user message and loads only the selected local context before prompt assembly.
 If Jev is unavailable, it returns `route: none` without loading skill context.
 
-### bootloader
+#### bootloader
 
 Retrieve the authoritative, versioned runtime instructions for a reactive skill.
 
@@ -139,7 +211,7 @@ npx -y @reactive-skills/axi bootloader my-skill --json
 
 Reactive skill `SKILL.md` files contain a stable pointer to this command and its MCP equivalent, so runtime guidance can be updated centrally.
 
-### preflight
+#### preflight
 
 Check a skill's declared runtime requirements without creating or changing a job.
 
@@ -147,7 +219,7 @@ Check a skill's declared runtime requirements without creating or changing a job
 npx -y @reactive-skills/axi preflight skills/my-skill --json
 ```
 
-### upgrade
+#### upgrade
 
 Convert a legacy `SKILL.md` to reactive modular format.
 
@@ -160,7 +232,7 @@ Uses the runtime's `LegacySkillAdapter` to generate:
 - `states/` directory with modular state files
 - `templates/` directory with summary projection template
 
-### inspect
+#### inspect
 
 Print the statechart, transitions, and guards for a reactive skill.
 
@@ -191,7 +263,7 @@ Output (TOON format):
 - States list with descriptions
 - Transitions with signals, targets, and guard expressions
 
-### validate
+#### validate
 
 Validate a reactive skill's manifest, prompt templates, transition targets, and universal bootloader.
 
@@ -229,7 +301,7 @@ Output (TOON format):
 - Formatted error and warning lists
 - Non-zero exit code (1) on validation failure for CI integration
 
-### vet
+#### vet
 
 Statically scan one skill, or every skill in a directory, before you run its code.
 Vet looks for risky APIs in guards and scripts, prompt injection, hidden Unicode and comments, encoded blobs, and download-and-execute steps.
@@ -253,7 +325,7 @@ An allowlist file of reviewed exceptions, each with a skill, a rule, a path, and
 The rule set lives in `@reactive-skills/runtime`, so the skills catalog's CI runs the same rules.
 [docs/vetting.md](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/vetting.md) lists every rule, the allowlist format, and what the runtime executes with which privileges.
 
-### events
+#### events
 
 Tail the event store ledger for a skill.
 
@@ -267,7 +339,7 @@ Output (TOON format):
 - Count of events shown
 - Event entries with seq, timestamp, type, state
 
-### view
+#### view
 
 Launch the real-time telemetry streaming server and live viewer for a skill.
 
@@ -294,7 +366,7 @@ Output (TOON format):
 - State inspection endpoint (`/state`)
 - Health check endpoint (`/health`)
 
-### workspaces
+#### workspaces
 
 Record existing workspaces so the dashboard lists their jobs. A workspace enters the catalog automatically once a skill-targeted command touches it; this command registers older stores in one step.
 
@@ -307,7 +379,7 @@ npx -y @reactive-skills/axi workspaces list
 
 `register` takes workspace roots, `--scan <parent>` (repeatable; the parent is depth 0), `--max-depth <n>` (default 3), `--dry-run` and `--json`. It skips `node_modules`, `.git`, build output and cache folders, does not follow symlinks, and reports `added`, `already_known` and `skipped` roots. It is idempotent and only writes the catalog; stores are never opened, changed or moved. `list` prints the recorded roots and whether each still holds a store, and fails on a malformed catalog entry like every other command. See [workspace binding](../../docs/workspace-binding.md#register-existing-workspaces).
 
-### dashboard
+#### dashboard
 
 Launch one local read-only telemetry broker for multiple skills and jobs.
 
@@ -347,7 +419,7 @@ It does not change active-job pointers or scan arbitrary localhost ports from th
 
 Use `view <skill> [--job <job-id>]` when you need the existing single-job viewer and its current bridge workflow.
 
-### jobs
+#### jobs
 
 Inspect, switch, and archive isolated execution runs and deliverables.
 
@@ -377,7 +449,7 @@ Output (TOON format):
 - Job list with status, creation timestamp, and title
 - Archived status confirmations
 
-### approve
+#### approve
 
 Decide a gate that no model could judge, or turn self-reported decisions on or off for the workspace (ADR 0012).
 Run it yourself in your own terminal.
@@ -408,7 +480,7 @@ If the run changes while you decide, for example because the agent re-sent the r
 Nothing inside the workspace counts as a grant, and the agent's runtime must use the same home folder to see it.
 `--revoke-self-reported` deletes it without a code.
 
-### sync
+#### sync
 
 Copy skills from ordered authoring sources into a physical central directory, then update satellite agent directories with links or physical copies.
 The first source containing a skill name wins.
@@ -471,8 +543,7 @@ Each `--source`, `--target`, and `--physical-target` value may contain comma-sep
 Surrounding whitespace is ignored, and empty path entries are rejected.
 Do not combine the positional skill form with `--skill` flags.
 Unknown selected names stop the full request before any target directory changes.
-
-## Design Principles
+### Design Principles
 
 This CLI follows the [AXI (Agent eXperience Interface)](https://axi.md) principles:
 
@@ -482,7 +553,7 @@ This CLI follows the [AXI (Agent eXperience Interface)](https://axi.md) principl
 - **Contextual suggestions**: Next-step hints after every output
 - **Minimal schemas**: 3-4 fields per list item by default
 
-## Verified local evidence
+### Verified local evidence
 
 `evidence.reference_submission` is advertised by `capabilities` for optional transport negotiation.
 Use `evidence <skill> import <workspace-relative-path> --media-type <type> [--job <run>]` to register a bounded local file and return a JSON `reference` receipt.
@@ -491,6 +562,6 @@ Use `evidence <skill> read '<receipt-JSON>' [--job <run>]` when verified content
 Import and emit receipts do not expand registered content; keyed emit retries recover the recorded submission even after the source file is removed.
 See [the evidence contract](../../docs/evidence-registry.md#axi-and-mcp) for binding syntax, limits, retry semantics and the equivalent MCP tools.
 
-## License
+### License
 
 AGPL-3.0-only

@@ -1,6 +1,6 @@
 # @reactive-skills/runtime
 
-Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
+Reactive Skills Architecture (RSA) core runtime: FSM engine, event store, guard evaluator, projection engine, job manager, and MCP server.
 
 > 🚀 **What's New in v0.22.0:**
 > - Breaking 0.x minor release: MCP receipt `projectionsWritten` paths are workspace-relative by default; `receipt_paths: "absolute"` keeps absolute paths for one release.
@@ -9,27 +9,49 @@ Reactive Skills Architecture (RSA) core runtime — FSM engine, event store, gua
 >
 > [Breaking Changes and Migration Notes](https://github.com/Reactive-Skills/reactive-skills/blob/main/docs/releases/v0.22.0.md) · [View Changelog](https://github.com/Reactive-Skills/reactive-skills/blob/main/CHANGELOG.md)
 
-## Installation
+## Quickstart
+
+Tell your agent:
+
+```text
+"Run the reactive skill <skill> with Reactive Skills AXI."
+```
+
+The command your agent runs (zero install, works for any agent or shell):
+
+```bash
+npx -y @reactive-skills/axi invoke <skill>
+```
+
+## Common Tasks
+
+### Watch a run live
+
+Tell your agent: "Open the live telemetry viewer for the `my-skill` run."
+
+```bash
+npx -y @reactive-skills/axi view my-skill --job sprint-1
+```
+
+See Job-Scoped Live Telemetry below for the viewer endpoints and job selection.
+
+### Approve a gate no model can judge
+
+Tell your agent to continue the run. When a gate needs a person, the agent stops and tells you what to do; see Approval for Gates No Model Can Judge below.
+
+## Manual Install & Configuration
+
+### Installation
 
 ```bash
 npm install @reactive-skills/runtime
 ```
 
-## Usage
+### Import
 
 ```ts
 import { FSMEngine, EventStore, JobManager, LegacySkillAdapter, ProjectionEngine } from '@reactive-skills/runtime';
 ```
-
-### Payload Contracts
-
-Optional authored `payload_contract` metadata describes typed transition inputs while the original guards remain enforced.
-See [payload contracts and targeted guard inspection](../../docs/payload-contracts.md) for manifest examples, inspection APIs and measured costs.
-
-### Runtime-Executed States (Experimental)
-
-A manifest that requires `state.runtime_actions` can mark mechanical states with `runtime_action`: the runtime runs a declared command, path check, schema check or expression itself, records the result as ledger evidence and follows the declared success or failure transition without delivering the state to the model.
-See [runtime-executed states](../../docs/runtime-actions.md) for the safety rules, recovery semantics and the measured prototype.
 
 ### Semantic Judgment Adapter
 
@@ -53,6 +75,17 @@ Use `precondition.non_empty.context_paths` or `precondition.non_empty.payload_pa
 Inspect candidate input with `inspectJudgmentInput()` or `reactive-skills-axi inspect <path> --judgment-input @candidate.json` before invoking an adapter.
 See [judgment input selection](../../docs/specs/judgment-input-selection.md) for input shapes, refusal behavior and content-free audit metadata.
 
+## Reference
+
+### Payload Contracts
+
+Optional authored `payload_contract` metadata describes typed transition inputs while the original guards remain enforced.
+See [payload contracts and targeted guard inspection](../../docs/payload-contracts.md) for manifest examples, inspection APIs and measured costs.
+
+### Runtime-Executed States (Experimental)
+
+A manifest that requires `state.runtime_actions` can mark mechanical states with `runtime_action`: the runtime runs a declared command, path check, schema check or expression itself, records the result as ledger evidence and follows the declared success or failure transition without delivering the state to the model.
+See [runtime-executed states](../../docs/runtime-actions.md) for the safety rules, recovery semantics and the measured prototype.
 ### Approval for Gates No Model Can Judge
 
 A natural-language criterion that no model can judge refuses the signal and waits for a person (ADR 0012).
@@ -393,11 +426,7 @@ console.log(res.metrics);
 
 See [PERFORMANCE-STANDARDS.md](../../PERFORMANCE-STANDARDS.md) for full latency budgets and caching architecture.
 
-## License
-
-MIT
-
-### MCP continuation views
+## MCP Continuation Views
 
 `reactive_emit_signal` and `reactive_respond_human` return the receipt and the settled current view together.
 The default `delta-v1` view omits context unchanged since the last delivered view; `return_view: "compact-v1"` selects the complete view, and `return_view: "none"` keeps the legacy receipt for one release.
@@ -406,3 +435,7 @@ Consume the returned view before working; refetch only for initial delivery, res
 Keyed retries with a saved receipt return it separately from the current view and add no transition or delivery count.
 Recovery without a saved receipt counts an undelivered current view once per run and view sequence using local SQLite metadata outside the run version.
 See [the continuation contract](../../docs/mcp-continuation.md) for the envelope, human gates and retry limits.
+
+## License
+
+MIT
