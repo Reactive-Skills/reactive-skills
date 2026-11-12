@@ -19,47 +19,47 @@
 
 ---
 
-## 🌟 What is Reactive Skills?
-
-Conventional agent skills are static markdown instruction files (`SKILL.md`). An LLM reads all instructions upfront, enters an unstructured execution loop, and guesses its next steps without state verification or deterministic progress guarantees.
-
-**Reactive Skills** upgrade passive agent skills into **Hierarchical State Machines (HSM)** driven by a reactive **Event/Signal Bus**:
-
-1. **Just-In-Time Prompt Slices:** Reactive workflows expose the active state's prompt, constraints, and allowed tools as the workflow advances.
-   Instructions for unvisited branches can remain unread; previously delivered content remains in the host transcript.
-2. **Signal-Driven Ingress:** Transitions are triggered by typed runtime signals (`REQUIREMENTS_GATHERED`, `TESTS_PASSED`, `USER_APPROVED`).
-3. **Deterministic Guard Gates:** Progress requires deterministic programmatic invariants to evaluate `true` (preventing hallucinated completion).
-4. **Event Sourcing & Live Deliverables:** Every transition is recorded to an append-only ledger (`events.jsonl` + SQLite `events.db`). Documentation, PR bodies, and review matrices are live read-model projections rendered from the event stream.
-
----
-
-## 📦 Packages
-
-This repository is a monorepo containing:
-
-- **`@reactive-skills/runtime`**: The core TypeScript statechart engine, SQLite event store driver, guard evaluator, and stdio MCP server.
-- **`@reactive-skills/axi`**: The [Agent eXperience Interface (AXI)](http://axi.md) CLI (`reactive-skills-axi`) providing human- and agent-ergonomic state inspection and signal dispatch in TOON format.
-
----
-
 ## 🚀 Quickstart
 
-### 1. Execution Options
+Reactive Skills turns agent skills into state machines that your agent runs step by step, with a deterministic guard checking each step.
 
-You can execute commands on-demand via **`npx`** (zero installation required) or install the CLI globally:
+Tell your agent:
 
-```bash
-# Zero install — works immediately for any agent or shell:
-npx -y @reactive-skills/axi state <skill-name>
-npx -y @reactive-skills/axi emit <skill-name> <signal-name>
-npx -y @reactive-skills/axi capabilities --json
-npx -y @reactive-skills/axi preflight <skill-name> --json
-
-# Optional: Install globally for instant local commands (`reactive-skills-axi` or `axi`):
-npm install -g @reactive-skills/axi
+```text
+"Run the reactive skill <skill-name> with Reactive Skills AXI."
 ```
 
-### 2. Inspect a Skill's Current State
+The command your agent runs (zero install, works for any agent or shell):
+
+```bash
+npx -y @reactive-skills/axi invoke <skill-name>
+```
+
+---
+
+## 🧰 Common Tasks
+
+### Create a Reactive Skill
+
+Tell your agent:
+
+```text
+"Use skill-manager to create a reactive skill named my-feature-workflow"
+```
+
+The command your agent can run for quick scaffolding:
+
+```bash
+npx -y @reactive-skills/axi init my-feature-workflow
+```
+
+See Authoring Reactive Skills below for the `skill-manager` workflow, `STATECHART.md`, and the scaffolded file layout.
+
+### Check a Skill's Current State
+
+Tell your agent: "Show me where the `<skill-name>` skill run stands."
+
+The command your agent runs:
 
 ```bash
 npx -y @reactive-skills/axi state <skill-name> --output compact-v1
@@ -97,7 +97,11 @@ Declared context scopes retain their existing semantics; states without a declar
 Guard expressions check submitted data; a passing expression alone does not prove a command ran.
 Use the listed tools; tool-call enforcement and automatic compaction reinjection require a separately implemented host adapter.
 
-### 3. Emit a Signal to Advance
+### Advance a Skill
+
+Tell your agent: "Report the result and advance the `<skill-name>` skill."
+
+The command your agent runs:
 
 ```bash
 npx -y @reactive-skills/axi emit <skill-name> <signal-name> [--payload '{"exit_code":0}']
@@ -105,47 +109,29 @@ npx -y @reactive-skills/axi emit <skill-name> <signal-name> [--payload '{"exit_c
 
 The state machine evaluates transition guards, appends to the immutable event ledger, updates deliverables, and outputs the next state instructions.
 
----
+### Sync Skills to Your Agents
 
-## 🔌 Integration Modes
+Tell your agent: "Sync my skills."
 
-Reactive skills can be driven through two primary integration paths:
+The command your agent runs:
 
-1. **AXI CLI (Universal Shell Mode):** Any agent capable of running terminal commands can drive the skill using `npx -y @reactive-skills/axi state <skill>` (or `reactive-skills-axi state <skill>`) and `npx -y @reactive-skills/axi emit <skill> <signal>`.
-2. **MCP Server (Model Context Protocol):** Exposes `reactive_context_prepare`, `reactive_state`, and `reactive_emit_signal` tools over stdio for Claude Desktop, Antigravity, Cursor, and any MCP-compatible harness:
-   ```bash
-   npx -y @reactive-skills/axi mcp
-   ```
+```bash
+npx -y @reactive-skills/axi sync
+```
 
-Call `reactive_context_prepare` with the current user message before loading full skill instructions.
-The tool uses Jev to select one skill and returns only its metadata, active state, or bounded instructions.
-If Jev is unavailable, it returns `route: none` and the agent can continue its directly requested runtime path.
+See [Syncing & Distributing Skills](#-syncing--distributing-skills) for sources, satellites, refs, and downgrade protection.
 
----
+### Watch Runs Live
 
-## 🛠️ CLI Reference
+Tell your agent: "Open the telemetry dashboard."
 
-> **Note:** Commands below are shown using the zero-install `npx -y @reactive-skills/axi` prefix. If installed globally (`npm install -g @reactive-skills/axi`), you can substitute `reactive-skills-axi` or `axi`.
+The command your agent runs:
 
-| Command | Usage | Description |
-| :--- | :--- | :--- |
-| `state` | `npx -y @reactive-skills/axi state <skill>` | Display current active state, unabridged prompt slice, and allowed tools |
-| `emit` | `npx -y @reactive-skills/axi emit <skill> <signal>` | Emit a signal to evaluate guards and advance to the next state; `--payload` is the signal payload, with context changes under `contextUpdates` |
-| `invoke` | `npx -y @reactive-skills/axi invoke <skill> [--payload JSON]` | Initialize and start a skill run; `--payload` is a flat object that becomes the initial context (a `{"contextUpdates":{...}}` wrapper is rejected) |
-| `events` | `npx -y @reactive-skills/axi events [limit] <skill>` | Tail recent events from the append-only event store |
-| `inspect` | `npx -y @reactive-skills/axi inspect <skill>` | Print statechart topology, substates, and guard rules |
-| `validate` | `npx -y @reactive-skills/axi validate [path]` | Validate skill manifest, prompt templates, transition targets, and bootloader |
-| `vet` | `npx -y @reactive-skills/axi vet <path> [--fail-on <severity>] [--allowlist <file>]` | Statically scan skills for risky code, prompt injection, hidden content, and download-and-execute steps before you run them; see [docs/vetting.md](docs/vetting.md) |
-| `init` | `npx -y @reactive-skills/axi init <name>` | Scaffold a new modular reactive skill package |
-| `reset` | `npx -y @reactive-skills/axi reset <skill>` | Clear execution run state while preserving deliverables |
-| `jobs` | `npx -y @reactive-skills/axi jobs <skill> [list\|switch\|archive]` | Inspect, switch, and archive isolated execution runs and deliverables |
-| `view` | `npx -y @reactive-skills/axi view <skill>` | Launch real-time telemetry server and live visual statechart viewer |
-| `dashboard` | `npx -y @reactive-skills/axi dashboard [--host <host>] [--port <port>]` | Launch one read-only broker for multi-job telemetry |
-| `workspaces` | `npx -y @reactive-skills/axi workspaces register [paths...] [--scan <parent>] [--dry-run]` | Register existing workspaces so the dashboard lists their jobs |
-| `sync` | `npx -y @reactive-skills/axi sync [skill]` | Copy ordered sources into a physical central directory, then update linked or physical satellites |
-| `capabilities` | `npx -y @reactive-skills/axi capabilities --json` | Report runtime version and capabilities for INIT negotiation |
-| `bootloader` | `npx -y @reactive-skills/axi bootloader <skill> --json` | Retrieve the versioned authoritative runtime bootloader |
-| `preflight` | `npx -y @reactive-skills/axi preflight <skill>` | Check skill runtime requirements without creating a job |
+```bash
+npx -y @reactive-skills/axi dashboard
+```
+
+See [Telemetry & Performance Metrics](#-telemetry--performance-metrics) for the viewer, ports, and the broker.
 
 ---
 
@@ -206,6 +192,39 @@ skills/<skill-name>/
 │   └── bypass_detected.md
 └── skill-release.json    # Release and schema metadata
 ```
+
+---
+
+## ⚙️ Manual Install & Configuration
+
+### Execution Options
+
+You can execute commands on-demand via **`npx`** (zero installation required) or install the CLI globally:
+
+```bash
+# Zero install: works immediately for any agent or shell:
+npx -y @reactive-skills/axi state <skill-name>
+npx -y @reactive-skills/axi emit <skill-name> <signal-name>
+npx -y @reactive-skills/axi capabilities --json
+npx -y @reactive-skills/axi preflight <skill-name> --json
+
+# Optional: Install globally for instant local commands (`reactive-skills-axi` or `axi`):
+npm install -g @reactive-skills/axi
+```
+
+### 🔌 Integration Modes
+
+Reactive skills can be driven through two primary integration paths:
+
+1. **AXI CLI (Universal Shell Mode):** Any agent capable of running terminal commands can drive the skill using `npx -y @reactive-skills/axi state <skill>` (or `reactive-skills-axi state <skill>`) and `npx -y @reactive-skills/axi emit <skill> <signal>`.
+2. **MCP Server (Model Context Protocol):** Exposes `reactive_context_prepare`, `reactive_state`, and `reactive_emit_signal` tools over stdio for Claude Desktop, Antigravity, Cursor, and any MCP-compatible harness:
+   ```bash
+   npx -y @reactive-skills/axi mcp
+   ```
+
+Call `reactive_context_prepare` with the current user message before loading full skill instructions.
+The tool uses Jev to select one skill and returns only its metadata, active state, or bounded instructions.
+If Jev is unavailable, it returns `route: none` and the agent can continue its directly requested runtime path.
 
 ---
 
@@ -330,7 +349,56 @@ The synchronizer validates path overlaps before writing. It stages and verifies 
 
 ---
 
-## 🗂️ Job & Run Isolation (Multi-Run Management)
+## 📚 Reference
+
+### 🌟 What is Reactive Skills?
+
+Conventional agent skills are static markdown instruction files (`SKILL.md`). An LLM reads all instructions upfront, enters an unstructured execution loop, and guesses its next steps without state verification or deterministic progress guarantees.
+
+**Reactive Skills** upgrade passive agent skills into **Hierarchical State Machines (HSM)** driven by a reactive **Event/Signal Bus**:
+
+1. **Just-In-Time Prompt Slices:** Reactive workflows expose the active state's prompt, constraints, and allowed tools as the workflow advances.
+   Instructions for unvisited branches can remain unread; previously delivered content remains in the host transcript.
+2. **Signal-Driven Ingress:** Transitions are triggered by typed runtime signals (`REQUIREMENTS_GATHERED`, `TESTS_PASSED`, `USER_APPROVED`).
+3. **Deterministic Guard Gates:** Progress requires deterministic programmatic invariants to evaluate `true` (preventing hallucinated completion).
+4. **Event Sourcing & Live Deliverables:** Every transition is recorded to an append-only ledger (`events.jsonl` + SQLite `events.db`). Documentation, PR bodies, and review matrices are live read-model projections rendered from the event stream.
+
+---
+
+### 📦 Packages
+
+This repository is a monorepo containing:
+
+- **`@reactive-skills/runtime`**: The core TypeScript statechart engine, SQLite event store driver, guard evaluator, and stdio MCP server.
+- **`@reactive-skills/axi`**: The [Agent eXperience Interface (AXI)](http://axi.md) CLI (`reactive-skills-axi`) providing human- and agent-ergonomic state inspection and signal dispatch in TOON format.
+
+### 🛠️ CLI Reference
+
+> **Note:** Commands below are shown using the zero-install `npx -y @reactive-skills/axi` prefix. If installed globally (`npm install -g @reactive-skills/axi`), you can substitute `reactive-skills-axi` or `axi`.
+
+| Command | Usage | Description |
+| :--- | :--- | :--- |
+| `state` | `npx -y @reactive-skills/axi state <skill>` | Display current active state, unabridged prompt slice, and allowed tools |
+| `emit` | `npx -y @reactive-skills/axi emit <skill> <signal>` | Emit a signal to evaluate guards and advance to the next state; `--payload` is the signal payload, with context changes under `contextUpdates` |
+| `invoke` | `npx -y @reactive-skills/axi invoke <skill> [--payload JSON]` | Initialize and start a skill run; `--payload` is a flat object that becomes the initial context (a `{"contextUpdates":{...}}` wrapper is rejected) |
+| `events` | `npx -y @reactive-skills/axi events [limit] <skill>` | Tail recent events from the append-only event store |
+| `inspect` | `npx -y @reactive-skills/axi inspect <skill>` | Print statechart topology, substates, and guard rules |
+| `validate` | `npx -y @reactive-skills/axi validate [path]` | Validate skill manifest, prompt templates, transition targets, and bootloader |
+| `vet` | `npx -y @reactive-skills/axi vet <path> [--fail-on <severity>] [--allowlist <file>]` | Statically scan skills for risky code, prompt injection, hidden content, and download-and-execute steps before you run them; see [docs/vetting.md](docs/vetting.md) |
+| `init` | `npx -y @reactive-skills/axi init <name>` | Scaffold a new modular reactive skill package |
+| `reset` | `npx -y @reactive-skills/axi reset <skill>` | Clear execution run state while preserving deliverables |
+| `jobs` | `npx -y @reactive-skills/axi jobs <skill> [list\|switch\|archive]` | Inspect, switch, and archive isolated execution runs and deliverables |
+| `view` | `npx -y @reactive-skills/axi view <skill>` | Launch real-time telemetry server and live visual statechart viewer |
+| `dashboard` | `npx -y @reactive-skills/axi dashboard [--host <host>] [--port <port>]` | Launch one read-only broker for multi-job telemetry |
+| `workspaces` | `npx -y @reactive-skills/axi workspaces register [paths...] [--scan <parent>] [--dry-run]` | Register existing workspaces so the dashboard lists their jobs |
+| `sync` | `npx -y @reactive-skills/axi sync [skill]` | Copy ordered sources into a physical central directory, then update linked or physical satellites |
+| `capabilities` | `npx -y @reactive-skills/axi capabilities --json` | Report runtime version and capabilities for INIT negotiation |
+| `bootloader` | `npx -y @reactive-skills/axi bootloader <skill> --json` | Retrieve the versioned authoritative runtime bootloader |
+| `preflight` | `npx -y @reactive-skills/axi preflight <skill>` | Check skill runtime requirements without creating a job |
+
+---
+
+### 🗂️ Job & Run Isolation (Multi-Run Management)
 
 RSA provides multi-run isolation, allowing teams and autonomous agents to execute multiple independent runs of the same skill without event log pollution or deliverable overwrites.
 
@@ -381,7 +449,7 @@ When interacting with agents over MCP, job operations are exposed as native tool
 
 ---
 
-## 📊 Telemetry & Performance Metrics
+### 📊 Telemetry & Performance Metrics
 
 RSA provides real-time performance instrumentation and token economy tracking with zero runtime latency tax.
 
