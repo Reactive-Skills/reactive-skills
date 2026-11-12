@@ -50,7 +50,7 @@ Tell your agent:
 The command your agent can run for quick scaffolding:
 
 ```bash
-npx -y @reactive-skills/axi init <skill-name>
+npx -y @reactive-skills/axi init my-feature-workflow
 ```
 
 See Authoring Reactive Skills below for the `skill-manager` workflow, `STATECHART.md`, and the scaffolded file layout.

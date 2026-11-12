@@ -37,7 +37,7 @@ See Job-Scoped Live Telemetry below for the viewer endpoints and job selection.
 
 ### Approve a gate no model can judge
 
-Tell your agent to continue the run. When a gate needs a person, the agent stops and tells you what to do; see Approval for Gates No Model Can Judge below.
+Tell your agent to continue the run. When a gate needs a person, the agent stops and asks you to approve it, the one step you take yourself so an agent can never approve its own gate; see Approval for Gates No Model Can Judge below.
 
 ## Manual Install & Configuration
 
@@ -91,6 +91,7 @@ See [runtime-executed states](../../docs/runtime-actions.md) for the safety rule
 A natural-language criterion that no model can judge refuses the signal and waits for a person (ADR 0012).
 That happens when no model is configured, during a model outage, and when Jev rejects its key.
 The runtime records an `APPROVAL_REQUESTED` event, and the refusal reason tells the agent to stop and ask the user to run `reactive-skills-axi approve <skill> --job <id>` in their own terminal.
+Approval is the one step you take yourself, so an agent can never approve its own gate.
 
 `approve` runs only in an interactive terminal.
 It shows each waiting gate with the agent's payload and asks the user to type back a one-time code.

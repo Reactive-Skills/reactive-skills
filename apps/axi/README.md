@@ -452,7 +452,7 @@ Output (TOON format):
 #### approve
 
 Decide a gate that no model could judge, or turn self-reported decisions on or off for the workspace (ADR 0012).
-Run it yourself in your own terminal.
+Approval is the one step you take yourself, in your own terminal, so an agent can never approve its own gate.
 It refuses to run when standard input or standard output is not an interactive terminal, so an agent cannot complete it through a pipe or a script.
 An agent with a tool that drives a terminal session, which some MCP servers provide, can still run it, so treat the code as protection against accidental approval rather than a security boundary.
 Run it from the workspace folder that the agent's message names; `approve` prints the workspace it used and fails when the run is not there.
@@ -474,7 +474,7 @@ Typing the code approves the gate, and typing `reject` rejects it.
 Any other answer asks again, up to five times, and ending input with Ctrl+D cancels without deciding.
 An approval re-sends the original signal, and the transition reports `judgment_basis: human`.
 A rejection routes to `fallback_target` when one is declared and otherwise leaves the run in its state.
-If the run changes while you decide, for example because the agent re-sent the refused signal, `approve` reloads it and applies your answer only when the same gate with the same evidence is still waiting; otherwise it applies nothing and asks you to run it again.
+If the run changes while you decide, for example because the agent re-sent the refused signal, `approve` reloads it and applies your answer only when the same gate with the same evidence is still waiting; otherwise it applies nothing and asks you to approve again.
 
 `--allow-self-reported` asks for a code the same way and stores the grant in your home folder under `~/.reactive-skills/grants/`, keyed by the workspace path, and prints where.
 Nothing inside the workspace counts as a grant, and the agent's runtime must use the same home folder to see it.
