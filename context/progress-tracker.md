@@ -1,5 +1,14 @@
 # Progress Tracker: Reactive Skills Architecture (RSA)
 
+## Protocol guard hooks and exit check
+
+The runtime only governs agents that call it, so enforcement moved to two points the agent does not choose: harness hooks and a merge-boundary check (`docs/protocol-guard.md`).
+Every AXI and MCP view delivery now writes a per-host-session receipt (`runs/<run>/delivery/<session>.json`, `core/delivery-receipt.ts`) keyed by the session id the host exports (`CLAUDE_CODE_SESSION_ID`, `CODEX_THREAD_ID`), or `_anon.json` with a 10-minute window otherwise; `emit --view-seq` refuses a stale view.
+`apps/axi/hooks/reactive-skills-guard.sh` (bash + jq, fail-open) denies write-tool edits and blocks the first turn end while a workspace job is unacknowledged, protects hook config, runtime state, bundles and guard state while engaged, records skills loaded through the Skill tool or a `/name` prompt, and honours `/reactive-guard off <reason>` and a TTY-only workspace grant (`guard off`). `setup --hooks` installs it at user level for Claude Code, Codex (`apply_patch` verified live) and Cursor (from its docs; stop cannot block).
+`park` and `abandon` record `JOB_PARKED` / `JOB_ABANDONED`; `JOB_PARKED` and `ARTIFACTS_SEALED` are view bookkeeping, so they do not move the view anchor.
+`export-run` seals a finished run's governed files and writes a hash-chained bundle to `.reactive-governance/attestations/<run_id>/` (chain computed at export, not in the live ledger); `verify-change` reads `.reactive-governance/governance.yaml` from the base commit, requires a valid bundle added in the change for every governed path, compares sealed hashes with head bytes, and re-executes declared checks shell-free on a clean head checkout. No map at base means nothing is governed. Human-gate events are informational only.
+Changed files: `packages/runtime/src/core/{delivery-receipt,protocol-guard,governance,fsm-engine}.ts`, `mcp/server.ts`, `index.ts`; `apps/axi/src/commands/{job-decisions,guard,export-run,verify-change,setup-hooks,setup,state,invoke,emit,approve}.ts`, `cli/{commands,index}.ts`; `apps/axi/hooks/`; tests under `apps/axi/tests/guard/` and `packages/runtime/tests/delivery-receipt.test.ts`; docs, CI template, repository map, integration modes, architecture, README and `PERFORMANCE-STANDARDS.md`.
+
 ## Telemetry dashboard lists every known workspace
 
 The `dashboard` broker read only the caller directory's `.reactive/skills`, so jobs recorded in other project workspaces (the normal result of workspace binding) never reached the catalog.

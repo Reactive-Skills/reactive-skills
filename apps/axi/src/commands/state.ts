@@ -63,6 +63,7 @@ export async function stateCommand(args: string[]): Promise<string> {
       workspaceDir,
       jobId,
       autoRotateTerminal: true,
+      deliveryTransport: 'axi',
     });
 
     try {

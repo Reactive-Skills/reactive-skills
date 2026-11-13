@@ -39,6 +39,7 @@ import {
   type RuntimeActionSummary,
 } from './runtime-actions.js';
 import { LocalRuntimeActionExecutor, type RuntimeActionExecutor } from './runtime-action-executor.js';
+import { writeDeliveryReceipt } from './delivery-receipt.js';
 
 export interface FSMEngineOptions {
   skillDir: string;
@@ -59,12 +60,14 @@ export interface FSMEngineOptions {
   };
   /** Port that runs `runtime_action` states; defaults to the local, shell-free adapter. */
   runtimeActionExecutor?: RuntimeActionExecutor;
+  /** Set by transports that hand views to an agent (AXI, MCP); each slice then leaves a delivery receipt for host guards. */
+  deliveryTransport?: 'axi' | 'mcp';
 }
 
 /** Maximum lifecycle-signal drain steps per top-level handleSignal call.
  *  Prevents cyclic on_enter/on_exit emissions from overflowing the call stack (REL-02). */
 const MAX_QUEUE_DRAIN_DEPTH = 50;
-const VIEW_BOOKKEEPING_EVENTS = new Set(['PERF_DEGRADATION', 'PROJECTION_FAILED', 'MCP_CONTINUATION_RECORDED']);
+const VIEW_BOOKKEEPING_EVENTS = new Set(['PERF_DEGRADATION', 'PROJECTION_FAILED', 'MCP_CONTINUATION_RECORDED', 'JOB_PARKED', 'ARTIFACTS_SEALED']);
 const signalSerialByRun = new Map<string, Promise<void>>();
 
 type SignalHandlingResult = {
@@ -154,6 +157,7 @@ export class FSMEngine {
   private readonly runtimeActionExecutor: RuntimeActionExecutor;
   /** True only while the engine dispatches a runtime action's outcome signal. */
   private dispatchingRuntimeOutcome = false;
+  private readonly deliveryTransport?: 'axi' | 'mcp';
 
   /**
    * # Performance & Risk Budget
@@ -166,7 +170,8 @@ export class FSMEngine {
   constructor(options: FSMEngineOptions) {
     this.skillDir = path.resolve(options.skillDir);
     this.workspaceDir = options.workspaceDir || process.cwd();
-    this.reopenOptions = { skillDir: this.skillDir, workspaceDir: this.workspaceDir, eventContext: options.eventContext, perfThresholds: options.perfThresholds, runtimeActionExecutor: options.runtimeActionExecutor };
+    this.reopenOptions = { skillDir: this.skillDir, workspaceDir: this.workspaceDir, eventContext: options.eventContext, perfThresholds: options.perfThresholds, runtimeActionExecutor: options.runtimeActionExecutor, deliveryTransport: options.deliveryTransport };
+    this.deliveryTransport = options.deliveryTransport;
     this.runtimeActionExecutor = options.runtimeActionExecutor ?? new LocalRuntimeActionExecutor();
     this.usesInjectedStore = Boolean(options.eventStore);
     this.manifest = this.loadManifest();
@@ -789,6 +794,7 @@ export class FSMEngine {
           parent_run_id: this.getEventContext().run_id,
         },
         initialContext: this.context,
+        deliveryTransport: this.deliveryTransport,
       });
       childState = childEngine.getCurrentState();
       promptSlice = childEngine.generatePromptSlice();
@@ -1048,6 +1054,7 @@ export class FSMEngine {
         state: this.getCurrentState(),
       }, { state: this.getCurrentState() });
     }
+    if (this.deliveryTransport) this.recordDeliveryReceipt(this.deliveryTransport);
 
     return {
       state: this.getCurrentState(),
@@ -1854,6 +1861,27 @@ export class FSMEngine {
 
   public getJobId(): string | undefined {
     return this.jobId;
+  }
+
+  /**
+   * Leave the runtime's receipt that this run's current view reached the host session(s) of this process.
+   * # Performance & Risk Budget
+   * - Tier: P0 (<5ms; one small atomic write per host session)
+   * - Complexity: O(w + log N), existing bounded view-sequence scan
+   * - Cyclomatic Complexity (CC): target <=2
+   * - Branch Coverage: target >=90%
+   * - CRAP Score: target <=3
+   */
+  private recordDeliveryReceipt(transport: 'axi' | 'mcp'): void {
+    const run = this.jobId || 'default';
+    writeDeliveryReceipt(this.jobManager.getJobDir(this.manifest.name, run), {
+      skill: this.manifest.name,
+      run,
+      state: this.getCurrentState(),
+      view_seq: this.getStateViewSeq(),
+      ledger_seq: this.eventStore.getLatestSequence(),
+      transport,
+    });
   }
 
   public getJobName(): string | undefined {

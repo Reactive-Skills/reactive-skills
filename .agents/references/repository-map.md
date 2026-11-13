@@ -17,6 +17,9 @@
 - `packages/runtime/src/core/judgment-engine.ts`: Decoupled Ports-and-Adapters judgment engine with snap-on adapters and circuit breaking.
 - `packages/runtime/src/core/judgment-execution.ts`: Invocation-local cascade deadlines, adapter cancellation and attempt timing.
 - `packages/runtime/src/core/approval-grants.ts`: Per-workspace self-report grant stored in the user's home folder; the engine reads it and only `reactive-skills-axi approve` writes or revokes it (ADR 0012).
+- `packages/runtime/src/core/delivery-receipt.ts`: Per-host-session receipt (`runs/<run>/delivery/<session>.json`) written on every AXI/MCP view delivery; the protocol guard trusts it instead of command text (`docs/protocol-guard.md`).
+- `packages/runtime/src/core/protocol-guard.ts`: Home-folder guard state shared with the hook script: session records (park, required skills, session opt-out), the guard log, and the TTY-only workspace opt-out grant.
+- `packages/runtime/src/core/governance.ts`: Exit-boundary governance map (`.reactive-governance/governance.yaml`), skill digest, sealing, the export-time hash-chained run bundle and its verifier.
 - `packages/runtime/src/core/judgment-thresholds.ts`: Pure judgment threshold resolution and accept, escalate, or reject band decisions.
 - `packages/runtime/src/core/judgment-context.ts`: Context path syntax and scoping for the context a judgment sends to a model adapter.
 - `packages/runtime/src/core/judgment-input.ts`: Opt-in nested payload selection, required evidence and pure payload preconditions, content-free inspection and approval identity.
@@ -28,7 +31,7 @@
 - `packages/runtime/src/core/state-view.ts`: Shared complete and ledger-anchored delta state views, plus the compact JSON/development XML renderer.
 - `packages/runtime/src/core/context-ledger.ts`: Pure fold of committed context changes after a ledger sequence, used by delta views.
 - `packages/runtime/src/core/fsm-engine.ts`: State machine loader, state path resolver & bubbling engine.
-- Host tool interception and compaction reinjection require a separately implemented adapter; this release provides AXI and MCP.
+- `apps/axi/hooks/reactive-skills-guard.sh`: Protocol guard hook (bash + jq) for Claude Code, Codex and Cursor, installed at user level by `setup --hooks`; it gates write tools and turn ends on unacknowledged reactive jobs (`docs/protocol-guard.md`). Other host tool interception and compaction reinjection still require a separately implemented adapter.
 - `packages/runtime/src/core/legacy-adapter.ts`: Backward compatibility wrapper and converter for `SKILL.md`.
 - `packages/runtime/src/core/migration.ts`: Retroactive project migrator and schema upgrader.
 - `packages/runtime/src/core/job-manager.ts`: Run isolation, active pointer resolution & job metadata manager.

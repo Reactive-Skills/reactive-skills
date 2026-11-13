@@ -12,8 +12,8 @@ const VERSION = packageMetadata.version ?? 'unknown';
 const DESCRIPTION = 'AXI-compliant CLI for Reactive Skills Architecture — state, emit, events in TOON format';
 
 export const TOP_HELP = `usage: reactive-skills-axi [command] [args] [flags]
-commands[26]:
-  (none)=home, init, upgrade, inspect, validate, vet, preflight, capabilities, context-route, bootloader, events, invoke, state, emit, evidence, approve, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard, workspaces
+commands[31]:
+  (none)=home, init, upgrade, inspect, validate, vet, preflight, capabilities, context-route, bootloader, events, invoke, state, emit, evidence, approve, park, abandon, guard, export-run, verify-change, setup, mcp, reset, rebuild-sqlite, view, watch, jobs, sync, dashboard, workspaces
 flags[2]:
   --help, --version
 examples:
@@ -35,6 +35,11 @@ examples:
   reactive-skills-axi state my-skill [--job <alias>]
   reactive-skills-axi emit my-skill <signal> [--payload '{"key":"value"}'] [--job <alias>] [--idempotency-key <key>]
   reactive-skills-axi approve my-skill [--job <alias>] [--allow-self-reported | --revoke-self-reported]
+  reactive-skills-axi park my-skill --reason "unrelated fix" [--job <run>] [--session <id>]
+  reactive-skills-axi abandon my-skill --reason "superseded" [--job <run>]
+  reactive-skills-axi setup --hooks
+  reactive-skills-axi export-run my-skill
+  reactive-skills-axi verify-change --base origin/main --head HEAD
   reactive-skills-axi jobs my-skill
   reactive-skills-axi jobs switch my-skill <alias-or-run-id>
   reactive-skills-axi reset my-skill

@@ -1,0 +1,32 @@
+# Exit check for reactive-skill governed paths. Copy to .github/workflows/verify-change.yml and make
+# the `verify-change` job a required status check in a branch ruleset with no bypass actors.
+# See docs/protocol-guard.md.
+name: verify-change
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-change:
+    runs-on: ubuntu-latest
+    env:
+      # Pin the @reactive-skills/axi release you use; verify-change needs a release that includes it.
+      AXI_VERSION: "x.y.z"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Check out the PR head itself, not the merge commit: declared checks run only on the head commit.
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Add any tools your declared checks need (for example a headless browser) here.
+      - name: Verify governed changes
+        run: >
+          npx -y "@reactive-skills/axi@${AXI_VERSION}" verify-change
+          --base "${{ github.event.pull_request.base.sha }}"
+          --head "${{ github.event.pull_request.head.sha }}"

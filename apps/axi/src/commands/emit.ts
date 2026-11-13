@@ -19,14 +19,14 @@ const EVIDENCE_USAGE_SUGGESTION = 'Usage: --evidence \'{"/field":{"path":"file.t
  * - Branch Coverage: target >=90%
  * - CRAP Score: target <=10
  */
-function parseEmitArgs(filteredArgs: string[]): { positionals: string[]; flagPayload?: string; evidence?: string; unknownFlags: string[] } {
+function parseEmitArgs(filteredArgs: string[]): { positionals: string[]; flagPayload?: string; evidence?: string; viewSeq?: string; unknownFlags: string[] } {
   const positionals: string[] = [];
   const unknownFlags: string[] = [];
   const flags: Record<string, string> = {};
 
   for (let i = 0; i < filteredArgs.length; i++) {
     const arg = filteredArgs[i];
-    const match = /^(--payload|--evidence)(?:=([\s\S]*))?$/.exec(arg);
+    const match = /^(--payload|--evidence|--view-seq)(?:=([\s\S]*))?$/.exec(arg);
     if (match) {
       flags[match[1]] = match[2] ?? filteredArgs[++i] ?? '';
     } else if (arg.startsWith('-')) {
@@ -36,7 +36,7 @@ function parseEmitArgs(filteredArgs: string[]): { positionals: string[]; flagPay
     }
   }
 
-  return { positionals, flagPayload: flags['--payload'], evidence: flags['--evidence'], unknownFlags };
+  return { positionals, flagPayload: flags['--payload'], evidence: flags['--evidence'], viewSeq: flags['--view-seq'], unknownFlags };
 }
 
 /**
@@ -208,14 +208,14 @@ export async function emitCommand(args: string[]): Promise<string> {
   }
   args = selected.args;
   const { jobId, idempotencyKey, filteredArgs } = extractJobFlag(args);
-  const { positionals, flagPayload, evidence, unknownFlags } = parseEmitArgs(filteredArgs);
+  const { positionals, flagPayload, evidence, viewSeq, unknownFlags } = parseEmitArgs(filteredArgs);
   const skillName = positionals[0];
 
   if (unknownFlags.length > 0) {
     const error = new AxiError(
       `Unknown emit flag: ${unknownFlags.join(', ')}`,
       'VALIDATION_ERROR',
-      ['Supported flags: --payload, --evidence, --job, --idempotency-key', USAGE_SUGGESTION]
+      ['Supported flags: --payload, --evidence, --view-seq, --job, --idempotency-key', USAGE_SUGGESTION]
     );
     return renderOutput([renderError(error.message, error.code, error.suggestions)]);
   }
@@ -256,10 +256,26 @@ export async function emitCommand(args: string[]): Promise<string> {
       skillDir: skillPath, 
       workspaceDir,
       jobId,
-      eventContext: { run_id: jobId }
+      eventContext: { run_id: jobId },
+      deliveryTransport: 'axi',
     });
 
     try {
+      // A signal decided against an older view is refused, so work on a superseded state is not recorded as current.
+      if (viewSeq !== undefined) {
+        const expected = Number(viewSeq);
+        const current = engine.getStateViewSeq();
+        if (!Number.isInteger(expected) || expected < 0) {
+          throw new AxiError(`--view-seq must be a non-negative integer, got '${viewSeq}'`, 'VALIDATION_ERROR', [USAGE_SUGGESTION]);
+        }
+        if (expected !== current) {
+          throw new AxiError(
+            `STALE_VIEW: the run changed after view seq ${expected} (current view seq ${current}, state ${engine.getCurrentState()})`,
+            'VALIDATION_ERROR',
+            [`Run \`reactive-skills-axi state ${skillName} --job ${engine.getJobId()} --output compact-v1\` and act on the current view`]
+          );
+        }
+      }
       // Auto-resolve causation eventId from event store if not explicitly supplied
       if (!eventId) {
         eventId = engine.getEventStore().getLatestEvent()?.id;

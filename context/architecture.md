@@ -254,7 +254,7 @@ The view carries the unchanged rendered prompt, the full current scoped context,
 Active human gates, pending judgment approvals, model hints, strict counters, and signal receipt refusal/decision metadata appear when applicable.
 MCP full-context opt-in replaces scoped context in the compact format; it retains the existing legacy behavior in the legacy format.
 The shared bootloader and compact policy require re-fetching the same run after transcript compaction without synthesizing transitions or approvals.
-Host tool interception and automatic compaction reinjection require a separately implemented adapter.
+Write-tool and turn-end gating for Claude Code, Codex and Cursor is provided by the protocol guard hook (`setup --hooks`, `docs/protocol-guard.md`); other host tool interception and automatic compaction reinjection require a separately implemented adapter.
 The latest signal refusal (guard or evidence verification) survives recovery through the already loaded replay delta and an in-memory cache; a subsequent signal supersedes it.
 
 ### MCP continuation delivery

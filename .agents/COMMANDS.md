@@ -26,3 +26,7 @@
   - `view <skill>` — Launch real-time telemetry viewer and SSE event stream.
   - `workspaces register [paths...] [--scan <parent>] [--max-depth <n>] [--dry-run]` / `workspaces list` — Register existing workspaces so the dashboard lists their jobs.
   - `sync [skill]` — Synchronize workspace skill registry.
+  - `setup --hooks` — Install the protocol guard hooks (Claude Code, Codex, Cursor) at user level (`docs/protocol-guard.md`).
+  - `park <skill> --reason` / `abandon <skill> --reason` — Set an active run aside for one session, or end it, recorded in the ledger.
+  - `guard off|on|status` — Workspace opt-out for the protocol guard (`off` needs an interactive terminal).
+  - `export-run <skill>` / `verify-change --base --head` — Export a finished run's sealed bundle; exit-check a change's governed paths.

@@ -34,7 +34,7 @@ export interface ApproveOptions {
  * One line reader per command that queues lines, so a line typed before its prompt is not lost.
  * `ask` resolves null when input ends, for example on Ctrl+D, so the command cancels instead of hanging.
  */
-function lineReader(io: ApproveIO) {
+export function lineReader(io: ApproveIO) {
   const rl = readline.createInterface({ input: io.input, terminal: false });
   const lines: string[] = [];
   const waiting: Array<(answer: string | null) => void> = [];
