@@ -37,7 +37,7 @@ The command copies `reactive-skills-guard.sh` to `~/.reactive-skills/guard/bin/`
 A session has an obligation when one of these holds:
 
 - **An active job in the workspace.** Walking up from the session's working directory, the nearest `.reactive/skills/*/active_job` points at a run whose `job.json` says `status: active` in a non-terminal state.
-- **A skill loaded in the session.** The Claude `Skill` tool, or a person typing `/<name>`, loaded a `SKILL.md` that carries the reactive bootloader marker. The marker is checked, not assumed. Reading a `SKILL.md` does not count, so authoring skills is unaffected.
+- **A skill loaded in the session.** The Claude `Skill` tool, or a person typing `/<name>`, loaded a `SKILL.md` that carries the reactive bootloader marker. The marker is checked, not assumed. Reading a `SKILL.md` does not count, so authoring skills is unaffected. This obligation is met by the first delivery receipt for that skill (session-keyed, or anonymous within its window) and then stays met for the session, even after an anonymous receipt ages out. Loading the skill again resets it.
 
 ### How an obligation is met
 
