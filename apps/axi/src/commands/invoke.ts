@@ -140,6 +140,7 @@ export async function invokeCommand(args: string[]): Promise<string> {
       parentRunId,
       initialContext: parsedPayload,
       eventContext: { run_id: runId, parent_run_id: parentRunId },
+      deliveryTransport: 'axi',
     });
 
     try {

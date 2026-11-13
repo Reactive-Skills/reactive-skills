@@ -143,6 +143,16 @@ Rehydration remains P2 (<100ms target), O(delta events + context patch bytes + s
 Events predating recorded patches replay only their accepted signal updates; the installed manifest cannot supply authoritative historical hook assignments.
 Ledgers written before recorded patches therefore rely on their snapshot for hook-assigned context, and a no-snapshot replay of such a ledger does not reconstruct it.
 
+### Protocol guard and exit check
+
+| Operation | Tier and target | Complexity and bound |
+|-----------|-----------------|----------------------|
+| Guard hook call (`reactive-skills-guard.sh`, every write-tool call and turn end) | P1, <25ms per call; never starts Node, opens SQLite or reads a ledger | O(d + j), workspace depth and active jobs in the nearest workspace: one `jq` parse plus one `jq` call per active job. Non-write tools exit after the parse. `apps/axi/tests/guard/protocol-guard.test.ts` asserts p95 <25ms with `CI` set (a wider bound on shared local disks) |
+| Delivery receipt (`writeDeliveryReceipt`, every AXI/MCP view) | P0, <5ms | O(s), at most two host session ids; one small atomic write each, after the slice timing is measured |
+| `park` / `abandon` | P2 cold command, <100ms excluding process startup | O(L + r), ledger verification and replay on engine open, one append |
+| `export-run` (`exportRunBundle`) | P3, once per run | O(N + f + B), run events, governed files under the glob prefixes and their bytes; skill digest O(f log f + B) over the skill folder |
+| `verify-change` (`verifyRunBundle`, coverage, checks) | P3, CI only | O(c * g + N + B) for changed paths, globs and bundle events, plus the declared checks' own runtime (default timeout 600s each) |
+
 ### Runtime-executed states (experimental)
 
 `core/runtime-actions.ts` holds the pure parts: the outcome decider and record builder are P0 (< 5ms), O(1); the JSON Schema subset check is P0 for values under 64 KiB, O(v + s) value and schema nodes, with at most five errors; expressions are P0 and cut off at 100 ms; manifest validation is P2 (< 100ms), O(s + t), including the runtime-only cycle search, O(r).

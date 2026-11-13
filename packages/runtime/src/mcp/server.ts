@@ -152,6 +152,7 @@ export function createReactiveMcpServer(options: ReactiveMcpServerOptions = {}):
       skillDir,
       workspaceDir,
       jobId: resolvedJobId,
+      deliveryTransport: 'mcp',
     });
     engines.set(cacheKey, engine);
     return engine;

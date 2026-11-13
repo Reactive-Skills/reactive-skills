@@ -226,6 +226,9 @@ function describeEntry(entry: any): string {
 }
 
 export async function setupCommand(args: string[]): Promise<string> {
+  if (args.includes('--hooks')) {
+    return (await import('./setup-hooks.js')).setupHooksCommand(args.filter(arg => arg !== '--hooks'));
+  }
   const isDryRun = args.includes('--dry-run');
   const isForce = args.includes('--force');
   const isLocal = args.includes('--local');

@@ -9,6 +9,7 @@
   },
   "files": [
     "dist",
+    "hooks",
     "CHANGELOG.md"
   ],
   "repository": {

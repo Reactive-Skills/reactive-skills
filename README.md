@@ -395,6 +395,9 @@ This repository is a monorepo containing:
 | `capabilities` | `npx -y @reactive-skills/axi capabilities --json` | Report runtime version and capabilities for INIT negotiation |
 | `bootloader` | `npx -y @reactive-skills/axi bootloader <skill> --json` | Retrieve the versioned authoritative runtime bootloader |
 | `preflight` | `npx -y @reactive-skills/axi preflight <skill>` | Check skill runtime requirements without creating a job |
+| `setup --hooks` | `npx -y @reactive-skills/axi setup --hooks [--client <claude\|codex\|cursor\|all>]` | Install the protocol guard hooks at user level; see [docs/protocol-guard.md](docs/protocol-guard.md) |
+| `park` / `abandon` | `npx -y @reactive-skills/axi park <skill> --reason "..."` | Set an active run aside for one agent session, or end it, with the reason recorded in the run ledger |
+| `export-run` / `verify-change` | `npx -y @reactive-skills/axi verify-change --base <rev> --head <rev>` | Export a finished run's sealed bundle, and check a change's governed paths against it at the merge boundary |
 
 ---
 

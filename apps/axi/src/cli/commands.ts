@@ -169,6 +169,7 @@ export const COMMANDS: Record<string, CommandSpec> = {
   setup: {
     usage: usage([
       `Usage: ${BIN} setup [--client <id|all>] [--local] [--dry-run] [--force]`,
+      `       ${BIN} setup --hooks [--client <claude|codex|cursor|all>] [--dry-run] [--force]`,
       '',
       'Register the Reactive Skills MCP server with installed agent clients.',
       'Entries use the scoped @reactive-skills/axi package pinned to this CLI\'s exact version',
@@ -178,6 +179,8 @@ export const COMMANDS: Record<string, CommandSpec> = {
       '--local            Point clients at this checkout\'s built CLI instead of the pinned npx package.',
       '--dry-run          Show what would change without writing.',
       '--force            Configure clients even when they are not detected.',
+      '--hooks            Install the protocol guard hooks (user level) instead of the MCP server entry;',
+      '                   see docs/protocol-guard.md. Needs bash and jq.',
     ]),
     run: async (args) => (await import('../commands/setup.js')).setupCommand(args),
   },
@@ -246,6 +249,53 @@ export const COMMANDS: Record<string, CommandSpec> = {
       `Example: ${BIN} workspaces register --scan ~/projects --dry-run`,
     ]),
     run: async (args) => (await import('../commands/workspaces.js')).workspacesCommand(args),
+  },
+  park: {
+    usage: usage([
+      `Usage: ${BIN} park <skill-name> --reason "<why>" [--job <run>] [--session <host-session-id>]`,
+      '',
+      'Set an active run aside for one agent session, with a reason recorded in the run ledger.',
+      'The run is unchanged. Refused when that session loaded the skill itself.',
+      '--session defaults to the session id the agent harness exports (Claude Code, Codex).',
+    ]),
+    run: async (args) => (await import('../commands/job-decisions.js')).parkCommand(args),
+  },
+  abandon: {
+    usage: usage([
+      `Usage: ${BIN} abandon <skill-name> --reason "<why>" [--job <run>]`,
+      '',
+      'End an active run with a reason recorded in the run ledger. It stops being an active job.',
+    ]),
+    run: async (args) => (await import('../commands/job-decisions.js')).abandonCommand(args),
+  },
+  guard: {
+    usage: usage([
+      `Usage: ${BIN} guard off --reason "<why>" [--workspace-dir <dir>]`,
+      `       ${BIN} guard on [--workspace-dir <dir>]`,
+      `       ${BIN} guard status [--workspace-dir <dir>] [--session <id>]`,
+      '',
+      'Turn the protocol guard off for a workspace (interactive terminal and one-time code only), back on, or show it.',
+      'For one agent session, type `/reactive-guard off <reason>` as your own prompt instead.',
+    ]),
+    run: async (args) => (await import('../commands/guard.js')).guardCommand(args),
+  },
+  'export-run': {
+    usage: usage([
+      `Usage: ${BIN} export-run <skill-name> [--job <run>]`,
+      '',
+      'Seal the governed files of a finished run and write its hash-chained bundle to',
+      '.reactive-governance/attestations/<run_id>/ for the exit check. Refused before a terminal state.',
+    ]),
+    run: async (args) => (await import('../commands/export-run.js')).exportRunCommand(args),
+  },
+  'verify-change': {
+    usage: usage([
+      `Usage: ${BIN} verify-change --base <rev> --head <rev> [--repo <dir>] [--json]`,
+      '',
+      'Exit check for a change: governed paths (from the base commit) need a valid run bundle in the change,',
+      'sealed hashes must match the head bytes, and declared checks are re-executed. Exit 1 on failure.',
+    ]),
+    run: async (args) => (await import('../commands/verify-change.js')).verifyChangeCommand(args),
   },
   dashboard: {
     usage: usage([

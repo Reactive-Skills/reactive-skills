@@ -9,8 +9,8 @@ The MCP server exposes `reactive_state`, `reactive_emit_signal`, `reactive_respo
 The `reactive-skills-axi` CLI wraps the runtime with agent-ergonomic TOON output. Agents invoke via shell execution (`reactive-skills-axi init`, `inspect`, `events`, etc.). Works with any agent that can run shell commands.
 
 ## Optional host adapters
-This release provides AXI and MCP.
-Host tool interception and compaction reinjection require a separately implemented adapter.
+This release provides AXI and MCP, plus a protocol guard hook for Claude Code, Codex and Cursor (`reactive-skills-axi setup --hooks`): it denies write-tool edits and blocks the first turn end while a reactive job in the workspace is unacknowledged, and an exit check (`verify-change`) covers changes made outside any harness. See `docs/protocol-guard.md`.
+Other host tool interception and compaction reinjection require a separately implemented adapter.
 
 ## Portable Alternative to Harness Hooks
 
