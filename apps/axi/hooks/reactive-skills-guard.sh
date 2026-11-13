@@ -194,11 +194,12 @@ days_since() { # var ISO-time: whole days since then, or "?"
   if [ -n "$then" ]; then printf -v "$1" '%d' $(((NOW - then) / 86400)); else printf -v "$1" '?'; fi
 }
 
-# Appends "<skill> <ok|pending>" to required[] for skills this session loaded.
+# Appends "<skill> <ok|pending>" to required[] for skills this session loaded. A skill stays
+# satisfied once a receipt was accepted, so an anonymous receipt aging out does not lock it again.
 required_lines() {
   [[ $SESSION == *'"required"'* ]] || return 0
-  local names name root f seen= receipts=() receipt r_skill r_at
-  names=$(jq -r '.required // {} | keys[]' <<<"$SESSION" 2>/dev/null) || return 0
+  local names name root f seen= receipts=() receipt r_skill r_at newly=()
+  names=$(jq -r '(.satisfied // {}) as $s | .required // {} | keys[] | "\(.)=\($s[.] != null)"' <<<"$SESSION" 2>/dev/null) || return 0
   for root in "${wss[@]}"; do
     for f in "$root"/.reactive/skills/*/runs/*/delivery/"$sid".json; do [ -f "$f" ] && receipts+=("$f"); done
     for f in "$root"/.reactive/skills/*/runs/*/delivery/_anon.json; do
@@ -212,8 +213,12 @@ required_lines() {
   [ ${#receipts[@]} -gt 0 ] && seen+=$'\n'$(jq -r '.skill' "${receipts[@]}" 2>/dev/null)
   seen+=$'\n'
   for name in $names; do
-    if [[ $seen == *$'\n'"$name"$'\n'* ]]; then required+=("$name ok"); else required+=("$name pending"); fi
+    if [ "${name##*=}" = true ]; then required+=("${name%=*} ok")
+    elif [[ $seen == *$'\n'"${name%=*}"$'\n'* ]]; then required+=("${name%=*} ok"); newly+=("${name%=*}")
+    else required+=("${name%=*} pending"); fi
   done
+  [ ${#newly[@]} -gt 0 ] && update_session '.satisfied = ((.satisfied // {}) + ($n | split(" ") | map({key: ., value: (now|todate)}) | from_entries))' --arg n "${newly[*]}"
+  return 0
 }
 
 collect() {
@@ -268,7 +273,7 @@ require_skill() { # records a loaded skill whose SKILL.md carries the bootloader
     if [ -f "$f" ] && grep -qF -- "$MARK" "$f"; then
       if [ -f "${f%/*}/skill.yaml" ]; then slurp meta "${f%/*}/skill.yaml"; else slurp meta "$f"; fi
       [[ $meta =~ $re ]] && meta=${BASH_REMATCH[2]} && [[ $meta =~ $SAFE_ID ]] && name=$meta
-      update_session '.required[$k] = (now|todate)' --arg k "$name"
+      update_session '.required[$k] = (now|todate) | del(.satisfied[$k])' --arg k "$name"
       log required "$name"
       return 0
     fi

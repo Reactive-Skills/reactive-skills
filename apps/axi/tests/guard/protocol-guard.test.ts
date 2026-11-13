@@ -225,10 +225,14 @@ describe('protocol guard: skills loaded in a session and quiet workspaces', () =
     ok(fx.axi(['invoke', 'fixture']));
     const allowed = ok(fx.guard('pretool', cursorWrite(fx, 'K1'), 'cursor'));
     expect(allowed.stdout).toBe('');
-    // A stale anonymous receipt no longer counts.
+    // Once satisfied, the skill stays satisfied after the anonymous receipt ages out.
+    ok(fx.axi(['abandon', 'fixture', '--job', fx.runId(), '--reason', 'finished with it']));
     const receipt = path.join(fx.workspace, '.reactive', 'skills', 'fixture', 'runs', fx.runId(), 'delivery', '_anon.json');
     fs.writeFileSync(receipt, JSON.stringify({ ...JSON.parse(fs.readFileSync(receipt, 'utf8')), at: '2020-01-01T00:00:00.000Z' }));
-    expect(JSON.parse(fx.guard('pretool', cursorWrite(fx, 'K1'), 'cursor').stdout)).toMatchObject({ permission: 'deny' });
+    expect(ok(fx.guard('pretool', cursorWrite(fx, 'K1'), 'cursor')).stdout).toBe('');
+    // A session that loads the skill only after the receipt went stale has not run it.
+    ok(fx.guard('prompt', { conversation_id: 'K2', workspace_roots: [fx.workspace], hook_event_name: 'beforeSubmitPrompt', prompt: '/fixture-folder' }, 'cursor'));
+    expect(JSON.parse(fx.guard('pretool', cursorWrite(fx, 'K2'), 'cursor').stdout)).toMatchObject({ permission: 'deny' });
   });
 
   it('ignores a skill without the reactive bootloader marker', () => {
