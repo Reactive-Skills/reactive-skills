@@ -149,6 +149,21 @@ describe('verify-change exit check', () => {
     expect(result.out).toContain('sealed');
   });
 
+  it('a second export keeps the first seal, so it cannot cover an edit made after the run', () => {
+    fs.writeFileSync(path.join(repo.workspace, 'site', 'index.html'), '<html><title>v2</title></html>\n');
+    const runId = repo.completeRun();
+    const first = JSON.parse(fs.readFileSync(path.join(bundleDir(repo, runId), 'manifest.json'), 'utf8'));
+    fs.writeFileSync(path.join(repo.workspace, 'site', 'index.html'), '<html><title>v3 after the run</title></html>\n');
+    const again = repo.axi(['export-run', 'fixture'], { session: 'S1' });
+    expect(again.status, again.stderr).toBe(0);
+    const second = JSON.parse(fs.readFileSync(path.join(bundleDir(repo, runId), 'manifest.json'), 'utf8'));
+    expect(second.sealed).toEqual(first.sealed);
+    const head = repo.commit('late edit, re-exported');
+    const result = repo.verify(base, head);
+    expect(result.status).toBe(1);
+    expect(result.out).toContain('sealed');
+  });
+
   it('passes a change that touches only ungoverned paths', () => {
     fs.writeFileSync(path.join(repo.workspace, 'README.md'), 'more docs\n');
     const head = repo.commit('docs');

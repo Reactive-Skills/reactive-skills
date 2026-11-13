@@ -15,8 +15,8 @@ Neither one asks a person to approve each step. A person can steer the agent or 
 | Turn ends with an unacknowledged job | Blocked once, then allowed and logged as ungoverned | n/a |
 | Shell writes (`echo > file`, scripts) | **Not gated**. Logged at the turn end only | Caught if the edit touches a governed path |
 | Agent running with no hooked harness | Not covered | **Prevented**, if branch protection requires the check and nobody with admin rights bypasses it |
-| Governed file edited after the run, or outside it | n/a | **Prevented**: sealed hash differs from the head bytes |
-| Bundle edited after export | n/a | **Prevented**: the hash chain breaks |
+| Governed file edited after the run, or outside it | n/a | **Prevented**: sealed hash differs from the head bytes. A run is sealed once, so exporting it again does not re-seal |
+| Bundle lines edited after export, without recomputing the chain | n/a | **Prevented**: the hash chain breaks |
 | A recorded "check passed" that does not hold | n/a | **Prevented** for checks declared in the governance map, because the exit check runs them again |
 | Ledger and bundle rewritten together, consistently, by an agent with the same OS account | Not covered | Not prevented by the chain. Sealed hashes and re-executed checks still have to hold |
 | Merge by an account that can bypass branch protection | n/a | **Detected only** (see "Credentials" below) |
@@ -57,7 +57,9 @@ Every view the runtime hands to an agent through AXI (`invoke`, `state`, `emit`)
 {"skill":"my-skill","run":"…","state":"BUILD","view_seq":12,"ledger_seq":12,"transport":"axi","at":"…","host_session":"…"}
 ```
 
-The guard trusts this receipt, never the text of a command, so `echo reactive-skills-axi state my-skill` acknowledges nothing. The session comes from the id the host exports to tool subprocesses: `CLAUDE_CODE_SESSION_ID` (Claude Code) or `CODEX_THREAD_ID` (Codex), which equal the hook payload's `session_id`. When the host exports none, the runtime writes `_anon.json` and the guard accepts it for 10 minutes. In that window two sessions in one workspace can satisfy each other's acknowledgement. This is a known limit.
+The guard trusts this receipt, never the text of a command, so `echo reactive-skills-axi state my-skill` acknowledges nothing. The session comes from the id the host exports to tool subprocesses: `CLAUDE_CODE_SESSION_ID` (Claude Code) or `CODEX_THREAD_ID` (Codex), which equal the hook payload's `session_id`. When the process exports none, the runtime writes `_anon.json` and the guard accepts it for 10 minutes. That covers hosts with no exported id, an MCP server started without one, and a person running `state` in their own terminal. In that window, any session in the workspace counts as acknowledged at that state. This is a known limit.
+
+The guard also finds the workspace from each edited file's directory, not only from the session's working directory, so a session started outside a project is still checked when it edits inside one.
 
 `emit --view-seq <n>` refuses a signal (`STALE_VIEW`) when the run's view has changed since view `n`.
 
@@ -78,10 +80,12 @@ Each opt-out and each decision is appended to `~/.reactive-skills/guard/guard-lo
 
 | Host | Write deny | Turn end | Session binding | Evidence |
 |---|---|---|---|---|
-| Claude Code | `PreToolUse` on `Edit\|Write\|MultiEdit\|NotebookEdit`, exit 2 | `Stop` blocks once (`stop_hook_active`) | `CLAUDE_CODE_SESSION_ID` equals the hook `session_id` | Verified with Claude Code 2.1.323 |
-| Codex | `PreToolUse` on `apply_patch`, exit 2. Paths come from the patch headers | `Stop` blocks once | `CODEX_THREAD_ID` equals the hook `session_id` | Verified live with codex-cli 0.167.0: the patch was blocked and the file stayed unchanged |
+| Claude Code | `PreToolUse` on `Edit\|Write\|MultiEdit\|NotebookEdit`, exit 2 | `Stop` blocks once (`stop_hook_active`) | `CLAUDE_CODE_SESSION_ID` in tool subprocesses equals the hook `session_id` | Run live with Claude Code 2.1.323 and this script: Write denied, then allowed after `state`; Stop blocked once, then logged as ungoverned |
+| Codex | `PreToolUse` on `apply_patch`, exit 2. Paths come from the patch headers | `Stop` blocks once | `CODEX_THREAD_ID` in tool subprocesses equals the hook `session_id` | Run live with codex-cli 0.167.0 and this script: `apply_patch` denied, then allowed after `state`; Stop blocked once, then logged as ungoverned |
 | Cursor | `preToolUse` with matcher `Write`, returning `{"permission":"deny"}` | `stop` cannot block. It sends one `followup_message` | No exported id is known, so the 10-minute anonymous window applies | From Cursor's hook documentation only. Not run live |
 | Others (OpenCode, Pi, Grok, Kimi) | Not covered | Not covered | n/a | n/a |
+
+The `SessionStart` line, the `UserPromptSubmit` opt-out and Skill-tool tracking are covered by tests with each host's payload shape, but were not run live. Whether a host passes its session id to an MCP server process was not checked; without it, MCP deliveries fall back to the anonymous receipt.
 
 Cursor also loads Claude-shaped settings. The Claude entry stands down when the payload comes from Cursor, so nothing answers twice.
 
@@ -150,4 +154,4 @@ The exit check prevents a merge only when nobody merging can bypass it. With an 
 
 ## Performance
 
-Each hook call is P1 (<25 ms): one `jq` parse, plus one `jq` call per active job in the nearest workspace. It never starts Node, opens SQLite or scans a ledger. Receipt writes are P0 (one small atomic file per delivery). `export-run` and `verify-change` are P3 and run once per run and once per change. See `PERFORMANCE-STANDARDS.md`.
+Each hook call is P1 (<25 ms): one `jq` parse of the payload, with job and receipt fields read by shell builtins. Non-write tools exit before `jq` runs. It never starts Node, opens SQLite or scans a ledger. Receipt writes are P0 (one small atomic file per delivery). `export-run` and `verify-change` are P3 and run once per run and once per change. See `PERFORMANCE-STANDARDS.md`.

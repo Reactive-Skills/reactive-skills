@@ -8,8 +8,9 @@
 # missing or the payload cannot be read: a broken hook must never block every edit.
 #
 # Performance & Risk Budget (per hook call)
-# - Tier: P1 (<25ms)
-# - Complexity: O(d + j), workspace depth and active jobs in the nearest workspace
+# - Tier: P1 (<25ms). Process forks dominate, so the hot path uses shell builtins and runs jq once
+#   to parse the payload; non-write tools exit before jq.
+# - Complexity: O(d + j), workspace depth and active jobs in the touched workspaces
 # - Cyclomatic Complexity (CC): target <=40 (one dispatcher over four events and three hosts)
 # - Branch Coverage: target >=85% (apps/axi/tests/guard/protocol-guard.test.ts)
 # - CRAP Score: target <=45
@@ -18,8 +19,14 @@ event=${1:-}
 host=claude
 [ "${2:-}" = --host ] && host=${3:-claude}
 command -v jq >/dev/null 2>&1 || exit 0
-payload=$(cat 2>/dev/null) || exit 0
+IFS= read -r -d '' payload
 [ -n "$payload" ] || exit 0
+
+# Claude and Codex register this hook for write tools and Skill; anything else exits before parsing.
+if [ "$event" = pretool ] && [ "$host" != cursor ] \
+  && ! [[ $payload =~ \"tool_name\"[[:space:]]*:[[:space:]]*\"(Edit|Write|MultiEdit|NotebookEdit|apply_patch|Skill)\" ]]; then
+  exit 0
+fi
 
 GUARD_HOME="$HOME/.reactive-skills/guard"
 MARK='<!-- REACTIVE BOOTLOADER -->'
@@ -44,112 +51,190 @@ eval "$fields"
 # Cursor also loads Claude-shaped settings; only the Cursor-registered entry answers Cursor.
 [ "$host" != cursor ] && [ "$from_cursor" = true ] && exit 0
 [[ $sid =~ $SAFE_ID ]] || exit 0
-[ -n "$cwd" ] && cwd=$(cd "$cwd" 2>/dev/null && pwd -P) || cwd=
-[ -n "$cwd" ] || exit 0
+if [ -n "$cwd" ] && cd -P -- "$cwd" 2>/dev/null; then cwd=$PWD; else exit 0; fi
 
 session_file="$GUARD_HOME/sessions/$sid.json"
 
-json_or_null() { if [ -f "$1" ]; then cat "$1"; else printf 'null'; fi; printf '\n'; }
+slurp() { # var file: read a small JSON file without a fork; "null" when absent
+  local __content=
+  [ -f "$2" ] && IFS= read -r -d '' __content <"$2"
+  printf -v "$1" '%s' "${__content:-null}"
+}
+slurp SESSION "$session_file"
 
-log() {
+json_escape() { # value var
+  local v=$1
+  v=${v//\\/\\\\}; v=${v//\"/\\\"}; v=${v//$'\n'/\\n}; v=${v//$'\r'/\\r}; v=${v//$'\t'/\\t}
+  printf -v "$2" '%s' "$v"
+}
+
+log() { # event detail
   mkdir -p "$GUARD_HOME" 2>/dev/null || return 0
-  jq -cn --arg s "$sid" --arg e "$1" --arg d "$2" '{at:(now|todate),session:$s,event:$e,detail:$d}' >>"$GUARD_HOME/guard-log.jsonl" 2>/dev/null
+  local at detail
+  printf -v at '%(%Y-%m-%dT%H:%M:%S%z)T' -1
+  json_escape "$2" detail
+  printf '{"at":"%s","session":"%s","event":"%s","detail":"%s"}\n' "$at" "$sid" "$1" "$detail" >>"$GUARD_HOME/guard-log.jsonl" 2>/dev/null
+}
+
+json_str() { # var json key: first string value of "key" in a small runtime-written JSON file
+  local re="\"$3\"[[:space:]]*:[[:space:]]*\"([^\"]*)\""
+  if [[ $2 =~ $re ]]; then printf -v "$1" '%s' "${BASH_REMATCH[1]}"; else printf -v "$1" '%s' ''; fi
 }
 
 update_session() { # jq filter, args...
   local filter=$1; shift
   mkdir -p "${session_file%/*}" 2>/dev/null || return 0
-  json_or_null "$session_file" | jq "$@" "(. // {}) | $filter" >"$session_file.$$.tmp" 2>/dev/null && mv "$session_file.$$.tmp" "$session_file"
+  jq "$@" "(. // {}) | $filter" <<<"$SESSION" >"$session_file.$$.tmp" 2>/dev/null && mv "$session_file.$$.tmp" "$session_file"
 }
 
-ws=
-d=$cwd
-while [ -n "$d" ]; do
-  if [ -d "$d/.reactive/skills" ]; then ws=$d; break; fi
-  [ "$d" = / ] && break
-  d=${d%/*}; [ -n "$d" ] || d=/
-done
-
-sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
-
-# Human opt-outs: the session's own `/reactive-guard off <reason>` prompt, or a workspace grant written
-# by `reactive-skills-axi guard off` in an interactive terminal.
-guard_off() {
-  jq -e '.off.reason // empty' "$session_file" >/dev/null 2>&1 && return 0
-  local root=${ws:-$cwd} id grant
-  id=$(printf '%s' "$root" | sha256 | cut -c1-32)
-  grant="$HOME/.reactive-skills/grants/guard-off-$id.json"
-  [ -f "$grant" ] && jq -e --arg w "$root" '.workspace == $w' "$grant" >/dev/null 2>&1
-}
-
-# One line per active job: "<skill> <run> <state> <ok|pending> <age-days>".
-job_lines() {
-  [ -n "$ws" ] || return 0
-  local pointer skill run dir
-  for pointer in "$ws"/.reactive/skills/*/active_job; do
-    [ -f "$pointer" ] || continue
-    dir=${pointer%/active_job}; skill=${dir##*/}
-    run=$(tr -d '[:space:]' <"$pointer")
-    [[ $run =~ $SAFE_ID ]] || continue
-    dir="$dir/runs/$run"
-    [ -f "$dir/job.json" ] || continue
-    { json_or_null "$dir/job.json"; json_or_null "$session_file"; json_or_null "$dir/delivery/$sid.json"; json_or_null "$dir/delivery/_anon.json"; } \
-      | jq -sr --arg skill "$skill" --arg run "$run" --argjson window "$ANON_WINDOW_SECONDS" '
-          def epoch: (. // "") | sub("\\.[0-9]+Z$"; "Z") | (try fromdateiso8601 catch 0);
-          .[0] as $job | .[1] as $rec | .[2] as $mine | .[3] as $anon
-          | ($job.currentState // "") as $state
-          | ($state | split(".") | last | ascii_upcase) as $leaf
-          | select($job.status == "active" and ($leaf | IN("COMPLETED","DONE","SUCCESS","ERROR","BYPASS_DETECTED","ABORTED","TERMINAL") | not))
-          | (($rec.park // {})[$run] != null
-             or ($mine != null and $mine.run == $run and $mine.state == $state)
-             or ($anon != null and $anon.run == $run and $anon.state == $state and (now - ($anon.at | epoch)) < $window)) as $ok
-          | "\($skill) \($run) \($state) \(if $ok then "ok" else "pending" end) \(((now - ($job.updatedAt | epoch)) / 86400) | floor)"' 2>/dev/null
+# Nearest directory at or above $1 holding reactive run state, canonical, in FOUND (empty when none).
+find_ws() {
+  FOUND=
+  local d=$1
+  while [ -n "$d" ]; do
+    if [ -d "$d/.reactive/skills" ]; then
+      cd -P -- "$d" 2>/dev/null && FOUND=$PWD
+      cd -- "$cwd" 2>/dev/null
+      return 0
+    fi
+    [ "$d" = / ] && return 0
+    d=${d%/*}; [ -n "$d" ] || d=/
   done
 }
 
-# Skills this session loaded that it has not run here yet: "<skill> <ok|pending>".
+find_ws "$cwd"; ws=$FOUND
+# Workspaces this call touches: the session's own, plus the one around each write target, so a
+# session started outside a project cannot edit inside it unnoticed.
+wss=()
+[ -n "$ws" ] && wss+=("$ws")
+add_target_workspaces() {
+  local target known
+  for target in "${targets[@]}"; do
+    case $target in /*) ;; *) target="$cwd/$target" ;; esac
+    find_ws "${target%/*}"
+    [ -n "$FOUND" ] || continue
+    for known in "${wss[@]}"; do [ "$known" = "$FOUND" ] && continue 2; done
+    wss+=("$FOUND")
+  done
+}
+
+any_grant=false
+for f in "$HOME"/.reactive-skills/grants/guard-off-*.json; do [ -e "$f" ] && any_grant=true && break; done
+
+granted() { # workspace root -> true when `reactive-skills-axi guard off` granted it from a terminal
+  [ "$any_grant" = true ] || return 1
+  local id grant
+  if command -v sha256sum >/dev/null 2>&1; then id=$(printf '%s' "$1" | sha256sum); else id=$(printf '%s' "$1" | shasum -a 256); fi
+  grant="$HOME/.reactive-skills/grants/guard-off-${id:0:32}.json"
+  [ -f "$grant" ] && jq -e --arg w "$1" '.workspace == $w' "$grant" >/dev/null 2>&1
+}
+
+# Human opt-outs for the session's own workspace: its `/reactive-guard off <reason>` prompt, or a grant.
+guard_off() {
+  [[ $SESSION == *'"off"'* ]] && jq -e '.off.reason // empty' <<<"$SESSION" >/dev/null 2>&1 && return 0
+  granted "${ws:-$cwd}"
+}
+
+# Appends "<skill> <run> <state> <ok|pending> <updatedAt>" to jobs[] for each active, non-terminal job.
+# job.json and receipts are small files the runtime writes, so fields are read with bash regexes.
+job_lines() {
+  local root pointer skill run dir job status state leaf updated ok receipt r_run r_state r_at
+  for root in "${wss[@]}"; do
+    granted "$root" && continue
+    for pointer in "$root"/.reactive/skills/*/active_job; do
+      [ -f "$pointer" ] || continue
+      dir=${pointer%/active_job}; skill=${dir##*/}
+      run=; IFS= read -r run <"$pointer"; run=${run//[[:space:]]/}
+      [[ $run =~ $SAFE_ID ]] || continue
+      dir="$dir/runs/$run"
+      slurp job "$dir/job.json"
+      json_str status "$job" status
+      [ "$status" = active ] || continue
+      json_str state "$job" currentState
+      leaf=${state##*.}
+      shopt -s nocasematch
+      case $leaf in COMPLETED|DONE|SUCCESS|ERROR|BYPASS_DETECTED|ABORTED|TERMINAL) shopt -u nocasematch; continue ;; esac
+      shopt -u nocasematch
+      json_str updated "$job" updatedAt
+      ok=pending
+      # Parked by this session: run ids appear in the session record only as park keys.
+      [[ $SESSION == *"\"$run\""* ]] && ok=ok
+      if [ "$ok" = pending ]; then
+        slurp receipt "$dir/delivery/$sid.json"
+        json_str r_run "$receipt" run; json_str r_state "$receipt" state
+        [ "$r_run" = "$run" ] && [ "$r_state" = "$state" ] && ok=ok
+      fi
+      if [ "$ok" = pending ] && [ -f "$dir/delivery/_anon.json" ]; then
+        slurp receipt "$dir/delivery/_anon.json"
+        json_str r_run "$receipt" run; json_str r_state "$receipt" state; json_str r_at "$receipt" at
+        iso_epoch r_at "$r_at"
+        [ "$r_run" = "$run" ] && [ "$r_state" = "$state" ] && [ -n "$r_at" ] && ((NOW - r_at < ANON_WINDOW_SECONDS)) && ok=ok
+      fi
+      jobs+=("$skill $run $state $ok $updated")
+    done
+  done
+}
+
+iso_epoch() { # var "YYYY-MM-DDTHH:MM:SS[.fff]Z": UTC epoch seconds without a fork (days-from-civil); empty when unparsable
+  printf -v "$1" '%s' ''
+  [[ $2 =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2}) ]] || return 0
+  local y=$((10#${BASH_REMATCH[1]})) m=$((10#${BASH_REMATCH[2]})) d=$((10#${BASH_REMATCH[3]}))
+  local secs=$((10#${BASH_REMATCH[4]} * 3600 + 10#${BASH_REMATCH[5]} * 60 + 10#${BASH_REMATCH[6]}))
+  ((m <= 2)) && ((y -= 1))
+  local era=$((y / 400)) yoe doy
+  yoe=$((y - era * 400)); doy=$(((153 * ((m + 9) % 12) + 2) / 5 + d - 1))
+  printf -v "$1" '%d' $(((era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468) * 86400 + secs))
+}
+
+printf -v NOW '%(%s)T' -1
+
+days_since() { # var ISO-time: whole days since then, or "?"
+  local then
+  iso_epoch then "$2"
+  if [ -n "$then" ]; then printf -v "$1" '%d' $(((NOW - then) / 86400)); else printf -v "$1" '?'; fi
+}
+
+# Appends "<skill> <ok|pending>" to required[] for skills this session loaded.
 required_lines() {
-  [ -f "$session_file" ] || return 0
-  local names name receipts=()
-  names=$(jq -r '.required // {} | keys[]' "$session_file" 2>/dev/null) || return 0
-  [ -n "$names" ] || return 0
-  [ -n "$ws" ] && for f in "$ws"/.reactive/skills/*/runs/*/delivery/"$sid".json; do [ -f "$f" ] && receipts+=("$f"); done
-  local seen=""
-  [ ${#receipts[@]} -gt 0 ] && seen=$(jq -r '.skill' "${receipts[@]}" 2>/dev/null)
+  [[ $SESSION == *'"required"'* ]] || return 0
+  local names name root f seen= receipts=()
+  names=$(jq -r '.required // {} | keys[]' <<<"$SESSION" 2>/dev/null) || return 0
+  for root in "${wss[@]}"; do
+    for f in "$root"/.reactive/skills/*/runs/*/delivery/"$sid".json; do [ -f "$f" ] && receipts+=("$f"); done
+  done
+  [ ${#receipts[@]} -gt 0 ] && seen=$'\n'$(jq -r '.skill' "${receipts[@]}" 2>/dev/null)$'\n'
   for name in $names; do
-    if grep -qxF -- "$name" <<<"$seen"; then echo "$name ok"; else echo "$name pending"; fi
+    if [[ $seen == *$'\n'"$name"$'\n'* ]]; then required+=("$name ok"); else required+=("$name pending"); fi
   done
 }
 
 collect() {
   jobs=(); required=(); pending=()
+  job_lines
+  required_lines
   local line
-  while IFS= read -r line; do [ -n "$line" ] && jobs+=("$line"); done < <(job_lines)
-  while IFS= read -r line; do [ -n "$line" ] && required+=("$line"); done < <(required_lines)
   for line in "${jobs[@]}" "${required[@]}"; do [[ $line == *" pending"* ]] && pending+=("$line"); done
   return 0
 }
 
-explain() {
-  local line skill run state status age
-  printf 'Reactive skill protocol guard: this session has not acknowledged the runtime for:\n'
+explain() { # builds EXPLAIN without a subshell
+  local line skill run state status updated age part
+  EXPLAIN='Reactive skill protocol guard: this session has not acknowledged the runtime for:'$'\n'
   for line in "${pending[@]}"; do
-    read -r skill run state status age <<<"$line"
+    read -r skill run state status updated <<<"$line"
     if [ -n "${state:-}" ]; then
-      printf '  - job: %s run %s at %s (last touched %s day(s) ago)\n' "$skill" "$run" "$state" "$age"
-      printf '      resume:  reactive-skills-axi state %s --job %s   (or MCP reactive_state)\n' "$skill" "$run"
-      printf '      park:    reactive-skills-axi park %s --job %s --session %s --reason "<why this session sets it aside>"\n' "$skill" "$run" "$sid"
-      printf '      abandon: reactive-skills-axi abandon %s --job %s --reason "<why the run is over>"\n' "$skill" "$run"
+      days_since age "$updated"
+      printf -v part '  - job: %s run %s at %s (last touched %s day(s) ago)\n      resume:  reactive-skills-axi state %s --job %s   (or MCP reactive_state)\n      park:    reactive-skills-axi park %s --job %s --session %s --reason "<why this session sets it aside>"\n      abandon: reactive-skills-axi abandon %s --job %s --reason "<why the run is over>"\n' \
+        "$skill" "$run" "$state" "$age" "$skill" "$run" "$skill" "$run" "$sid" "$skill" "$run"
     else
-      printf '  - skill %s was loaded in this session but has not been run here\n' "$skill"
-      printf '      start:   reactive-skills-axi invoke %s   (or MCP reactive_state)\n' "$skill"
-      printf '      If the runtime cannot run, stop and tell the user why instead of working around it.\n'
+      printf -v part '  - skill %s was loaded in this session but has not been run here\n      start:   reactive-skills-axi invoke %s   (or MCP reactive_state)\n      If the runtime cannot run, stop and tell the user why instead of working around it.\n' "$skill" "$skill"
     fi
+    EXPLAIN+=$part
   done
-  printf 'Read-only tools stay available. A person can turn the guard off for this session by typing /reactive-guard off <reason>.\n'
+  EXPLAIN+='Read-only tools stay available. A person can turn the guard off for this session by typing /reactive-guard off <reason>.'
 }
 
-deny() { # reason text
+deny() { # message, log detail
   log deny-write "$2"
   if [ "$host" = cursor ]; then
     jq -cn --arg m "$1" '{continue:true, permission:"deny", user_message:"Reactive protocol guard denied this edit.", agent_message:$m}'
@@ -168,20 +253,16 @@ is_protected() { # absolute path
   return 1
 }
 
-find_skill_md() { # skill name -> path of a SKILL.md carrying the bootloader marker
+require_skill() { # records a loaded skill whose SKILL.md carries the bootloader marker
   local name=${1##*:} f
-  [[ $name =~ $SAFE_ID ]] || return 1
+  [[ $name =~ $SAFE_ID ]] || return 0
   for f in "$cwd/.claude/skills/$name/SKILL.md" "$cwd/.agents/skills/$name/SKILL.md" "$HOME/.agents/skills/$name/SKILL.md" "$HOME/.claude/skills/$name/SKILL.md"; do
-    if [ -f "$f" ] && grep -qF -- "$MARK" "$f"; then printf '%s\n' "$name"; return 0; fi
+    if [ -f "$f" ] && grep -qF -- "$MARK" "$f"; then
+      update_session '.required[$k] = (now|todate)' --arg k "$name"
+      log required "$name"
+      return 0
+    fi
   done
-  return 1
-}
-
-require_skill() {
-  local name
-  name=$(find_skill_md "$1") || return 0
-  update_session '.required[$k] = (now|todate)' --arg k "$name"
-  log required "$name"
 }
 
 case $event in
@@ -193,7 +274,8 @@ pretool)
   if [ "$host" != cursor ]; then
     case $tool in Edit|Write|MultiEdit|NotebookEdit|apply_patch) ;; *) exit 0 ;; esac
   fi
-  [ -n "$ws" ] || [ -f "$session_file" ] || exit 0
+  add_target_workspaces
+  [ ${#wss[@]} -gt 0 ] || [ "$SESSION" != null ] || exit 0
   guard_off && exit 0
   collect
   [ ${#jobs[@]} -gt 0 ] || [ ${#required[@]} -gt 0 ] || exit 0
@@ -202,10 +284,11 @@ pretool)
     is_protected "$target" && deny "Reactive skill protocol guard: $target is protected while a reactive job is engaged in this session (hook configuration, runtime state, run bundles and guard state change only through the runtime or a person)." "protected:$target"
   done
   [ ${#pending[@]} -eq 0 ] && exit 0
-  deny "$(explain)" "${pending[*]}"
+  explain
+  deny "$EXPLAIN" "${pending[*]}"
   ;;
 stop)
-  [ -n "$ws" ] || [ -f "$session_file" ] || exit 0
+  [ -n "$ws" ] || [ "$SESSION" != null ] || exit 0
   guard_off && exit 0
   collect
   [ ${#pending[@]} -eq 0 ] && exit 0
@@ -213,7 +296,8 @@ stop)
     # Cursor's stop hook cannot block; it gets one follow-up per turn end, then nothing.
     [ "$loop_count" = 0 ] || exit 0
     log block-stop "${pending[*]}"
-    jq -cn --arg m "$(explain)" '{followup_message:$m}'
+    explain
+    jq -cn --arg m "$EXPLAIN" '{followup_message:$m}'
     exit 0
   fi
   if [ "$stop_active" = true ]; then
@@ -222,7 +306,8 @@ stop)
     exit 0
   fi
   log block-stop "${pending[*]}"
-  explain >&2
+  explain
+  printf '%s\n' "$EXPLAIN" >&2
   exit 2
   ;;
 session-start)
@@ -231,7 +316,8 @@ session-start)
   [ ${#jobs[@]} -gt 0 ] || exit 0
   summary="Reactive jobs active in this workspace:"
   for line in "${jobs[@]}"; do
-    read -r skill run state _ age <<<"$line"
+    read -r skill run state _ updated <<<"$line"
+    days_since age "$updated"
     summary+=" $skill run $run at $state (last touched $age day(s) ago);"
   done
   summary+=" before editing files, resume each with reactive-skills-axi state <skill> --job <run>, or park or abandon it with a reason."

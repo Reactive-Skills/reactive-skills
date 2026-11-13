@@ -253,6 +253,7 @@ export interface ExportedBundle {
 
 /**
  * Seal the governed files for this skill, append ARTIFACTS_SEALED to the run, and write the bundle.
+ * A run is sealed once; exporting it again rewrites the bundle from the first seal.
  * `append` writes one event to the run's ledger; `events` returns the run's events afterwards.
  * # Performance & Risk Budget
  * - Tier: P3 (export once per run)
@@ -270,12 +271,19 @@ export function exportRunBundle(options: {
   append: (type: string, payload: Record<string, unknown>) => void;
   events: () => SignalEvent[];
 }): ExportedBundle {
-  const governanceFile = path.join(options.workspaceDir, GOVERNANCE_FILE);
-  const governance = fs.existsSync(governanceFile) ? parseGovernance(fs.readFileSync(governanceFile, 'utf8')) : { version: 1 as const, governed: [] };
-  const globs = governance.governed.filter(entry => entry.skill === options.manifest.name).flatMap(entry => entry.paths);
-  const sealed = sealGovernedFiles(options.workspaceDir, globs);
-  const digest = skillDigest(options.skillDir);
-  options.append('ARTIFACTS_SEALED', { sealed, skill_digest: digest, terminal_state: options.terminalState, governed_paths: globs });
+  // Seal once per run: a later export reuses the first seal, so it cannot bless edits made after the run.
+  const previous = options.events().filter(event => event.type === 'ARTIFACTS_SEALED').at(-1)?.payload as
+    { sealed: Record<string, string>; skill_digest: string } | undefined;
+  let sealed = previous?.sealed;
+  let digest = previous?.skill_digest;
+  if (!sealed || !digest) {
+    const governanceFile = path.join(options.workspaceDir, GOVERNANCE_FILE);
+    const governance = fs.existsSync(governanceFile) ? parseGovernance(fs.readFileSync(governanceFile, 'utf8')) : { version: 1 as const, governed: [] };
+    const globs = governance.governed.filter(entry => entry.skill === options.manifest.name).flatMap(entry => entry.paths);
+    sealed = sealGovernedFiles(options.workspaceDir, globs);
+    digest = skillDigest(options.skillDir);
+    options.append('ARTIFACTS_SEALED', { sealed, skill_digest: digest, terminal_state: options.terminalState, governed_paths: globs });
+  }
   const events = options.events();
   const { text, head } = chainEvents(events);
   const manifest: RunBundleManifest = {

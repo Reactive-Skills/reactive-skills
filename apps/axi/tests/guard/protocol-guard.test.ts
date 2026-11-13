@@ -44,6 +44,15 @@ describe('protocol guard: an active job blocks writes until the session resumes,
     expect(fx.guard('pretool', claudeWrite(fx, 'S2')).status).toBe(2);
   });
 
+  it('finds the workspace from the edited file when the session runs outside the project', () => {
+    const outside = { ...claudeWrite(fx, 'S1'), cwd: fx.root };
+    const denied = fx.guard('pretool', outside);
+    expect(denied.status).toBe(2);
+    expect(denied.stderr).toContain(`fixture run ${fx.runId()} at INTAKE`);
+    const codexOutside = { ...codexPatch(fx, 'C1'), cwd: fx.root };
+    expect(fx.guard('pretool', codexOutside, 'codex').status).toBe(2);
+  });
+
   it('does not accept command text that only names the runtime', () => {
     const spoof = spawnSync('bash', ['-c', 'echo reactive-skills-axi state fixture'], {
       cwd: fx.workspace, encoding: 'utf8', env: cleanEnv(fx.home, { CLAUDE_CODE_SESSION_ID: 'S1' }),
