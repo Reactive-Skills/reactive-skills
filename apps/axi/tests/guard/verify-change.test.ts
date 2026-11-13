@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { chainEvents, RUN_BUNDLE_FORMAT, verifyRunBundle, type SignalEvent } from '@reactive-skills/runtime';
 import { CLI, cleanEnv, createFixture, type Fixture } from './harness.js';
 
 const GOVERNANCE = `version: 1
@@ -162,6 +163,51 @@ describe('verify-change exit check', () => {
     const result = repo.verify(base, head);
     expect(result.status).toBe(1);
     expect(result.out).toContain('sealed');
+  });
+
+  it('a re-export after later ledger events still yields a valid bundle that ends at the first seal', () => {
+    fs.writeFileSync(path.join(repo.workspace, 'site', 'index.html'), '<html><title>v2</title></html>\n');
+    const runId = repo.completeRun();
+    const first = JSON.parse(fs.readFileSync(path.join(bundleDir(repo, runId), 'manifest.json'), 'utf8'));
+    repo.axi(['emit', 'fixture', 'BUILT'], { session: 'S1' });
+    expect(repo.ledgerTypes().at(-1)).not.toBe('ARTIFACTS_SEALED');
+    const again = repo.axi(['export-run', 'fixture'], { session: 'S1' });
+    expect(again.status, again.stderr).toBe(0);
+    const second = JSON.parse(fs.readFileSync(path.join(bundleDir(repo, runId), 'manifest.json'), 'utf8'));
+    expect(second.head_hash).toBe(first.head_hash);
+    expect(second.sealed).toEqual(first.sealed);
+    const head = repo.commit('recorded edit, re-exported');
+    const result = repo.verify(base, head);
+    expect(result.out).toContain('result: pass');
+    expect(result.status).toBe(0);
+  });
+
+  it('ignores a run bundle the change deletes', () => {
+    fs.writeFileSync(path.join(repo.workspace, 'site', 'index.html'), '<html><title>v2</title></html>\n');
+    const runId = repo.completeRun();
+    const recorded = repo.commit('recorded edit');
+    fs.rmSync(bundleDir(repo, runId), { recursive: true });
+    fs.writeFileSync(path.join(repo.workspace, 'README.md'), 'cleanup\n');
+    const head = repo.commit('drop old bundle');
+    const result = repo.verify(recorded, head);
+    expect(result.status, result.out).toBe(0);
+    expect(result.out).not.toContain('manifest.json');
+  });
+
+  it('rejects a well-chained bundle whose run ended in a failure state', () => {
+    const event = (seq: number, type: string, payload: Record<string, unknown>) =>
+      ({ seq, type, payload, run_id: 'R1', timestamp: '2026-11-13T00:00:00.000Z' }) as unknown as SignalEvent;
+    const { text, head } = chainEvents([
+      event(1, 'SKILL_INITIALIZED', { initial_state: 'INTAKE' }),
+      event(2, 'STATE_TRANSITION', { from: 'INTAKE', to: 'ERROR' }),
+      event(3, 'ARTIFACTS_SEALED', { sealed: {}, skill_digest: 'd', terminal_state: 'ERROR' }),
+    ]);
+    const verified = verifyRunBundle({
+      format: RUN_BUNDLE_FORMAT, skill: 'fixture', run_id: 'R1', skill_digest: 'd', terminal_state: 'ERROR',
+      head_hash: head, event_count: 3, sealed: {}, exported_at: '2026-11-13T00:00:00.000Z',
+    }, text);
+    expect(verified.ok).toBe(false);
+    expect(verified.errors).toEqual(['run ended in failure state ERROR']);
   });
 
   it('passes a change that touches only ungoverned paths', () => {

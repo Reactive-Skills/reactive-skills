@@ -198,7 +198,7 @@ export interface BundleVerification {
 
 /**
  * Re-walk a bundle: chain intact from SKILL_INITIALIZED, ending in ARTIFACTS_SEALED whose seal and
- * terminal state agree with the manifest and with the folded transitions. Recorded check results
+ * terminal state agree with the manifest and with the folded transitions, at a state that is not a failure. Recorded check results
  * are never consulted here.
  * # Performance & Risk Budget
  * - Tier: P3 (O(N) per bundle in CI)
@@ -242,6 +242,7 @@ export function verifyRunBundle(manifest: RunBundleManifest, eventsText: string)
     if (sealedPayload.skill_digest !== manifest.skill_digest) errors.push('manifest skill_digest differs from the sealed event in the chain');
     if (sealedPayload.terminal_state !== finalState || manifest.terminal_state !== finalState) errors.push(`terminal state does not match the recorded transitions (${finalState ?? 'none'})`);
   }
+  if (finalState && FAILURE_STATES.has((finalState.split('.').pop() ?? finalState).toUpperCase())) errors.push(`run ended in failure state ${finalState}`);
   const humanGateEvents = events.filter(event => event.type.startsWith('HUMAN_')).length;
   return { ok: errors.length === 0, errors, events, finalState, humanGateEvents };
 }
@@ -271,30 +272,28 @@ export function exportRunBundle(options: {
   append: (type: string, payload: Record<string, unknown>) => void;
   events: () => SignalEvent[];
 }): ExportedBundle {
-  // Seal once per run: a later export reuses the first seal, so it cannot bless edits made after the run.
-  const previous = options.events().filter(event => event.type === 'ARTIFACTS_SEALED').at(-1)?.payload as
-    { sealed: Record<string, string>; skill_digest: string } | undefined;
-  let sealed = previous?.sealed;
-  let digest = previous?.skill_digest;
-  if (!sealed || !digest) {
+  // Seal once per run: a later export reuses the first seal and the chain up to it, so it cannot bless edits made after the run.
+  const isSeal = (event: SignalEvent) => event.type === 'ARTIFACTS_SEALED';
+  let all = options.events();
+  if (!all.some(isSeal)) {
     const governanceFile = path.join(options.workspaceDir, GOVERNANCE_FILE);
     const governance = fs.existsSync(governanceFile) ? parseGovernance(fs.readFileSync(governanceFile, 'utf8')) : { version: 1 as const, governed: [] };
     const globs = governance.governed.filter(entry => entry.skill === options.manifest.name).flatMap(entry => entry.paths);
-    sealed = sealGovernedFiles(options.workspaceDir, globs);
-    digest = skillDigest(options.skillDir);
-    options.append('ARTIFACTS_SEALED', { sealed, skill_digest: digest, terminal_state: options.terminalState, governed_paths: globs });
+    options.append('ARTIFACTS_SEALED', { sealed: sealGovernedFiles(options.workspaceDir, globs), skill_digest: skillDigest(options.skillDir), terminal_state: options.terminalState, governed_paths: globs });
+    all = options.events();
   }
-  const events = options.events();
+  const events = all.slice(0, all.findIndex(isSeal) + 1);
+  const seal = events.at(-1)?.payload as { sealed: Record<string, string>; skill_digest: string; terminal_state: string };
   const { text, head } = chainEvents(events);
   const manifest: RunBundleManifest = {
     format: RUN_BUNDLE_FORMAT,
     skill: options.manifest.name,
     run_id: options.runId,
-    skill_digest: digest,
-    terminal_state: options.terminalState,
+    skill_digest: seal.skill_digest,
+    terminal_state: seal.terminal_state,
     head_hash: head,
     event_count: events.length,
-    sealed,
+    sealed: seal.sealed,
     exported_at: new Date().toISOString(),
   };
   const dir = path.join(options.workspaceDir, ATTESTATIONS_DIR, options.runId);

@@ -197,12 +197,20 @@ days_since() { # var ISO-time: whole days since then, or "?"
 # Appends "<skill> <ok|pending>" to required[] for skills this session loaded.
 required_lines() {
   [[ $SESSION == *'"required"'* ]] || return 0
-  local names name root f seen= receipts=()
+  local names name root f seen= receipts=() receipt r_skill r_at
   names=$(jq -r '.required // {} | keys[]' <<<"$SESSION" 2>/dev/null) || return 0
   for root in "${wss[@]}"; do
     for f in "$root"/.reactive/skills/*/runs/*/delivery/"$sid".json; do [ -f "$f" ] && receipts+=("$f"); done
+    for f in "$root"/.reactive/skills/*/runs/*/delivery/_anon.json; do
+      [ -f "$f" ] || continue
+      slurp receipt "$f"
+      json_str r_skill "$receipt" skill; json_str r_at "$receipt" at
+      iso_epoch r_at "$r_at"
+      [ -n "$r_at" ] && ((NOW - r_at < ANON_WINDOW_SECONDS)) && seen+=$'\n'"$r_skill"
+    done
   done
-  [ ${#receipts[@]} -gt 0 ] && seen=$'\n'$(jq -r '.skill' "${receipts[@]}" 2>/dev/null)$'\n'
+  [ ${#receipts[@]} -gt 0 ] && seen+=$'\n'$(jq -r '.skill' "${receipts[@]}" 2>/dev/null)
+  seen+=$'\n'
   for name in $names; do
     if [[ $seen == *$'\n'"$name"$'\n'* ]]; then required+=("$name ok"); else required+=("$name pending"); fi
   done
@@ -253,11 +261,13 @@ is_protected() { # absolute path
   return 1
 }
 
-require_skill() { # records a loaded skill whose SKILL.md carries the bootloader marker
-  local name=${1##*:} f
+require_skill() { # records a loaded skill whose SKILL.md carries the bootloader marker, by its manifest name
+  local name=${1##*:} f meta re='(^|'$'\n'')name:[[:space:]]*["'"'"']?([A-Za-z0-9][A-Za-z0-9._-]*)'
   [[ $name =~ $SAFE_ID ]] || return 0
   for f in "$cwd/.claude/skills/$name/SKILL.md" "$cwd/.agents/skills/$name/SKILL.md" "$HOME/.agents/skills/$name/SKILL.md" "$HOME/.claude/skills/$name/SKILL.md"; do
     if [ -f "$f" ] && grep -qF -- "$MARK" "$f"; then
+      if [ -f "${f%/*}/skill.yaml" ]; then slurp meta "${f%/*}/skill.yaml"; else slurp meta "$f"; fi
+      [[ $meta =~ $re ]] && meta=${BASH_REMATCH[2]} && [[ $meta =~ $SAFE_ID ]] && name=$meta
       update_session '.required[$k] = (now|todate)' --arg k "$name"
       log required "$name"
       return 0

@@ -125,12 +125,13 @@ export async function verifyChangeCommand(args: string[]): Promise<string> {
 
 function loadBundle(show: (rev: string, file: string) => Buffer | null, head: string, dir: string, report: Report): RunBundleManifest | null {
   const manifestBytes = show(head, `${dir}/manifest.json`);
+  if (manifestBytes === null) return null;
   const events = show(head, `${dir}/events.jsonl`);
   let manifest: RunBundleManifest;
   try {
-    manifest = JSON.parse(manifestBytes?.toString('utf8') ?? '');
+    manifest = JSON.parse(manifestBytes.toString('utf8'));
   } catch {
-    report.failures.push(`${dir}: manifest.json is missing or not JSON`);
+    report.failures.push(`${dir}: manifest.json is not JSON`);
     return null;
   }
   const verified = verifyRunBundle(manifest, events?.toString('utf8') ?? '');

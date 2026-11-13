@@ -214,6 +214,23 @@ describe('protocol guard: skills loaded in a session and quiet workspaces', () =
     ok(fx.guard('pretool', claudeWrite(fx, 'S1')));
   });
 
+  it('a required skill is satisfied by a fresh anonymous receipt, matched by its manifest name', () => {
+    const userSkill = path.join(fx.home, '.agents', 'skills', 'fixture-folder');
+    fs.mkdirSync(userSkill, { recursive: true });
+    fs.writeFileSync(path.join(userSkill, 'SKILL.md'), '---\nname: fixture\n---\n# fixture\n<!-- REACTIVE BOOTLOADER -->\nRun the runtime.\n');
+    ok(fx.guard('prompt', { conversation_id: 'K1', workspace_roots: [fx.workspace], hook_event_name: 'beforeSubmitPrompt', prompt: '/fixture-folder' }, 'cursor'));
+    const denied = fx.guard('pretool', cursorWrite(fx, 'K1'), 'cursor');
+    expect(JSON.parse(denied.stdout)).toMatchObject({ permission: 'deny' });
+    expect(JSON.parse(denied.stdout).agent_message).toContain('skill fixture was loaded');
+    ok(fx.axi(['invoke', 'fixture']));
+    const allowed = ok(fx.guard('pretool', cursorWrite(fx, 'K1'), 'cursor'));
+    expect(allowed.stdout).toBe('');
+    // A stale anonymous receipt no longer counts.
+    const receipt = path.join(fx.workspace, '.reactive', 'skills', 'fixture', 'runs', fx.runId(), 'delivery', '_anon.json');
+    fs.writeFileSync(receipt, JSON.stringify({ ...JSON.parse(fs.readFileSync(receipt, 'utf8')), at: '2020-01-01T00:00:00.000Z' }));
+    expect(JSON.parse(fx.guard('pretool', cursorWrite(fx, 'K1'), 'cursor').stdout)).toMatchObject({ permission: 'deny' });
+  });
+
   it('ignores a skill without the reactive bootloader marker', () => {
     const plainSkill = path.join(fx.home, '.agents', 'skills', 'plain');
     fs.mkdirSync(plainSkill, { recursive: true });
