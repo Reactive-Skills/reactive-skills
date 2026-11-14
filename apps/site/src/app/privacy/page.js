@@ -34,7 +34,7 @@ export default function PrivacyPage() {
           Analytics are used to understand site traffic, not for advertising.
         </p>
         <p>
-          Only visits to reactive-skills.com are counted.
+          Only visits to reactive-skills.com and www.reactive-skills.com are counted.
           If your browser sends a Do Not Track signal, the tracker sends no analytics data,
           though your browser still requests the script.
         </p>
