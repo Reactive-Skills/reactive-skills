@@ -10,7 +10,7 @@ vi.mock('@/components/site/SiteHeader', () => ({ SiteHeader: () => null }));
 
 // Every hostname that serves the public site, canonical first. A hostname missing from
 // data-domains silently drops that host's page views, so it belongs in this table.
-const SERVING_HOSTNAMES = ['reactive-skills.com', 'www.reactive-skills.com'];
+const SERVING_HOSTNAMES = ['reactive-skills.com', 'www.reactive-skills.com', 'reactive-skills.github.io'];
 
 describe('site analytics', () => {
   const markup = renderToStaticMarkup(createElement(RootLayout, null, 'Page'));

@@ -2,7 +2,7 @@
 
 ## Umami tracked hostname inventory
 
-The site tracker's `data-domains` now lists every hostname that serves the public site: `reactive-skills.com` and `www.reactive-skills.com`, which answers 301 to the canonical host.
+The site tracker's `data-domains` now lists every hostname that serves the public site: `reactive-skills.com`, `www.reactive-skills.com` and `reactive-skills.github.io`, which both answer 301 to the canonical host.
 The domain list lives only in `analytics.config.json`; the tag renders it as a comma-separated attribute.
 `analytics.test.js` holds that hostname table and fails when the configuration or the `/privacy/` wording omits a serving hostname.
 Changed files: `apps/site/src/lib/analytics.config.json`, `apps/site/src/app/privacy/page.js`, `apps/site/tests/analytics.test.js`, `docs/analytics.md` and this tracker.
