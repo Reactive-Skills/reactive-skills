@@ -1,5 +1,13 @@
 # Progress Tracker: Reactive Skills Architecture (RSA)
 
+## Umami tracked hostname inventory
+
+The site tracker's `data-domains` now lists every hostname that serves the public site: `reactive-skills.com`, `www.reactive-skills.com` and `reactive-skills.github.io`, which both answer 301 to the canonical host.
+The domain list lives only in `analytics.config.json`; the tag renders it as a comma-separated attribute.
+`analytics.test.js` holds that hostname table and fails when the configuration or the `/privacy/` wording omits a serving hostname.
+Changed files: `apps/site/src/lib/analytics.config.json`, `apps/site/src/app/privacy/page.js`, `apps/site/tests/analytics.test.js`, `docs/analytics.md` and this tracker.
+Validation: the three analytics tests fail before the configuration change and the full 127-test site suite passes after it; a root-site export renders both hostnames in `data-domains` and in the privacy wording.
+
 ## Protocol guard hooks and exit check
 
 The runtime only governs agents that call it, so enforcement moved to two points the agent does not choose: harness hooks and a merge-boundary check (`docs/protocol-guard.md`).

@@ -6,7 +6,9 @@ Browsers load `https://umami-production-abb4.up.railway.app/script.js` directly 
 
 `apps/site/src/lib/analytics.config.json` holds the host, public website id and exact tracked hostnames.
 `apps/site/src/lib/analytics.js` derives the script URL from that configuration.
-`apps/site/src/components/site/Analytics.jsx` renders one deferred tag in the root layout with `data-domains="reactive-skills.com"` and `data-do-not-track="true"`.
+`apps/site/src/components/site/Analytics.jsx` renders one deferred tag in the root layout with `data-domains="reactive-skills.com,www.reactive-skills.com,reactive-skills.github.io"` and `data-do-not-track="true"`.
+Every hostname that serves the site belongs in that list, including aliases that redirect to the canonical host.
+The hostname and privacy tests in `apps/site/tests/analytics.test.js` fail when a serving hostname is missing from the configuration or from the `/privacy/` wording.
 Localhost, previews and other hostnames do not send page views; browsers with Do Not Track still request the script but send no analytics data.
 
 Only page views are enabled: no custom events, identify calls, performance tracking, recorder or heatmaps.
